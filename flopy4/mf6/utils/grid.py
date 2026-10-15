@@ -951,8 +951,8 @@ class VertexGrid(LegacyVertexGrid):
             kwargs["vertices"] = [[iv[i], xv[i], yv[i]] for i in range(len(iv))]
 
         super().__init__(*args, **kwargs)
-        # As for StructuredGrid: dims (layer, node), a node the cell within
-        # its layer as in DISU, with no index coordinates.
+        # As for StructuredGrid: dims (layer, cell), cell the cell within its
+        # layer, with no index coordinates.
         self._coords = self._get_world_coords()
 
         data_vars = {}
@@ -1030,9 +1030,9 @@ class VertexGrid(LegacyVertexGrid):
                 z[k] = (layer_top + layer_bot) / 2.0
 
         return {
-            "x": xr.DataArray(x, dims=("node",)),
-            "y": xr.DataArray(y, dims=("node",)),
-            "z": xr.DataArray(z, dims=("layer", "node")),
+            "x": xr.DataArray(x, dims=("cell",)),
+            "y": xr.DataArray(y, dims=("cell",)),
+            "z": xr.DataArray(z, dims=("layer", "cell")),
         }
 
     @property
@@ -1063,7 +1063,7 @@ class VertexGrid(LegacyVertexGrid):
         if legacy_delz is None:
             return None
 
-        dims = ("layer", "node")
+        dims = ("layer", "cell")
         # Check if data shape matches expected grid dimensions
         if legacy_delz.shape != (self.nlay, self.ncpl):
             return legacy_delz
@@ -1085,7 +1085,7 @@ class VertexGrid(LegacyVertexGrid):
         if legacy_top is None:
             return None
 
-        dims = ("node",)
+        dims = ("cell",)
         # Check if data shape matches expected grid dimensions
         # If not, return the raw legacy data without coordinates
         if legacy_top.shape != (self.ncpl,):
@@ -1107,7 +1107,7 @@ class VertexGrid(LegacyVertexGrid):
         if legacy_botm is None:
             return None
 
-        dims = ("layer", "node")
+        dims = ("layer", "cell")
         # Check if data shape matches expected grid dimensions
         if legacy_botm.shape != (self.nlay, self.ncpl):
             return legacy_botm
@@ -1129,7 +1129,7 @@ class VertexGrid(LegacyVertexGrid):
         if legacy_idomain is None:
             return None
 
-        dims = ("layer", "node")
+        dims = ("layer", "cell")
         # Check if data shape matches expected grid dimensions
         if legacy_idomain.shape != (self.nlay, self.ncpl):
             return legacy_idomain

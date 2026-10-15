@@ -1146,7 +1146,7 @@ def test_grid_from_disv_factory():
     assert "y" in grid.dataset.coords
     assert "z" in grid.dataset.coords
     assert not {"k", "j", "icpl"} & set(grid.dataset.coords)
-    assert grid.dataset["botm"].dims == ("layer", "node")
+    assert grid.dataset["botm"].dims == ("layer", "cell")
     assert grid.dims == {"nlay": grid.nlay, "ncpl": grid.ncpl, "nodes": grid.nnodes}
 
     # Check z coordinates are cell centers
@@ -1296,7 +1296,7 @@ def test_ugrid_from_disv_factory():
     assert "y" in grid.dataset.coords
     assert "z" in grid.dataset.coords
     assert not {"k", "j", "icpl"} & set(grid.dataset.coords)
-    assert grid.dataset["botm"].dims == ("layer", "node")
+    assert grid.dataset["botm"].dims == ("layer", "cell")
     assert grid.dims == {"nlay": grid.nlay, "ncpl": grid.ncpl, "nodes": grid.nnodes}
 
     # Check z coordinates are cell centers
