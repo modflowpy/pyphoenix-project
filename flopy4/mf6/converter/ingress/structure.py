@@ -17,9 +17,11 @@ from flopy4.mf6.block import block_list_type
 from flopy4.mf6.component import Component, get_ftype
 from flopy4.mf6.item import (
     Item,
+    RowContext,
     dim_lookup,
     item_list_type,
     item_list_words,
+    ncelldim_from_dims,
     parse_union_items,
     sized_by,
 )
@@ -63,23 +65,19 @@ def _parse_rows(
     `LoadContext.ncelldim`)."""
     if not rows:
         return None
+    classes = item_cls if isinstance(item_cls, tuple) else (item_cls,)
+    ncelldim = context.ncelldim(classes[0]) if len(classes) == 1 else None
+    if ncelldim is None:
+        ncelldim = ncelldim_from_dims(dict(context.dims))
+    row_context = RowContext(ncelldim=ncelldim, sizes=sizes or {}, boundnames=boundnames)
     if isinstance(item_cls, tuple):
         return parse_union_items(
-            rows,
-            item_cls,
-            words=words,
-            sizes=sizes,
-            boundnames=boundnames,
-            dims=dict(context.dims),
-            load_child=load_child,
+            rows, item_cls, words=words, context=row_context, load_child=load_child
         )
-    ncelldim = context.ncelldim(item_cls, rows, sizes=sizes)
     result = [
         item_cls.from_tokens(
             row,
-            ncelldim=ncelldim,
-            sizes=sizes,
-            boundnames=boundnames,
+            row_context,
             union_arm=union_arm,
             union_forms=union_forms,
             load_child=load_child,
@@ -1063,8 +1061,7 @@ def structure_component(
                 sizes[shape] = n
     boundnames = bool(kwargs.get("boundnames", False))
 
-    # Prefer grid dims (unambiguous) over row-width guessing for a
-    # variable-width cellid's element count -- see item.infer_ncelldim.
+    # The grid's dims give the cellids' width (see LoadContext.ncelldim).
     # Same "self dims, since a DimensionProvider has none threaded to it
     # yet" fallback as Pass 4's griddata parsing.
     effective_dims = dims or _self_dims_from_kwargs(kwargs)

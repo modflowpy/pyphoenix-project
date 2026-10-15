@@ -1797,10 +1797,9 @@ def test_oc_ocsetting_typed_dispatch():
     assert print_row.ocsetting == "ALL"
 
 
-def test_oc_ocsetting_construct_item_positional():
-    """A user-supplied positional tuple (construct_item's code path, e.g.
-    via COMPONENT_CONVERTER structuring) dispatches ocsetting the same way
-    from_tokens does."""
+def test_oc_ocsetting_from_values_positional():
+    """A user-supplied positional tuple (Item.from_values) dispatches
+    ocsetting the same way from_tokens does."""
     from flopy4.mf6.gwf import Oc
 
     oc = Oc(stress_period_data={0: [("SAVE", "HEAD", "all"), ("PRINT", "BUDGET", "FREQUENCY", 2)]})
@@ -1811,8 +1810,67 @@ def test_oc_ocsetting_construct_item_positional():
     assert print_.ocsetting.frequency == 2
 
 
+def test_row_flat_or_tupled():
+    """A cellid or inline array may be given as a tuple, or flat, its
+    values in place; without a grid, a flat cellid is as wide as the row
+    makes room for."""
+    from flopy4.mf6.gwf import Chd, Wel
+
+    chd = Chd(stress_period_data={0: [(0, 0, 0, 1.0), ((0, 0, 1), 2.0)]})
+    assert [r.cellid for r in chd.stress_period_data[0]] == [(0, 0, 0), (0, 0, 1)]
+    wel = Wel(auxiliary=["a", "b"], stress_period_data={0: [(0, 0, 0, -5.0, 0.1, 0.2)]})
+    assert wel.stress_period_data[0][0].aux == (0.1, 0.2)
+
+
+def test_row_ambiguous_widths_raise():
+    """Without the grid or package, a flat row whose widths more than one
+    way fits raises, asking for tuples."""
+    from flopy4.mf6.gwf import Gnc
+
+    with pytest.raises(ValueError, match="give each cellid and inline array as a tuple"):
+        Gnc.Gncdata.from_values([0, 0, 1, 0, 0, 2, 0, 1, 1, 0.25])
+    row = Gnc.Gncdata.from_values([(0, 0, 1), (0, 0, 2), ((0, 1, 1),), (0.25,)])
+    assert row.cellidsj == ((0, 1, 1),)
+
+
+def test_row_boundname_sets_option():
+    """A Python row with one value more than its fields take has a
+    boundname, whatever its type, and the package then sets BOUNDNAMES."""
+    from flopy4.mf6.gwf import Wel
+
+    wel = Wel(stress_period_data={0: [((0, 0, 0), -5.0, 5)]})
+    assert wel.stress_period_data[0][0].boundname == "5"
+    assert wel.boundnames
+    assert not Wel(stress_period_data={0: [((0, 0, 0), -5.0)]}).boundnames
+
+
+@pytest.mark.parametrize("boundnames", [True, False])
+def test_row_boundname_by_option(boundnames):
+    """A file row's last token is its boundname if, and only if, the
+    BOUNDNAMES option is set, whatever it looks like (a number); as in
+    MF6, an extra token is otherwise ignored."""
+    from flopy4.mf6.gwf import Wel
+    from flopy4.mf6.item import RowContext
+
+    context = RowContext(ncelldim=3, boundnames=boundnames)
+    row = Wel.StressPeriodData.from_tokens([1, 1, 1, -5.0, 5], context)
+    assert row.boundname == ("5" if boundnames else None)
+
+
+@pytest.mark.parametrize("boundnames", [True, False])
+def test_row_optional_column_or_boundname(boundnames):
+    """EVT's petm0 is there if the row makes room for it, after the
+    boundname, which the option places."""
+    from flopy4.mf6.gwf import Evt
+    from flopy4.mf6.item import RowContext
+
+    context = RowContext(ncelldim=3, sizes={"nseg-1": 0, "auxiliary": 0}, boundnames=boundnames)
+    row = Evt.StressPeriodData.from_tokens([1, 1, 1, 10.0, 0.001, 2.0, 0.5], context)
+    assert (row.petm0, row.boundname) == ((None, "0.5") if boundnames else (0.5, None))
+
+
 @pytest.mark.parametrize("boundname", [None, "b"])
-def test_construct_item_positional_trailing_boundname(boundname):
+def test_row_positional_trailing_boundname(boundname):
     """A positional row's last value is its boundname, absent (None) or
     not, rather than another value of the aux array before it."""
     from flopy4.mf6.gwf import Evt, Wel
@@ -4005,10 +4063,11 @@ def test_obs_header_blocks_round_trip(tmp_path):
 def test_obs_ids(tokens, ncelldim, union_arm, id_, id2):
     """An OBS id is a cellid, an index or a boundname, by the parent's kind
     and the row's width."""
+    from flopy4.mf6.item import RowContext
     from flopy4.mf6.utl import Obs
 
     row = Obs.Continuous.from_tokens(
-        ["o1", "head", *tokens], ncelldim=ncelldim, union_arm=union_arm
+        ["o1", "head", *tokens], RowContext(ncelldim=ncelldim), union_arm=union_arm
     )
     assert (row.id_, row.id2) == (id_, id2)
     assert [str(t) for t in row.to_tokens()[2:]] == tokens
@@ -4016,10 +4075,11 @@ def test_obs_ids(tokens, ncelldim, union_arm, id_, id2):
 
 def test_obs_ids_ignore_trailing_tokens():
     """Like MF6, tokens past the ids are ignored (test051's notes)."""
+    from flopy4.mf6.item import RowContext
     from flopy4.mf6.utl import Obs
 
     tokens = ["o1", "water-content", "1", "1.0", "(UZF", "CELL", "1)"]
-    row = Obs.Continuous.from_tokens(tokens, ncelldim=3, union_arm="index")
+    row = Obs.Continuous.from_tokens(tokens, RowContext(ncelldim=3), union_arm="index")
     assert (row.id_, row.id2) == (0, 0)
 
 

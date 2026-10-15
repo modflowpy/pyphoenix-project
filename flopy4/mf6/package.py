@@ -17,12 +17,13 @@ from flopy4.mf6.constants import MF6
 from flopy4.mf6.dims_provider_methods import DimsProviderMethods
 from flopy4.mf6.item import (
     Item,
-    construct_item,
+    RowContext,
     dim_lookup,
     inline_dim,
     item_list_type,
     item_list_words,
     package_sized_fields,
+    sized_by,
     union_value,
 )
 from flopy4.mf6.load_context import LoadContext
@@ -36,6 +37,7 @@ from flopy4.mf6.period_arrays import (
 )
 from flopy4.mf6.spec import to_field_type
 from flopy4.mf6.write_context import WriteContext
+from flopy4.spec import is_array
 
 # DFN type -> numpy dtype, for broadcasting a scalar griddata default to a
 # full array.
@@ -359,16 +361,48 @@ class Package(Component, ABC):
             elif (declared := dim_value(shape, lookup=lookup)) is not None and declared != n:
                 raise ValueError(f"{shape}={declared} but {f.name} has {n} values")
 
-    @staticmethod
+    def _row_context(self, item_cls: "type[Item] | tuple[type[Item], ...]") -> RowContext:
+        """What the layout of a row of ``item_cls`` given in Python depends
+        on (see `Item.from_values`): the grid's ncelldim, if known (an
+        exchange's two grids aren't, here), the sizes of the inline arrays
+        the package sizes, and the boundnames option. A size the rows can
+        set (EVT's nseg, GNC's numalphaj) is solved from them if unset;
+        one they can't (aux's, by the names in ``auxiliary``) is 0."""
+        fields = attrs.fields_dict(type(self))  # type: ignore[arg-type]
+        values = {name: getattr(self, name) for name in fields}
+
+        def lookup(name: str) -> Any:
+            return dim_lookup(values, name)
+
+        sizes = {}
+        for shape in sized_by(item_cls):
+            if (n := dim_value(shape, lookup=lookup)) is None:
+                unset = dim_input(shape, lookup=lookup, length=1)
+                if unset is None or (f := fields.get(unset[0])) is None or not is_array(f):
+                    continue
+                n = 0
+            sizes[shape] = n
+        ncelldim = None
+        if not hasattr(self, "exgmnamea"):
+            try:
+                ncelldim = self.resolve_dims("ncelldim").get("ncelldim")
+            except ValueError:
+                pass
+        return RowContext(
+            ncelldim=ncelldim, sizes=sizes, boundnames=bool(getattr(self, "boundnames", False))
+        )
+
     def _coerce_item_list(
-        data, item_cls: "type[Item] | tuple[type[Item], ...]", words: tuple[str, ...] = ()
+        self, data, item_cls: "type[Item] | tuple[type[Item], ...]", words: tuple[str, ...] = ()
     ) -> list:
         """Convert user-supplied list/dict data to a list of Item instances.
 
         For a plain (non-union) item_cls, accepts:
           - list of item_cls instances → returned as-is
-          - list of tuples/lists       → positional, matching item_cls's
-                                          own field declaration order
+          - list of tuples/lists       → positional, laid out by
+                                          `Item.from_values` in the
+                                          package's context (flat or
+                                          tupled cellids and arrays)
           - list of dicts              → named columns
           - dict of lists              → column-oriented {col_name: [values]}
 
@@ -376,35 +410,38 @@ class Package(Component, ABC):
         OcPrint)): existing arm instances pass through, as do its
         ``words`` (PRP's ALL), in any case;
         tuples/lists are dispatched to the right arm by their keyword token
-        and built positionally (see flopy4.mf6.item.construct_union_item --
-        NOT from_tokens, since these values are already Python-side, not
-        raw 1-based/string file tokens); dicts are dispatched by a
-        "keyword" key. Raises on a row no arm takes. Ambiguous columnar
-        dict-of-lists input isn't supported (no single arm to build
-        columns from).
+        and built positionally (see flopy4.mf6.item.construct_union_item);
+        dicts are dispatched by a "keyword" key. Raises on a row no arm
+        takes. Ambiguous columnar dict-of-lists input isn't supported (no
+        single arm to build columns from).
+
+        A row with a boundname sets the package's boundnames option, which
+        MF6 needs to read it.
         """
+        context = self._row_context(item_cls)
         if isinstance(item_cls, tuple):
             items = []
             for row in data:
-                item = _union_row(row, item_cls, words)
+                item = _union_row(row, item_cls, words, context)
                 if item is None:
                     names = [*words, *(c.__name__ for c in item_cls)]
                     raise ValueError(f"no arm of {names} takes row {row!r}")
                 items.append(item)
-            return items
-        if isinstance(data, dict):
+        elif isinstance(data, dict):
             n = len(next(iter(data.values()))) if data else 0
-            return [item_cls(**{name: vals[i] for name, vals in data.items()}) for i in range(n)]
-        items = []
-        for row in data:
-            if isinstance(row, item_cls):
-                items.append(row)
-            elif isinstance(row, dict):
-                items.append(item_cls(**row))
-            elif isinstance(row, (list, tuple)):
-                items.append(construct_item(item_cls, row))
-            else:
-                items.append(construct_item(item_cls, list(row)))
+            items = [item_cls(**{name: vals[i] for name, vals in data.items()}) for i in range(n)]
+        else:
+            items = []
+            for row in data:
+                if isinstance(row, item_cls):
+                    items.append(row)
+                elif isinstance(row, dict):
+                    items.append(item_cls(**row))
+                else:
+                    items.append(item_cls.from_values(row, context))
+        if not context.boundnames and "boundnames" in attrs.fields_dict(type(self)):  # type: ignore[arg-type]
+            if any(getattr(item, "boundname", None) for item in items):
+                object.__setattr__(self, "boundnames", True)
         return items
 
     def _normalize_griddata(self, fields, dims: dict) -> None:
@@ -807,7 +844,12 @@ class Package(Component, ABC):
         return super().to_xarray()  # type: ignore[return-value]
 
 
-def _union_row(row: Any, arms: "tuple[type[Item], ...]", words: tuple[str, ...]) -> Any:
+def _union_row(
+    row: Any,
+    arms: "tuple[type[Item], ...]",
+    words: tuple[str, ...],
+    context: RowContext | None = None,
+) -> Any:
     """A list of unions' row from user input (see Package._coerce_item_list),
     as a union field's value is (see union_value), or None if no arm
     takes it."""
@@ -818,7 +860,7 @@ def _union_row(row: Any, arms: "tuple[type[Item], ...]", words: tuple[str, ...])
         arm = next((c for c in arms if c.keyword().upper() == kw), None)
         return arm(**{k: v for k, v in row.items() if k != "keyword"}) if arm else None
     values = list(row) if isinstance(row, (list, tuple)) else [row]
-    return union_value(values, (words, arms))
+    return union_value(values, (words, arms), context)
 
 
 def _row_dict(row: Any, keyword: bool = False) -> dict[str, Any]:
