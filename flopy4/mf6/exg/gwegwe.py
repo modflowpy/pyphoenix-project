@@ -32,7 +32,7 @@ class Gwegwe(Exchange):
         cl2: float = double()
         hwva: float = double()
         aux: tuple[float, ...] = array(default=(), shape=("auxiliary",), optional=True)
-        boundname: Optional[str] = string(default=None, optional=True)
+        boundname: Optional[str] = string(default=None, empty_is_none=True, optional=True)
 
     gwfmodelname1: str = string(
         default=None,

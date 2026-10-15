@@ -69,7 +69,7 @@ class Sfr(Package):
         aux: tuple[Union[float, TimeSeriesRef], ...] = array(
             default=(), shape=("auxiliary",), time_series=True, optional=True
         )
-        boundname: Optional[str] = string(default=None, optional=True)
+        boundname: Optional[str] = string(default=None, empty_is_none=True, optional=True)
 
     @attrs.define
     class Crosssections(Item):

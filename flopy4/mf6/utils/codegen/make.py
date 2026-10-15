@@ -283,8 +283,9 @@ def _item_columns(
             fk = getattr(f, "fk", None)
             pk = not fk and bool(getattr(f, "pk", False))
             item = filters.feature_id_column(name, fk=fk, pk=pk, optional=optional, time_series=ts)
-        elif name == "boundname":
-            item = filters.attr_column(name, "str", "string", {}, optional=True)
+        elif _is_label(col, columns):
+            meta = {"empty_is_none": True}
+            item = filters.attr_column(name, "str", "string", meta, optional=True)
         elif col.is_row_keyword:
             item = filters.attr_column(name, "bool", "keyword", {}, optional=True, default="False")
         elif isinstance(f, UnionField) and name in unions:
@@ -316,6 +317,19 @@ def _item_columns(
             raise NotImplementedError(f"column {name!r}: when={when!r} on a non-scalar column")
         items.append(item)
     return items
+
+
+def _is_label(col: ColumnSpec, columns: list[ColumnSpec]) -> bool:
+    """Whether a column is a trailing optional label: an optional, untagged
+    string, the row's last column (a boundname; a name file's pname)."""
+    f = col.field
+    return (
+        col is columns[-1]
+        and bool(f.optional)
+        and not getattr(f, "tagged", False)
+        and _dfn_type_str(f) == "string"
+        and not col.is_prefix
+    )
 
 
 def _arm_kind(arm: FieldV3) -> str:
