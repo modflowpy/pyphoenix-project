@@ -1,4 +1,3 @@
-import collections
 from typing import Any
 
 import numpy as np
@@ -210,12 +209,8 @@ class StructuredGrid(LegacyStructuredGrid):
                 # Property doesn't exist or can't be computed yet
                 pass
 
-        self._dataset = (
-            xr.Dataset(data_vars, coords=self._coords)
-            .set_xindex("x", PandasIndex)
-            .set_xindex("y", PandasIndex)
-            # z is a 3D non-dimension coordinate, so it doesn't get indexed
-        )
+        # z is a 3D non-dimension coordinate, so it doesn't get indexed
+        self._dataset = index_xy(xr.Dataset(data_vars, coords=self._coords))
 
     def _get_world_coords(self) -> dict:
         """
@@ -235,25 +230,19 @@ class StructuredGrid(LegacyStructuredGrid):
 
         # If spatial data is not provided, use default coordinates (indices)
         # This handles grids created with only dimensions (nlay, nrow, ncol)
-        if legacy_delr is None:
-            x = np.arange(self.ncol, dtype=float)
+        if legacy_delr is None or legacy_delc is None:
+            xy = {
+                "x": ("col", np.arange(self.ncol, dtype=float)),
+                "y": ("row", np.arange(self.nrow, dtype=float)),
+            }
         else:
-            # Compute x coordinates (cell centers)
-            delr = np.atleast_1d(legacy_delr)
-            if delr.size == 1:
-                delr = np.full(self.ncol, delr[0])
-            x = self._xoff + np.cumsum(delr) - 0.5 * delr
-
-        if legacy_delc is None:
-            y = np.arange(self.nrow, dtype=float)
-        else:
-            # Compute y coordinates (cell centers)
-            delc = np.atleast_1d(legacy_delc)
-            if delc.size == 1:
-                delc = np.full(self.nrow, delc[0])
-            # Calculate ymax from grid dimensions
-            ymax = self._yoff + np.sum(delc)
-            y = ymax - np.cumsum(delc) + 0.5 * delc
+            xy = structured_centers(
+                np.broadcast_to(np.asarray(legacy_delr, dtype=np.float64), (self.ncol,)),
+                np.broadcast_to(np.asarray(legacy_delc, dtype=np.float64), (self.nrow,)),
+                self._xoff,
+                self._yoff,
+                self.angrot,
+            )
 
         # Compute z coordinates (cell centers in 3D)
         if legacy_top is None or legacy_botm is None:
@@ -282,8 +271,8 @@ class StructuredGrid(LegacyStructuredGrid):
                 z[k] = (layer_top + layer_bot) / 2.0
 
         return {
-            "x": xr.DataArray(x, dims=("col",)),
-            "y": xr.DataArray(y, dims=("row",)),
+            "x": xr.DataArray(xy["x"][1], dims=xy["x"][0]),
+            "y": xr.DataArray(xy["y"][1], dims=xy["y"][0]),
             "z": xr.DataArray(z, dims=("layer", "row", "col")),
         }
 
@@ -1374,68 +1363,84 @@ class VertexGrid(LegacyVertexGrid):
             self.legacy = False
 
 
+def to_world(x, y, xorigin=None, yorigin=None, angrot=None) -> tuple[np.ndarray, np.ndarray]:
+    """Model coordinates (relative to the grid's origin) to world
+    coordinates. As in MF6, the grid is rotated counter-clockwise by
+    ``angrot`` degrees about its origin, the lower-left corner."""
+    x = np.asarray(x, dtype=np.float64)
+    y = np.asarray(y, dtype=np.float64)
+    if angrot:
+        t = np.deg2rad(angrot)
+        x, y = x * np.cos(t) - y * np.sin(t), x * np.sin(t) + y * np.cos(t)
+    return (xorigin or 0.0) + x, (yorigin or 0.0) + y
+
+
+def structured_centers(delr, delc, xorigin=None, yorigin=None, angrot=None) -> dict[str, Any]:
+    """A structured grid's cell centres in world coordinates: ``x`` on
+    ``col`` and ``y`` on ``row``, or, if the grid is rotated, both on
+    ``(row, col)``, since a rotated grid's rows and columns don't line
+    up with x and y."""
+    delr = np.asarray(delr, dtype=np.float64)
+    delc = np.asarray(delc, dtype=np.float64)
+    x = np.cumsum(delr) - 0.5 * delr
+    # row 0 is the north edge
+    y = delc.sum() - np.cumsum(delc) + 0.5 * delc
+    if not angrot:
+        x, y = to_world(x, y, xorigin, yorigin)
+        return {"x": ("col", x), "y": ("row", y)}
+    xx, yy = np.meshgrid(x, y)
+    x, y = to_world(xx, yy, xorigin, yorigin, angrot)
+    return {"x": (("row", "col"), x), "y": (("row", "col"), y)}
+
+
 def get_coords(grid: LegacyStructuredGrid) -> dict[str, Any]:
-    """A structured grid's world coordinates, x on col and y on row, as
-    for package arrays. No layer coordinate: a position is the index."""
-    # unpack tuples
-    xmin, xmax, ymin, ymax = grid.extent
-    dx, dy = (grid.delr, -grid.delc)  # type: ignore
-    coords: collections.OrderedDict[str, Any] = collections.OrderedDict()
-    # from cell size to x and y coordinates
-    if isinstance(dx, (int, float, np.int_)):  # equidistant
-        coords["x"] = ("col", np.arange(xmin + dx / 2.0, xmax, dx))
-        coords["y"] = ("row", np.arange(ymax + dy / 2.0, ymin, dy))
-        coords["dx"] = np.array(float(dx))
-        coords["dy"] = np.array(float(dy))
-    else:  # nonequidistant
-        # even though IDF may store them as float32,
-        # we always convert them to float64
-        dx = dx.astype(np.float64)
-        dy = dy.astype(np.float64)
-        coords["x"] = ("col", xmin + np.cumsum(dx) - 0.5 * dx)
-        coords["y"] = ("row", ymax + np.cumsum(dy) - 0.5 * dy)
-        if np.allclose(dx, dx[0]) and np.allclose(dy, dy[0]):
-            coords["dx"] = np.array(float(dx[0]))
-            coords["dy"] = np.array(float(dy[0]))
-        else:
-            coords["dx"] = ("col", dx)
-            coords["dy"] = ("row", dy)
+    """A structured grid's world coordinates, as for package arrays (see
+    ``structured_centers``), and its cell sizes as ``dx``/``dy``. No layer
+    coordinate: a position is the index."""
+    dx = np.broadcast_to(np.asarray(grid.delr, dtype=np.float64), (grid.ncol,))
+    dy = np.broadcast_to(np.asarray(grid.delc, dtype=np.float64), (grid.nrow,))
+    coords: dict[str, Any] = structured_centers(dx, dy, grid.xoffset, grid.yoffset, grid.angrot)
+    if np.allclose(dx, dx[0]) and np.allclose(dy, dy[0]):
+        coords["dx"] = np.array(float(dx[0]))
+        coords["dy"] = np.array(-float(dy[0]))
+    else:
+        coords["dx"] = ("col", dx.copy())
+        coords["dy"] = ("row", -dy)
     return coords
 
 
 def cell_centers(dis) -> dict[str, Any]:
-    """A discretization's cell centres in world coordinates: ``x`` on
-    ``col`` and ``y`` on ``row`` for DIS (from ``delr``/``delc``), ``x``
-    and ``y`` on the cells for DISV and DISU (from ``cell2d``). Empty if
-    the geometry isn't set, or if the grid is rotated (not yet supported)."""
-    if dis is None or getattr(dis, "angrot", None):
+    """A discretization's cell centres in world coordinates: from
+    ``delr``/``delc`` for DIS (see ``structured_centers``), and on the
+    cells from ``cell2d`` for DISV and DISU. Empty if the geometry isn't
+    set."""
+    if dis is None:
         return {}
-    xorigin = getattr(dis, "xorigin", None) or 0.0
-    yorigin = getattr(dis, "yorigin", None) or 0.0
+    xorigin = getattr(dis, "xorigin", None)
+    yorigin = getattr(dis, "yorigin", None)
+    angrot = getattr(dis, "angrot", None)
     if hasattr(dis, "delr"):
         if dis.delr is None or dis.delc is None:
             return {}
         delr = np.broadcast_to(np.asarray(dis.delr, dtype=np.float64), (dis.ncol,))
         delc = np.broadcast_to(np.asarray(dis.delc, dtype=np.float64), (dis.nrow,))
-        # row 0 is the north edge
-        return {
-            "x": ("col", xorigin + np.cumsum(delr) - 0.5 * delr),
-            "y": ("row", yorigin + delc.sum() - np.cumsum(delc) + 0.5 * delc),
-        }
+        return structured_centers(delr, delc, xorigin, yorigin, angrot)
     cell2d = getattr(dis, "cell2d", None)
     if not cell2d:
         return {}
     dim = "cell" if hasattr(dis, "ncpl") else "node"
-    return {
-        "x": (dim, xorigin + np.array([c.xc for c in cell2d], dtype=np.float64)),
-        "y": (dim, yorigin + np.array([c.yc for c in cell2d], dtype=np.float64)),
-    }
+    x, y = to_world([c.xc for c in cell2d], [c.yc for c in cell2d], xorigin, yorigin, angrot)
+    return {"x": (dim, x), "y": (dim, y)}
 
 
-def index_xy(da: xr.DataArray) -> xr.DataArray:
-    """Index a structured array's x and y coordinates, so it can be
-    selected by them (``sel(x=..., method="nearest")``)."""
-    return da.set_xindex("x", PandasIndex).set_xindex("y", PandasIndex)
+def index_xy(obj):
+    """Index a structured array's (or dataset's) x and y coordinates, so it
+    can be selected by them (``sel(x=..., method="nearest")``). A rotated
+    grid's x and y are 2-D, and xarray can't index those, so they're left
+    as they are."""
+    if obj["x"].ndim != 1 or obj["y"].ndim != 1:
+        return obj
+    return obj.set_xindex("x", PandasIndex).set_xindex("y", PandasIndex)
 
 
 def dims_from_grb(grb_path) -> dict:

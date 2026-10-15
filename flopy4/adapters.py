@@ -6,6 +6,8 @@ import scipy.sparse
 import xugrid as xu
 from flopy.discretization.structuredgrid import StructuredGrid
 
+from flopy4.mf6.utils.grid import to_world
+
 __all__ = [
     "StructuredGridWrapper",
     "read_binary_grid_file",
@@ -227,10 +229,7 @@ def _read_disv_grb(grb) -> dict[str, Any]:
 
     # Build Ugrid2d from vertex info
     verts = grb.verts
-    xorigin = grb.xorigin
-    yorigin = grb.yorigin
-    node_x = verts[:, 0] + xorigin
-    node_y = verts[:, 1] + yorigin
+    node_x, node_y = to_world(verts[:, 0], verts[:, 1], grb.xorigin, grb.yorigin, grb.angrot)
 
     n_nodes = len(verts)
     ncpl_faces = len(ugrid_ia) - 1

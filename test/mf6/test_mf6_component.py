@@ -1689,6 +1689,81 @@ def test_to_dataarray_cell_centers_vertex():
     assert np.allclose(da.y, [0.5, 0.5])
 
 
+def test_to_dataarray_cell_centers_structured_rotated():
+    """A rotated grid's rows and columns don't line up with x and y, so x
+    and y are both on (row, col), and not indexed. MF6 rotates the grid
+    counter-clockwise by angrot degrees about its origin."""
+    gwf = Gwf(
+        dis=Dis(
+            nlay=1,
+            nrow=2,
+            ncol=2,
+            delr=1.0,
+            delc=1.0,
+            xorigin=10.0,
+            yorigin=20.0,
+            angrot=90.0,
+            top=1.0,
+            botm=[0.0],
+        )
+    )
+    da = gwf.dis.to_dataarray("botm")
+    assert da.x.dims == ("row", "col")
+    assert da.y.dims == ("row", "col")
+    # model (x, y) goes to (xorigin - y, yorigin + x)
+    assert np.allclose(da.x, [[8.5, 8.5], [9.5, 9.5]])
+    assert np.allclose(da.y, [[20.5, 21.5], [20.5, 21.5]])
+    assert "x" not in da.indexes
+
+
+def test_to_dataarray_cell_centers_vertex_rotated():
+    """A rotated DISV grid's cell centres are rotated about its origin."""
+    gwf = Gwf(
+        dis=Disv(
+            nlay=1,
+            ncpl=2,
+            nvert=6,
+            xorigin=10.0,
+            angrot=90.0,
+            top=1.0,
+            botm=[0.0],
+            vertices=[
+                Disv.Vertices(iv=i, xv=x, yv=y)
+                for i, (x, y) in enumerate([(0, 0), (0, 1), (1, 1), (1, 0), (2, 1), (2, 0)])
+            ],
+            cell2d=[
+                Disv.Cell2d(icell2d=0, xc=0.5, yc=0.5, icvert=(0, 1, 2, 3, 0)),
+                Disv.Cell2d(icell2d=1, xc=1.5, yc=0.5, icvert=(3, 2, 4, 5, 3)),
+            ],
+        )
+    )
+    da = gwf.dis.to_dataarray("botm")
+    assert da.x.dims == ("cell",)
+    assert np.allclose(da.x, [9.5, 9.5])
+    assert np.allclose(da.y, [0.5, 1.5])
+
+
+def test_structured_grid_rotated():
+    """A rotated StructuredGrid's x and y are 2-D world coordinates, the
+    same as on package arrays and output (get_coords)."""
+    from flopy4.adapters import StructuredGridWrapper
+    from flopy4.mf6.utils.grid import get_coords
+
+    kwargs = dict(nlay=1, nrow=2, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=[0.0])
+    grid = StructuredGrid(xoff=10.0, yoff=20.0, angrot=90.0, **kwargs)
+    assert grid.dataset.x.dims == ("row", "col")
+    assert np.allclose(grid.dataset.x, [[8.5, 8.5], [9.5, 9.5]])
+    assert np.allclose(grid.dataset.y, [[20.5, 21.5], [20.5, 21.5]])
+
+    wrapper = StructuredGridWrapper(
+        nlay=1, nrow=2, ncol=2, delr=np.ones(2), delc=np.ones(2), xoff=10.0, yoff=20.0, angrot=90.0
+    )
+    coords = get_coords(wrapper)
+    assert coords["x"][0] == ("row", "col")
+    assert np.allclose(coords["x"][1], grid.dataset.x)
+    assert np.allclose(coords["y"][1], grid.dataset.y)
+
+
 def test_to_dataarray_standalone_has_no_cell_centers():
     """Without a discretization there's no geometry, so no x/y."""
     npf = Npf(dims={"nlay": 1, "nrow": 2, "ncol": 2, "nodes": 4}, k=1.0)

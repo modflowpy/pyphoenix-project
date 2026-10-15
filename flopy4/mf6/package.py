@@ -824,15 +824,16 @@ class Package(Component, ABC):
     def _with_cell_centers(self, da: xr.DataArray) -> xr.DataArray:
         """Give an array its cell centres as x/y coordinates when its
         model's discretization (or this package, if it's one) has them.
-        On a structured grid they're indexed, for `sel(x=..., y=...)`."""
+        On an unrotated structured grid they're indexed, for
+        `sel(x=..., y=...)`."""
         from flopy4.mf6.utils.grid import cell_centers, index_xy
 
         dis = self if hasattr(self, "to_grid") else getattr(self._parent, "dis", None)
-        coords = {
-            k: v
-            for k, v in cell_centers(dis).items()
-            if v[0] in da.dims and da.sizes[v[0]] == len(v[1])
-        }
+        coords = {}
+        for k, (dims, values) in cell_centers(dis).items():
+            dims = (dims,) if isinstance(dims, str) else dims
+            if all(d in da.dims for d in dims) and tuple(da.sizes[d] for d in dims) == values.shape:
+                coords[k] = (dims, values)
         if len(coords) < 2:
             return da
         da = da.assign_coords(coords)

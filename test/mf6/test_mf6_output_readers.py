@@ -12,8 +12,7 @@ from flopy4.mf6.utils.heads_reader import open_hds
 from flopy4.mf6.utils.time import Time
 
 
-@pytest.fixture
-def dis_model_output(function_tmpdir):
+def _dis_model_output(function_tmpdir, **dis_kwargs):
     sim_name = "dis_test"
     gwf_name = "gwf_dis"
 
@@ -41,6 +40,7 @@ def dis_model_output(function_tmpdir):
         top=10.0,
         botm=botm,
         idomain=1,
+        **dis_kwargs,
     )
 
     gwf = Gwf(parent=sim, save_flows=True, dis=dis, name=gwf_name)
@@ -78,11 +78,16 @@ def dis_model_output(function_tmpdir):
         "nlay": nlay,
         "nrow": nrow,
         "ncol": ncol,
+        "gwf": gwf,
     }
 
 
 @pytest.fixture
-def disv_model_output(function_tmpdir):
+def dis_model_output(function_tmpdir):
+    return _dis_model_output(function_tmpdir)
+
+
+def _disv_model_output(function_tmpdir, **dis_kwargs):
     sim_name = "disv_test"
     gwf_name = "gwf_disv"
 
@@ -144,6 +149,7 @@ def disv_model_output(function_tmpdir):
         idomain=1,
         vertices=dict(iv=np.arange(nvert, dtype=int), xv=xv, yv=yv),
         cell2d=cell2d,
+        **dis_kwargs,
     )
 
     gwf = Gwf(parent=sim, save_flows=True, dis=disv, name=gwf_name)
@@ -176,7 +182,13 @@ def disv_model_output(function_tmpdir):
         "grb": grb_path,
         "nlay": nlay,
         "ncpl": ncpl,
+        "gwf": gwf,
     }
+
+
+@pytest.fixture
+def disv_model_output(function_tmpdir):
+    return _disv_model_output(function_tmpdir)
 
 
 def test_open_hds_dis(dis_model_output):
@@ -252,6 +264,32 @@ def test_open_cbc_disv_flowja(disv_model_output):
     assert "flow-ja-face" in cbc.data_vars
     assert "connectivity" in cbc.data_vars
     assert cbc["connectivity"].dims == ("connection", "nm")
+
+
+def test_open_hds_dis_rotated(function_tmpdir):
+    """A rotated grid's output has 2-D x/y world coordinates on (row, col),
+    the same as its input arrays."""
+    paths = _dis_model_output(function_tmpdir, xorigin=100.0, yorigin=200.0, angrot=30.0)
+    head = open_hds(paths["hds"], paths["grb"])
+    botm = paths["gwf"].dis.to_dataarray("botm")
+    assert head.x.dims == head.y.dims == ("row", "col")
+    assert np.allclose(head.x, botm.x)
+    assert np.allclose(head.y, botm.y)
+    # cell (0, 0)'s centre is (5, 25) from the origin, rotated 30 degrees
+    t = np.deg2rad(30.0)
+    assert np.isclose(head.x[0, 0], 100.0 + 5 * np.cos(t) - 25 * np.sin(t))
+    assert np.isclose(head.y[0, 0], 200.0 + 5 * np.sin(t) + 25 * np.cos(t))
+
+
+def test_open_hds_disv_rotated(function_tmpdir):
+    """A rotated DISV grid's output mesh is rotated about the origin, so
+    its cell centres match the input arrays'."""
+    paths = _disv_model_output(function_tmpdir, xorigin=100.0, yorigin=200.0, angrot=30.0)
+    head = open_hds(paths["hds"], paths["grb"])
+    botm = paths["gwf"].dis.to_dataarray("botm")
+    centroids = head.ugrid.grid.face_coordinates
+    assert np.allclose(centroids[:, 0], botm.x)
+    assert np.allclose(centroids[:, 1], botm.y)
 
 
 def test_disv_from_grid_round_trip():
