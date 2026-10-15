@@ -120,7 +120,7 @@ def open_cbc(
     cbc_content: xr.Dataset | Dict[str, xr.DataArray]
         DataArray contains float64 data of the budgets,
         with dimensions ("time", "layer", "row", "col") for DIS
-        or ("time", "layer", face_dimension) for DISV.
+        or ("time", "layer", "cell") for DISV.
 
     Examples
     --------
@@ -717,8 +717,8 @@ def open_face_budgets_as_flowja(
     m = ja  # 0-based connected-cell indices
     nm = xr.DataArray(
         np.column_stack([n, m]),
-        coords={"cell": ["n", "m"]},
-        dims=["connection", "cell"],
+        coords={"nm": ["n", "m"]},
+        dims=["connection", "nm"],
     )
     return flowja, nm
 
@@ -741,7 +741,7 @@ def disv_open_imeth1_budgets(
 
     Returns
     -------
-    xu.UgridDataArray with dims ("time", "layer", face_dimension)
+    xu.UgridDataArray with dims ("time", "layer", "cell")
     """
     grid = grb_info["grid"]
     facedim = grb_info["face_dimension"]
@@ -771,7 +771,7 @@ def disv_open_imeth6_budgets(
 
     Returns
     -------
-    xu.UgridDataArray with dims ("time", "layer", face_dimension)
+    xu.UgridDataArray with dims ("time", "layer", "cell")
     """
     dtype = np.dtype(
         [("id1", np.int32), ("id2", np.int32), ("budget", np.float64)]

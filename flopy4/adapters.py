@@ -201,6 +201,13 @@ def read_binary_grid_file(file_path: str | os.PathLike, verbose: bool = False) -
         )
 
 
+def _cell_dim(grid: xu.Ugrid2d) -> xu.Ugrid2d:
+    """Name the grid's face dim ``cell``, as in the DISV input arrays."""
+    ds = grid.to_dataset().rename_dims({grid.face_dimension: "cell"})
+    ds[grid.name].attrs["face_dimension"] = "cell"
+    return xu.Ugrid2d.from_dataset(ds)
+
+
 def _read_disv_grb(grb) -> dict[str, Any]:
     nlay = grb.nlay
     ncpl = grb.ncpl
@@ -231,7 +238,7 @@ def _read_disv_grb(grb) -> dict[str, Any]:
         (np.ones(len(ugrid_ja), dtype=np.intp), ugrid_ja, ugrid_ia),
         shape=(ncpl_faces, n_nodes),
     )
-    grid = xu.Ugrid2d(node_x, node_y, -1, face_nodes)
+    grid = _cell_dim(xu.Ugrid2d(node_x, node_y, -1, face_nodes))
     facedim = grid.face_dimension
 
     idomain = grb.idomain.reshape((nlay, ncpl))

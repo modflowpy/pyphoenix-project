@@ -214,6 +214,7 @@ def test_open_cbc_dis_flowja(dis_model_output):
     assert isinstance(cbc, xr.Dataset)
     assert "flow-ja-face" in cbc.data_vars
     assert "connectivity" in cbc.data_vars
+    assert cbc["connectivity"].dims == ("connection", "nm")
 
 
 def test_open_hds_disv(disv_model_output):
@@ -221,8 +222,7 @@ def test_open_hds_disv(disv_model_output):
     head = open_hds(paths["hds"], paths["grb"])
 
     assert isinstance(head, xu.UgridDataArray)
-    assert "time" in head.dims
-    assert "layer" in head.dims
+    assert head.dims == ("time", "layer", "cell")
     ntime, nlayer = 1, paths["nlay"]
     assert head.shape[0] == ntime
     assert head.shape[1] == nlayer
@@ -237,6 +237,11 @@ def test_open_cbc_disv(disv_model_output):
     assert isinstance(cbc, (xr.Dataset, xu.UgridDataset))
     keys = set(cbc.data_vars)
     assert len(keys) > 0
+    edge_dim = cbc.ugrid.grid.edge_dimension
+    for name in keys:
+        # horizontal flows are on the mesh's edges, the rest on its cells
+        loc = edge_dim if name.startswith("flow-horizontal-face") else "cell"
+        assert cbc[name].dims == ("time", "layer", loc), name
 
 
 def test_open_cbc_disv_flowja(disv_model_output):
@@ -246,6 +251,7 @@ def test_open_cbc_disv_flowja(disv_model_output):
     assert isinstance(cbc, (xr.Dataset, xu.UgridDataset))
     assert "flow-ja-face" in cbc.data_vars
     assert "connectivity" in cbc.data_vars
+    assert cbc["connectivity"].dims == ("connection", "nm")
 
 
 def test_disv_from_grid_round_trip():

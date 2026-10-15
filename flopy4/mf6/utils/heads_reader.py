@@ -175,9 +175,9 @@ def _open_hds_netcdf(
     Returns
     -------
     xr.DataArray
-        For DIS grids: dims ``(time, layer, y, x)``.
+        For DIS grids: dims ``(time, layer, row, col)``.
     xu.UgridDataArray
-        For DISV grids: dims ``(time, layer, <face_dim>)``.
+        For DISV grids: dims ``(time, layer, cell)``.
     """
     # Open with chunks={"time": 1} so each timestep is a separate dask chunk,
     # matching the per-timestep lazy loading of the binary reader.
