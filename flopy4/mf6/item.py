@@ -127,6 +127,23 @@ def _has_boundname_field(cls: type) -> bool:
     return any(f.name == "boundname" for f in cast(type[Record], cls).fields())
 
 
+def conditional_fields(item_cls: "type[Item] | tuple[type[Item], ...]") -> dict[str, str]:
+    """An item class's fields an option turns on (the DFN's ``when``), by
+    name, to the option."""
+    classes = item_cls if isinstance(item_cls, tuple) else (item_cls,)
+    return {
+        f.name: option
+        for c in classes
+        for f in cast(type[Record], c).fields()
+        if (option := f.metadata.get("when"))
+    }
+
+
+def _may_be_absent(f: attrs.Attribute) -> bool:
+    """Whether a field may be missing from a row."""
+    return bool(f.metadata.get("optional") or f.metadata.get("when"))
+
+
 @lru_cache(maxsize=None)
 def _union_arms(
     cls: type, type_str: str
@@ -316,7 +333,7 @@ def _read_unions(
         if pos == len(tokens) or (form is not None and i == len(form)):
             # trailing optional columns may be absent, but not a form's
             ends = pos == len(tokens) and (i == len(form) if form else True)
-            absent = ends and fields[i].metadata.get("optional")
+            absent = ends and _may_be_absent(fields[i])
             return (0, [None] * (len(fields) - i)) if absent else None
         best = None
         kinds = fields[i].metadata["union"] if form is None else (form[i],)
@@ -374,11 +391,13 @@ class RowContext:
     exchange's models may be on different grids); None if not known.
     ``sizes`` gives the counts of the inline arrays the package sizes, by
     shape expression (aux, by ``auxiliary``); one not given isn't known.
-    ``boundnames`` is the package's option."""
+    ``boundnames`` is the package's option. ``enabled`` are the set
+    options that turn fields on; None if not known."""
 
     ncelldim: int | Mapping[str, int] | None = None
     sizes: Mapping[str, int] = attrs.field(factory=dict)
     boundnames: bool = False
+    enabled: frozenset[str] | None = None
 
     def cellid_width(self, f: attrs.Attribute) -> int | None:
         if isinstance(self.ncelldim, Mapping):
@@ -482,8 +501,9 @@ def _layout(
     The boundname is there if the package's ``boundnames`` option is set
     (and a value is left for it). For Python values with it unset, one
     value more than the row's fields take is the boundname, and the
-    package then sets the option. An optional untagged field (EVT's petm0)
-    is there if the values make room for it. A width that isn't known (no
+    package then sets the option. A field an option turns on (EVT's petm0)
+    is there if the option is enabled, or, if that isn't known, if the
+    values make room for it. A width that isn't known (no
     grid yet) is the one the values make room for, if only one does;
     otherwise this raises, asking for the field as a tuple. Like MF6, a
     file row's extra tokens are ignored, if no layout uses them all.
@@ -491,6 +511,13 @@ def _layout(
     n = len(values)
     slots = _slots(cls, file)
     has_boundname = _has_boundname_field(cls)
+    gated = conditional_fields(cls)
+    if context.enabled is None:
+        off: frozenset[str] = frozenset()
+        on: frozenset[str] = frozenset()
+    else:
+        off = frozenset(name for name, o in gated.items() if o not in context.enabled)
+        on = frozenset(gated) - off
 
     def cellid_widths(f: attrs.Attribute, unknown: dict) -> list[tuple[int, dict]]:
         if (w := context.cellid_width(f)) is not None:
@@ -504,13 +531,19 @@ def _layout(
         """Whether values are a field's values, not whole fields."""
         return file or not any(_is_seq(x) or isinstance(x, Record) for x in span)
 
-    def options(slot: _Slot, pos: int, end: int, out: dict, unknown: dict):
+    def fits(slot: _Slot, pos: int, end: int, out: dict, unknown: dict, conditional: bool):
         """Each way the slot can take values from ``pos``: the position
         after it, what it took, and the unknown widths it assumed."""
         f = slot.field
         left = end - pos
         v = values[pos] if left else None
-        optional = f is not None and f.metadata.get("optional")
+        optional = f is not None and _may_be_absent(f)
+        if conditional and f is not None:
+            if f.name in off:
+                yield pos, None, unknown
+                return
+            if f.name in on:
+                optional = bool(f.metadata.get("optional"))
         if slot.kind == "keyword":
             if left and str(v).upper() == cast(type[Record], cls).keyword().upper():
                 yield pos + 1, None, unknown
@@ -527,7 +560,7 @@ def _layout(
             if file:
                 yield end, ("unions", values[pos:end], slot.group), unknown
                 return
-            required = sum(1 for g in slot.group if not g.metadata.get("optional"))
+            required = sum(1 for g in slot.group if not _may_be_absent(g))
             for m in range(min(len(slot.group), left), required - 1, -1):
                 yield pos + m, ("unions", values[pos : pos + m], slot.group), unknown
             return
@@ -584,10 +617,12 @@ def _layout(
     together = [
         s.field.name
         for s in slots
-        if cast(type[Item], cls)._columns and s.kind == "value" and s.field.metadata.get("optional")
+        if cast(type[Item], cls)._columns and s.kind == "value" and _may_be_absent(s.field)
     ]
 
-    def walk(k: int, pos: int, end: int, out: dict, unknown: dict, surplus: bool):
+    def walk(
+        k: int, pos: int, end: int, out: dict, unknown: dict, surplus: bool, conditional: bool
+    ):
         if k == len(slots):
             if len({name in out for name in together}) > 1:
                 return
@@ -595,16 +630,16 @@ def _layout(
                 yield out, unknown
             return
         slot = slots[k]
-        for pos2, took, unknown2 in options(slot, pos, end, out, unknown):
+        for pos2, took, unknown2 in fits(slot, pos, end, out, unknown, conditional):
             out2 = out if took is None else {**out, slot.field.name: took}
-            yield from walk(k + 1, pos2, end, out2, unknown2, surplus)
+            yield from walk(k + 1, pos2, end, out2, unknown2, surplus, conditional)
 
-    def solve(boundname: list[bool], surplus: bool = False):
+    def solve(boundname: list[bool], surplus: bool = False, conditional: bool = True):
         for bn in boundname:
             end = n - bn
             if end < 0:
                 continue
-            for out, unknown in walk(0, 0, end, {}, {}, surplus):
+            for out, unknown in walk(0, 0, end, {}, {}, surplus, conditional):
                 yield ({**out, "boundname": ("bn", values[-1])} if bn else out), unknown
 
     fields = attrs.fields_dict(cls)  # type: ignore[arg-type]
@@ -612,9 +647,7 @@ def _layout(
     def optionals(out: dict) -> int:
         """How many optional fields a layout has."""
         return sum(
-            1
-            for k in out
-            if k == "boundname" or (k in fields and fields[k].metadata.get("optional"))
+            1 for k in out if k == "boundname" or (k in fields and _may_be_absent(fields[k]))
         )
 
     def first(solutions) -> "dict | None":
@@ -636,8 +669,10 @@ def _layout(
 
     bn = [True, False] if has_boundname and context.boundnames else [False]
     out = first(solve(bn))
+    if out is None and not file and (off or on):
+        out = first(solve(bn, conditional=False))
     if out is None and not file and has_boundname and not context.boundnames:
-        out = first(solve([True]))
+        out = first(solve([True])) or first(solve([True], conditional=False))
     if out is None and file:
         out = first(solve(bn, surplus=True))
     if out is None:
@@ -784,7 +819,7 @@ class Item(Record):
                     )
                 val = n
             if val is None and not (_is_one_cellid(f) and f.metadata.get("allow_zero")):
-                if _is_one_cellid(f) and not f.metadata.get("optional"):
+                if _is_one_cellid(f) and not _may_be_absent(f):
                     raise ValueError(f"{cls.__name__}.{f.name}: no cellid given")
                 continue
             if not keyword_emitted and not _is_row_key(f):

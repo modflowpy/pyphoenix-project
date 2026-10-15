@@ -1,4 +1,6 @@
 import operator
+import re
+import warnings
 from abc import ABC
 from pathlib import Path
 from typing import Any, Optional
@@ -18,6 +20,7 @@ from flopy4.mf6.dims_provider_methods import DimsProviderMethods
 from flopy4.mf6.item import (
     Item,
     RowContext,
+    conditional_fields,
     dim_lookup,
     inline_dim,
     item_list_type,
@@ -58,6 +61,15 @@ _BOUND_OPS: dict = {
     ">": operator.gt,
     ">=": operator.ge,
 }
+
+
+_NUMBER = re.compile(r"[+-]?(\d+\.?\d*|\.\d+)([ed][+-]?\d+)?", re.IGNORECASE)
+
+
+def _reads_as_number(text: str) -> bool:
+    """Whether MF6 could read a word as a number, with an E or a Fortran D
+    exponent."""
+    return _NUMBER.fullmatch(text) is not None
 
 
 def _check_rows(dim: str, declared: int, nrows: int, bound: str | None) -> None:
@@ -365,7 +377,7 @@ class Package(Component, ABC):
         """What the layout of a row of ``item_cls`` given in Python depends
         on (see `Item.from_values`): the grid's ncelldim, if known (an
         exchange's two grids aren't, here), the sizes of the inline arrays
-        the package sizes, and the boundnames option. A size the rows can
+        the package sizes, and its enabled options. A size the rows can
         set (EVT's nseg, GNC's numalphaj) is solved from them if unset;
         one they can't (aux's, by the names in ``auxiliary``) is 0."""
         fields = attrs.fields_dict(type(self))  # type: ignore[arg-type]
@@ -388,8 +400,12 @@ class Package(Component, ABC):
                 ncelldim = self.resolve_dims("ncelldim").get("ncelldim")
             except ValueError:
                 pass
+        enabled = frozenset(o for o in conditional_fields(item_cls).values() if values.get(o))
         return RowContext(
-            ncelldim=ncelldim, sizes=sizes, boundnames=bool(getattr(self, "boundnames", False))
+            ncelldim=ncelldim,
+            sizes=sizes,
+            boundnames=bool(getattr(self, "boundnames", False)),
+            enabled=enabled,
         )
 
     def _coerce_item_list(
@@ -415,8 +431,8 @@ class Package(Component, ABC):
         takes. Ambiguous columnar dict-of-lists input isn't supported (no
         single arm to build columns from).
 
-        A row with a boundname sets the package's boundnames option, which
-        MF6 needs to read it.
+        A row with a boundname, or a field an option turns on, sets that
+        option, which MF6 needs to read it.
         """
         context = self._row_context(item_cls)
         if isinstance(item_cls, tuple):
@@ -439,9 +455,17 @@ class Package(Component, ABC):
                     items.append(item_cls(**row))
                 else:
                     items.append(item_cls.from_values(row, context))
-        if not context.boundnames and "boundnames" in attrs.fields_dict(type(self)):  # type: ignore[arg-type]
-            if any(getattr(item, "boundname", None) for item in items):
-                object.__setattr__(self, "boundnames", True)
+        on = {
+            option
+            for name, option in conditional_fields(item_cls).items()
+            if any(getattr(item, name, None) is not None for item in items)
+        }
+        if any(getattr(item, "boundname", None) for item in items):
+            on.add("boundnames")
+        fields = attrs.fields_dict(type(self))  # type: ignore[arg-type]
+        for option in on:
+            if option in fields and not getattr(self, option):
+                object.__setattr__(self, option, True)
         return items
 
     def _normalize_griddata(self, fields, dims: dict) -> None:
@@ -510,6 +534,7 @@ class Package(Component, ABC):
         self._sync_dims()
         self._check_tas_refs()
         self._check_ts_refs()
+        self._check_obs_ids()
         self._name_file_children()
         super().write(format=format, context=context)
 
@@ -547,6 +572,30 @@ class Package(Component, ABC):
                                 f"{type(self).__name__}.{f.name.lstrip('_')}:{where} "
                                 f"names time series {name!r}, which no TS6 file "
                                 f"defines (defined: {sorted(defined) or 'none'})"
+                            )
+
+    def _check_obs_ids(self) -> None:
+        """Warn if an observation names a boundname MF6 may read as a cell."""
+        boundnames = set()
+        for f in attrs.fields(type(self)):  # type: ignore[arg-type]
+            if item_list_type(f.type) is None:
+                continue
+            value = getattr(self, f.name)
+            for rows in (value if isinstance(value, dict) else {None: value}).values():
+                boundnames |= {b for row in rows or [] if (b := getattr(row, "boundname", None))}
+        numeric = {b.lower() for b in boundnames if _reads_as_number(b)}
+        if not numeric:
+            return
+        for obs in self._children_of("utl-obs"):
+            for block in obs.continuous or []:
+                for row in block.continuous:
+                    for id_ in (row.id_, row.id2):
+                        if isinstance(id_, str) and id_.lower() in numeric:
+                            warnings.warn(
+                                f"{type(self).__name__}: observation {row.obsname!r} names "
+                                f"boundname {id_!r}, which MF6 may read as a cell, not a "
+                                f"boundname; give the boundaries a name that isn't a number",
+                                stacklevel=3,
                             )
 
     def _series_names(self, dfn_name: str) -> set[str]:

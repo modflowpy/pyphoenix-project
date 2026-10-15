@@ -36,7 +36,7 @@ class Evt(Package):
             default=(), shape=("nseg-1",), time_series=True, optional=True
         )
         petm0: Optional[Union[float, TimeSeriesRef]] = double(
-            default=None, time_series=True, optional=True
+            default=None, time_series=True, when="surf_rate_specified"
         )
         aux: tuple[Union[float, TimeSeriesRef], ...] = array(
             default=(), shape=("auxiliary",), time_series=True, optional=True

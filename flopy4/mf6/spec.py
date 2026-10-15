@@ -87,6 +87,7 @@ class FieldKwargs(TypedDict, total=False):
     optional: bool
     netcdf: bool
     tagged: bool
+    when: str | None
 
 
 def _pipe(*hooks):
@@ -99,7 +100,7 @@ def _field(type_: str, kwargs: FieldKwargs, **attributes) -> Any:
     common ones in ``kwargs``) in its metadata where set."""
     metadata = dict(kwargs.get("metadata") or {})
     metadata["type"] = type_
-    for key in ("block", "longname", "optional", "netcdf", "tagged"):
+    for key in ("block", "longname", "optional", "netcdf", "tagged", "when"):
         if kwargs.get(key):
             metadata[key] = kwargs[key]  # type: ignore[literal-required]
     metadata.update({k: v for k, v in attributes.items() if v not in (None, False, ())})

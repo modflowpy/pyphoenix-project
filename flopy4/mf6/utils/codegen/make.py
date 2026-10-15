@@ -243,6 +243,7 @@ def _item_columns(
         f = col.field
         name = col.name
         dfn_type = _dfn_type_str(f)
+        when = getattr(f, "when", None)
         optional = bool(f.optional) or name in counts
         ts = bool(getattr(f, "time_series", False))
         if isinstance(f, File):
@@ -308,7 +309,11 @@ def _item_columns(
                 dfn_type,
                 optional=optional,
                 time_series=ts,
+                when=when,
             )
+            when = None
+        if when and name != "boundname":
+            raise NotImplementedError(f"column {name!r}: when={when!r} on a non-scalar column")
         items.append(item)
     return items
 

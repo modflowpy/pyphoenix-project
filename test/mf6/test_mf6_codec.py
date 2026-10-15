@@ -1857,16 +1857,76 @@ def test_row_boundname_by_option(boundnames):
     assert row.boundname == ("5" if boundnames else None)
 
 
-@pytest.mark.parametrize("boundnames", [True, False])
-def test_row_optional_column_or_boundname(boundnames):
-    """EVT's petm0 is there if the row makes room for it, after the
-    boundname, which the option places."""
+@pytest.mark.parametrize(
+    "boundnames, surf_rate, tokens, petm0, boundname",
+    [
+        # a row may leave out its boundname, but not petm0
+        (True, True, [0.5], 0.5, None),
+        (True, True, [0.5, "w"], 0.5, "w"),
+        (True, False, [0.5], None, "0.5"),
+        (False, True, [0.5, "w"], 0.5, None),  # MF6 ignores the extra token
+        (False, False, ["w"], None, None),
+    ],
+)
+def test_row_conditional_field_or_boundname(boundnames, surf_rate, tokens, petm0, boundname):
+    """EVT's petm0 is there iff SURF_RATE_SPECIFIED is set, and the
+    boundname if BOUNDNAMES is."""
     from flopy4.mf6.gwf import Evt
     from flopy4.mf6.item import RowContext
 
-    context = RowContext(ncelldim=3, sizes={"nseg-1": 0, "auxiliary": 0}, boundnames=boundnames)
-    row = Evt.StressPeriodData.from_tokens([1, 1, 1, 10.0, 0.001, 2.0, 0.5], context)
-    assert (row.petm0, row.boundname) == ((None, "0.5") if boundnames else (0.5, None))
+    context = RowContext(
+        ncelldim=3,
+        sizes={"nseg-1": 0, "auxiliary": 0},
+        boundnames=boundnames,
+        enabled=frozenset({"surf_rate_specified"} if surf_rate else ()),
+    )
+    row = Evt.StressPeriodData.from_tokens([1, 1, 1, 10.0, 0.001, 2.0, *tokens], context)
+    assert (row.petm0, row.boundname) == (petm0, boundname)
+
+
+def test_row_conditional_field_sets_option():
+    """A Python row with EVT's petm0 sets SURF_RATE_SPECIFIED, which MF6
+    needs to read it; then a row's last value is its boundname."""
+    from flopy4.mf6.gwf import Evt
+
+    evt = Evt(stress_period_data={0: [((0, 0, 0), 10.0, 0.001, 2.0, 0.5)]})
+    assert evt.stress_period_data[0][0].petm0 == 0.5
+    assert evt.surf_rate_specified
+    assert not Evt(stress_period_data={0: [((0, 0, 0), 10.0, 0.001, 2.0)]}).surf_rate_specified
+
+    evt = Evt(
+        boundnames=True,
+        surf_rate_specified=True,
+        stress_period_data={0: [((0, 0, 0), 10.0, 0.001, 2.0, 0.5, 7)]},
+    )
+    row = evt.stress_period_data[0][0]
+    assert (row.petm0, row.boundname) == (0.5, "7")
+
+
+def test_evt_load_petm0_without_boundname():
+    """With both options set, a file row leaving out its boundname keeps
+    its petm0."""
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Evt
+
+    text = """BEGIN OPTIONS
+  BOUNDNAMES
+  SURF_RATE_SPECIFIED
+END OPTIONS
+
+BEGIN DIMENSIONS
+  MAXBOUND 2
+  NSEG 1
+END DIMENSIONS
+
+BEGIN PERIOD 1
+  1 1 1 10.0 0.001 2.0 0.5
+  1 1 2 10.0 0.001 2.0 0.25 well
+END PERIOD 1
+"""
+    evt = structure_component(loads(text), Evt)
+    rows = evt.stress_period_data[0]
+    assert [(r.petm0, r.boundname) for r in rows] == [(0.5, None), (0.25, "well")]
 
 
 @pytest.mark.parametrize("boundname", [None, "b"])

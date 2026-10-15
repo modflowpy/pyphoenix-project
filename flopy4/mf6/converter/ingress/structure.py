@@ -18,6 +18,7 @@ from flopy4.mf6.component import Component, get_ftype
 from flopy4.mf6.item import (
     Item,
     RowContext,
+    conditional_fields,
     dim_lookup,
     item_list_type,
     item_list_words,
@@ -55,6 +56,7 @@ def _parse_rows(
     context: LoadContext,
     sizes: "dict[str, int] | None" = None,
     boundnames: bool = False,
+    enabled: frozenset[str] = frozenset(),
     union_arm: str = "cellid",
     union_forms: Callable[[Mapping[str, Any]], Any] | None = None,
     load_child: Callable[[Any, str], Any] | None = None,
@@ -69,7 +71,9 @@ def _parse_rows(
     ncelldim = context.ncelldim(classes[0]) if len(classes) == 1 else None
     if ncelldim is None:
         ncelldim = ncelldim_from_dims(dict(context.dims))
-    row_context = RowContext(ncelldim=ncelldim, sizes=sizes or {}, boundnames=boundnames)
+    row_context = RowContext(
+        ncelldim=ncelldim, sizes=sizes or {}, boundnames=boundnames, enabled=enabled
+    )
     if isinstance(item_cls, tuple):
         return parse_union_items(
             rows, item_cls, words=words, context=row_context, load_child=load_child
@@ -1060,6 +1064,9 @@ def structure_component(
             if (n := dim_value(shape, lookup=lambda name: dim_lookup(kwargs, name))) is not None:
                 sizes[shape] = n
     boundnames = bool(kwargs.get("boundnames", False))
+    enabled = frozenset(
+        o for ic in item_types for o in conditional_fields(ic).values() if kwargs.get(o)
+    )
 
     # The grid's dims give the cellids' width (see LoadContext.ncelldim).
     # Same "self dims, since a DimensionProvider has none threaded to it
@@ -1091,6 +1098,7 @@ def structure_component(
             item_cls,
             sizes=sizes,
             boundnames=boundnames,
+            enabled=enabled,
             context=rows_context,
             union_arm=union_arm,
             union_forms=union_forms,
@@ -1116,6 +1124,7 @@ def structure_component(
                 item_cls,
                 sizes=sizes,
                 boundnames=boundnames,
+                enabled=enabled,
                 context=rows_context,
                 union_arm=union_arm,
                 union_forms=union_forms,
@@ -1152,6 +1161,7 @@ def structure_component(
                     period_item_cls,
                     sizes=sizes,
                     boundnames=boundnames,
+                    enabled=enabled,
                     context=rows_context,
                     union_arm=union_arm,
                     union_forms=union_forms,
