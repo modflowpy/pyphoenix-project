@@ -13,7 +13,7 @@ from attrs import define
 from flopy.discretization import StructuredGrid
 
 from flopy4.adapters import read_binary_grid_file
-from flopy4.mf6.utils.grid import get_coords
+from flopy4.mf6.utils.grid import get_coords, index_xy
 from flopy4.mf6.utils.time import assign_datetime_coords
 
 
@@ -119,8 +119,8 @@ def open_cbc(
     -------
     cbc_content: xr.Dataset | Dict[str, xr.DataArray]
         DataArray contains float64 data of the budgets,
-        with dimensions ("time", "layer", "y", "x") for DIS
-        or ("time", "layer", face_dimension) for DISV.
+        with dimensions ("time", "layer", "row", "col") for DIS
+        or ("time", "layer", "cell") for DISV.
 
     Examples
     --------
@@ -137,7 +137,7 @@ def open_cbc(
     Get the drainage budget, compute a time mean for the first layer:
 
     >>> drn_budget = cbc_content["drn"]
-    >>> mean = drn_budget.sel(layer=1).mean("time")
+    >>> mean = drn_budget.isel(layer=0).mean("time")
 
     """
     grb_info = read_binary_grid_file(grb_path)
@@ -537,7 +537,7 @@ def open_imeth6_budgets(
 
     Returns
     -------
-    xr.DataArray with dims ("time", "layer", "y", "x")
+    xr.DataArray with dims ("time", "layer", "row", "col")
     """
     dtype = np.dtype(
         [("id1", np.int32), ("id2", np.int32), ("budget", np.float64)]
@@ -566,7 +566,7 @@ def open_imeth6_budgets(
     coords = get_coords(grid)
     coords["time"] = time
     name = header_list[0].text
-    return xr.DataArray(daskarr, coords, ("time", "layer", "y", "x"), name=name)
+    return index_xy(xr.DataArray(daskarr, coords, ("time", "layer", "row", "col"), name=name))
 
 
 def open_imeth1_budgets(
@@ -580,7 +580,7 @@ def open_imeth1_budgets(
 
     Returns
     -------
-    xr.DataArray with dims ("time", "layer", "y", "x")
+    xr.DataArray with dims ("time", "layer", "row", "col")
     """
     nlayer = grid.nlay
     nrow = grid.nrow
@@ -588,11 +588,13 @@ def open_imeth1_budgets(
     budgets = cbc_open_imeth1_budgets(cbc_path, header_list)
     coords = get_coords(grid) | {"time": budgets["time"]}
 
-    return xr.DataArray(
-        data=budgets.data.reshape((budgets["time"].size, nlayer, nrow, ncol)),
-        coords=coords,
-        dims=("time", "layer", "y", "x"),
-        name=budgets.name,
+    return index_xy(
+        xr.DataArray(
+            data=budgets.data.reshape((budgets["time"].size, nlayer, nrow, ncol)),
+            coords=coords,
+            dims=("time", "layer", "row", "col"),
+            name=budgets.name,
+        )
     )
 
 
@@ -606,9 +608,9 @@ def dis_open_face_budgets(
 
     Returns
     -------
-    right: xr.DataArray of floats with dims ("time", "layer", "y", "x")
-    front: xr.DataArray of floats with dims ("time", "layer", "y", "x")
-    lower: xr.DataArray of floats with dims ("time", "layer", "y", "x")
+    right: xr.DataArray of floats with dims ("time", "layer", "row", "col")
+    front: xr.DataArray of floats with dims ("time", "layer", "row", "col")
+    lower: xr.DataArray of floats with dims ("time", "layer", "row", "col")
     """
     right_index, front_index, lower_index = dis_to_right_front_lower_indices(grid)
     budgets = cbc_open_imeth1_budgets(cbc_path, header_list)
@@ -628,7 +630,7 @@ def dis_extract_face_budgets(budgets: xr.DataArray, index: xr.DataArray) -> xr.D
     da = xr.DataArray(
         data=data.reshape((budgets["time"].size, *index.shape)),
         coords=coords,
-        dims=("time", "layer", "y", "x"),
+        dims=("time", "layer", "row", "col"),
         name="flow-ja-face",
     )
     return da.where(index >= 0, other=0.0)
@@ -644,9 +646,9 @@ def dis_to_right_front_lower_indices(
     right, front, lower = dis_indices(grid)
     coords = get_coords(grid)
     return (
-        xr.DataArray(right, coords, ("layer", "y", "x")),
-        xr.DataArray(front, coords, ("layer", "y", "x")),
-        xr.DataArray(lower, coords, ("layer", "y", "x")),
+        index_xy(xr.DataArray(right, coords, ("layer", "row", "col"))),
+        index_xy(xr.DataArray(front, coords, ("layer", "row", "col"))),
+        index_xy(xr.DataArray(lower, coords, ("layer", "row", "col"))),
     )
 
 
@@ -715,8 +717,8 @@ def open_face_budgets_as_flowja(
     m = ja  # 0-based connected-cell indices
     nm = xr.DataArray(
         np.column_stack([n, m]),
-        coords={"cell": ["n", "m"]},
-        dims=["connection", "cell"],
+        coords={"nm": ["n", "m"]},
+        dims=["connection", "nm"],
     )
     return flowja, nm
 
@@ -739,7 +741,7 @@ def disv_open_imeth1_budgets(
 
     Returns
     -------
-    xu.UgridDataArray with dims ("time", "layer", face_dimension)
+    xu.UgridDataArray with dims ("time", "layer", "cell")
     """
     grid = grb_info["grid"]
     facedim = grb_info["face_dimension"]
@@ -769,7 +771,7 @@ def disv_open_imeth6_budgets(
 
     Returns
     -------
-    xu.UgridDataArray with dims ("time", "layer", face_dimension)
+    xu.UgridDataArray with dims ("time", "layer", "cell")
     """
     dtype = np.dtype(
         [("id1", np.int32), ("id2", np.int32), ("budget", np.float64)]

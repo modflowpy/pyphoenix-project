@@ -886,6 +886,15 @@ def test_grid_coordinate_indexing_in_disv():
     assert botm_near_y.shape == (3,)  # (nlay,)
 
 
+def test_grid_merges_with_npf():
+    """A grid's dataset merges with NPF's, whose k is hydraulic conductivity."""
+    dims = {"nlay": 1, "nrow": 2, "ncol": 2, "nodes": 4}
+    grid = StructuredGrid(nlay=1, nrow=2, ncol=2, delr=10.0, delc=10.0, top=0.0, botm=[-1.0])
+    ds = xr.merge([grid.dataset, Npf(dims=dims, k=2.0).to_xarray()])
+    assert ds["k"].dims == ("layer", "row", "col")
+    assert ds["k"].sel(x=5.0, y=15.0).item() == 2.0
+
+
 def test_grid_dimensions_only():
     """Test grid creation with only dimensions (no spatial data)."""
     grid = StructuredGrid(nlay=3, nrow=5, ncol=5)
@@ -894,9 +903,9 @@ def test_grid_dimensions_only():
     assert "x" in grid.dataset.coords
     assert "y" in grid.dataset.coords
     assert "z" in grid.dataset.coords
-    assert "k" in grid.dataset.coords
-    assert "i" in grid.dataset.coords
-    assert "j" in grid.dataset.coords
+    assert not {"k", "i", "j"} & set(grid.dataset.coords)  # positions are the indices
+    assert dict(grid.dataset.sizes) == {"layer": 3, "row": 5, "col": 5}
+    assert grid.dims == {"nlay": 3, "nrow": 5, "ncol": 5, "ncpl": 25, "nodes": 75}
 
     # Check shapes
     assert grid.dataset.coords["x"].shape == (5,)
@@ -1136,8 +1145,9 @@ def test_grid_from_disv_factory():
     assert "x" in grid.dataset.coords
     assert "y" in grid.dataset.coords
     assert "z" in grid.dataset.coords
-    assert "k" in grid.dataset.coords
-    assert "icpl" in grid.dataset.coords
+    assert not {"k", "j", "icpl"} & set(grid.dataset.coords)
+    assert grid.dataset["botm"].dims == ("layer", "cell")
+    assert grid.dims == {"nlay": grid.nlay, "ncpl": grid.ncpl, "nodes": grid.nnodes}
 
     # Check z coordinates are cell centers
     np.testing.assert_allclose(grid.dataset.coords["z"].values[0], np.full((ncpl), -5.0))
@@ -1285,8 +1295,9 @@ def test_ugrid_from_disv_factory():
     assert "x" in grid.dataset.coords
     assert "y" in grid.dataset.coords
     assert "z" in grid.dataset.coords
-    assert "k" in grid.dataset.coords
-    assert "icpl" in grid.dataset.coords
+    assert not {"k", "j", "icpl"} & set(grid.dataset.coords)
+    assert grid.dataset["botm"].dims == ("layer", "cell")
+    assert grid.dims == {"nlay": grid.nlay, "ncpl": grid.ncpl, "nodes": grid.nnodes}
 
     # Check z coordinates are cell centers
     np.testing.assert_allclose(grid.dataset.coords["z"].values[0], np.full((ncpl), -5.0))
@@ -1610,9 +1621,159 @@ def test_to_dataarray_standalone_structured():
     npf = Npf(dims=dims, k=1.5, k33=0.15)
     da = npf.to_dataarray("k")
     assert isinstance(da, xr.DataArray)
-    assert da.dims == ("layer", "y", "x")
+    assert da.dims == ("layer", "row", "col")
     assert da.shape == (2, 3, 4)
     assert np.allclose(da.values, 1.5)
+
+
+def test_to_dataarray_standalone_vertex():
+    """A DISV array's dims are (layer, cell), cell the cell within its layer."""
+    dims = {"nlay": 2, "ncpl": 3, "nodes": 6}
+    npf = Npf(dims=dims, k=1.5)
+    da = npf.to_dataarray("k")
+    assert da.dims == ("layer", "cell")
+    assert da.shape == (2, 3)
+
+
+def test_to_dataarray_cell_centers_structured():
+    """A package in a model gets its cell centres from the model's DIS as x
+    on col and y on row, indexed so it can be selected by them."""
+    gwf = Gwf(
+        dis=Dis(
+            nlay=2,
+            nrow=3,
+            ncol=4,
+            delr=10.0,
+            delc=[1.0, 2.0, 3.0],
+            xorigin=100.0,
+            yorigin=50.0,
+            top=1.0,
+            botm=[0.0, -1.0],
+        )
+    )
+    npf = Npf(parent=gwf, k=np.arange(24.0))
+    da = npf.to_dataarray("k")
+    assert da.dims == ("layer", "row", "col")
+    assert da.x.dims == ("col",)
+    assert da.y.dims == ("row",)
+    assert np.allclose(da.x, [105.0, 115.0, 125.0, 135.0])
+    assert np.allclose(da.y, [55.5, 54.0, 51.5])  # row 0 is the north edge
+    assert da.sel(x=116.0, y=51.0, method="nearest").values.tolist() == [9.0, 21.0]
+    assert "x" in gwf.dis.to_dataarray("botm").coords
+
+
+def test_to_dataarray_cell_centers_vertex():
+    """On a DISV grid, x and y are on the cell dim, from cell2d."""
+    gwf = Gwf(
+        dis=Disv(
+            nlay=1,
+            ncpl=2,
+            nvert=6,
+            xorigin=10.0,
+            top=1.0,
+            botm=[0.0],
+            vertices=[
+                Disv.Vertices(iv=i, xv=x, yv=y)
+                for i, (x, y) in enumerate([(0, 0), (0, 1), (1, 1), (1, 0), (2, 1), (2, 0)])
+            ],
+            cell2d=[
+                Disv.Cell2d(icell2d=0, xc=0.5, yc=0.5, icvert=(0, 1, 2, 3, 0)),
+                Disv.Cell2d(icell2d=1, xc=1.5, yc=0.5, icvert=(3, 2, 4, 5, 3)),
+            ],
+        )
+    )
+    da = gwf.dis.to_dataarray("botm")
+    assert da.dims == ("layer", "cell")
+    assert da.x.dims == ("cell",)
+    assert np.allclose(da.x, [10.5, 11.5])
+    assert np.allclose(da.y, [0.5, 0.5])
+
+
+def test_to_dataarray_cell_centers_structured_rotated():
+    """A rotated grid's x/y are in its own frame, zero at the lower-left
+    corner, as in MF6's netCDF output. The projection coordinate places
+    them in the world: MF6 rotates the grid counter-clockwise by angrot
+    degrees about its origin."""
+    gwf = Gwf(
+        dis=Dis(
+            nlay=1,
+            nrow=2,
+            ncol=2,
+            delr=1.0,
+            delc=1.0,
+            xorigin=10.0,
+            yorigin=20.0,
+            angrot=90.0,
+            top=1.0,
+            botm=[0.0],
+        )
+    )
+    da = gwf.dis.to_dataarray("botm")
+    assert da.x.dims == ("col",)
+    assert np.allclose(da.x, [0.5, 1.5])
+    assert np.allclose(da.y, [1.5, 0.5])
+    assert "x" in da.indexes and "y" in da.indexes
+    assert da.attrs["grid_mapping"] == "projection"
+    assert da.projection.attrs == {"xorigin": 10.0, "yorigin": 20.0, "angrot": 90.0}
+
+
+def test_to_dataarray_cell_centers_vertex_rotated():
+    """A rotated DISV grid's cell centres are rotated counter-clockwise by
+    angrot degrees about its origin, as in MF6."""
+    gwf = Gwf(
+        dis=Disv(
+            nlay=1,
+            ncpl=2,
+            nvert=6,
+            xorigin=10.0,
+            angrot=90.0,
+            top=1.0,
+            botm=[0.0],
+            vertices=[
+                Disv.Vertices(iv=i, xv=x, yv=y)
+                for i, (x, y) in enumerate([(0, 0), (0, 1), (1, 1), (1, 0), (2, 1), (2, 0)])
+            ],
+            cell2d=[
+                Disv.Cell2d(icell2d=0, xc=0.5, yc=0.5, icvert=(0, 1, 2, 3, 0)),
+                Disv.Cell2d(icell2d=1, xc=1.5, yc=0.5, icvert=(3, 2, 4, 5, 3)),
+            ],
+        )
+    )
+    da = gwf.dis.to_dataarray("botm")
+    assert da.x.dims == ("cell",)
+    assert np.allclose(da.x, [9.5, 9.5])
+    assert np.allclose(da.y, [0.5, 1.5])
+
+
+def test_structured_grid_rotated():
+    """A rotated StructuredGrid's x and y are in its own frame, zero at the
+    lower-left corner, as to_xarray() writes them, with the rotation in
+    its projection coordinate; the same as output (get_coords)."""
+    from flopy4.adapters import StructuredGridWrapper
+    from flopy4.mf6.utils.grid import get_coords
+
+    kwargs = dict(nlay=1, nrow=2, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=[0.0])
+    grid = StructuredGrid(xoff=10.0, yoff=20.0, angrot=90.0, **kwargs)
+    assert grid.dataset.x.dims == ("col",)
+    assert np.allclose(grid.dataset.x, [0.5, 1.5])
+    assert np.allclose(grid.dataset.y, [1.5, 0.5])
+    assert grid.dataset.top.attrs["grid_mapping"] == "projection"
+    attrs = {"xorigin": 10.0, "yorigin": 20.0, "angrot": 90.0}
+    assert grid.dataset.projection.attrs == attrs
+
+    wrapper = StructuredGridWrapper(
+        nlay=1, nrow=2, ncol=2, delr=np.ones(2), delc=np.ones(2), xoff=10.0, yoff=20.0, angrot=90.0
+    )
+    coords = get_coords(wrapper)
+    assert np.allclose(coords["x"][1], grid.dataset.x)
+    assert np.allclose(coords["y"][1], grid.dataset.y)
+    assert coords["projection"][2] == attrs
+
+
+def test_to_dataarray_standalone_has_no_cell_centers():
+    """Without a discretization there's no geometry, so no x/y."""
+    npf = Npf(dims={"nlay": 1, "nrow": 2, "ncol": 2, "nodes": 4}, k=1.0)
+    assert "x" not in npf.to_dataarray("k").coords
 
 
 def test_to_xarray_standalone_structured():
@@ -1623,7 +1784,7 @@ def test_to_xarray_standalone_structured():
     assert isinstance(ds, xr.Dataset)
     assert "k" in ds
     assert "k33" in ds
-    assert ds.k.dims == ("layer", "y", "x")
+    assert ds.k.dims == ("layer", "row", "col")
     assert ds.k.shape == (1, 2, 2)
     assert np.allclose(ds.k.values, 2.0)
 
@@ -1638,7 +1799,7 @@ def test_to_dataarray_lazy_dask():
     npf.k = k_dask
     da = npf.to_dataarray("k")
     assert isinstance(da.data, da_mod.Array), "to_dataarray must preserve dask Array"
-    assert da.dims == ("layer", "y", "x")
+    assert da.dims == ("layer", "row", "col")
 
 
 def test_npf_to_xarray_via_parent_chain():
@@ -1658,7 +1819,7 @@ def test_npf_to_xarray_via_parent_chain():
     npf_ds = gwf.npf.to_xarray()
     assert isinstance(npf_ds, xr.Dataset)
     assert "k" in npf_ds, f"Expected 'k' in npf dataset, got: {list(npf_ds.data_vars)}"
-    assert npf_ds.k.dims == ("layer", "y", "x")
+    assert npf_ds.k.dims == ("layer", "row", "col")
     assert npf_ds.k.shape == (1, 2, 2)
     assert np.allclose(npf_ds.k.values, 2.5)
 

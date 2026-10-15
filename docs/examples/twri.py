@@ -40,7 +40,7 @@ def plot_head(head, workspace):
 
     # Plot head results
     plt.figure(figsize=(10, 6))
-    head.isel(layer=0, time=0).plot.contourf()
+    head.isel(layer=0, time=0).plot.contourf(x="x", y="y")
     plt.title("Filled Contour Plot TWRI Head")
     plt.xlabel("x")
     plt.ylabel("y")
@@ -75,7 +75,7 @@ bottom = np.stack([np.full((nrow, ncol), val) for val in [-200.0, -300.0, -450.0
 grid = flopy4.mf6.utils.grid.StructuredGrid(
     nlay=nlay, nrow=nrow, ncol=ncol, top=top, botm=bottom, delr=delr, delc=delc, idomain=idomain
 )
-dims = {"nper": nper, "ncpl": nrow * ncol, **dict(grid.dataset.sizes)}  # TODO: temporary
+dims = {"nper": nper, **grid.dims}
 
 # ### Packages
 

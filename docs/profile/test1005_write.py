@@ -87,7 +87,7 @@ def main():
         delc=np.full(nrow, 10560.0),
         idomain=np.ones((nlay, nrow, ncol), dtype=int),
     )
-    dims = {"nper": nper, "ncpl": ncpl, **dict(grid.dataset.sizes)}
+    dims = {"nper": nper, **grid.dims}
     time4 = flopy4.mf6.utils.time.Time(
         perlen=[p[0] for p in perioddata],
         nstp=[p[1] for p in perioddata],

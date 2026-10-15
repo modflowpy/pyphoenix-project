@@ -858,16 +858,43 @@ class Package(Component, ABC):
         lead: tuple[int, ...] = () if nper is None else (nper,)
         if _nrow is not None and _ncol is not None:
             arr = arr.reshape(*lead, _nlay, _nrow, _ncol)
-            dims: tuple[str, ...] = ("layer", "y", "x")
+            dims: tuple[str, ...] = ("layer", "row", "col")
         elif _ncpl is not None:
             arr = arr.reshape(*lead, _nlay, _ncpl)
-            dims = ("layer", "face")
+            dims = ("layer", "cell")
         else:
             arr = arr.reshape(*lead, -1)
             dims = ("node",)
         if nper is not None:
             dims = ("per", *dims)
-        return xr.DataArray(arr, dims=dims, name=field_name)
+        da = xr.DataArray(arr, dims=dims, name=field_name)
+        return self._with_cell_centers(da)
+
+    def _with_cell_centers(self, da: xr.DataArray) -> xr.DataArray:
+        """Give an array its cell centres as x/y coordinates when its
+        model's discretization (or this package, if it's one) has them.
+        On a structured grid they're indexed, for `sel(x=..., y=...)`, and
+        the array gets a `projection` coordinate placing them in the world
+        (see `grid_mapping`)."""
+        from flopy4.mf6.utils.grid import cell_centers, grid_mapping, index_xy
+
+        dis = self if hasattr(self, "to_grid") else getattr(self._parent, "dis", None)
+        coords = {
+            k: v
+            for k, v in cell_centers(dis).items()
+            if v[0] in da.dims and da.sizes[v[0]] == len(v[1])
+        }
+        if len(coords) < 2:
+            return da
+        da = da.assign_coords(coords)
+        if "col" not in da.dims:
+            return da
+        projection = grid_mapping(
+            getattr(dis, "xorigin", None),
+            getattr(dis, "yorigin", None),
+            getattr(dis, "angrot", None),
+        )
+        return index_xy(da.assign_coords(projection=projection))
 
     def to_xarray(self) -> "xr.Dataset":  # type: ignore[override]
         """All set griddata (or period-array) fields as xr.Dataset.

@@ -235,7 +235,7 @@ def build_flopy4_base(k, k33, ss):
         idomain=np.ones((nlay, nrow, ncol), dtype=int),
         crs="EPSG:26911",
     )
-    dims = {"nper": nper, "ncpl": nrow * ncol, **dict(grid.dataset.sizes)}
+    dims = {"nper": nper, **grid.dims}
 
     dis = flopy4.mf6.gwf.Dis.from_grid(grid=grid)
     ic = flopy4.mf6.gwf.Ic(strt=0.0, dims=dims)

@@ -6,6 +6,8 @@ import scipy.sparse
 import xugrid as xu
 from flopy.discretization.structuredgrid import StructuredGrid
 
+from flopy4.mf6.utils.grid import to_world
+
 __all__ = [
     "StructuredGridWrapper",
     "read_binary_grid_file",
@@ -201,6 +203,13 @@ def read_binary_grid_file(file_path: str | os.PathLike, verbose: bool = False) -
         )
 
 
+def _cell_dim(grid: xu.Ugrid2d) -> xu.Ugrid2d:
+    """Name the grid's face dim ``cell``, as in the DISV input arrays."""
+    ds = grid.to_dataset().rename_dims({grid.face_dimension: "cell"})
+    ds[grid.name].attrs["face_dimension"] = "cell"
+    return xu.Ugrid2d.from_dataset(ds)
+
+
 def _read_disv_grb(grb) -> dict[str, Any]:
     nlay = grb.nlay
     ncpl = grb.ncpl
@@ -220,10 +229,7 @@ def _read_disv_grb(grb) -> dict[str, Any]:
 
     # Build Ugrid2d from vertex info
     verts = grb.verts
-    xorigin = grb.xorigin
-    yorigin = grb.yorigin
-    node_x = verts[:, 0] + xorigin
-    node_y = verts[:, 1] + yorigin
+    node_x, node_y = to_world(verts[:, 0], verts[:, 1], grb.xorigin, grb.yorigin, grb.angrot)
 
     n_nodes = len(verts)
     ncpl_faces = len(ugrid_ia) - 1
@@ -231,12 +237,12 @@ def _read_disv_grb(grb) -> dict[str, Any]:
         (np.ones(len(ugrid_ja), dtype=np.intp), ugrid_ja, ugrid_ia),
         shape=(ncpl_faces, n_nodes),
     )
-    grid = xu.Ugrid2d(node_x, node_y, -1, face_nodes)
+    grid = _cell_dim(xu.Ugrid2d(node_x, node_y, -1, face_nodes))
     facedim = grid.face_dimension
 
     idomain = grb.idomain.reshape((nlay, ncpl))
 
-    coords = {"layer": np.arange(1, nlay + 1)}
+    coords: dict[str, Any] = {}
     crs = grb._datadict["CRS"] if grb._version == "2" else None
 
     return {

@@ -12,8 +12,7 @@ from flopy4.mf6.utils.heads_reader import open_hds
 from flopy4.mf6.utils.time import Time
 
 
-@pytest.fixture
-def dis_model_output(function_tmpdir):
+def _dis_model_output(function_tmpdir, **dis_kwargs):
     sim_name = "dis_test"
     gwf_name = "gwf_dis"
 
@@ -41,6 +40,7 @@ def dis_model_output(function_tmpdir):
         top=10.0,
         botm=botm,
         idomain=1,
+        **dis_kwargs,
     )
 
     gwf = Gwf(parent=sim, save_flows=True, dis=dis, name=gwf_name)
@@ -78,11 +78,16 @@ def dis_model_output(function_tmpdir):
         "nlay": nlay,
         "nrow": nrow,
         "ncol": ncol,
+        "gwf": gwf,
     }
 
 
 @pytest.fixture
-def disv_model_output(function_tmpdir):
+def dis_model_output(function_tmpdir):
+    return _dis_model_output(function_tmpdir)
+
+
+def _disv_model_output(function_tmpdir, **dis_kwargs):
     sim_name = "disv_test"
     gwf_name = "gwf_disv"
 
@@ -144,6 +149,7 @@ def disv_model_output(function_tmpdir):
         idomain=1,
         vertices=dict(iv=np.arange(nvert, dtype=int), xv=xv, yv=yv),
         cell2d=cell2d,
+        **dis_kwargs,
     )
 
     gwf = Gwf(parent=sim, save_flows=True, dis=disv, name=gwf_name)
@@ -176,7 +182,13 @@ def disv_model_output(function_tmpdir):
         "grb": grb_path,
         "nlay": nlay,
         "ncpl": ncpl,
+        "gwf": gwf,
     }
+
+
+@pytest.fixture
+def disv_model_output(function_tmpdir):
+    return _disv_model_output(function_tmpdir)
 
 
 def test_open_hds_dis(dis_model_output):
@@ -184,9 +196,17 @@ def test_open_hds_dis(dis_model_output):
     head = open_hds(paths["hds"], paths["grb"])
 
     assert isinstance(head, xr.DataArray)
-    assert set(head.dims) == {"time", "layer", "y", "x"}
+    assert head.dims == ("time", "layer", "row", "col")
     assert head.shape == (1, paths["nlay"], paths["nrow"], paths["ncol"])
     assert not np.all(np.isnan(head.values))
+    # x and y are world coordinates on col and row, and select; no layer
+    # coordinate, as for package arrays
+    assert head.coords["x"].dims == ("col",)
+    assert head.coords["y"].dims == ("row",)
+    assert "layer" not in head.coords
+    x, y = float(head.x[1]), float(head.y[2])
+    picked = head.sel(x=x, y=y)
+    np.testing.assert_array_equal(picked.values, head.isel(col=1, row=2).values)
 
 
 def test_open_cbc_dis(dis_model_output):
@@ -206,6 +226,7 @@ def test_open_cbc_dis_flowja(dis_model_output):
     assert isinstance(cbc, xr.Dataset)
     assert "flow-ja-face" in cbc.data_vars
     assert "connectivity" in cbc.data_vars
+    assert cbc["connectivity"].dims == ("connection", "nm")
 
 
 def test_open_hds_disv(disv_model_output):
@@ -213,8 +234,7 @@ def test_open_hds_disv(disv_model_output):
     head = open_hds(paths["hds"], paths["grb"])
 
     assert isinstance(head, xu.UgridDataArray)
-    assert "time" in head.dims
-    assert "layer" in head.dims
+    assert head.dims == ("time", "layer", "cell")
     ntime, nlayer = 1, paths["nlay"]
     assert head.shape[0] == ntime
     assert head.shape[1] == nlayer
@@ -229,6 +249,11 @@ def test_open_cbc_disv(disv_model_output):
     assert isinstance(cbc, (xr.Dataset, xu.UgridDataset))
     keys = set(cbc.data_vars)
     assert len(keys) > 0
+    edge_dim = cbc.ugrid.grid.edge_dimension
+    for name in keys:
+        # horizontal flows are on the mesh's edges, the rest on its cells
+        loc = edge_dim if name.startswith("flow-horizontal-face") else "cell"
+        assert cbc[name].dims == ("time", "layer", loc), name
 
 
 def test_open_cbc_disv_flowja(disv_model_output):
@@ -238,6 +263,32 @@ def test_open_cbc_disv_flowja(disv_model_output):
     assert isinstance(cbc, (xr.Dataset, xu.UgridDataset))
     assert "flow-ja-face" in cbc.data_vars
     assert "connectivity" in cbc.data_vars
+    assert cbc["connectivity"].dims == ("connection", "nm")
+
+
+def test_open_hds_dis_rotated(function_tmpdir):
+    """A rotated grid's output has local x/y and the projection coordinate,
+    the same as its input arrays."""
+    paths = _dis_model_output(function_tmpdir, xorigin=100.0, yorigin=200.0, angrot=30.0)
+    head = open_hds(paths["hds"], paths["grb"])
+    botm = paths["gwf"].dis.to_dataarray("botm")
+    assert head.x.dims == ("col",)
+    assert np.allclose(head.x, botm.x)
+    assert np.allclose(head.y, botm.y)
+    assert head.attrs["grid_mapping"] == "projection"
+    assert head.projection.attrs == botm.projection.attrs
+    assert head.projection.attrs == {"xorigin": 100.0, "yorigin": 200.0, "angrot": 30.0}
+
+
+def test_open_hds_disv_rotated(function_tmpdir):
+    """A rotated DISV grid's output mesh is rotated about the origin, so
+    its cell centres match the input arrays'."""
+    paths = _disv_model_output(function_tmpdir, xorigin=100.0, yorigin=200.0, angrot=30.0)
+    head = open_hds(paths["hds"], paths["grb"])
+    botm = paths["gwf"].dis.to_dataarray("botm")
+    centroids = head.ugrid.grid.face_coordinates
+    assert np.allclose(centroids[:, 0], botm.x)
+    assert np.allclose(centroids[:, 1], botm.y)
 
 
 def test_disv_from_grid_round_trip():
@@ -312,7 +363,7 @@ def test_open_hds_dis_netcdf_conventional(function_tmpdir, dis_model_output):
     head = open_hds(nc_path, paths["grb"])
 
     assert isinstance(head, xr.DataArray)
-    assert head.dims == ("time", "layer", "y", "x")
+    assert head.dims == ("time", "layer", "row", "col")
     assert head.shape == (ntime, nlay, nrow, ncol)
     np.testing.assert_allclose(head.values, data)
 
@@ -452,6 +503,18 @@ def test_open_hds_dis_face_budget_values(dis_model_output):
     # Check that the face flows have the right shape
     if "flow-right-face" in cbc.data_vars:
         right = cbc["flow-right-face"]
-        assert right.dims == ("time", "layer", "y", "x")
+        assert right.dims == ("time", "layer", "row", "col")
+        assert right.coords["x"].dims == ("col",)
         # Should have at least some non-zero values (CHD drives flow)
         assert float(np.abs(right.values).max()) > 0.0
+
+
+def test_open_cbc_dis_selects_by_xy(dis_model_output):
+    """Every DIS budget array, face flows too, selects by x and y."""
+    paths = dis_model_output
+    cbc = open_cbc(paths["cbc"], paths["grb"])
+    gridded = [da for da in cbc.data_vars.values() if "row" in da.dims]
+    assert gridded
+    for da in gridded:
+        x, y = float(da.x[1]), float(da.y[0])
+        np.testing.assert_array_equal(da.sel(x=x, y=y).values, da.isel(col=1, row=0).values)
