@@ -10,6 +10,8 @@
 %import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
+%import typed._BEGIN -> _BEGIN
+%import typed._END -> _END
 %import typed.COMMA -> COMMA
 %import common.WS_INLINE
 %import common.SH_COMMENT
@@ -23,14 +25,14 @@
 start: _NL* (block _NL*)*
 block: options__block | dimensions__block | packagedata__block | crosssections__block | connectiondata__block | diversions__block | initialstages__block | period__block
 
-options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
-dimensions__block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* "end"i "dimensions"i
-packagedata__block: "begin"i "packagedata"i [_remark] _NL _NL* packagedata__fields _NL* "end"i "packagedata"i
-crosssections__block: "begin"i "crosssections"i [_remark] _NL _NL* crosssections__fields _NL* "end"i "crosssections"i
-connectiondata__block: "begin"i "connectiondata"i [_remark] _NL _NL* connectiondata__fields _NL* "end"i "connectiondata"i
-diversions__block: "begin"i "diversions"i [_remark] _NL _NL* diversions__fields _NL* "end"i "diversions"i
-initialstages__block: "begin"i "initialstages"i [_remark] _NL _NL* initialstages__fields _NL* "end"i "initialstages"i
-period__block: "begin"i "period"i block_index [_remark] _NL _NL* period__fields _NL* "end"i "period"i [block_index]
+options__block: _BEGIN "options"i [_remark] _NL _NL* options__fields _NL* _END "options"i
+dimensions__block: _BEGIN "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* _END "dimensions"i
+packagedata__block: _BEGIN "packagedata"i [_remark] _NL _NL* packagedata__fields _NL* _END "packagedata"i
+crosssections__block: _BEGIN "crosssections"i [_remark] _NL _NL* crosssections__fields _NL* _END "crosssections"i
+connectiondata__block: _BEGIN "connectiondata"i [_remark] _NL _NL* connectiondata__fields _NL* _END "connectiondata"i
+diversions__block: _BEGIN "diversions"i [_remark] _NL _NL* diversions__fields _NL* _END "diversions"i
+initialstages__block: _BEGIN "initialstages"i [_remark] _NL _NL* initialstages__fields _NL* _END "initialstages"i
+period__block: _BEGIN "period"i block_index [_remark] _NL _NL* period__fields _NL* _END "period"i [block_index]
 %import typed.block_index -> block_index
 options__fields: ((storage__kw | ats_courant__val | auxiliary__val | boundnames__kw | print_input__kw | print_stage__kw | print_flows__kw | save_flows__kw | stage_filerecord__rec | budget_filerecord__rec | budgetcsv_filerecord__rec | package_convergence_filerecord__rec | ts_filerecord__rec__elem | obs_filerecord__rec | mover__kw | maximum_picard_iterations__val | maximum_iterations__val | maximum_depth_change__val | unit_conversion__val | length_conversion__val | time_conversion__val | dev_storage_weight__val | dev_no_check__kw | dev_no_final_check__kw | open_close_redirect) _NL*)*
 dimensions__fields: ((nreaches__val | open_close_redirect) _NL*)*

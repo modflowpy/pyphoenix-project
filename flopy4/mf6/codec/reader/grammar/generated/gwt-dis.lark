@@ -10,6 +10,8 @@
 %import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
+%import typed._BEGIN -> _BEGIN
+%import typed._END -> _END
 %import typed.COMMA -> COMMA
 %import common.WS_INLINE
 %import common.SH_COMMENT
@@ -23,9 +25,9 @@
 start: _NL* (block _NL*)*
 block: options__block | dimensions__block | griddata__block
 
-options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
-dimensions__block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* "end"i "dimensions"i
-griddata__block: "begin"i "griddata"i [_remark] _NL _NL* griddata__fields _NL* "end"i "griddata"i
+options__block: _BEGIN "options"i [_remark] _NL _NL* options__fields _NL* _END "options"i
+dimensions__block: _BEGIN "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* _END "dimensions"i
+griddata__block: _BEGIN "griddata"i [_remark] _NL _NL* griddata__fields _NL* _END "griddata"i
 options__fields: ((length_units__val | nogrb__kw | grb_filerecord__rec | xorigin__val | yorigin__val | angrot__val | export_array_ascii__kw | export_array_netcdf__kw | crs__val | ncf_filerecord__rec | open_close_redirect) _NL*)*
 dimensions__fields: ((nlay__val | nrow__val | ncol__val | open_close_redirect) _NL*)*
 griddata__fields: ((delr__val | delc__val | top__val | botm__val | idomain__val | open_close_redirect) _NL*)*

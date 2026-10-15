@@ -827,6 +827,59 @@ def test_typed_loads_iso_datetime():
     assert result["options"]["start_date_time"] == "1997-07-16T19:20:30.45+01:00"
 
 
+def test_typed_loads_words_starting_with_begin_or_end():
+    """A word that only starts with BEGIN/END is a word, at a row's start or
+    later, and reads the same as with the basic grammar."""
+    from flopy4.mf6.codec.reader import loads, loads_typed
+
+    ghb = (
+        "BEGIN PERIOD 1\n  1 1 1 1.0 10.0 endpoint\n  1 1 2 1.0 10.0 Beginning\n"
+        "  1 1 3 1.0 10.0 end_x\nEND PERIOD\n"
+    )
+    rows = loads_typed(ghb, "gwf-ghb")["period 1"]["stress_period_data"]
+    assert [r[-1] for r in rows] == ["endpoint", "Beginning", "end_x"]
+    assert rows == loads(ghb)["PERIOD 1"]
+
+    obs = "BEGIN CONTINUOUS FILEOUT x.csv\n  endwell HEAD 1 1 1\nEND CONTINUOUS\n"
+    typed = loads_typed(obs, "utl-obs")["continuous FILEOUT x.csv"]
+    assert typed["stress_period_data"][0].children == loads(obs)["CONTINUOUS FILEOUT x.csv"]
+
+
+def test_typed_loads_bare_begin_or_end_word():
+    """A bare BEGIN/END where only a word fits is that word (a file named
+    `end`), not a block keyword."""
+    from flopy4.mf6.codec.reader import loads_typed
+
+    result = loads_typed("BEGIN options\n  ts6 filein end\nEND options\n", "gwf-chd")
+    assert result["options"]["ts_filerecord"] == [{"ts6_filename": "end"}]
+
+
+def test_typed_loads_begin_or_end_after_row_start():
+    """A BEGIN/END after a row's first token is data, as in the basic
+    grammar and MF6: a boundname `end`, or test106's `begin SP 1` remark."""
+    from flopy4.mf6.codec.reader import loads, loads_typed
+
+    ghb = "BEGIN PERIOD 1\n  1 1 1 1.0 10.0 end\n  1 1 2 1.0 10.0 BEGIN\nEND PERIOD\n"
+    rows = loads_typed(ghb, "gwf-ghb")["period 1"]["stress_period_data"]
+    assert [r[-1] for r in rows] == ["end", "BEGIN"]
+    assert rows == loads(ghb)["PERIOD 1"]
+
+    ts = "BEGIN TIMESERIES\n  0.0 1.0 begin SP 1\n  1.0 2.0 end\nEND TIMESERIES\n"
+    typed = loads_typed(ts, "utl-ts")["timeseries"]["stress_period_data"][0].children
+    assert typed == [[0.0, 1.0, "begin", "SP", 1], [1.0, 2.0, "end"]]
+
+
+def test_typed_loads_bang_comment_after_number():
+    """A `!` comment ends a token, like `#`: a number right before one is
+    still a number."""
+    from flopy4.mf6.codec.reader import loads, loads_typed
+
+    ghb = "BEGIN PERIOD 1\n  1 1 1 1.0 10.0!note\nEND PERIOD\n"
+    rows = loads_typed(ghb, "gwf-ghb")["period 1"]["stress_period_data"]
+    assert rows == [[1, 1, 1, 1.0, 10.0]]
+    assert rows == loads(ghb)["PERIOD 1"]
+
+
 @pytest.mark.parametrize("component", ["gwf-maw", "gwf-wel"])
 def test_parse_block_header_remark(component):
     """A remark after a block's index (MAW's legacy `STEADY-STATE`) parses."""

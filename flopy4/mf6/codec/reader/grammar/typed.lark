@@ -33,10 +33,20 @@ binary: "(binary)"i
 filename: word
 data: _data_line+
 _data_line: double+ [_remark] _NL
-// begin/end after a record's first token are a remark (test106's
-// `0.0 ... begin SP 1`); dropped, like the literals they match.
-record: token (token | _block_kw)* _NL
-_block_kw: "begin"i | "end"i
+// begin/end after a record's first token are words, as in basic.lark: MF6
+// only takes a line's first word as a block keyword, so later ones are data
+// (a boundname `end`, test106's `0.0 ... begin SP 1` remark). `!` keeps the
+// filtered-out keyword token so the transformer can return it as a word.
+record: token (token | block_kw_word)* _NL
+!block_kw_word: _BEGIN | _END
+// Whole tokens only, like the number terminals below. As "begin"i/"end"i
+// literals they outrank WORD_STR (-1) and matched a word's prefix, so a
+// boundname like `endpoint` lexed as a dropped `end` and then `point`.
+// The generated grammars' block rules import these too. WORD_STR needn't
+// exclude a bare begin/end: these outrank it wherever both are valid, and
+// anywhere else it's a word (e.g. a file named `end`).
+_BEGIN: /begin(?![^\s,#!])/i
+_END: /end(?![^\s,#!])/i
 token: number | word
 word: WORD_STR | QUOTED
 // Lower priority than NUMBER/INT/SIGNED_NUMBER/SIGNED_INT (default 0) so a
@@ -47,7 +57,7 @@ word: WORD_STR | QUOTED
 // its LALR states merged, and the contextual lexer then sometimes resolves
 // the ambiguous digit token to WORD_STR in a state that has no action for
 // it at all -- a hard parse failure, not just a wrong parse.
-WORD_STR.-1: /(?!(?i:begin|end))[a-zA-Z0-9'().\/:;<=>?@_~+\[\\-]+/
+WORD_STR.-1: /[a-zA-Z0-9'().\/:;<=>?@_~+\[\\-]+/
 // A quoted value, which may contain spaces (boundnames, obsnames,
 // filenames). Either quote character, like MF6's urword; no escapes.
 // Priority 1 so it wins ties against WORD_STR (-1) here and TOKEN (0) in
@@ -84,8 +94,9 @@ BANG_COMMENT: /![^\n]*/
 // common's number terminals, but only as a whole token. Otherwise a token
 // that starts like a number lexes as a number followed by a word, e.g. an
 // ISO datetime `1997-07-16T19:20:30` as `1997`, `-07`, `-16` and
-// `T19:20:30`.
-INT: /\d+(?![^\s,#])/
-SIGNED_INT: /[+-]\d+(?![^\s,#])/
-NUMBER: /(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?(?![^\s,#])/
-SIGNED_NUMBER: /[+-](\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?(?![^\s,#])/
+// `T19:20:30`. A token ends at whitespace, a comma, or a comment (`#` or
+// `!`), so `5!note` is the number 5 and then a comment.
+INT: /\d+(?![^\s,#!])/
+SIGNED_INT: /[+-]\d+(?![^\s,#!])/
+NUMBER: /(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?(?![^\s,#!])/
+SIGNED_NUMBER: /[+-](\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?(?![^\s,#!])/

@@ -10,6 +10,8 @@
 %import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
+%import typed._BEGIN -> _BEGIN
+%import typed._END -> _END
 %import typed.COMMA -> COMMA
 %import common.WS_INLINE
 %import common.SH_COMMENT
@@ -23,8 +25,8 @@
 start: _NL* (block _NL*)*
 block: attributes__block | timeseries__block
 
-attributes__block: "begin"i "attributes"i [_remark] _NL _NL* attributes__fields _NL* "end"i "attributes"i
-timeseries__block: "begin"i "timeseries"i [_remark] _NL _NL* timeseries__fields _NL* "end"i "timeseries"i
+attributes__block: _BEGIN "attributes"i [_remark] _NL _NL* attributes__fields _NL* _END "attributes"i
+timeseries__block: _BEGIN "timeseries"i [_remark] _NL _NL* timeseries__fields _NL* _END "timeseries"i
 attributes__fields: ((time_series_namerecord__rec | interpolation_methodrecord__rec | interpolation_methodrecord_single__rec | sfacrecord__rec | sfacrecord_single__rec | open_close_redirect) _NL*)*
 timeseries__fields: ((timeseriesdata | open_close_redirect) _NL*)*
 time_series_namerecord__rec: ("names"i | "name"i) time_series_namerecord__time_series_names__arr [_remark] _NL

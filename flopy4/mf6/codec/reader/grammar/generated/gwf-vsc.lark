@@ -10,6 +10,8 @@
 %import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
+%import typed._BEGIN -> _BEGIN
+%import typed._END -> _END
 %import typed.COMMA -> COMMA
 %import common.WS_INLINE
 %import common.SH_COMMENT
@@ -23,9 +25,9 @@
 start: _NL* (block _NL*)*
 block: options__block | dimensions__block | packagedata__block
 
-options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
-dimensions__block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* "end"i "dimensions"i
-packagedata__block: "begin"i "packagedata"i [_remark] _NL _NL* packagedata__fields _NL* "end"i "packagedata"i
+options__block: _BEGIN "options"i [_remark] _NL _NL* options__fields _NL* _END "options"i
+dimensions__block: _BEGIN "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* _END "dimensions"i
+packagedata__block: _BEGIN "packagedata"i [_remark] _NL _NL* packagedata__fields _NL* _END "packagedata"i
 options__fields: ((viscref__val | temperature_species_name__val | thermal_formulation__union | thermal_a2__val | thermal_a3__val | thermal_a4__val | viscosity_filerecord__rec | open_close_redirect) _NL*)*
 dimensions__fields: ((nviscspecies__val | open_close_redirect) _NL*)*
 packagedata__fields: ((packagedatadata | open_close_redirect) _NL*)*

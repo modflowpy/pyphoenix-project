@@ -10,6 +10,8 @@
 %import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
+%import typed._BEGIN -> _BEGIN
+%import typed._END -> _END
 %import typed.COMMA -> COMMA
 %import common.WS_INLINE
 %import common.SH_COMMENT
@@ -23,11 +25,11 @@
 start: _NL* (block _NL*)*
 block: options__block | dimensions__block | packagedata__block | releasetimes__block | period__block
 
-options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
-dimensions__block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* "end"i "dimensions"i
-packagedata__block: "begin"i "packagedata"i [_remark] _NL _NL* packagedata__fields _NL* "end"i "packagedata"i
-releasetimes__block: "begin"i "releasetimes"i [_remark] _NL _NL* releasetimes__fields _NL* "end"i "releasetimes"i
-period__block: "begin"i "period"i block_index [_remark] _NL _NL* period__fields _NL* "end"i "period"i [block_index]
+options__block: _BEGIN "options"i [_remark] _NL _NL* options__fields _NL* _END "options"i
+dimensions__block: _BEGIN "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* _END "dimensions"i
+packagedata__block: _BEGIN "packagedata"i [_remark] _NL _NL* packagedata__fields _NL* _END "packagedata"i
+releasetimes__block: _BEGIN "releasetimes"i [_remark] _NL _NL* releasetimes__fields _NL* _END "releasetimes"i
+period__block: _BEGIN "period"i block_index [_remark] _NL _NL* period__fields _NL* _END "period"i [block_index]
 %import typed.block_index -> block_index
 options__fields: ((boundnames__kw | print_input__kw | dev_exit_solve_method__val | exit_solve_tolerance__val | local_z__kw | extend_tracking__kw | track_filerecord__rec | trackcsv_filerecord__rec | stoptime__val | stoptraveltime__val | stop_at_weak_sink__kw | istopzone__val | drape__kw | dry_tracking_method__union | dev_forceternary__kw | release_time_tolerance__val | release_time_frequency__val | coordinate_check_method__union | dev_cycle_detection_window__val | open_close_redirect) _NL*)*
 dimensions__fields: ((nreleasepts__val | nreleasetimes__val | open_close_redirect) _NL*)*

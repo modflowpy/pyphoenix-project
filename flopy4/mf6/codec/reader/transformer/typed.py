@@ -185,6 +185,10 @@ class TypedTransformer(Transformer):
         """Handle word token."""
         return unquote(items[0])
 
+    def block_kw_word(self, items: list[Token]) -> str:
+        """A BEGIN/END after a record's first token, which is just a word."""
+        return str(items[0])
+
     def integer(self, items: list[Any]) -> int:
         return int(items[0])
 

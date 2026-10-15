@@ -10,6 +10,8 @@
 %import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
+%import typed._BEGIN -> _BEGIN
+%import typed._END -> _END
 %import typed.COMMA -> COMMA
 %import common.WS_INLINE
 %import common.SH_COMMENT
@@ -23,9 +25,9 @@
 start: _NL* (block _NL*)*
 block: options__block | sources__block | fileinput__block
 
-options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
-sources__block: "begin"i "sources"i [_remark] _NL _NL* sources__fields _NL* "end"i "sources"i
-fileinput__block: "begin"i "fileinput"i [_remark] _NL _NL* fileinput__fields _NL* "end"i "fileinput"i
+options__block: _BEGIN "options"i [_remark] _NL _NL* options__fields _NL* _END "options"i
+sources__block: _BEGIN "sources"i [_remark] _NL _NL* sources__fields _NL* _END "sources"i
+fileinput__block: _BEGIN "fileinput"i [_remark] _NL _NL* fileinput__fields _NL* _END "fileinput"i
 options__fields: ((print_flows__kw | save_flows__kw | open_close_redirect) _NL*)*
 sources__fields: ((sourcesdata | open_close_redirect) _NL*)*
 fileinput__fields: ((fileinputdata | open_close_redirect) _NL*)*

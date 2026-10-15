@@ -178,15 +178,15 @@
 {# A record header (OBS's "CONTINUOUS FILEOUT <file> [BINARY]"), which
    the END line may repeat. #}
 {%- set header_rule = rule(header, tags=['hdr']) -%}
-{{ block_rule }}: "begin"i "{{ block_name }}"i {{ header_rule }} [_remark] _NL _NL* {{ fields_rule }} _NL* "end"i "{{ block_name }}"i [{{ header_rule }}]
+{{ block_rule }}: _BEGIN "{{ block_name }}"i {{ header_rule }} [_remark] _NL _NL* {{ fields_rule }} _NL* _END "{{ block_name }}"i [{{ header_rule }}]
 {%- elif has_index -%}
 {# Real corpus files overwhelmingly close an indexed block as bare
    "END <name>", not repeating the index -- confirmed ~91% (1503/1651)
    across a random corpus sample. The trailing index is still accepted
    when present (the remaining ~9%). #}
-{{ block_rule }}: "begin"i "{{ block_name }}"i {{ index_rule }} [_remark] _NL _NL* {{ fields_rule }} _NL* "end"i "{{ block_name }}"i [{{ index_rule }}]
+{{ block_rule }}: _BEGIN "{{ block_name }}"i {{ index_rule }} [_remark] _NL _NL* {{ fields_rule }} _NL* _END "{{ block_name }}"i [{{ index_rule }}]
 {%- else -%}
-{{ block_rule }}: "begin"i "{{ block_name }}"i [_remark] _NL _NL* {{ fields_rule }} _NL* "end"i "{{ block_name }}"i
+{{ block_rule }}: _BEGIN "{{ block_name }}"i [_remark] _NL _NL* {{ fields_rule }} _NL* _END "{{ block_name }}"i
 {%- endif -%}
 {%- endmacro %}
 

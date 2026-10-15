@@ -10,6 +10,8 @@
 %import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
+%import typed._BEGIN -> _BEGIN
+%import typed._END -> _END
 %import typed.COMMA -> COMMA
 %import common.WS_INLINE
 %import common.SH_COMMENT
@@ -23,11 +25,11 @@
 start: _NL* (block _NL*)*
 block: options__block | timing__block | models__block | exchanges__block | solutiongroup__block
 
-options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
-timing__block: "begin"i "timing"i [_remark] _NL _NL* timing__fields _NL* "end"i "timing"i
-models__block: "begin"i "models"i [_remark] _NL _NL* models__fields _NL* "end"i "models"i
-exchanges__block: "begin"i "exchanges"i [_remark] _NL _NL* exchanges__fields _NL* "end"i "exchanges"i
-solutiongroup__block: "begin"i "solutiongroup"i block_index [_remark] _NL _NL* solutiongroup__fields _NL* "end"i "solutiongroup"i [block_index]
+options__block: _BEGIN "options"i [_remark] _NL _NL* options__fields _NL* _END "options"i
+timing__block: _BEGIN "timing"i [_remark] _NL _NL* timing__fields _NL* _END "timing"i
+models__block: _BEGIN "models"i [_remark] _NL _NL* models__fields _NL* _END "models"i
+exchanges__block: _BEGIN "exchanges"i [_remark] _NL _NL* exchanges__fields _NL* _END "exchanges"i
+solutiongroup__block: _BEGIN "solutiongroup"i block_index [_remark] _NL _NL* solutiongroup__fields _NL* _END "solutiongroup"i [block_index]
 %import typed.block_index -> block_index
 options__fields: ((continue__kw | nocheck__kw | memory_print_option__val | profile_option__val | maxerrors__val | print_input__kw | hpc_filerecord__rec | open_close_redirect) _NL*)*
 timing__fields: ((tdis6__val | open_close_redirect) _NL*)*

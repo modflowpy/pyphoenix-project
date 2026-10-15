@@ -10,6 +10,8 @@
 %import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
+%import typed._BEGIN -> _BEGIN
+%import typed._END -> _END
 %import typed.COMMA -> COMMA
 %import common.WS_INLINE
 %import common.SH_COMMENT
@@ -23,8 +25,8 @@
 start: _NL* (block _NL*)*
 block: options__block | packages__block
 
-options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
-packages__block: "begin"i "packages"i [_remark] _NL _NL* packages__fields _NL* "end"i "packages"i
+options__block: _BEGIN "options"i [_remark] _NL _NL* options__fields _NL* _END "options"i
+packages__block: _BEGIN "packages"i [_remark] _NL _NL* packages__fields _NL* _END "packages"i
 options__fields: ((list__val | print_input__kw | print_flows__kw | save_flows__kw | newtonoptions__rec | nc_mesh2d_filerecord__rec | nc_structured_filerecord__rec | nc_filerecord__rec | open_close_redirect) _NL*)*
 packages__fields: ((packagesdata | open_close_redirect) _NL*)*
 list__val: "list"i string

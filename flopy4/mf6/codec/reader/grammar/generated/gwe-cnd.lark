@@ -10,6 +10,8 @@
 %import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
+%import typed._BEGIN -> _BEGIN
+%import typed._END -> _END
 %import typed.COMMA -> COMMA
 %import common.WS_INLINE
 %import common.SH_COMMENT
@@ -23,8 +25,8 @@
 start: _NL* (block _NL*)*
 block: options__block | griddata__block
 
-options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
-griddata__block: "begin"i "griddata"i [_remark] _NL _NL* griddata__fields _NL* "end"i "griddata"i
+options__block: _BEGIN "options"i [_remark] _NL _NL* options__fields _NL* _END "options"i
+griddata__block: _BEGIN "griddata"i [_remark] _NL _NL* griddata__fields _NL* _END "griddata"i
 options__fields: ((xt3d_off__kw | xt3d_rhs__kw | export_array_ascii__kw | export_array_netcdf__kw | open_close_redirect) _NL*)*
 griddata__fields: ((alh__val | alv__val | ath1__val | ath2__val | atv__val | ktw__val | kts__val | open_close_redirect) _NL*)*
 xt3d_off__kw: "xt3d_off"i  [_remark] _NL
