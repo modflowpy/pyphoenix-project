@@ -274,7 +274,7 @@ class StructuredGrid(LegacyStructuredGrid):
             "x": xr.DataArray(xy["x"][1], dims=xy["x"][0]),
             "y": xr.DataArray(xy["y"][1], dims=xy["y"][0]),
             "z": xr.DataArray(z, dims=("layer", "row", "col")),
-            "projection": xr.Variable(*grid_mapping(self._xoff, self._yoff, self.angrot)),
+            "projection": xr.Variable(*grid_mapping(self._xoff, self._yoff, self.angrot, self.crs)),
         }
 
     @property
@@ -1376,6 +1376,22 @@ def to_world(x, y, xorigin=None, yorigin=None, angrot=None) -> tuple[np.ndarray,
     return (xorigin or 0.0) + x, (yorigin or 0.0) + y
 
 
+def to_local(x, y, xorigin=None, yorigin=None, angrot=None):
+    """World coordinates to model coordinates, relative to the grid's
+    origin: the inverse of ``to_world``. DataArrays stay DataArrays, so
+    their dims survive for point-wise selection."""
+    if not isinstance(x, xr.DataArray):
+        x = np.asarray(x, dtype=np.float64)
+    if not isinstance(y, xr.DataArray):
+        y = np.asarray(y, dtype=np.float64)
+    x = x - (xorigin or 0.0)
+    y = y - (yorigin or 0.0)
+    if angrot:
+        t = np.deg2rad(angrot)
+        x, y = x * np.cos(t) + y * np.sin(t), -x * np.sin(t) + y * np.cos(t)
+    return x, y
+
+
 def structured_centers(delr, delc, xorigin=None, yorigin=None, angrot=None) -> dict[str, Any]:
     """A structured grid's cell centres in its CRS: ``x`` on ``col`` and
     ``y`` on ``row``. Unrotated, they're world coordinates, offset by the
@@ -1392,17 +1408,34 @@ def structured_centers(delr, delc, xorigin=None, yorigin=None, angrot=None) -> d
     return {"x": ("col", x), "y": ("row", y)}
 
 
-def grid_mapping(xorigin=None, yorigin=None, angrot=None) -> tuple:
+def grid_mapping(xorigin=None, yorigin=None, angrot=None, crs=None) -> tuple:
     """A structured grid's ``projection`` coordinate: a scalar whose attrs
     place the grid in the world, so x/y can be read without the model. As
     in a CF grid mapping variable, which MF6 and ``to_xarray()`` write
     under the same name, and which arrays name in their ``grid_mapping``
-    attr."""
-    attrs = {
+    attr. With a CRS, it has the grid's CRS as ``crs_wkt``, as they write
+    it: the CRS itself, or wrapped with the rotation if the grid's rotated
+    (see ``wrap_rotated_crs``)."""
+    attrs: dict[str, Any] = {
         "xorigin": float(xorigin or 0.0),
         "yorigin": float(yorigin or 0.0),
         "angrot": float(angrot or 0.0),
     }
+    if crs is not None:
+        from pyproj import CRS
+        from pyproj.enums import WktVersion
+
+        from flopy4.mf6.utils.crs import wrap_rotated_crs
+
+        crs = CRS.from_user_input(crs)
+        wrapped = (
+            wrap_rotated_crs(crs, attrs["xorigin"], attrs["yorigin"], attrs["angrot"])
+            if angrot
+            else None
+        )
+        attrs["crs_wkt"] = (wrapped or crs).to_wkt(WktVersion.WKT2_2019)
+        if gmn := crs.to_cf().get("grid_mapping_name"):
+            attrs["grid_mapping_name"] = gmn
     return ((), np.int64(1), attrs)
 
 
@@ -1413,7 +1446,9 @@ def get_coords(grid: LegacyStructuredGrid) -> dict[str, Any]:
     dx = np.broadcast_to(np.asarray(grid.delr, dtype=np.float64), (grid.ncol,))
     dy = np.broadcast_to(np.asarray(grid.delc, dtype=np.float64), (grid.nrow,))
     coords: dict[str, Any] = structured_centers(dx, dy, grid.xoffset, grid.yoffset, grid.angrot)
-    coords["projection"] = grid_mapping(grid.xoffset, grid.yoffset, grid.angrot)
+    coords["projection"] = grid_mapping(
+        grid.xoffset, grid.yoffset, grid.angrot, getattr(grid, "crs", None)
+    )
     if np.allclose(dx, dx[0]) and np.allclose(dy, dy[0]):
         coords["dx"] = np.array(float(dx[0]))
         coords["dy"] = np.array(-float(dy[0]))
@@ -1451,15 +1486,38 @@ def index_xy(obj):
     """Index a structured array's (or dataset's) x and y coordinates, so it
     can be selected by them (``sel(x=..., method="nearest")``), and point
     its gridded variables to its ``projection`` coordinate, if it has
-    one."""
+    one. If that says the grid's rotated, x/y are local, so give it the
+    cells' world coordinates too, as ``x_world``/``y_world`` on
+    ``(row, col)``; select by those with ``sel_world``."""
     if "x" not in obj.coords or "y" not in obj.coords:
         return obj
     obj = obj.set_xindex("x", PandasIndex).set_xindex("y", PandasIndex)
-    if "projection" in obj.coords:
-        for da in [obj] if isinstance(obj, xr.DataArray) else obj.data_vars.values():
-            if "row" in da.dims and "col" in da.dims:
-                da.attrs["grid_mapping"] = "projection"
+    if "projection" not in obj.coords:
+        return obj
+    for da in [obj] if isinstance(obj, xr.DataArray) else obj.data_vars.values():
+        if "row" in da.dims and "col" in da.dims:
+            da.attrs["grid_mapping"] = "projection"
+    proj = obj.coords["projection"].attrs
+    if proj.get("angrot") and obj.x.dims == ("col",) and obj.y.dims == ("row",):
+        x, y = np.meshgrid(obj.x.values, obj.y.values)
+        xw, yw = to_world(x, y, proj["xorigin"], proj["yorigin"], proj["angrot"])
+        obj = obj.assign_coords(x_world=(("row", "col"), xw), y_world=(("row", "col"), yw))
     return obj
+
+
+def sel_world(obj, x, y, **kwargs):
+    """Select from an array (or dataset) by world coordinates. On a rotated
+    structured grid, x/y are local, so convert to them through the
+    ``projection`` coordinate first; otherwise, x/y are already world
+    coordinates, so it's just ``sel``. ``kwargs`` go to ``sel``, e.g.
+    ``method="nearest"``. For point-wise selection, pass x and y as
+    DataArrays sharing a dim."""
+    proj = obj.coords["projection"].attrs if "projection" in obj.coords else {}
+    if proj.get("angrot"):
+        x, y = to_local(x, y, proj["xorigin"], proj["yorigin"], proj["angrot"])
+        if not isinstance(x, xr.DataArray) and np.ndim(x) == 0:
+            x, y = float(x), float(y)
+    return obj.sel(x=x, y=y, **kwargs)
 
 
 def dims_from_grb(grb_path) -> dict:

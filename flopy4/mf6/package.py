@@ -996,6 +996,7 @@ class Package(Component, ABC):
             getattr(dis, "xorigin", None),
             getattr(dis, "yorigin", None),
             getattr(dis, "angrot", None),
+            getattr(dis, "crs", None),
         )
         return index_xy(da.assign_coords(projection=projection))
 

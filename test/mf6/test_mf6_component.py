@@ -1715,6 +1715,71 @@ def test_to_dataarray_cell_centers_structured_rotated():
     assert "x" in da.indexes and "y" in da.indexes
     assert da.attrs["grid_mapping"] == "projection"
     assert da.projection.attrs == {"xorigin": 10.0, "yorigin": 20.0, "angrot": 90.0}
+    # the cells' world coordinates, unindexed
+    assert da.x_world.dims == ("row", "col")
+    assert np.allclose(da.x_world, [[8.5, 8.5], [9.5, 9.5]])
+    assert np.allclose(da.y_world, [[20.5, 21.5], [20.5, 21.5]])
+    assert "x_world" not in da.indexes
+
+
+def test_to_dataarray_cell_centers_structured_unrotated_no_world():
+    """An unrotated grid's x/y are already world coordinates, so there are
+    no separate world coordinates."""
+    gwf = Gwf(dis=Dis(nlay=1, nrow=2, ncol=2, delr=1.0, delc=1.0, xorigin=10.0, botm=[0.0]))
+    da = gwf.dis.to_dataarray("botm")
+    assert "x_world" not in da.coords and "y_world" not in da.coords
+
+
+def test_sel_world_rotated():
+    """sel_world finds each cell of a rotated, non-uniform grid from its
+    world centre, scalar or point-wise, and on an unrotated grid it's sel."""
+    from flopy4.mf6.utils.grid import sel_world
+
+    gwf = Gwf(
+        dis=Dis(
+            nlay=1,
+            nrow=3,
+            ncol=3,
+            delr=[1.0, 1.0, 4.0],
+            delc=[2.0, 1.0, 1.0],
+            xorigin=100.0,
+            yorigin=200.0,
+            angrot=30.0,
+            botm=[0.0],
+            idomain=np.arange(9).reshape(1, 3, 3),
+        )
+    )
+    da = gwf.dis.to_dataarray("idomain")
+    for row in range(3):
+        for col in range(3):
+            x, y = float(da.x_world[row, col]), float(da.y_world[row, col])
+            assert sel_world(da, x, y, method="nearest").item() == 3 * row + col
+
+    p = xr.DataArray([0, 2], dims="p")
+    xw, yw = da.x_world.isel(row=p, col=p), da.y_world.isel(row=p, col=p)
+    assert sel_world(da, xw, yw, method="nearest").squeeze().values.tolist() == [0, 8]
+
+    flat = Gwf(dis=Dis(nlay=1, nrow=2, ncol=2, delr=1.0, delc=1.0, xorigin=10.0, botm=[0.0]))
+    da = flat.dis.to_dataarray("botm")
+    assert sel_world(da, 10.6, 0.4, method="nearest").identical(
+        da.sel(x=10.6, y=0.4, method="nearest")
+    )
+
+
+def test_to_dataarray_projection_crs():
+    """With a CRS, the projection coordinate has the grid's CRS as
+    crs_wkt, as MF6 writes it: wrapped with the rotation if rotated."""
+    from pyproj import CRS
+
+    kwargs = dict(nlay=1, nrow=2, ncol=2, delr=1.0, delc=1.0, botm=[0.0], crs="EPSG:26916")
+    da = Gwf(dis=Dis(**kwargs)).dis.to_dataarray("botm")
+    assert CRS.from_wkt(da.projection.attrs["crs_wkt"]) == CRS.from_epsg(26916)
+    assert da.projection.attrs["grid_mapping_name"] == "transverse_mercator"
+
+    da = Gwf(dis=Dis(xorigin=10.0, angrot=30.0, **kwargs)).dis.to_dataarray("botm")
+    crs = CRS.from_wkt(da.projection.attrs["crs_wkt"])
+    assert crs.is_derived
+    assert crs.source_crs == CRS.from_epsg(26916)
 
 
 def test_to_dataarray_cell_centers_vertex_rotated():
@@ -1760,6 +1825,8 @@ def test_structured_grid_rotated():
     assert grid.dataset.top.attrs["grid_mapping"] == "projection"
     attrs = {"xorigin": 10.0, "yorigin": 20.0, "angrot": 90.0}
     assert grid.dataset.projection.attrs == attrs
+    assert np.allclose(grid.dataset.x_world, [[8.5, 8.5], [9.5, 9.5]])
+    assert np.allclose(grid.dataset.y_world, [[20.5, 21.5], [20.5, 21.5]])
 
     wrapper = StructuredGridWrapper(
         nlay=1, nrow=2, ncol=2, delr=np.ones(2), delc=np.ones(2), xoff=10.0, yoff=20.0, angrot=90.0
