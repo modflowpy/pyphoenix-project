@@ -202,11 +202,6 @@ class ComponentSpec:
 # vs fill_forward= metadata) differs between them.
 
 
-# Columns a package option turns on: MF6 reads one only if the option is
-# set. The DFNs say so only in the column's description.
-_OPTION_COLUMNS = {"petm0": "surf_rate_specified"}  # gwf-evt
-
-
 def _item_columns(
     columns: list[ColumnSpec],
     unions: "Mapping[str, tuple[list[str], list[str]]] | None" = None,
@@ -248,7 +243,11 @@ def _item_columns(
         f = col.field
         name = col.name
         dfn_type = _dfn_type_str(f)
-        optional = bool(f.optional) or name in counts
+        # A column an option turns on (the DFN's `when`, e.g. EVT's petm0) may
+        # be absent, so it's optional here; the runtime requires it when the
+        # option is on (see item._layout).
+        when = getattr(f, "when", None)
+        optional = bool(f.optional) or bool(when) or name in counts
         ts = bool(getattr(f, "time_series", False))
         if isinstance(f, File):
             if len(pending_prefix) > 1:
@@ -313,8 +312,11 @@ def _item_columns(
                 dfn_type,
                 optional=optional,
                 time_series=ts,
-                option=_OPTION_COLUMNS.get(name),
+                option=when,
             )
+            when = None
+        if when and name != "boundname":
+            raise NotImplementedError(f"column {name!r}: when={when!r} on a non-scalar column")
         items.append(item)
     return items
 
