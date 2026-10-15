@@ -64,6 +64,41 @@ END options
     ]
 
 
+def test_loads_number_only_lines():
+    # Lines of only numbers are read in bulk (NUMBER_LINES), and must read
+    # as any other line would: each value int or float as written, blank
+    # and comment-only lines dropped, a line with anything else on it whole.
+    mf6_input = """
+BEGIN griddata
+  botm
+  INTERNAL FACTOR 1.0
+    1 2 3
+
+   4.5 .5 1. -2
+  # a comment
+  1D-5,2d3, +3e2
+  1 2 3 bname
+  1 2 # comment
+  1-2 3
+  1 2
+END griddata
+"""
+
+    result = loads(mf6_input)
+    assert result["griddata"] == [
+        ["botm"],
+        ["INTERNAL", "FACTOR", 1.0],
+        [1, 2, 3],
+        [4.5, 0.5, 1.0, -2],
+        [1e-5, 2000.0, 300.0],
+        [1, 2, 3, "bname"],
+        [1, 2],
+        ["1-2", 3],
+        [1, 2],
+    ]
+    assert [type(v) for v in result["griddata"][3]] == [float, float, float, int]
+
+
 def test_dumps_ic():
     from flopy4.mf6.gwf import Dis, Gwf, Ic
 
