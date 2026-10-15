@@ -128,9 +128,8 @@ def _has_boundname_field(cls: type) -> bool:
 
 
 def conditional_fields(item_cls: "type[Item] | tuple[type[Item], ...]") -> dict[str, str]:
-    """An item class's fields a package option turns on (the DFN's
-    ``when``), by name, to the option (EVT's petm0, by surf_rate_specified).
-    MF6 reads one only if its option is set."""
+    """An item class's fields an option turns on (the DFN's ``when``), by
+    name, to the option."""
     classes = item_cls if isinstance(item_cls, tuple) else (item_cls,)
     return {
         f.name: option
@@ -141,8 +140,7 @@ def conditional_fields(item_cls: "type[Item] | tuple[type[Item], ...]") -> dict[
 
 
 def _may_be_absent(f: attrs.Attribute) -> bool:
-    """Whether a column may be missing from a row: it's optional, or an
-    option turns it on (and the option may be off)."""
+    """Whether a field may be missing from a row."""
     return bool(f.metadata.get("optional") or f.metadata.get("when"))
 
 
@@ -393,9 +391,8 @@ class RowContext:
     exchange's models may be on different grids); None if not known.
     ``sizes`` gives the counts of the inline arrays the package sizes, by
     shape expression (aux, by ``auxiliary``); one not given isn't known.
-    ``boundnames`` is the package's option. ``enabled`` are the options
-    that turn fields on (see `conditional_fields`) the package has set;
-    None if not known."""
+    ``boundnames`` is the package's option. ``enabled`` are the set
+    options that turn fields on; None if not known."""
 
     ncelldim: int | Mapping[str, int] | None = None
     sizes: Mapping[str, int] = attrs.field(factory=dict)
@@ -505,9 +502,8 @@ def _layout(
     (and a value is left for it). For Python values with it unset, one
     value more than the row's fields take is the boundname, and the
     package then sets the option. A field an option turns on (EVT's petm0)
-    is there if the package's ``enabled`` options say, as MF6 reads it; for Python
-    values, or if they aren't known, if the values make room for it (the
-    package then sets the option). A width that isn't known (no
+    is there if the option is enabled, or, if that isn't known, if the
+    values make room for it. A width that isn't known (no
     grid yet) is the one the values make room for, if only one does;
     otherwise this raises, asking for the field as a tuple. Like MF6, a
     file row's extra tokens are ignored, if no layout uses them all.
@@ -537,8 +533,7 @@ def _layout(
 
     def fits(slot: _Slot, pos: int, end: int, out: dict, unknown: dict, conditional: bool):
         """Each way the slot can take values from ``pos``: the position
-        after it, what it took, and the unknown widths it assumed. A field
-        an option turns on is there just if it's on, if ``conditional``."""
+        after it, what it took, and the unknown widths it assumed."""
         f = slot.field
         left = end - pos
         v = values[pos] if left else None

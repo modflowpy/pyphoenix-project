@@ -877,9 +877,9 @@ def attr_column(
     **kwargs,
 ) -> ItemColumn:
     """The generic rendering: ``name: T = fn(*args, meta)``, ``fn`` the field
-    function for the DFN type (see `flopy4.mf6.spec`), or, when it may be
-    absent (optional, or turned on by the option ``when``), ``Optional[T]``
-    with a ``None`` default (or ``T`` with ``default``)."""
+    function for the DFN type (see `flopy4.mf6.spec`), or, when optional
+    or ``when`` an option is set, ``Optional[T]`` with a ``None`` default
+    (or ``T`` with ``default``)."""
     meta = dict(meta)
     if time_series:
         meta["time_series"] = True
@@ -921,8 +921,7 @@ def value_column(
     time_series: bool = False,
     when: str | None = None,
 ) -> ItemColumn:
-    """A plain scalar. A time series value may also be a series reference.
-    One a package option turns on (``when``) is read only if it's set."""
+    """A plain scalar. A time series value may also be a series reference."""
     py_type = "Union[float, TimeSeriesRef]" if time_series else _DFN_PY.get(dfn_type, "float")
     return attr_column(
         name,

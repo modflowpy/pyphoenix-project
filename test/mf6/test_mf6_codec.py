@@ -1869,9 +1869,8 @@ def test_row_boundname_by_option(boundnames):
     ],
 )
 def test_row_conditional_field_or_boundname(boundnames, surf_rate, tokens, petm0, boundname):
-    """EVT's petm0 is there if, and only if, SURF_RATE_SPECIFIED is set,
-    and the boundname if BOUNDNAMES is, as MF6 reads them, whatever the
-    tokens look like."""
+    """EVT's petm0 is there iff SURF_RATE_SPECIFIED is set, and the
+    boundname if BOUNDNAMES is."""
     from flopy4.mf6.gwf import Evt
     from flopy4.mf6.item import RowContext
 

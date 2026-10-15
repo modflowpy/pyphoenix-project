@@ -376,8 +376,7 @@ class Package(Component, ABC):
         """What the layout of a row of ``item_cls`` given in Python depends
         on (see `Item.from_values`): the grid's ncelldim, if known (an
         exchange's two grids aren't, here), the sizes of the inline arrays
-        the package sizes, and its options that turn fields on (the
-        boundnames, EVT's surf_rate_specified). A size the rows can
+        the package sizes, and its enabled options. A size the rows can
         set (EVT's nseg, GNC's numalphaj) is solved from them if unset;
         one they can't (aux's, by the names in ``auxiliary``) is 0."""
         fields = attrs.fields_dict(type(self))  # type: ignore[arg-type]
@@ -431,9 +430,8 @@ class Package(Component, ABC):
         takes. Ambiguous columnar dict-of-lists input isn't supported (no
         single arm to build columns from).
 
-        A row with a boundname sets the package's boundnames option, which
-        MF6 needs to read it; one with a field an option turns on (EVT's
-        petm0) sets that option.
+        A row with a boundname, or a field an option turns on, sets that
+        option, which MF6 needs to read it.
         """
         context = self._row_context(item_cls)
         if isinstance(item_cls, tuple):
@@ -576,9 +574,7 @@ class Package(Component, ABC):
                             )
 
     def _check_obs_ids(self) -> None:
-        """Warn if an observation names a boundname that reads as a number,
-        which MF6 may read as a cell instead: on a grid whose cellids are
-        one number (DISU), another cell; on another grid, an error."""
+        """Warn if an observation names a boundname MF6 may read as a cell."""
         boundnames = set()
         for f in attrs.fields(type(self)):  # type: ignore[arg-type]
             if item_list_type(f.type) is None:

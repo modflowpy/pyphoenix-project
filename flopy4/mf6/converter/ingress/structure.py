@@ -1064,7 +1064,6 @@ def structure_component(
             if (n := dim_value(shape, lookup=lambda name: dim_lookup(kwargs, name))) is not None:
                 sizes[shape] = n
     boundnames = bool(kwargs.get("boundnames", False))
-    # The options turning fields on (EVT's surf_rate_specified) that are set.
     enabled = frozenset(
         o for ic in item_types for o in conditional_fields(ic).values() if kwargs.get(o)
     )
