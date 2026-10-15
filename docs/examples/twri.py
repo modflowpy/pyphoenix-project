@@ -40,7 +40,7 @@ def plot_head(head, workspace):
 
     # Plot head results
     plt.figure(figsize=(10, 6))
-    head.isel(layer=0, time=0).plot.contourf()
+    head.isel(layer=0, time=0).plot.contourf(x="x", y="y")
     plt.title("Filled Contour Plot TWRI Head")
     plt.xlabel("x")
     plt.ylabel("y")

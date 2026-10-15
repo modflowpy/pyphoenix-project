@@ -236,7 +236,7 @@ def _read_disv_grb(grb) -> dict[str, Any]:
 
     idomain = grb.idomain.reshape((nlay, ncpl))
 
-    coords = {"layer": np.arange(1, nlay + 1)}
+    coords: dict[str, Any] = {}
     crs = grb._datadict["CRS"] if grb._version == "2" else None
 
     return {

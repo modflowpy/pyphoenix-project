@@ -47,7 +47,7 @@ def plot_head(head, workspace):
     data = head.isel(layer=0, time=0)
     fig, ax = plt.subplots(figsize=(10, 6))
 
-    data.plot.contourf(ax=ax)
+    data.plot.contourf(ax=ax, x="x", y="y")
 
     ax.set_xlim(590000, 599000)
     ax.set_ylim(4078000, 4085000)

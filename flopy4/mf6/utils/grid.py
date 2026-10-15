@@ -1450,14 +1450,16 @@ class VertexGrid(LegacyVertexGrid):
 
 
 def get_coords(grid: LegacyStructuredGrid) -> dict[str, Any]:
+    """A structured grid's world coordinates, x on col and y on row, as
+    for package arrays. No layer coordinate: a position is the index."""
     # unpack tuples
     xmin, xmax, ymin, ymax = grid.extent
     dx, dy = (grid.delr, -grid.delc)  # type: ignore
     coords: collections.OrderedDict[str, Any] = collections.OrderedDict()
     # from cell size to x and y coordinates
     if isinstance(dx, (int, float, np.int_)):  # equidistant
-        coords["x"] = np.arange(xmin + dx / 2.0, xmax, dx)
-        coords["y"] = np.arange(ymax + dy / 2.0, ymin, dy)
+        coords["x"] = ("col", np.arange(xmin + dx / 2.0, xmax, dx))
+        coords["y"] = ("row", np.arange(ymax + dy / 2.0, ymin, dy))
         coords["dx"] = np.array(float(dx))
         coords["dy"] = np.array(float(dy))
     else:  # nonequidistant
@@ -1465,16 +1467,21 @@ def get_coords(grid: LegacyStructuredGrid) -> dict[str, Any]:
         # we always convert them to float64
         dx = dx.astype(np.float64)
         dy = dy.astype(np.float64)
-        coords["x"] = xmin + np.cumsum(dx) - 0.5 * dx
-        coords["y"] = ymax + np.cumsum(dy) - 0.5 * dy
+        coords["x"] = ("col", xmin + np.cumsum(dx) - 0.5 * dx)
+        coords["y"] = ("row", ymax + np.cumsum(dy) - 0.5 * dy)
         if np.allclose(dx, dx[0]) and np.allclose(dy, dy[0]):
             coords["dx"] = np.array(float(dx[0]))
             coords["dy"] = np.array(float(dy[0]))
         else:
-            coords["dx"] = ("x", dx)
-            coords["dy"] = ("y", dy)
-    coords["layer"] = np.arange(1, grid.nlay + 1)
+            coords["dx"] = ("col", dx)
+            coords["dy"] = ("row", dy)
     return coords
+
+
+def index_xy(da: xr.DataArray) -> xr.DataArray:
+    """Index a structured array's x and y coordinates, so it can be
+    selected by them (``sel(x=..., method="nearest")``)."""
+    return da.set_xindex("x", PandasIndex).set_xindex("y", PandasIndex)
 
 
 def dims_from_grb(grb_path) -> dict:

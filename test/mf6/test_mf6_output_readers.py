@@ -184,9 +184,17 @@ def test_open_hds_dis(dis_model_output):
     head = open_hds(paths["hds"], paths["grb"])
 
     assert isinstance(head, xr.DataArray)
-    assert set(head.dims) == {"time", "layer", "y", "x"}
+    assert head.dims == ("time", "layer", "row", "col")
     assert head.shape == (1, paths["nlay"], paths["nrow"], paths["ncol"])
     assert not np.all(np.isnan(head.values))
+    # x and y are world coordinates on col and row, and select; no layer
+    # coordinate, as for package arrays
+    assert head.coords["x"].dims == ("col",)
+    assert head.coords["y"].dims == ("row",)
+    assert "layer" not in head.coords
+    x, y = float(head.x[1]), float(head.y[2])
+    picked = head.sel(x=x, y=y)
+    np.testing.assert_array_equal(picked.values, head.isel(col=1, row=2).values)
 
 
 def test_open_cbc_dis(dis_model_output):
@@ -312,7 +320,7 @@ def test_open_hds_dis_netcdf_conventional(function_tmpdir, dis_model_output):
     head = open_hds(nc_path, paths["grb"])
 
     assert isinstance(head, xr.DataArray)
-    assert head.dims == ("time", "layer", "y", "x")
+    assert head.dims == ("time", "layer", "row", "col")
     assert head.shape == (ntime, nlay, nrow, ncol)
     np.testing.assert_allclose(head.values, data)
 
@@ -452,6 +460,18 @@ def test_open_hds_dis_face_budget_values(dis_model_output):
     # Check that the face flows have the right shape
     if "flow-right-face" in cbc.data_vars:
         right = cbc["flow-right-face"]
-        assert right.dims == ("time", "layer", "y", "x")
+        assert right.dims == ("time", "layer", "row", "col")
+        assert right.coords["x"].dims == ("col",)
         # Should have at least some non-zero values (CHD drives flow)
         assert float(np.abs(right.values).max()) > 0.0
+
+
+def test_open_cbc_dis_selects_by_xy(dis_model_output):
+    """Every DIS budget array, face flows too, selects by x and y."""
+    paths = dis_model_output
+    cbc = open_cbc(paths["cbc"], paths["grb"])
+    gridded = [da for da in cbc.data_vars.values() if "row" in da.dims]
+    assert gridded
+    for da in gridded:
+        x, y = float(da.x[1]), float(da.y[0])
+        np.testing.assert_array_equal(da.sel(x=x, y=y).values, da.isel(col=1, row=0).values)

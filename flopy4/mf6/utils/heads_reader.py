@@ -10,7 +10,7 @@ from flopy.discretization import StructuredGrid
 
 from flopy4.adapters import read_binary_grid_file
 
-from .grid import get_coords
+from .grid import get_coords, index_xy
 from .time import assign_datetime_coords
 
 
@@ -100,7 +100,9 @@ def _open_hds_dis(
     daskarr = dask.array.stack(dask_list, axis=0)
     # reshape to (ntime, nlayer, nrow, ncol)
     daskarr = daskarr.reshape((ntime, nlayer, nrow, ncol))
-    data_array = xr.DataArray(daskarr, coords, ("time", "layer", "y", "x"), name="head")
+    data_array = index_xy(
+        xr.DataArray(daskarr, coords, ("time", "layer", "row", "col"), name="head")
+    )
     if simulation_start_time is not None:
         data_array = assign_datetime_coords(data_array, simulation_start_time, time_unit)
     return data_array
@@ -211,7 +213,7 @@ def _open_hds_netcdf(
         data = _dask_to_nan(data, dry_nan)
         coords = get_coords(grid)
         coords["time"] = time_values
-        return xr.DataArray(data, coords, ("time", "layer", "y", "x"), name="head")
+        return index_xy(xr.DataArray(data, coords, ("time", "layer", "row", "col"), name="head"))
 
     # --- CF-UGRID layered: head_l1, head_l2, ... on (time, nmesh_face) ---
     head_vars = sorted(
@@ -233,7 +235,7 @@ def _open_hds_netcdf(
         data = dask.array.stack(arrays, axis=1)  # (ntime, nlayer, ncpl)
         data = _dask_to_nan(data, dry_nan)
 
-        coords = {"time": time_values, "layer": np.arange(1, nlayer + 1)}
+        coords = {"time": time_values}
         da = xr.DataArray(data, coords, ("time", "layer", facedim), name="head")
         return xu.UgridDataArray(da, grid)
 
@@ -250,7 +252,7 @@ def _open_hds_netcdf(
 
         coords = get_coords(grid)
         coords["time"] = time_values
-        return xr.DataArray(data, coords, ("time", "layer", "y", "x"), name="head")
+        return index_xy(xr.DataArray(data, coords, ("time", "layer", "row", "col"), name="head"))
 
     else:
         raise ValueError(
