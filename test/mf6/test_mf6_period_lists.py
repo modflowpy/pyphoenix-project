@@ -67,6 +67,19 @@ def test_array_column_has_a_dim_named_for_its_size():
     round_trips(evt)
 
 
+def test_conditional_column():
+    """petm0 is there only with SURF_RATE_SPECIFIED."""
+    evt = Evt(
+        nseg=2,
+        surf_rate_specified=True,
+        stress_period_data={0: [((0, 0, 0), 1.0, 0.1, 2.0, (0.3,), (0.5,), 0.7)]},
+        dims=DIMS,
+    )
+    ds = evt.to_xarray()
+    assert ds["petm0"].values[0, 0, 0, 0] == 0.7
+    round_trips(evt)
+
+
 def test_disv_grid():
     chd = Chd(stress_period_data={0: [((1, 2), 1.0)]}, dims={"nlay": 2, "ncpl": 4, "nper": 1})
     head = chd.to_xarray()["head"]

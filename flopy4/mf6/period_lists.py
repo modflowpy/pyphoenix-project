@@ -53,7 +53,13 @@ from modflow_devtools.dfns.schema import split_bound
 
 from flopy4.mf6._types import TimeSeriesRef
 from flopy4.mf6.constants import FILL_DNODATA, FILL_INT64, GRID_DIMS
-from flopy4.mf6.item import Item, _union_field_arms, item_list_type, item_list_words
+from flopy4.mf6.item import (
+    Item,
+    _may_be_absent,
+    _union_field_arms,
+    item_list_type,
+    item_list_words,
+)
 from flopy4.spec import is_array
 
 Duplicates = Literal["raise", "sum", "first", "last"]
@@ -656,7 +662,7 @@ def _block_rows(
                         kwargs[c.field.name] = vs
                 elif ns and (v := dense.value(now, ns[0], c, at)) is not None:
                     kwargs[c.field.name] = v
-                if c.field.name not in kwargs and not c.field.metadata.get("optional"):
+                if c.field.name not in kwargs and not _may_be_absent(c.field):
                     raise ValueError(
                         f"{c.field.name} has no value at {at} in period {p}, where other columns do"
                     )
