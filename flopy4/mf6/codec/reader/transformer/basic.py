@@ -11,11 +11,11 @@ _NUMBER = re.compile(r"[+-]?(\d+(\.\d*)?|\.\d+)([eEdD][+-]?\d+)?")
 
 
 class _Rows(list):
-    """A numeric run's rows, which its block splices in among its lines."""
+    """NUMBER_LINES' rows, which `block` splices in among its other lines."""
 
 
 def _number(value: str) -> int | float:
-    """`parse_number` for a value the run's pattern took, `D`s already `E`."""
+    """`parse_number` for a value NUMBER_LINES took, `D`s already `E`."""
     if "." in value or "e" in value or "E" in value:
         return float(value)
     return int(value)
@@ -79,7 +79,7 @@ class BasicTransformer(Transformer):
             return parse_number(value.replace("d", "e").replace("D", "E"))
         return value
 
-    def NUMERIC_RUN(self, token: Token) -> _Rows:
+    def NUMBER_LINES(self, token: Token) -> _Rows:
         # Each line a row, as `line` reads it; blank and comment-only lines
         # aren't rows. (A comment's text may change below -- it's skipped.)
         text = str(token).replace(",", " ")

@@ -63,7 +63,7 @@ END options
 
 
 def test_loads_number_only_lines():
-    # Lines of only numbers are read in bulk (a numeric run), and must read
+    # Lines of only numbers are read in bulk (NUMBER_LINES), and must read
     # as any other line would: each value int or float as written, blank
     # and comment-only lines dropped, a line with anything else on it whole.
     mf6_input = """
