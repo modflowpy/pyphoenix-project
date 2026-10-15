@@ -202,6 +202,11 @@ class ComponentSpec:
 # vs fill_forward= metadata) differs between them.
 
 
+# Columns a package option turns on: MF6 reads one only if the option is
+# set. The DFNs say so only in the column's description.
+_OPTION_COLUMNS = {"petm0": "surf_rate_specified"}  # gwf-evt
+
+
 def _item_columns(
     columns: list[ColumnSpec],
     unions: "Mapping[str, tuple[list[str], list[str]]] | None" = None,
@@ -308,6 +313,7 @@ def _item_columns(
                 dfn_type,
                 optional=optional,
                 time_series=ts,
+                option=_OPTION_COLUMNS.get(name),
             )
         items.append(item)
     return items

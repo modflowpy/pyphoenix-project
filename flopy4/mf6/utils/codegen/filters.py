@@ -920,14 +920,16 @@ def value_column(
     *,
     optional: bool = False,
     time_series: bool = False,
+    option: str | None = None,
 ) -> ItemColumn:
-    """A plain scalar. A time series value may also be a series reference."""
+    """A plain scalar. A time series value may also be a series reference.
+    One a package ``option`` turns on is read only if it's set."""
     py_type = "Union[float, TimeSeriesRef]" if time_series else _DFN_PY.get(dfn_type, "float")
     return attr_column(
         name,
         py_type,
         _DFN_FN.get(dfn_type, "double"),
-        {},
+        {"option": option} if option else {},
         optional=optional,
         time_series=time_series,
     )
