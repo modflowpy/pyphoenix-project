@@ -67,7 +67,8 @@ _NUMBER = re.compile(r"[+-]?(\d+\.?\d*|\.\d+)([ed][+-]?\d+)?", re.IGNORECASE)
 
 
 def _reads_as_number(text: str) -> bool:
-    """Whether MF6 could read a word as a number (Fortran's 1.5d0 too)."""
+    """Whether MF6 could read a word as a number, with an E or a Fortran D
+    exponent."""
     return _NUMBER.fullmatch(text) is not None
 
 
