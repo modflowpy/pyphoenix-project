@@ -243,11 +243,8 @@ def _item_columns(
         f = col.field
         name = col.name
         dfn_type = _dfn_type_str(f)
-        # A column an option turns on (the DFN's `when`, e.g. EVT's petm0) may
-        # be absent, so it's optional here; the runtime requires it when the
-        # option is on (see item._layout).
         when = getattr(f, "when", None)
-        optional = bool(f.optional) or bool(when) or name in counts
+        optional = bool(f.optional) or name in counts
         ts = bool(getattr(f, "time_series", False))
         if isinstance(f, File):
             if len(pending_prefix) > 1:
@@ -312,7 +309,7 @@ def _item_columns(
                 dfn_type,
                 optional=optional,
                 time_series=ts,
-                option=when,
+                when=when,
             )
             when = None
         if when and name != "boundname":

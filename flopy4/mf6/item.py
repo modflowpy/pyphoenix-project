@@ -128,16 +128,22 @@ def _has_boundname_field(cls: type) -> bool:
 
 
 def option_columns(item_cls: "type[Item] | tuple[type[Item], ...]") -> dict[str, str]:
-    """An item class's columns a package option turns on, by name, to the
-    option (EVT's petm0, by surf_rate_specified). MF6 reads one only if its
-    option is set, and then always."""
+    """An item class's columns a package option turns on (the DFN's
+    ``when``), by name, to the option (EVT's petm0, by surf_rate_specified).
+    MF6 reads one only if its option is set."""
     classes = item_cls if isinstance(item_cls, tuple) else (item_cls,)
     return {
         f.name: option
         for c in classes
         for f in cast(type[Record], c).fields()
-        if (option := f.metadata.get("option"))
+        if (option := f.metadata.get("when"))
     }
+
+
+def _may_be_absent(f: attrs.Attribute) -> bool:
+    """Whether a column may be missing from a row: it's optional, or an
+    option turns it on (and the option may be off)."""
+    return bool(f.metadata.get("optional") or f.metadata.get("when"))
 
 
 @lru_cache(maxsize=None)
@@ -329,7 +335,7 @@ def _read_unions(
         if pos == len(tokens) or (form is not None and i == len(form)):
             # trailing optional columns may be absent, but not a form's
             ends = pos == len(tokens) and (i == len(form) if form else True)
-            absent = ends and fields[i].metadata.get("optional")
+            absent = ends and _may_be_absent(fields[i])
             return (0, [None] * (len(fields) - i)) if absent else None
         best = None
         kinds = fields[i].metadata["union"] if form is None else (form[i],)
@@ -536,12 +542,13 @@ def _layout(
         f = slot.field
         left = end - pos
         v = values[pos] if left else None
-        optional = f is not None and f.metadata.get("optional")
+        optional = f is not None and _may_be_absent(f)
         if by_option and f is not None:
             if f.name in off:
                 yield pos, None, unknown
                 return
-            optional = optional and f.name not in on
+            if f.name in on:
+                optional = bool(f.metadata.get("optional"))
         if slot.kind == "keyword":
             if left and str(v).upper() == cast(type[Record], cls).keyword().upper():
                 yield pos + 1, None, unknown
@@ -558,7 +565,7 @@ def _layout(
             if file:
                 yield end, ("unions", values[pos:end], slot.group), unknown
                 return
-            required = sum(1 for g in slot.group if not g.metadata.get("optional"))
+            required = sum(1 for g in slot.group if not _may_be_absent(g))
             for m in range(min(len(slot.group), left), required - 1, -1):
                 yield pos + m, ("unions", values[pos : pos + m], slot.group), unknown
             return
@@ -615,7 +622,7 @@ def _layout(
     together = [
         s.field.name
         for s in slots
-        if cast(type[Item], cls)._columns and s.kind == "value" and s.field.metadata.get("optional")
+        if cast(type[Item], cls)._columns and s.kind == "value" and _may_be_absent(s.field)
     ]
 
     def walk(k: int, pos: int, end: int, out: dict, unknown: dict, surplus: bool, by_option: bool):
@@ -643,9 +650,7 @@ def _layout(
     def optionals(out: dict) -> int:
         """How many optional fields a layout has."""
         return sum(
-            1
-            for k in out
-            if k == "boundname" or (k in fields and fields[k].metadata.get("optional"))
+            1 for k in out if k == "boundname" or (k in fields and _may_be_absent(fields[k]))
         )
 
     def first(solutions) -> "dict | None":
@@ -817,7 +822,7 @@ class Item(Record):
                     )
                 val = n
             if val is None and not (_is_one_cellid(f) and f.metadata.get("allow_zero")):
-                if _is_one_cellid(f) and not f.metadata.get("optional"):
+                if _is_one_cellid(f) and not _may_be_absent(f):
                     raise ValueError(f"{cls.__name__}.{f.name}: no cellid given")
                 continue
             if not keyword_emitted and not _is_row_key(f):

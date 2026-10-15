@@ -871,24 +871,23 @@ def attr_column(
     *,
     optional: bool,
     time_series: bool = False,
+    when: str | None = None,
     default: str = "None",
     args: tuple[str, ...] = (),
     **kwargs,
 ) -> ItemColumn:
     """The generic rendering: ``name: T = fn(*args, meta)``, ``fn`` the field
-    function for the DFN type (see `flopy4.mf6.spec`), or, when optional,
-    ``Optional[T]`` with a ``None`` default (or ``T`` with ``default``)."""
+    function for the DFN type (see `flopy4.mf6.spec`), or, when it may be
+    absent (optional, or turned on by the option ``when``), ``Optional[T]``
+    with a ``None`` default (or ``T`` with ``default``)."""
     meta = dict(meta)
     if time_series:
         meta["time_series"] = True
     if optional:
-        # Needed even for time_series fields: _n_fixed_tokens() (item.py)
-        # uses this to tell "always present" fixed columns apart from
-        # trailing columns that may be entirely absent from a given row
-        # (e.g. EVT's pxdp/petm/petm0, only written when
-        # surf_rate_specified) when inferring a variable-width cellid's
-        # element count from raw token counts.
         meta["optional"] = True
+    if when:
+        meta["when"] = when
+    optional = optional or bool(when)
     positional = [_dq(a) for a in args]
     if optional:
         annotation = py_type if default != "None" else f"Optional[{py_type}]"
@@ -920,18 +919,19 @@ def value_column(
     *,
     optional: bool = False,
     time_series: bool = False,
-    option: str | None = None,
+    when: str | None = None,
 ) -> ItemColumn:
     """A plain scalar. A time series value may also be a series reference.
-    One a package ``option`` turns on is read only if it's set."""
+    One a package option turns on (``when``) is read only if it's set."""
     py_type = "Union[float, TimeSeriesRef]" if time_series else _DFN_PY.get(dfn_type, "float")
     return attr_column(
         name,
         py_type,
         _DFN_FN.get(dfn_type, "double"),
-        {"option": option} if option else {},
+        {},
         optional=optional,
         time_series=time_series,
+        when=when,
     )
 
 
