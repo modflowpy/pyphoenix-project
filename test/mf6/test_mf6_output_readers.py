@@ -267,14 +267,17 @@ def test_open_cbc_disv_flowja(disv_model_output):
 
 
 def test_open_hds_dis_rotated(function_tmpdir):
-    """A rotated grid's rows and columns don't line up with world x and y,
-    so its output has no x/y, the same as its input arrays."""
+    """A rotated grid's output has local x/y and the projection coordinate,
+    the same as its input arrays."""
     paths = _dis_model_output(function_tmpdir, xorigin=100.0, yorigin=200.0, angrot=30.0)
     head = open_hds(paths["hds"], paths["grb"])
     botm = paths["gwf"].dis.to_dataarray("botm")
-    assert head.dims == ("time", "layer", "row", "col")
-    assert "x" not in head.coords and "y" not in head.coords
-    assert "x" not in botm.coords and "y" not in botm.coords
+    assert head.x.dims == ("col",)
+    assert np.allclose(head.x, botm.x)
+    assert np.allclose(head.y, botm.y)
+    assert head.attrs["grid_mapping"] == "projection"
+    assert head.projection.attrs == botm.projection.attrs
+    assert head.projection.attrs == {"xorigin": 100.0, "yorigin": 200.0, "angrot": 30.0}
 
 
 def test_open_hds_disv_rotated(function_tmpdir):

@@ -824,8 +824,10 @@ class Package(Component, ABC):
     def _with_cell_centers(self, da: xr.DataArray) -> xr.DataArray:
         """Give an array its cell centres as x/y coordinates when its
         model's discretization (or this package, if it's one) has them.
-        On a structured grid they're indexed, for `sel(x=..., y=...)`."""
-        from flopy4.mf6.utils.grid import cell_centers, index_xy
+        On a structured grid they're indexed, for `sel(x=..., y=...)`, and
+        the array gets a `projection` coordinate placing them in the world
+        (see `grid_mapping`)."""
+        from flopy4.mf6.utils.grid import cell_centers, grid_mapping, index_xy
 
         dis = self if hasattr(self, "to_grid") else getattr(self._parent, "dis", None)
         coords = {
@@ -836,7 +838,14 @@ class Package(Component, ABC):
         if len(coords) < 2:
             return da
         da = da.assign_coords(coords)
-        return index_xy(da) if "col" in da.dims else da
+        if "col" not in da.dims:
+            return da
+        projection = grid_mapping(
+            getattr(dis, "xorigin", None),
+            getattr(dis, "yorigin", None),
+            getattr(dis, "angrot", None),
+        )
+        return index_xy(da.assign_coords(projection=projection))
 
     def to_xarray(self) -> "xr.Dataset":  # type: ignore[override]
         """All set griddata (or period-array) fields as xr.Dataset.

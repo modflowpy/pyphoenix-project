@@ -236,13 +236,12 @@ class StructuredGrid(LegacyStructuredGrid):
                 "y": ("row", np.arange(self.nrow, dtype=float)),
             }
         else:
-            # a rotated grid's x/y are in its own frame, zero at the
-            # lower-left corner, as to_xarray() writes them (and MF6 does)
             xy = structured_centers(
                 np.broadcast_to(np.asarray(legacy_delr, dtype=np.float64), (self.ncol,)),
                 np.broadcast_to(np.asarray(legacy_delc, dtype=np.float64), (self.nrow,)),
-                None if self.angrot else self._xoff,
-                None if self.angrot else self._yoff,
+                self._xoff,
+                self._yoff,
+                self.angrot,
             )
 
         # Compute z coordinates (cell centers in 3D)
@@ -275,6 +274,7 @@ class StructuredGrid(LegacyStructuredGrid):
             "x": xr.DataArray(xy["x"][1], dims=xy["x"][0]),
             "y": xr.DataArray(xy["y"][1], dims=xy["y"][0]),
             "z": xr.DataArray(z, dims=("layer", "row", "col")),
+            "projection": xr.Variable(*grid_mapping(self._xoff, self._yoff, self.angrot)),
         }
 
     @property
@@ -1376,17 +1376,34 @@ def to_world(x, y, xorigin=None, yorigin=None, angrot=None) -> tuple[np.ndarray,
     return (xorigin or 0.0) + x, (yorigin or 0.0) + y
 
 
-def structured_centers(delr, delc, xorigin=None, yorigin=None) -> dict[str, Any]:
-    """An unrotated structured grid's cell centres: ``x`` on ``col`` and
-    ``y`` on ``row``, offset by the origin. Without an origin they're in
-    the grid's own frame, with the lower-left corner at zero."""
+def structured_centers(delr, delc, xorigin=None, yorigin=None, angrot=None) -> dict[str, Any]:
+    """A structured grid's cell centres in its CRS: ``x`` on ``col`` and
+    ``y`` on ``row``. Unrotated, they're world coordinates, offset by the
+    origin. Rotated, the grid's CRS is the world's rotated about the
+    origin, so they're local, zero at the lower-left corner, as MF6 writes
+    them to netCDF; the rotation is in ``grid_mapping``."""
     delr = np.asarray(delr, dtype=np.float64)
     delc = np.asarray(delc, dtype=np.float64)
     x = np.cumsum(delr) - 0.5 * delr
     # row 0 is the north edge
     y = delc.sum() - np.cumsum(delc) + 0.5 * delc
-    x, y = to_world(x, y, xorigin, yorigin)
+    if not angrot:
+        x, y = to_world(x, y, xorigin, yorigin)
     return {"x": ("col", x), "y": ("row", y)}
+
+
+def grid_mapping(xorigin=None, yorigin=None, angrot=None) -> tuple:
+    """A structured grid's ``projection`` coordinate: a scalar whose attrs
+    place the grid in the world, so x/y can be read without the model. As
+    in a CF grid mapping variable, which MF6 and ``to_xarray()`` write
+    under the same name, and which arrays name in their ``grid_mapping``
+    attr."""
+    attrs = {
+        "xorigin": float(xorigin or 0.0),
+        "yorigin": float(yorigin or 0.0),
+        "angrot": float(angrot or 0.0),
+    }
+    return ((), np.int64(1), attrs)
 
 
 def get_coords(grid: LegacyStructuredGrid) -> dict[str, Any]:
@@ -1395,9 +1412,8 @@ def get_coords(grid: LegacyStructuredGrid) -> dict[str, Any]:
     coordinate: a position is the index."""
     dx = np.broadcast_to(np.asarray(grid.delr, dtype=np.float64), (grid.ncol,))
     dy = np.broadcast_to(np.asarray(grid.delc, dtype=np.float64), (grid.nrow,))
-    coords: dict[str, Any] = (
-        {} if grid.angrot else structured_centers(dx, dy, grid.xoffset, grid.yoffset)
-    )
+    coords: dict[str, Any] = structured_centers(dx, dy, grid.xoffset, grid.yoffset, grid.angrot)
+    coords["projection"] = grid_mapping(grid.xoffset, grid.yoffset, grid.angrot)
     if np.allclose(dx, dx[0]) and np.allclose(dy, dy[0]):
         coords["dx"] = np.array(float(dx[0]))
         coords["dy"] = np.array(-float(dy[0]))
@@ -1411,20 +1427,18 @@ def cell_centers(dis) -> dict[str, Any]:
     """A discretization's cell centres in world coordinates: from
     ``delr``/``delc`` for DIS (see ``structured_centers``), and on the
     cells from ``cell2d`` for DISV and DISU, rotated by ``angrot`` about
-    the origin. Empty if the geometry isn't set, or for a rotated DIS: its
-    rows and columns don't line up with world x and y, so it has no 1-D
-    world coordinates to index."""
+    the origin. Empty if the geometry isn't set."""
     if dis is None:
         return {}
     xorigin = getattr(dis, "xorigin", None)
     yorigin = getattr(dis, "yorigin", None)
     angrot = getattr(dis, "angrot", None)
     if hasattr(dis, "delr"):
-        if angrot or dis.delr is None or dis.delc is None:
+        if dis.delr is None or dis.delc is None:
             return {}
         delr = np.broadcast_to(np.asarray(dis.delr, dtype=np.float64), (dis.ncol,))
         delc = np.broadcast_to(np.asarray(dis.delc, dtype=np.float64), (dis.nrow,))
-        return structured_centers(delr, delc, xorigin, yorigin)
+        return structured_centers(delr, delc, xorigin, yorigin, angrot)
     cell2d = getattr(dis, "cell2d", None)
     if not cell2d:
         return {}
@@ -1435,12 +1449,17 @@ def cell_centers(dis) -> dict[str, Any]:
 
 def index_xy(obj):
     """Index a structured array's (or dataset's) x and y coordinates, so it
-    can be selected by them (``sel(x=..., method="nearest")``). A rotated
-    grid's arrays have none (see ``cell_centers``), so they're left as
-    they are."""
+    can be selected by them (``sel(x=..., method="nearest")``), and point
+    its gridded variables to its ``projection`` coordinate, if it has
+    one."""
     if "x" not in obj.coords or "y" not in obj.coords:
         return obj
-    return obj.set_xindex("x", PandasIndex).set_xindex("y", PandasIndex)
+    obj = obj.set_xindex("x", PandasIndex).set_xindex("y", PandasIndex)
+    if "projection" in obj.coords:
+        for da in [obj] if isinstance(obj, xr.DataArray) else obj.data_vars.values():
+            if "row" in da.dims and "col" in da.dims:
+                da.attrs["grid_mapping"] = "projection"
+    return obj
 
 
 def dims_from_grb(grb_path) -> dict:
