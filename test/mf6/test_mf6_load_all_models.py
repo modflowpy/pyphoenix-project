@@ -74,11 +74,21 @@ pass are
 a model that works today is a hard failure, and a model that starts
 working shows up as XPASS -- the signal to promote it into
 `KNOWN_PASSING`.
+
+Each known-passing model's package files are also parsed with their typed,
+per-component grammars, a parse-level parity check against the basic loader.
+They're read off the loaded simulation, so the check shares the one
+`Simulation.load()` call rather than loading the model again to list them.
 """
+
+from pathlib import Path
 
 import pytest
 from modflow_devtools.models import copy_to, get_models
 
+from flopy4.mf6.codec.reader import loads_typed
+from flopy4.mf6.component import Component
+from flopy4.mf6.package import Package
 from flopy4.mf6.simulation import Simulation
 
 try:
@@ -356,6 +366,84 @@ KNOWN_PASSING = frozenset(
 )
 
 
+# dfn_name -> reason, for typed-grammar parse failures already root-caused
+# and cataloged in typed-grammar-corpus-gaps.md. Granularity is coarser than
+# ideal (per-dfn_name, not per-file): a dfn_name listed here has its files
+# skipped *entirely*, even the many files of that type that parse fine, so a
+# future regression restricted to those files wouldn't be caught. Accepted
+# for now -- refining to per-file skips is real, tracked follow-up work, not
+# done this pass (see typed-grammar-corpus-gaps.md's "Corpus test status").
+KNOWN_TYPED_GAPS: dict[str, str] = {
+    "sln-ims": (
+        "2 legacy mf5to6-converted fixtures (test017_Crinkle, "
+        "test044_lakebotfill_dev) write two option values on one line for "
+        "a field the current DFN defines as a single scalar (e.g. "
+        "'preconditioner_levels 0 7') -- a fixture-authoring artifact from "
+        "an old MODFLOW-2005/NWT conversion tool, not a grammar gap. The "
+        "rest use legacy BEGIN XMD/DE4 solver blocks with no equivalent in "
+        "the current DFN; an unrecognized block name is a parse error by "
+        "design (see typed-grammar-corpus-gaps.md), so these are expected "
+        "failures, not a gap to close."
+    ),
+    "gwf-npf": (
+        "2 files with a free-text remark that happens to contain a "
+        'reserved word (e.g. a parenthetical comment mentioning "constant") '
+        "-- it loses to that word's keyword literal under Lark's default "
+        "priority rules. Fixing this would need per-context lexer modes, "
+        "which Lark's LALR contextual lexer doesn't support; very low "
+        "frequency (2/2228 files), not pursued this pass."
+    ),
+    "gwf-lak": (
+        "DEV_NO_FINAL_CHECK is not a field in the current gwf-lak.dfn -- "
+        "confirmed genuine field-name/version drift (a removed dev option), "
+        "not a grammar gap."
+    ),
+}
+
+
+# model -> reason, for a typed-grammar failure confined to one model's
+# fixture. Its typed check must still fail, like a strict xfail, so a fix
+# shows up as a failure asking to drop the entry.
+KNOWN_TYPED_MODEL_GAPS: dict[str, str] = {
+    "mf6/test/test030_hani_col_disu": (
+        "model.disu has a CELLDATA block, which isn't in gwf-disu.dfn (MF6 ignores it)"
+    ),
+}
+
+
+def _package_files(component: Component, workspace: Path):
+    """Every package file under a loaded component (nested ones like
+    TS6/OBS6 included) plus its DFN name, as the load resolved them."""
+    for child in component._children.values():
+        if isinstance(child, Package):
+            yield workspace / child.filename, child.dfn_name
+        yield from _package_files(child, workspace)
+
+
+def _check_typed_grammar(model_name: str, files: list[tuple[Path, str]]) -> None:
+    """Every package file a known-passing model resolves should parse under
+    its typed grammar too, unless its dfn_name is a documented gap."""
+    failures = []
+    for path, dfn_name in files:
+        if dfn_name in KNOWN_TYPED_GAPS:
+            continue
+        try:
+            loads_typed(path.read_text(), dfn_name)
+        except Exception as exc:
+            failures.append((path.name, dfn_name, repr(exc)))
+
+    if model_name in KNOWN_TYPED_MODEL_GAPS:
+        assert failures, (
+            f"typed grammar now parses every file in {model_name}; "
+            "drop it from KNOWN_TYPED_MODEL_GAPS"
+        )
+        return
+    assert not failures, (
+        f"Simulation.load() passed, but the typed grammar failed on undocumented "
+        f"file(s) in {model_name}: {failures}"
+    )
+
+
 def _param(model_name: str):
     marks = []
     # the `large` corpus models take from ~10s to ~2min each to load --
@@ -377,7 +465,8 @@ def _param(model_name: str):
 def test_load_simulation(tmp_path, model_name):
     """`Simulation.load()` should parse, structure, and resolve bindings for
     every package/model/exchange/solution referenced from `mfsim.nam`,
-    without raising."""
+    without raising. For a known-passing model, its package files should
+    also parse under their typed grammars (see `_check_typed_grammar`)."""
     workspace = copy_to(tmp_path, model_name, verbose=False)
     sim_path = workspace / "mfsim.nam"
     if not sim_path.exists():
@@ -389,3 +478,6 @@ def test_load_simulation(tmp_path, model_name):
     assert sim.tdis is not None
     for children in (sim.models, sim.exchanges, sim.solutiongroup):
         assert isinstance(children, list)
+
+    if model_name in KNOWN_PASSING:
+        _check_typed_grammar(model_name, list(_package_files(sim, workspace)))
