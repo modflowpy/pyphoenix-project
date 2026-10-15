@@ -1732,7 +1732,8 @@ def test_to_dataarray_cell_centers_structured_unrotated_no_world():
 
 def test_sel_world_rotated():
     """sel_world finds each cell of a rotated, non-uniform grid from its
-    world centre, scalar or point-wise, and on an unrotated grid it's sel."""
+    world centre, scalar or point-wise, exactly (despite rounding) or the
+    nearest, and on an unrotated grid it's sel."""
     from flopy4.mf6.utils.grid import sel_world
 
     gwf = Gwf(
@@ -1753,11 +1754,14 @@ def test_sel_world_rotated():
     for row in range(3):
         for col in range(3):
             x, y = float(da.x_world[row, col]), float(da.y_world[row, col])
-            assert sel_world(da, x, y, method="nearest").item() == 3 * row + col
+            assert sel_world(da, x, y).item() == 3 * row + col
+            assert sel_world(da, x + 0.1, y, method="nearest").item() == 3 * row + col
 
     p = xr.DataArray([0, 2], dims="p")
     xw, yw = da.x_world.isel(row=p, col=p), da.y_world.isel(row=p, col=p)
-    assert sel_world(da, xw, yw, method="nearest").squeeze().values.tolist() == [0, 8]
+    assert sel_world(da, xw, yw).squeeze().values.tolist() == [0, 8]
+    with pytest.raises(KeyError):
+        sel_world(da, float(da.x_world[0, 0]) + 0.1, float(da.y_world[0, 0]))
 
     flat = Gwf(dis=Dis(nlay=1, nrow=2, ncol=2, delr=1.0, delc=1.0, xorigin=10.0, botm=[0.0]))
     da = flat.dis.to_dataarray("botm")
@@ -1780,6 +1784,42 @@ def test_to_dataarray_projection_crs():
     crs = CRS.from_wkt(da.projection.attrs["crs_wkt"])
     assert crs.is_derived
     assert crs.source_crs == CRS.from_epsg(26916)
+
+
+def test_rotated_projection_survives_concat_and_netcdf(function_tmpdir):
+    """A rotated array's projection and world coordinates survive concat
+    along time, and a netCDF round trip, after which reindexing x/y lets
+    sel_world select by world coordinates again."""
+    from flopy4.mf6.utils.grid import index_xy, sel_world
+
+    dis = Dis(
+        nlay=1,
+        nrow=2,
+        ncol=3,
+        delr=[1.0, 1.0, 4.0],
+        delc=[2.0, 1.0],
+        xorigin=100.0,
+        yorigin=200.0,
+        angrot=30.0,
+        botm=[0.0],
+        crs="EPSG:26916",
+    )
+    da = Gwf(dis=dis).dis.to_dataarray("botm").isel(layer=0)
+
+    t = xr.concat([da.expand_dims(time=[0.0]), da.expand_dims(time=[1.0])], "time")
+    assert t.projection.attrs == da.projection.attrs
+    assert {"x", "y"} <= set(t.xindexes)
+    assert t.x_world.dims == ("row", "col")
+
+    path = Path(function_tmpdir) / "botm.nc"
+    da.to_netcdf(path)
+    with xr.open_dataarray(path) as r:
+        r = index_xy(r.load())
+    assert r.projection.attrs == da.projection.attrs
+    assert r.attrs["grid_mapping"] == "projection"
+    np.testing.assert_allclose(r.x_world, da.x_world)
+    xw, yw = float(da.x_world[1, 2]), float(da.y_world[1, 2])
+    assert sel_world(r, xw, yw).identical(sel_world(da, xw, yw))
 
 
 def test_to_dataarray_cell_centers_vertex_rotated():

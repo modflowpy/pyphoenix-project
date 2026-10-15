@@ -1488,7 +1488,12 @@ def index_xy(obj):
     its gridded variables to its ``projection`` coordinate, if it has
     one. If that says the grid's rotated, x/y are local, so give it the
     cells' world coordinates too, as ``x_world``/``y_world`` on
-    ``(row, col)``; select by those with ``sel_world``."""
+    ``(row, col)``; select by those with ``sel_world``.
+
+    xarray compares ``projection`` by its value, which is always 1, not
+    its attrs, so combining arrays on grids placed differently (``a + b``)
+    keeps the first's ``projection``, and drops whichever of
+    ``x_world``/``y_world`` differ."""
     if "x" not in obj.coords or "y" not in obj.coords:
         return obj
     obj = obj.set_xindex("x", PandasIndex).set_xindex("y", PandasIndex)
@@ -1511,12 +1516,19 @@ def sel_world(obj, x, y, **kwargs):
     ``projection`` coordinate first; otherwise, x/y are already world
     coordinates, so it's just ``sel``. ``kwargs`` go to ``sel``, e.g.
     ``method="nearest"``. For point-wise selection, pass x and y as
-    DataArrays sharing a dim."""
+    DataArrays sharing a dim.
+
+    Without a ``method``, as with ``sel``, a point must be a cell centre.
+    Rotating to local coordinates rounds, so on a rotated grid that's to
+    within a billionth of the grid's extent."""
     proj = obj.coords["projection"].attrs if "projection" in obj.coords else {}
     if proj.get("angrot"):
         x, y = to_local(x, y, proj["xorigin"], proj["yorigin"], proj["angrot"])
         if not isinstance(x, xr.DataArray) and np.ndim(x) == 0:
             x, y = float(x), float(y)
+        if kwargs.get("method") is None:
+            extent = float(np.ptp(obj.x.values) + np.ptp(obj.y.values)) or 1.0
+            kwargs = {**kwargs, "method": "nearest", "tolerance": 1e-9 * extent}
     return obj.sel(x=x, y=y, **kwargs)
 
 
