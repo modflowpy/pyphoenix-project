@@ -472,7 +472,7 @@ grid = flopy4.mf6.utils.grid.StructuredGrid(
     crs="EPSG:26911",
 )
 # `dims` captures array shapes needed by packages that pre-allocate xarray storage.
-dims = {"nper": nper, "ncpl": nrow * ncol, **dict(grid.dataset.sizes)}
+dims = {"nper": nper, **grid.dims}
 
 # ### Packages
 

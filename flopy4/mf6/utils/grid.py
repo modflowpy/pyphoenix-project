@@ -195,13 +195,10 @@ class StructuredGrid(LegacyStructuredGrid):
                 kwargs["delc"] = np.asarray(delc)
 
         super().__init__(*args, **kwargs)
-        # No layer/row/column index coordinates: a position along nlay,
-        # nrow or ncol is the index (isel), and k would clash with NPF's k.
-        # node stays, as the only thing on the nodes dim.
-        self._coords = {
-            "node": xr.DataArray(np.arange(self.nnodes, dtype=int), dims=("nodes",)),
-        }
-        self._coords.update(self._get_world_coords())
+        # Dims are the grid's axes (layer, row, col), and carry no index
+        # coordinates: a position is the index (isel), and k would clash
+        # with NPF's k. The DFNs' sizing names are in dims.
+        self._coords = self._get_world_coords()
 
         data_vars = {}
         for prop_name in ["delr", "delc", "delz", "top", "botm", "idomain"]:
@@ -215,7 +212,6 @@ class StructuredGrid(LegacyStructuredGrid):
 
         self._dataset = (
             xr.Dataset(data_vars, coords=self._coords)
-            .set_xindex("node", PandasIndex)
             .set_xindex("x", PandasIndex)
             .set_xindex("y", PandasIndex)
             # z is a 3D non-dimension coordinate, so it doesn't get indexed
@@ -286,9 +282,9 @@ class StructuredGrid(LegacyStructuredGrid):
                 z[k] = (layer_top + layer_bot) / 2.0
 
         return {
-            "x": xr.DataArray(x, dims=("ncol",)),
-            "y": xr.DataArray(y, dims=("nrow",)),
-            "z": xr.DataArray(z, dims=("nlay", "nrow", "ncol")),
+            "x": xr.DataArray(x, dims=("col",)),
+            "y": xr.DataArray(y, dims=("row",)),
+            "z": xr.DataArray(z, dims=("layer", "row", "col")),
         }
 
     @property
@@ -309,13 +305,24 @@ class StructuredGrid(LegacyStructuredGrid):
         return self._dataset
 
     @property
+    def dims(self) -> dict[str, int]:
+        """The grid's sizes by their DFN names, for a package's ``dims=``."""
+        return {
+            "nlay": self.nlay,
+            "nrow": self.nrow,
+            "ncol": self.ncol,
+            "ncpl": self.nrow * self.ncol,
+            "nodes": self.nnodes,
+        }
+
+    @property
     def delc(self):
         if self.legacy:
             return super().delc
 
         if self.__delc is None:
             return None
-        dims = ("nrow",)
+        dims = ("row",)
         coords = {"y": self._coords["y"]}
         return xr.DataArray(super().delc, coords=coords, dims=dims).set_xindex("y", PandasIndex)
 
@@ -326,7 +333,7 @@ class StructuredGrid(LegacyStructuredGrid):
 
         if self.__delr is None:
             return None
-        dims = ("ncol",)
+        dims = ("col",)
         coords = {"x": self._coords["x"]}
         return xr.DataArray(super().delr, coords=coords, dims=dims).set_xindex("x", PandasIndex)
 
@@ -339,7 +346,7 @@ class StructuredGrid(LegacyStructuredGrid):
         if legacy_delz is None:
             return None
 
-        dims = ("nlay", "nrow", "ncol")
+        dims = ("layer", "row", "col")
         # Check if data shape matches expected grid dimensions
         if legacy_delz.shape != (self.nlay, self.nrow, self.ncol):
             return legacy_delz
@@ -361,7 +368,7 @@ class StructuredGrid(LegacyStructuredGrid):
         if legacy_top is None:
             return None
 
-        dims = ("nrow", "ncol")
+        dims = ("row", "col")
         # Check if data shape matches expected grid dimensions
         # If not, return the raw legacy data without coordinates
         if legacy_top.shape != (self.nrow, self.ncol):
@@ -383,7 +390,7 @@ class StructuredGrid(LegacyStructuredGrid):
         if legacy_botm is None:
             return None
 
-        dims = ("nlay", "nrow", "ncol")
+        dims = ("layer", "row", "col")
         # Check if data shape matches expected grid dimensions
         if legacy_botm.shape != (self.nlay, self.nrow, self.ncol):
             return legacy_botm
@@ -405,7 +412,7 @@ class StructuredGrid(LegacyStructuredGrid):
         if legacy_idomain is None:
             return None
 
-        dims = ("nlay", "nrow", "ncol")
+        dims = ("layer", "row", "col")
         # Check if data shape matches expected grid dimensions
         if legacy_idomain.shape != (self.nlay, self.nrow, self.ncol):
             return legacy_idomain
@@ -944,11 +951,9 @@ class VertexGrid(LegacyVertexGrid):
             kwargs["vertices"] = [[iv[i], xv[i], yv[i]] for i in range(len(iv))]
 
         super().__init__(*args, **kwargs)
-        # As for StructuredGrid: no layer/cell index coordinates.
-        self._coords = {
-            "node": xr.DataArray(np.arange(self.nnodes, dtype=int), dims=("nodes",)),
-        }
-        self._coords.update(self._get_world_coords())
+        # As for StructuredGrid: dims (layer, node), a node the cell within
+        # its layer as in DISU, with no index coordinates.
+        self._coords = self._get_world_coords()
 
         data_vars = {}
         for prop_name in ["top", "botm", "idomain"]:
@@ -962,7 +967,6 @@ class VertexGrid(LegacyVertexGrid):
 
         self._dataset = (
             xr.Dataset(data_vars, coords=self._coords)
-            .set_xindex("node", PandasIndex)
             .set_xindex("x", PandasIndex)
             .set_xindex("y", PandasIndex)
             # z is a 3D non-dimension coordinate, so it doesn't get indexed
@@ -1026,9 +1030,9 @@ class VertexGrid(LegacyVertexGrid):
                 z[k] = (layer_top + layer_bot) / 2.0
 
         return {
-            "x": xr.DataArray(x, dims=("ncpl",)),
-            "y": xr.DataArray(y, dims=("ncpl",)),
-            "z": xr.DataArray(z, dims=("nlay", "ncpl")),
+            "x": xr.DataArray(x, dims=("node",)),
+            "y": xr.DataArray(y, dims=("node",)),
+            "z": xr.DataArray(z, dims=("layer", "node")),
         }
 
     @property
@@ -1046,6 +1050,11 @@ class VertexGrid(LegacyVertexGrid):
         return self._dataset
 
     @property
+    def dims(self) -> dict[str, int]:
+        """The grid's sizes by their DFN names, for a package's ``dims=``."""
+        return {"nlay": self.nlay, "ncpl": self.ncpl, "nodes": self.nnodes}
+
+    @property
     def delz(self):
         if self.legacy:
             return super().delz
@@ -1054,7 +1063,7 @@ class VertexGrid(LegacyVertexGrid):
         if legacy_delz is None:
             return None
 
-        dims = ("nlay", "ncpl")
+        dims = ("layer", "node")
         # Check if data shape matches expected grid dimensions
         if legacy_delz.shape != (self.nlay, self.ncpl):
             return legacy_delz
@@ -1076,7 +1085,7 @@ class VertexGrid(LegacyVertexGrid):
         if legacy_top is None:
             return None
 
-        dims = ("ncpl",)
+        dims = ("node",)
         # Check if data shape matches expected grid dimensions
         # If not, return the raw legacy data without coordinates
         if legacy_top.shape != (self.ncpl,):
@@ -1098,7 +1107,7 @@ class VertexGrid(LegacyVertexGrid):
         if legacy_botm is None:
             return None
 
-        dims = ("nlay", "ncpl")
+        dims = ("layer", "node")
         # Check if data shape matches expected grid dimensions
         if legacy_botm.shape != (self.nlay, self.ncpl):
             return legacy_botm
@@ -1120,7 +1129,7 @@ class VertexGrid(LegacyVertexGrid):
         if legacy_idomain is None:
             return None
 
-        dims = ("nlay", "ncpl")
+        dims = ("layer", "node")
         # Check if data shape matches expected grid dimensions
         if legacy_idomain.shape != (self.nlay, self.ncpl):
             return legacy_idomain

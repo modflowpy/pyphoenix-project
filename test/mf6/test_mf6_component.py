@@ -891,7 +891,7 @@ def test_grid_merges_with_npf():
     dims = {"nlay": 1, "nrow": 2, "ncol": 2, "nodes": 4}
     grid = StructuredGrid(nlay=1, nrow=2, ncol=2, delr=10.0, delc=10.0, top=0.0, botm=[-1.0])
     ds = xr.merge([grid.dataset, Npf(dims=dims, k=2.0).to_xarray()])
-    assert ds["k"].dims == ("nlay", "nrow", "ncol")
+    assert ds["k"].dims == ("layer", "row", "col")
     assert ds["k"].sel(x=5.0, y=15.0).item() == 2.0
 
 
@@ -904,7 +904,8 @@ def test_grid_dimensions_only():
     assert "y" in grid.dataset.coords
     assert "z" in grid.dataset.coords
     assert not {"k", "i", "j"} & set(grid.dataset.coords)  # positions are the indices
-    assert dict(grid.dataset.sizes) == {"nlay": 3, "nrow": 5, "ncol": 5, "nodes": 75}
+    assert dict(grid.dataset.sizes) == {"layer": 3, "row": 5, "col": 5}
+    assert grid.dims == {"nlay": 3, "nrow": 5, "ncol": 5, "ncpl": 25, "nodes": 75}
 
     # Check shapes
     assert grid.dataset.coords["x"].shape == (5,)
@@ -1145,6 +1146,8 @@ def test_grid_from_disv_factory():
     assert "y" in grid.dataset.coords
     assert "z" in grid.dataset.coords
     assert not {"k", "j", "icpl"} & set(grid.dataset.coords)
+    assert grid.dataset["botm"].dims == ("layer", "node")
+    assert grid.dims == {"nlay": grid.nlay, "ncpl": grid.ncpl, "nodes": grid.nnodes}
 
     # Check z coordinates are cell centers
     np.testing.assert_allclose(grid.dataset.coords["z"].values[0], np.full((ncpl), -5.0))
@@ -1293,6 +1296,8 @@ def test_ugrid_from_disv_factory():
     assert "y" in grid.dataset.coords
     assert "z" in grid.dataset.coords
     assert not {"k", "j", "icpl"} & set(grid.dataset.coords)
+    assert grid.dataset["botm"].dims == ("layer", "node")
+    assert grid.dims == {"nlay": grid.nlay, "ncpl": grid.ncpl, "nodes": grid.nnodes}
 
     # Check z coordinates are cell centers
     np.testing.assert_allclose(grid.dataset.coords["z"].values[0], np.full((ncpl), -5.0))

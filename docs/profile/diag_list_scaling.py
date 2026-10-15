@@ -58,7 +58,7 @@ def build_sim(n: int, ws: Path):
         delc=np.full(nrow, 10.0),
         idomain=np.ones((nlay, nrow, n), dtype=int),
     )
-    dims = {"nper": nper, "ncpl": nrow * n, **dict(grid.dataset.sizes)}
+    dims = {"nper": nper, **grid.dims}
     rch = flopy4.mf6.gwf.Rch(recharge={0: {(0, 0, c): 0.001 for c in range(n)}}, dims=dims)
     gwf = flopy4.mf6.gwf.Gwf(
         name="diag",
