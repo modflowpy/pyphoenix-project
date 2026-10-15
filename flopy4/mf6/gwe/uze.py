@@ -6,10 +6,10 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
-from flopy4.mf6._types import ARRAY_EQ, TimeSeriesRef, to_array
+from flopy4.mf6._types import TimeSeriesRef, to_array
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import child, field, path
+from flopy4.mf6.spec import array, child, double, file, integer, keyword, list_, string, union
 from flopy4.mf6.utl.obs import Obs
 from flopy4.mf6.utl.ts import Ts
 
@@ -36,98 +36,95 @@ class Uze(Package):
 
     @attrs.define
     class Packagedata(Item):
-        uzfno: int = field(index=True, pk=True)
-        strt: float = field()
-        aux: tuple[Union[float, TimeSeriesRef], ...] = field(
-            default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
+        uzfno: int = integer(index=True, pk=True)
+        strt: float = double()
+        aux: tuple[Union[float, TimeSeriesRef], ...] = array(
+            default=(), shape=("auxiliary",), time_series=True, optional=True
         )
-        boundname: Optional[str] = field(default=None, optional=True)
+        boundname: Optional[str] = string(default=None, optional=True)
 
     @attrs.define
     class Status(Item):
         _keyword: ClassVar[str] = "status"
-        status: str = field()
+        status: str = string()
 
     @attrs.define
     class Temperature(Item):
         _keyword: ClassVar[str] = "temperature"
-        temperature: Union[float, TimeSeriesRef] = field(time_series=True)
+        temperature: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Infiltration(Item):
         _keyword: ClassVar[str] = "infiltration"
-        infiltration: Union[float, TimeSeriesRef] = field(time_series=True)
+        infiltration: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Uzet(Item):
         _keyword: ClassVar[str] = "uzet"
-        uzet: Union[float, TimeSeriesRef] = field(time_series=True)
+        uzet: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Auxiliary(Item):
         _keyword: ClassVar[str] = "auxiliary"
-        auxname: str = field()
-        auxval: Union[float, TimeSeriesRef] = field(time_series=True)
+        auxname: str = string()
+        auxval: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class StressPeriodData(Item):
-        uzfno: int = field(index=True, fk="packagedata.uzfno")
+        uzfno: int = integer(index=True, fk="packagedata.uzfno")
         uzesetting: "Uze.Status | Uze.Temperature | Uze.Infiltration | Uze.Uzet | Uze.Auxiliary" = (
-            field(  # noqa: E501
-                arms=True
-            )
-        )
+            union()
+        )  # noqa: E501
 
-    flow_package_name: Optional[str] = field(
+    flow_package_name: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="keyword to specify name of corresponding flow package",
     )
-    auxiliary: Optional[NDArray[np.str_]] = field(
+    auxiliary: Optional[NDArray[np.str_]] = array(
         default=None,
         converter=attrs.converters.optional(to_array(np.str_)),
-        eq=ARRAY_EQ,
         block="options",
         optional=True,
         longname="keyword to specify aux variables",
     )
-    flow_package_auxiliary_name: Optional[str] = field(
+    flow_package_auxiliary_name: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="keyword to specify name of concentration auxiliary variable in flow package",
     )
-    boundnames: bool = field(
+    boundnames: bool = keyword(
         default=False,
         block="options",
         optional=True,
     )
-    print_input: bool = field(
+    print_input: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print input to listing file",
     )
-    print_temperature: bool = field(
+    print_temperature: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print calculated temperatures to listing file",
     )
-    print_flows: bool = field(
+    print_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print calculated flows to listing file",
     )
-    save_flows: bool = field(
+    save_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="save UZE cell flows to budget file",
     )
-    temperature_file: Optional[Path] = path(
+    temperature_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -135,7 +132,7 @@ class Uze(Package):
         direction="out",
         keyword="temperature",
     )
-    budget_file: Optional[Path] = path(
+    budget_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -143,7 +140,7 @@ class Uze(Package):
         direction="out",
         keyword="budget",
     )
-    budgetcsv_file: Optional[Path] = path(
+    budgetcsv_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -155,12 +152,12 @@ class Uze(Package):
         block="options", keyword="ts6", direction="in", default=attrs.Factory(list)
     )
     obs: Optional[Obs] = child(block="options", keyword="obs6", direction="in")
-    packagedata: Optional[list[Packagedata]] = field(
+    packagedata: Optional[list[Packagedata]] = list_(
         default=None,
         block="packagedata",
         write_if_empty=True,
     )
-    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
         alias="stress_period_data",
         default=None,
         repr=False,

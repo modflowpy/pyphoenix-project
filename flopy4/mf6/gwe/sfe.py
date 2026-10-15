@@ -6,10 +6,10 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
-from flopy4.mf6._types import ARRAY_EQ, TimeSeriesRef, to_array
+from flopy4.mf6._types import TimeSeriesRef, to_array
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import child, field, path
+from flopy4.mf6.spec import array, child, double, file, integer, keyword, list_, string, union
 from flopy4.mf6.utl.obs import Obs
 from flopy4.mf6.utl.ts import Ts
 
@@ -38,108 +38,105 @@ class Sfe(Package):
 
     @attrs.define
     class Packagedata(Item):
-        rno: int = field(index=True, pk=True)
-        strt: float = field()
-        ktf: float = field()
-        rbthcnd: float = field()
-        aux: tuple[Union[float, TimeSeriesRef], ...] = field(
-            default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
+        rno: int = integer(index=True, pk=True)
+        strt: float = double()
+        ktf: float = double()
+        rbthcnd: float = double()
+        aux: tuple[Union[float, TimeSeriesRef], ...] = array(
+            default=(), shape=("auxiliary",), time_series=True, optional=True
         )
-        boundname: Optional[str] = field(default=None, optional=True)
+        boundname: Optional[str] = string(default=None, optional=True)
 
     @attrs.define
     class Status(Item):
         _keyword: ClassVar[str] = "status"
-        status: str = field()
+        status: str = string()
 
     @attrs.define
     class Temperature(Item):
         _keyword: ClassVar[str] = "temperature"
-        temperature: Union[float, TimeSeriesRef] = field(time_series=True)
+        temperature: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Rainfall(Item):
         _keyword: ClassVar[str] = "rainfall"
-        rainfall: Union[float, TimeSeriesRef] = field(time_series=True)
+        rainfall: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Evaporation(Item):
         _keyword: ClassVar[str] = "evaporation"
-        evaporation: Union[float, TimeSeriesRef] = field(time_series=True)
+        evaporation: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Runoff(Item):
         _keyword: ClassVar[str] = "runoff"
-        runoff: Union[float, TimeSeriesRef] = field(time_series=True)
+        runoff: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Inflow(Item):
         _keyword: ClassVar[str] = "inflow"
-        inflow: Union[float, TimeSeriesRef] = field(time_series=True)
+        inflow: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Auxiliary(Item):
         _keyword: ClassVar[str] = "auxiliary"
-        auxname: str = field()
-        auxval: Union[float, TimeSeriesRef] = field(time_series=True)
+        auxname: str = string()
+        auxval: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class StressPeriodData(Item):
-        rno: int = field(index=True, fk="packagedata.rno")
-        reachsetting: "Sfe.Status | Sfe.Temperature | Sfe.Rainfall | Sfe.Evaporation | Sfe.Runoff | Sfe.Inflow | Sfe.Auxiliary" = field(  # noqa: E501
-            arms=True
-        )
+        rno: int = integer(index=True, fk="packagedata.rno")
+        reachsetting: "Sfe.Status | Sfe.Temperature | Sfe.Rainfall | Sfe.Evaporation | Sfe.Runoff | Sfe.Inflow | Sfe.Auxiliary" = union()  # noqa: E501
 
-    flow_package_name: Optional[str] = field(
+    flow_package_name: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="keyword to specify name of corresponding flow package",
     )
-    auxiliary: Optional[NDArray[np.str_]] = field(
+    auxiliary: Optional[NDArray[np.str_]] = array(
         default=None,
         converter=attrs.converters.optional(to_array(np.str_)),
-        eq=ARRAY_EQ,
         block="options",
         optional=True,
         longname="keyword to specify aux variables",
     )
-    flow_package_auxiliary_name: Optional[str] = field(
+    flow_package_auxiliary_name: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="keyword to specify name of temperature auxiliary variable in flow package",
     )
-    boundnames: bool = field(
+    boundnames: bool = keyword(
         default=False,
         block="options",
         optional=True,
     )
-    print_input: bool = field(
+    print_input: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print input to listing file",
     )
-    print_temperature: bool = field(
+    print_temperature: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print calculated temperature to listing file",
     )
-    print_flows: bool = field(
+    print_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print calculated flows to listing file",
     )
-    save_flows: bool = field(
+    save_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="save reach flows to budget file",
     )
-    temperature_file: Optional[Path] = path(
+    temperature_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -147,7 +144,7 @@ class Sfe(Package):
         direction="out",
         keyword="temperature",
     )
-    budget_file: Optional[Path] = path(
+    budget_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -155,7 +152,7 @@ class Sfe(Package):
         direction="out",
         keyword="budget",
     )
-    budgetcsv_file: Optional[Path] = path(
+    budgetcsv_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -167,12 +164,12 @@ class Sfe(Package):
         block="options", keyword="ts6", direction="in", default=attrs.Factory(list)
     )
     obs: Optional[Obs] = child(block="options", keyword="obs6", direction="in")
-    packagedata: Optional[list[Packagedata]] = field(
+    packagedata: Optional[list[Packagedata]] = list_(
         default=None,
         block="packagedata",
         write_if_empty=True,
     )
-    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
         alias="stress_period_data",
         default=None,
         repr=False,
