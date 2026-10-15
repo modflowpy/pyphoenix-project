@@ -266,6 +266,9 @@ def quote_if_needed(value: Scalar) -> str:
     falls back to double if the value has a single quote."""
     if isinstance(value, PurePath):
         value = value.as_posix()
+    if isinstance(value, str) and value == "":
+        # `''` reads back as nothing, or an error, in most places
+        raise ValueError("MF6 can't use an empty string as a value")
     if not isinstance(value, str) or _BARE_WORD.fullmatch(value):
         return str(value)
     if "'" not in value:
