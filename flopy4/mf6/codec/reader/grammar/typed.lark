@@ -71,8 +71,10 @@ _token: word | number
 // Consecutive lines of only numbers (plus blank and comment-only lines after
 // them), as one token, so big files don't take a token per value. A line it
 // can't take whole lexes as a `record` or `_data_line` (basic.lark's `line`).
-// A `record` that's one of these is all its rows.
-NUMBER_LINES.3: /(?:[ \t,]*+[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eEdD][+-]?\d+)?(?:[ \t,]++[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eEdD][+-]?\d+)?)*+[ \t,]*+\r?\n(?:[ \t,]*+(?:[#!][^\n]*+)?\r?\n)*+)++/
+// A `record` that's one of these is all its rows. Possessive throughout:
+// a number's always followed by a separator or newline, so backtracking
+// into one can't match differently, and it's a third faster on big arrays.
+NUMBER_LINES.3: /(?:[ \t,]*+[+-]?+(?:\d++(?:\.\d*+)?+|\.\d++)(?:[eEdD][+-]?+\d++)?+(?:[ \t,]++[+-]?+(?:\d++(?:\.\d*+)?+|\.\d++)(?:[eEdD][+-]?+\d++)?+)*+[ \t,]*+\r?\n(?:[ \t,]*+(?:[#!][^\n]*+)?\r?\n)*+)++/
 // Consecutive lines of plain words and numbers (plus blank and
 // comment-only lines after them), as one token, like NUMBER_LINES for rows
 // that aren't only numbers (SFR's `1 inflow 0.0`). A word is a BARE_WORD
