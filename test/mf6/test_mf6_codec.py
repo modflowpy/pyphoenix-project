@@ -1992,6 +1992,52 @@ def test_rows_as_each_row_reads():
     assert [item.boundname for item in items] == [None, None, None, "reach4", "reach5"]
 
 
+def test_union_rows_as_each_row_reads():
+    """Rows ending in a union of arms read together as each reads alone,
+    rows of a length by one layout, each by the arm its keyword names."""
+    from flopy4.mf6.gwf import Sfr
+    from flopy4.mf6.item import RowContext
+
+    context = RowContext(ncelldim=1)
+    rows = [
+        [1, "inflow", 0.5],
+        [1, "rainfall", 0.25],
+        [2, "status", "active"],
+        [2, "INFLOW", "flow_ts"],
+        [3, "diversion", 1, 2.0],
+        [3, "auxiliary", "conc", 1.5],
+        [4, "upstream_fraction", 0.5],
+    ]
+    items = Sfr.StressPeriodData.from_rows(rows, context)
+    assert items == [Sfr.StressPeriodData.from_tokens(row, context) for row in rows]
+    assert [type(item.sfrsetting).__name__ for item in items] == [
+        "Inflow",
+        "Rainfall",
+        "Status",
+        "Inflow",
+        "Diversion",
+        "Auxiliary",
+        "UpstreamFraction",
+    ]
+
+
+def test_counted_rows_as_each_row_reads():
+    """Rows with an array another column counts (DISV's icvert, by ncvert)
+    read together as each reads alone."""
+    from flopy4.mf6.gwf import Disv
+    from flopy4.mf6.item import RowContext
+
+    rows = [
+        [1, 0.5, 0.5, 4, 1, 2, 3, 1],
+        [2, 1.5, 0.5, 4, 2, 4, 5, 2],
+        [3, 0.5, 1.5, 3, 3, 5, 6],
+        [4, 1.5, 1.5],
+    ]
+    items = Disv.Cell2d.from_rows(rows, RowContext())
+    assert items == [Disv.Cell2d.from_tokens(row) for row in rows]
+    assert [item.icvert for item in items] == [(0, 1, 2, 0), (1, 3, 4, 1), (2, 4, 5), ()]
+
+
 @pytest.mark.parametrize(
     "text",
     [

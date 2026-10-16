@@ -670,11 +670,13 @@ def _plannable(cls: type) -> bool:
 @lru_cache(maxsize=None)
 def _row_plannable(cls: type) -> bool:
     """Whether a file row's layout depends only on how many values it has,
-    as for `_plannable`, though it may also have an arm's keyword, or end
-    with a union of arms (SFR's sfrsetting) read by the arm its values name.
-    Not tabular, so only for `Item.from_rows`."""
+    as for `_plannable`, though it may also have an arm's keyword, an array
+    counted by another column (DISV's icvert, by ncvert: a row of the same
+    length has the same count), or end with a union of arms (SFR's
+    sfrsetting) read by the arm its values name. Not tabular, so only for
+    `Item.from_rows`."""
     for slot in _slots(cls, True):
-        if slot.kind not in ("value", "cellid", "sized", "rest", "keyword"):
+        if slot.kind not in ("value", "cellid", "sized", "sibling", "rest", "keyword"):
             return False
         if slot.kind == "value" and slot.field.metadata.get("child"):
             return False
@@ -793,8 +795,15 @@ def _plan(
     if not _row_plannable(cls) or (spans := _spans(cls, values, context)) is None:
         return None
     readers: list[tuple[str, int, int, Callable[[Any], Any]]] = []
+    # an array counted by another column: the count's position, and the count
+    counts: list[tuple[int, int]] = []
+    at = {f.name: a for f, took, a, _ in spans if f is not None and took[0] == "value"}
     for f, took, a, b in spans:
         read: Callable[[Any], Any]
+        if f is not None and _sized_by_field(cls, f) and len(took) > 2:
+            if (count_at := at.get(inline_dim(f) or "")) is None:
+                return None
+            counts.append((count_at, (b - a) // took[2]))
         if took[0] == "keyword":
             readers.append(
                 ("", a, b, partial(_check_keyword, cast(type[Record], cls).keyword().upper()))
@@ -818,6 +827,8 @@ def _plan(
 
     def read_row(row: list) -> "dict[str, Any] | None":
         try:
+            if any(int(float(str(row[a]))) != count for a, count in counts):
+                return None
             kwargs = {name: read(row[a:b] if b else row[a]) for name, a, b, read in readers}
         except (ValueError, TypeError):
             return None
