@@ -547,13 +547,24 @@ def _parse_readarray_period_block(
         else:
             if i >= len(rows):
                 break
-            size = nlay * ncpl if per_node else ncpl
-            value, j = _read_control_record(rows, i, context, dtype, size)
-            _record_array_io(arrays, (key,), [_control_io(rows[i], value)])
-            i = j
-            result[key] = np.asarray(value).reshape(nlay, ncpl) if per_node and nlay > 1 else value
+            if _kind(rows[i]) == "CONSTANT":
+                # one value for the period, kept as a 0-d array, as a
+                # scalar given at construction is (period_arrays._as_array)
+                v = int(rows[i][1]) if dtype == np.int64 else float(rows[i][1])
+                value = np.asarray(v, dtype=dtype)
+                _record_array_io(arrays, (key,), [_control_io(rows[i], value)])
+                i += 1
+                result[key] = value
+            else:
+                size = nlay * ncpl if per_node else ncpl
+                value, j = _read_control_record(rows, i, context, dtype, size)
+                _record_array_io(arrays, (key,), [_control_io(rows[i], value)])
+                i = j
+                result[key] = (
+                    np.asarray(value).reshape(nlay, ncpl) if per_node and nlay > 1 else value
+                )
         if f.metadata.get("index") and isinstance(arr := result.get(key), np.ndarray):
-            result[key] = _from_file_index(arr)
+            result[key] = np.asarray(_from_file_index(arr))
 
     return result
 

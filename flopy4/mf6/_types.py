@@ -118,7 +118,9 @@ def array_eq(a: Any, b: Any) -> bool:
 
     - ``None`` equals only ``None``; dicts (e.g. time-array series) are
       compared key by key.
-    - Shape and dtype must match. NaNs at the same position compare equal.
+    - Shape and dtype must match, except that a 0-d array (a value given
+      for a whole array, a CONSTANT) equals an array holding it
+      everywhere. NaNs at the same position compare equal.
     - Tuples (inline arrays) compare like arrays, but integers and
       floats by value: a row's ``(1, 2)`` equals the ``(1.0, 2.0)`` read
       back.
@@ -155,7 +157,9 @@ def array_eq(a: Any, b: Any) -> bool:
         # ragged sequences, which aren't arrays
         return bool(a == b)
     if a.shape != b.shape:
-        return False
+        if a.ndim and b.ndim or not (a.size and b.size):
+            return False
+        a, b = np.broadcast_arrays(a, b)
     if a.dtype != b.dtype and not (numeric and {a.dtype.kind, b.dtype.kind} <= set("iuf")):
         return False
     return bool(np.array_equal(a, b, equal_nan=a.dtype.kind in "fc" or b.dtype.kind in "fc"))

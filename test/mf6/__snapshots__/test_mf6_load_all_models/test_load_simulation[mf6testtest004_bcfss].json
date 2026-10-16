@@ -169,8 +169,8 @@
     "__type__": "Rcha",
     "aux": {
       "0": {
-        "var1": "float64[150] 9f4b9a147256c01f",
-        "var2": "float64[150] e582ff3305026e48"
+        "var1": "float64[1] 69d7849f2c39af0a",
+        "var2": "float64[1] 3aa06b441d3c560f"
       }
     },
     "auxiliary": [
@@ -193,7 +193,7 @@
     "print_input": false,
     "readasarrays": true,
     "recharge": {
-      "0": "float64[150] c804b92a4100c020"
+      "0": "float64[1] 0c314692660b8639"
     },
     "save_flows": true,
     "tas": []

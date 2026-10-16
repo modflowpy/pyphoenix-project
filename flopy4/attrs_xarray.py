@@ -112,12 +112,25 @@ def _period_dim(field: attrs.Attribute) -> str | None:
     return f"{field.name}_period" if periods else None
 
 
+def _period_shape(arrays: list) -> tuple[int, ...]:
+    """The shape of a period array field's periods: a period given in full's,
+    else a period given as one value's (0-d), else none, ()."""
+    from flopy4.mf6._types import TimeArraySeriesRef
+
+    shapes = [
+        np.shape(a) for a in arrays if a is not None and not isinstance(a, TimeArraySeriesRef)
+    ]
+    return next((s for s in shapes if s), ())
+
+
 def _period_dataarray(field: attrs.Attribute, name: str, value: dict) -> xr.DataArray:
     """Stack a period array field's given periods. A period from a time-array
     series is FILL_DNODATA, naming the series in the "<name>_tas" coordinate
     along the period dim ('' for arrays), so the stack has every period the
     field gives. Aux names missing from a period are FILL_DNODATA there, as
-    is a cleared grid period (None), which loads back as cleared."""
+    is a cleared grid period (None), which loads back as cleared. A period
+    given as one value (a 0-d array, a CONSTANT) fills its period, shaped
+    like the periods given in full."""
     from flopy4.mf6._types import TimeArraySeriesRef
     from flopy4.mf6.constants import FILL_DNODATA
 
@@ -125,7 +138,7 @@ def _period_dataarray(field: attrs.Attribute, name: str, value: dict) -> xr.Data
     if key := _named_dim(field):
         names = list(dict.fromkeys(n for arrays in value.values() for n in arrays))
         cells = [a for arrays in value.values() for a in arrays.values()]
-        shape = next((np.shape(a) for a in cells if not isinstance(a, TimeArraySeriesRef)), ())
+        shape = _period_shape(cells)
         stacked = np.full((len(value), len(names), *shape), FILL_DNODATA)
         refs = np.full((len(value), len(names)), "", dtype=object)
         for i, arrays in enumerate(value.values()):
@@ -139,19 +152,12 @@ def _period_dataarray(field: attrs.Attribute, name: str, value: dict) -> xr.Data
             coords[tas] = ((period, key), refs.astype(str))
         dims = (period, key, *_array_dims(field, name, len(shape)))
         return xr.DataArray(stacked, dims=dims, coords=coords)
-    shape = next(
-        (
-            np.shape(a)
-            for a in value.values()
-            if a is not None and not isinstance(a, TimeArraySeriesRef)
-        ),
-        (),
-    )
+    shape = _period_shape(list(value.values()))
     stacked = np.stack(
         [
             np.full(shape, FILL_DNODATA)
             if a is None or isinstance(a, TimeArraySeriesRef)
-            else np.asarray(a)
+            else np.broadcast_to(np.asarray(a), shape)
             for a in value.values()
         ]
     )

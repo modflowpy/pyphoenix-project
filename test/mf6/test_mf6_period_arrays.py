@@ -276,3 +276,58 @@ def test_tas_reference_must_name_a_series(function_tmpdir, monkeypatch):
     rcha.tas.append(tas("concseries"))
     rcha.write()
     assert "RECHARGE TIMEARRAYSERIES RchSeries" in (function_tmpdir / "gwf.rcha").read_text()
+
+
+_RCHA_CONSTANT = """BEGIN OPTIONS
+ READASARRAYS
+END OPTIONS
+BEGIN PERIOD 1
+ RECHARGE
+  CONSTANT 0.5
+END PERIOD 1
+BEGIN PERIOD 3
+ RECHARGE
+  INTERNAL
+  0.3 0.4
+END PERIOD 3
+"""
+
+
+def _load_rcha(text: str) -> Rcha:
+    from flopy4.mf6.codec import loads
+    from flopy4.mf6.converter.ingress.structure import structure_component
+
+    context = LoadContext(dims={"nlay": 1, "ncpl": 2, "nodes": 2})
+    return structure_component(loads(text), Rcha, context=context)
+
+
+def test_constant_period_loads_as_one_value():
+    """A period's CONSTANT array is kept as a 0-d array, as a scalar given
+    at construction is, not expanded to the grid; it's written back as
+    CONSTANT, and it fills its period in the dense and xarray forms."""
+    from flopy4.attrs_xarray import attrs_to_dataset, dataset_to_attrs
+    from flopy4.mf6.codec import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+
+    rcha = _load_rcha(_RCHA_CONSTANT)
+    assert rcha.recharge[0].shape == ()
+    assert rcha.recharge[0] == 0.5
+    assert "CONSTANT 0.5" in dumps(unstructure_component(rcha))
+    np.testing.assert_array_equal(
+        rcha.period_array("recharge", nper=4), [[0.5, 0.5], [0.5, 0.5], [0.3, 0.4], [0.3, 0.4]]
+    )
+    ds = attrs_to_dataset(rcha)
+    np.testing.assert_array_equal(ds["recharge"].values, [[0.5, 0.5], [0.3, 0.4]])
+    assert dataset_to_attrs(Rcha, ds) == rcha
+
+
+def test_constant_period_equals_full_array():
+    full = _RCHA_CONSTANT.replace("CONSTANT 0.5", "INTERNAL\n  0.5 0.5")
+    assert _load_rcha(_RCHA_CONSTANT) == _load_rcha(full)
+    assert _load_rcha(_RCHA_CONSTANT) != _load_rcha(full.replace("0.5 0.5", "0.5 0.6"))
+
+
+def test_dense_constant_periods_need_shape():
+    with pytest.raises(ValueError, match="one value"):
+        dense({0: np.asarray(1.0)}, nper=2)
+    np.testing.assert_array_equal(dense({0: np.asarray(1.0)}, nper=2, shape=(3,)), np.ones((2, 3)))

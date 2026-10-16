@@ -184,7 +184,7 @@
   "simulation/test1ss_ic/evt0": {
     "__type__": "Evta",
     "depth": {
-      "0": "float64[150] 1cb0b1cae4a7d17b"
+      "0": "float64[1] 6e834c27afb79741"
     },
     "dims": {
       "ncelldim": 3,
@@ -201,7 +201,7 @@
     "print_flows": false,
     "print_input": true,
     "rate": {
-      "0": "float64[150] 5997c03bf88a3b26"
+      "0": "float64[1] 3627724c4922f92e"
     },
     "readasarrays": true,
     "save_flows": true,

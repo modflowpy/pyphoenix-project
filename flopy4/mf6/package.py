@@ -927,8 +927,9 @@ class Package(Component, ABC):
             given = sorted({k for g in fields for k in (self._period_dict(g) or {})})
         if nper is None:
             nper = self.resolve_dims("nper").get("nper") or max(given or periods) + 1
+        shape = period_shape(self, f)
         if not f.metadata.get("fk"):
-            return dense(periods, nper, carry_forward, given)
+            return dense(periods, nper, carry_forward, given, shape)
         names = list(dict.fromkeys(n for arrays in periods.values() for n in arrays))
         return {
             n: dense(
@@ -936,6 +937,7 @@ class Package(Component, ABC):
                 nper,
                 carry_forward,
                 given,
+                shape,
             )
             for n in names
         }
@@ -1051,6 +1053,21 @@ class Package(Component, ABC):
         if spd is None:
             raise ValueError(f"{type(self).__name__} has no stress period data")
         setattr(self, spd.name, period_lists.from_dataset(self, ds))
+
+
+def period_shape(component: Any, f: attrs.Attribute) -> tuple[int, ...] | None:
+    """A period array field's shape in one period, from its DFN shape and
+    the grid's dims (``component``'s), or None if they aren't known."""
+    names = f.metadata.get("shape") or ()
+    if not names:
+        return None
+    try:
+        dims = component.resolve_dims(*names)
+    except ValueError:
+        return None
+    if any(dims.get(n) is None for n in names):
+        return None
+    return tuple(int(dims[n]) for n in names)
 
 
 def _union_row(
