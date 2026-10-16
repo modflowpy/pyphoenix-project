@@ -11,6 +11,17 @@ from flopy4.utils import parse_number
 _NUMBER = re.compile(r"[+-]?(\d+(\.\d*)?|\.\d+)([eEdD][+-]?\d+)?")
 
 
+def _value(value: str) -> str | int | float:
+    """A token's value: a number if it's one, else the word."""
+    if _NUMBER.fullmatch(value):
+        return parse_number(value.replace("d", "e").replace("D", "E"))
+    return value
+
+
+class _WordRows(list):
+    """WORD_LINES' rows, which `block` splices in among its other lines."""
+
+
 class BasicTransformer(Transformer):
     """
     Basic transformer for MF6 input files. Works only with the basic
@@ -37,7 +48,12 @@ class BasicTransformer(Transformer):
 
     def block(self, items: list[Any]) -> dict[str, Any]:
         # BEGIN name line... END name
-        body = items[2:-2]
+        body: list[Any] = []
+        for item in items[2:-2]:
+            if isinstance(item, _WordRows):
+                body.extend(item)
+            else:
+                body.append(item)
         if len(body) == 1 and isinstance(body[0], NumberRows):
             return {items[1]: body[0]}
         if any(isinstance(item, NumberRows) for item in body):
@@ -63,10 +79,16 @@ class BasicTransformer(Transformer):
         return [str(i) if isinstance(i, Token) else i for i in items]
 
     def TOKEN(self, token: Token) -> str | int | float:
-        value = str(token)
-        if _NUMBER.fullmatch(value):
-            return parse_number(value.replace("d", "e").replace("D", "E"))
-        return value
+        return _value(str(token))
+
+    def WORD_LINES(self, token: Token) -> _WordRows:
+        # Each line a row, as `line` reads it; blank and comment-only lines
+        # aren't rows.
+        rows = _WordRows()
+        for line in str(token).replace(",", " ").split("\n"):
+            if (values := line.split()) and values[0][0] not in "#!":
+                rows.append([_value(v) for v in values])
+        return rows
 
     def NUMBER_LINES(self, token: Token) -> NumberRows:
         return NumberRows(str(token))

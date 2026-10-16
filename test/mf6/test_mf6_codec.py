@@ -99,6 +99,49 @@ END griddata
     assert [type(v) for v in result["griddata"][3]] == [float, float, float, int]
 
 
+def test_loads_word_lines():
+    # Lines with a word on them are read in bulk too (WORD_LINES), and must
+    # read as any other line would; a line that can't be (BEGIN/END first,
+    # a quote, a trailing comment) is read on its own.
+    from lark import Token
+
+    from flopy4.mf6.codec.reader import BASIC_PARSER
+
+    mf6_input = """
+BEGIN period 1
+  1 inflow 0.0
+  2 status ACTIVE, 1D-5
+
+  # a comment
+  3 1.0 end
+  4 5 6
+  7 'quoted word' 1
+  8 x 2 # trailing
+  endpoint 1 2
+  2 begin sp 1
+  1997-07-16T19:20:30 7
+  1e5 e 2
+END period
+"""
+
+    result = loads(mf6_input)
+    assert result["period 1"] == [
+        [1, "inflow", 0.0],
+        [2, "status", "ACTIVE", 1e-5],
+        [3, 1.0, "end"],
+        [4, 5, 6],
+        [7, "quoted word", 1],
+        [8, "x", 2],
+        ["endpoint", 1, 2],
+        [2, "begin", "sp", 1],
+        ["1997-07-16T19:20:30", 7],
+        [100000.0, "e", 2],
+    ]
+    tree = BASIC_PARSER.parse(mf6_input)
+    runs = [t for t in tree.scan_values(lambda v: isinstance(v, Token)) if t.type == "WORD_LINES"]
+    assert [str(t).split("\n")[0].strip() for t in runs] == ["1 inflow 0.0", "2 begin sp 1"]
+
+
 def test_dumps_ic():
     from flopy4.mf6.gwf import Dis, Gwf, Ic
 

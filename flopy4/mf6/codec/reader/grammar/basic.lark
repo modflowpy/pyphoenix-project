@@ -3,7 +3,7 @@ block: BEGIN block_name _NL _list END block_name [_NL+]
 // MF6 ignores anything after a block header's optional index (e.g. MAW's
 // legacy `begin period 1 steady-state`); the transformer drops it.
 block_name: CNAME TOKEN*
-_list: (line | NUMBER_LINES)*
+_list: (line | NUMBER_LINES | WORD_LINES)*
 // BEGIN/END only open and close a block at the start of a line; after a
 // line's first token they're data (test106's `0.0 ... begin SP 1` remark).
 line: ((TOKEN | QUOTED_WORD) ((TOKEN | QUOTED_WORD) | BEGIN | END)*)? _NL+
@@ -14,6 +14,12 @@ line: ((TOKEN | QUOTED_WORD) ((TOKEN | QUOTED_WORD) | BEGIN | END)*)? _NL+
 // `1997` and `-07-16T19:20:30`.
 TOKEN: /[a-zA-Z0-9'().\/:;<=>?@_~+\[\\-]+/
 COMMA: ","
+// Consecutive lines that each have a word (not only numbers -- those are
+// NUMBER_LINES), plus blank and comment-only lines after them, as one token,
+// so word rows (SFR's `1 inflow 0.0`) don't take a token per value. A line
+// it can't take whole (BEGIN/END first, a quote, a trailing comment) lexes
+// as a `line`.
+WORD_LINES.1: /(?:[ \t,]*+(?!(?i:begin|end))(?=[^\n]*?(?<![^ \t,\n])(?![+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eEdD][+-]?\d+)?(?:[ \t,]|\r?\n))[a-zA-Z0-9().\/:;<=>?@_~+\[\\-])[a-zA-Z0-9().\/:;<=>?@_~+\[\\-]++(?:[ \t,]++[a-zA-Z0-9().\/:;<=>?@_~+\[\\-]++)*+[ \t,]*+\r?\n(?:[ \t,]*+(?:[#!][^\n]*+)?\r?\n)*+)++/
 BEGIN: "begin"i
 END: "end"i
 
