@@ -82,6 +82,43 @@ def _check_rows(dim: str, declared: int, nrows: int, bound: str | None) -> None:
         )
 
 
+class PeriodRows(dict):
+    """A fill-forward list field's ``{kper: rows}`` (CHD's
+    stress_period_data). Rows assigned to a period are taken as the package
+    takes them at construction (see `Package._coerce_item_list`): an
+    `ItemTable` for a tabular list, and an option a row needs (BOUNDNAMES)
+    turned on. Made with rows already taken."""
+
+    def __init__(self, package: "Package", name: str, periods: dict) -> None:
+        super().__init__(periods)
+        self._package = package
+        self._name = name
+
+    def __setitem__(self, kper: int, rows: Any) -> None:
+        super().__setitem__(kper, self._package._coerce_period(self._name, rows))
+
+    def update(self, *args: Any, **kwargs: Any) -> None:  # type: ignore[override]
+        for kper, rows in dict(*args, **kwargs).items():
+            self[kper] = rows
+
+    def setdefault(self, kper: int, rows: Any = None) -> Any:  # type: ignore[override]
+        if kper not in self:
+            self[kper] = rows
+        return super().__getitem__(kper)
+
+    def __ior__(self, other: Any) -> "PeriodRows":  # type: ignore[override,misc]
+        self.update(other)
+        return self
+
+    def copy(self) -> "PeriodRows":
+        return PeriodRows(self._package, self._name, self)
+
+    def __reduce__(self):
+        # its rows as they are: unpickling assigns them before the
+        # package has the state to take them
+        return PeriodRows, (self._package, self._name, dict(self))
+
+
 @attrs.define(kw_only=True, slots=False)
 class Package(Component, ABC):
     # Dimensions counting item columns that aren't fields themselves, name ->
@@ -157,11 +194,7 @@ class Package(Component, ABC):
         object.__setattr__ writes to) is still the real name.
         """
         for f in fields:
-            block = f.metadata.get("block")
-            if not block:
-                continue
-            item_cls = item_list_type(f.type)
-            if item_cls is None:
+            if not f.metadata.get("block") or item_list_type(f.type) is None:
                 continue
             shape = f.metadata.get("shape")
             bound, dim = split_bound(shape[0]) if shape else (None, None)
@@ -172,26 +205,48 @@ class Package(Component, ABC):
                 raw = list(raw) * ((getattr(self, dim) if dim else None) or 1)
             if raw is None:
                 continue
+            value = self._coerce_list_field(f, raw)
+            object.__setattr__(self, f.name, value)
+            if dim:
+                if f.metadata.get("fill_forward"):
+                    nrows = max((len(r) for r in value.values()), default=0)
+                else:
+                    nrows = len(value)
+                self._set_dim_from_rows(dim, nrows, bound)
 
-            words = item_list_words(f.type)
-            if f.metadata.get("fill_forward"):
-                coerced = {
-                    kper: self._coerce_item_list(rows, item_cls, words)
-                    for kper, rows in raw.items()
-                }
-                object.__setattr__(self, f.name, coerced)
-                lists = list(coerced.values())
-                if dim:
-                    nrows = max((len(r) for r in coerced.values()), default=0)
-                    self._set_dim_from_rows(dim, nrows, bound)
-            else:
-                rows = self._coerce_item_list(raw, item_cls, words)
-                object.__setattr__(self, f.name, rows)
-                lists = [rows]
-                if dim:
-                    self._set_dim_from_rows(dim, len(rows), bound)
-            if not isinstance(item_cls, tuple):
-                self._set_dims_from_counts(item_cls, lists)
+    def _coerce_list_field(self, f: attrs.Attribute, raw: Any) -> Any:
+        """An Item-list field's value from user data, each list as
+        `_coerce_item_list` takes it, a fill-forward field's periods as
+        `PeriodRows`. Sets the dimensions counting its rows' array columns
+        (see `_set_dims_from_counts`). The field's own reassignment comes
+        here too (see `spec.list_`), and dimensions counting its rows
+        follow on the next `_sync_dims`."""
+        item_cls = item_list_type(f.type)
+        words = item_list_words(f.type)
+        value: Any
+        if f.metadata.get("fill_forward"):
+            value = PeriodRows(
+                self,
+                f.name,
+                {kper: self._coerce_item_list(rows, item_cls, words) for kper, rows in raw.items()},
+            )
+            lists = list(value.values())
+        else:
+            value = self._coerce_item_list(raw, item_cls, words)
+            lists = [value]
+        if not isinstance(item_cls, tuple):
+            self._set_dims_from_counts(item_cls, lists)  # type: ignore[arg-type]
+        return value
+
+    def _coerce_period(self, name: str, rows: Any) -> "list | ItemTable":
+        """A period's rows, assigned to the fill-forward field ``name``'s
+        `PeriodRows`, as `_coerce_list_field` takes each period's."""
+        f = attrs.fields_dict(type(self))[name]  # type: ignore[arg-type]
+        item_cls = item_list_type(f.type)
+        rows = self._coerce_item_list(rows, item_cls, item_list_words(f.type))
+        if not isinstance(item_cls, tuple):
+            self._set_dims_from_counts(item_cls, [rows])  # type: ignore[arg-type]
+        return rows
 
     def _counted_lists(self):
         """Yield ``(bound, dim, nrows)`` for each list whose rows a
@@ -777,14 +832,11 @@ class Package(Component, ABC):
         and, for a list of unions, a ``keyword`` column naming each row's arm.
         """
         if df.empty:
-            self.__dict__["_stress_period_data"] = {}
+            self._stress_period_data = {}
             return
         if "kper" not in df.columns:
             raise ValueError("DataFrame must have a 'kper' column")
-        f = self._period_item_field()
-        item_cls = item_list_type(f.type)
-        assert item_cls is not None
-        spd: dict[int, list | ItemTable] = {}
+        spd: dict[int, list] = {}
         for kper, group in df.groupby("kper"):
             group = group.drop(columns=["kper"])
             # A missing optional column (e.g. boundname), or another arm's
@@ -795,8 +847,8 @@ class Package(Component, ABC):
                 {k: v for k, v in row.items() if not (is_scalar(v) and pd.isna(v))}
                 for row in group.to_dict("records")
             ]
-            spd[int(kper)] = self._coerce_item_list(records, item_cls, item_list_words(f.type))
-        self.__dict__["_stress_period_data"] = spd
+            spd[int(kper)] = records
+        setattr(self, self._period_item_field().name, spd)
 
     def _period_item_field(self) -> attrs.Attribute:
         for f in attrs.fields(type(self)):  # type: ignore[arg-type]
@@ -811,7 +863,7 @@ class Package(Component, ABC):
 
     @stress_period_data.setter  # type: ignore[attr-defined, no-redef]
     def stress_period_data(self, value) -> None:  # type: ignore[override]
-        self.__dict__["_stress_period_data"] = value
+        self._stress_period_data = value
 
     def _period_array_fields(self) -> list:
         """Period array fields (not list ones): READARRAY packages' q, recharge, aux, ..."""
@@ -974,7 +1026,7 @@ class Package(Component, ABC):
         spd = period_lists.period_list_field(type(self))
         if spd is None:
             raise ValueError(f"{type(self).__name__} has no stress period data")
-        self.__dict__[spd.name] = period_lists.from_dataset(self, ds)
+        setattr(self, spd.name, period_lists.from_dataset(self, ds))
 
 
 def _union_row(
