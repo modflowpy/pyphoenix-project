@@ -927,6 +927,8 @@ class Item(Record):
     """Mixin for generated table-item types (plain items and union arms
     alike -- see module docstring)."""
 
+    __slots__ = ()  # as Record's
+
     # Column order, when it differs from the field order (see from_tokens).
     _columns: ClassVar[tuple[str, ...]] = ()
 
