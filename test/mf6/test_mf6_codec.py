@@ -65,7 +65,7 @@ END options
 
 
 def test_loads_number_only_lines():
-    # Lines of only numbers are read in bulk (NUMBER_LINES), and must read
+    # Lines of only numbers are read in bulk (NUMBERS), and must read
     # as any other line would: each value int or float as written, blank
     # and comment-only lines dropped, a line with anything else on it whole.
     mf6_input = """
@@ -97,6 +97,49 @@ END griddata
         [1, 2],
     ]
     assert [type(v) for v in result["griddata"][3]] == [float, float, float, int]
+
+
+def test_loads_records():
+    # Lines with a word on them are read in bulk too (RECORDS), and must
+    # read as any other line would; a line that can't be (BEGIN/END first,
+    # a quote, a trailing comment) is read on its own.
+    from lark import Token
+
+    from flopy4.mf6.codec.reader import BASIC_PARSER
+
+    mf6_input = """
+BEGIN period 1
+  1 inflow 0.0
+  2 status ACTIVE, 1D-5
+
+  # a comment
+  3 1.0 end
+  4 5 6
+  7 'quoted word' 1
+  8 x 2 # trailing
+  endpoint 1 2
+  2 begin sp 1
+  1997-07-16T19:20:30 7
+  1e5 e 2
+END period
+"""
+
+    result = loads(mf6_input)
+    assert result["period 1"] == [
+        [1, "inflow", 0.0],
+        [2, "status", "ACTIVE", 1e-5],
+        [3, 1.0, "end"],
+        [4, 5, 6],
+        [7, "quoted word", 1],
+        [8, "x", 2],
+        ["endpoint", 1, 2],
+        [2, "begin", "sp", 1],
+        ["1997-07-16T19:20:30", 7],
+        [100000.0, "e", 2],
+    ]
+    tree = BASIC_PARSER.parse(mf6_input)
+    tokens = [t for t in tree.scan_values(lambda v: isinstance(v, Token)) if t.type == "RECORDS"]
+    assert [str(t).split("\n")[0].strip() for t in tokens] == ["1 inflow 0.0", "2 begin sp 1"]
 
 
 def test_dumps_ic():
@@ -1676,8 +1719,8 @@ def test_tas_array_ncpl_not_nodes():
     (gwf-rcha, gwf-evta, utl-spca) with no `layered` form of their own --
     its flat length is ncpl (one layer), not the full-grid nodes count.
     Regression test: with nlay=2 (nodes=6, ncpl=3) and 6 values physically
-    present in the TIME block (e.g. a neighboring, unrelated INTERNAL run
-    of numbers), a nodes-sized read would wrongly consume all 6."""
+    present in the TIME block (e.g. a neighboring, unrelated INTERNAL array's
+    numbers), a nodes-sized read would wrongly consume all 6."""
     from flopy4.mf6.converter.ingress.structure import structure_component
     from flopy4.mf6.utl.tas import Tas
 
@@ -1968,6 +2011,176 @@ END PERIOD 1
     evt = structure_component(loads(text), Evt)
     rows = evt.stress_period_data[0]
     assert [(r.petm0, r.boundname) for r in rows] == [(0.5, None), (0.25, "well")]
+
+
+def test_rows_as_each_row_reads():
+    """A block's rows read together as each reads alone: those of a length
+    by the first's layout, and any that layout can't take (a cellid of
+    NONE, here as wide as a DISU node) by its own."""
+    from flopy4.mf6.gwf import Sfr
+    from flopy4.mf6.item import RowContext
+
+    context = RowContext(ncelldim=1, sizes={"auxiliary": 0}, enabled=frozenset({"boundnames"}))
+    values = [10.0, 1.0, 0.001, 100.0, 1.0, "rhk", 0.03, 1, 1.0, 0]
+    rows = [
+        [1, 5, *values],
+        [2, "NONE", *values],
+        [3, 0, *values],
+        [4, 6, *values, "reach4"],
+        [5, "none", *values, "reach5"],
+    ]
+    items = Sfr.Packagedata.from_rows(rows, context)
+    assert items == [Sfr.Packagedata.from_tokens(row, context) for row in rows]
+    assert [item.cellid for item in items] == [(4,), None, None, (5,), None]
+    assert [item.boundname for item in items] == [None, None, None, "reach4", "reach5"]
+
+
+def test_union_rows_as_each_row_reads():
+    """Rows ending in a union of arms read together as each reads alone,
+    rows of a length by one layout, each by the arm its keyword names."""
+    from flopy4.mf6.gwf import Sfr
+    from flopy4.mf6.item import RowContext
+
+    context = RowContext(ncelldim=1)
+    rows = [
+        [1, "inflow", 0.5],
+        [1, "rainfall", 0.25],
+        [2, "status", "active"],
+        [2, "INFLOW", "flow_ts"],
+        [3, "diversion", 1, 2.0],
+        [3, "auxiliary", "conc", 1.5],
+        [4, "upstream_fraction", 0.5],
+    ]
+    items = Sfr.StressPeriodData.from_rows(rows, context)
+    assert items == [Sfr.StressPeriodData.from_tokens(row, context) for row in rows]
+    assert [type(item.sfrsetting).__name__ for item in items] == [
+        "Inflow",
+        "Rainfall",
+        "Status",
+        "Inflow",
+        "Diversion",
+        "Auxiliary",
+        "UpstreamFraction",
+    ]
+
+
+def test_counted_rows_as_each_row_reads():
+    """Rows with an array another column counts (DISV's icvert, by ncvert)
+    read together as each reads alone."""
+    from flopy4.mf6.gwf import Disv
+    from flopy4.mf6.item import RowContext
+
+    rows = [
+        [1, 0.5, 0.5, 4, 1, 2, 3, 1],
+        [2, 1.5, 0.5, 4, 2, 4, 5, 2],
+        [3, 0.5, 1.5, 3, 3, 5, 6],
+        [4, 1.5, 1.5],
+    ]
+    items = Disv.Cell2d.from_rows(rows, RowContext())
+    assert items == [Disv.Cell2d.from_tokens(row) for row in rows]
+    assert [item.icvert for item in items] == [(0, 1, 2, 0), (1, 3, 4, 1), (2, 4, 5), ()]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "1 5 10.0 1.0 0.001 100.0 1.0 2 0.03 1 1.0 0 7.5\n"
+        "2 6 10.0 1.0 0.001 100.0 1.0 2 0.03 1 1.0 0 -1\n",
+        # comment-only and blank lines, commas, `D` exponents
+        "# reaches\n1,5,1D1 1.0 0.001 100.0 1.0 2 0.03 1 1.0 0 7.5\n\n"
+        "  ! more\n2 6 10.0 1.0 1d-3 100.0 1.0 2 0.03 1 1.0 0 -1\n",
+        # a cellid of NONE, as zero
+        "1 0 10.0 1.0 0.001 100.0 1.0 2 0.03 1 1.0 0 7.5\n"
+        "2 6 10.0 1.0 0.001 100.0 1.0 2 0.03 1 1.0 0 -1\n",
+    ],
+)
+def test_table_as_rows_read(text):
+    """A block of only numbers reads by column as `from_rows` reads it."""
+    from flopy4.mf6.codec.reader.transformer.rows import NumberRows
+    from flopy4.mf6.gwf import Sfr
+    from flopy4.mf6.item import RowContext
+    from flopy4.mf6.item_table import read_table
+
+    context = RowContext(ncelldim=1, sizes={"auxiliary": 1})
+    rows = NumberRows(text)
+    table = read_table(Sfr.Packagedata, rows.text, context)
+    assert table is not None and len(table) == 2
+    items = table.to_items()
+    assert items == Sfr.Packagedata.from_rows(list(rows), context)
+    assert [repr(item) for item in items] == [
+        repr(item) for item in Sfr.Packagedata.from_rows(list(rows), context)
+    ]
+
+
+@pytest.mark.parametrize(
+    "item_cls, text",
+    [
+        # rows of more than one length
+        ("Riv", "1 5 1.0 2.0 0.5\n1 6 1.0 2.0 0.5 3.0\n2 7 1.0 2.0 0.5 3.0 4.0\n"),
+        # a column of cellids (a row each)
+        ("Gnc", "1 2 3 0.5\n"),
+    ],
+)
+def test_table_declines(item_cls, text):
+    """Rows the columns can't hold are left to `from_rows`."""
+    from flopy4.mf6.gwf import Gnc, Riv
+    from flopy4.mf6.item import RowContext
+    from flopy4.mf6.item_table import read_table
+
+    cls = {"Riv": Riv.StressPeriodData, "Gnc": Gnc.Gncdata}[item_cls]
+    context = RowContext(ncelldim=1, sizes={"auxiliary": 0, "numalphaj": 1})
+    assert read_table(cls, text, context) is None
+
+
+def test_table_rows():
+    """A table's rows are its Items: equal to them, written back to when
+    set, and edited as a list's."""
+    import copy
+
+    from flopy4.mf6._types import TimeSeriesRef
+    from flopy4.mf6.gwf import Riv
+    from flopy4.mf6.item import RowContext
+    from flopy4.mf6.item_table import read_table
+
+    cls = Riv.StressPeriodData
+    text = "1 5 1.0 2.0 0.5\n2 7 3.0 4.0 0.25\n"
+    context = RowContext(ncelldim=2, sizes={"auxiliary": 0})
+    table = read_table(cls, text, context)
+    items = cls.from_rows([line.split() for line in text.splitlines()], context)
+    assert table == items and items == table
+    assert isinstance(table[0], cls) and table[0] == items[0] and items[0] == table[0]
+    assert repr(table) == repr(items)
+    assert table.tokens() == [item.to_tokens() for item in items]
+
+    table[0].stage = 9.0
+    assert table.columns["stage"].tolist() == [9.0, 3.0]
+    table[1].cond = TimeSeriesRef("s")  # not a number: a column of objects
+    table[0].boundname = "b"
+    assert table[1].cond == TimeSeriesRef("s") and table[0].boundname == "b"
+    assert table[1].boundname is None
+    assert table.tokens() is None  # left to each row's to_tokens
+
+    table.append(cls(cellid=(2, 2), stage=1.0, cond=1.0, rbot=1.0))
+    del table[0]
+    assert [row.cellid for row in table] == [(1, 6), (2, 2)]
+    assert type(copy.deepcopy(table[0])) is cls
+    with pytest.raises(TypeError):
+        table.append(((0, 0), 1.0, 1.0, 1.0))
+
+
+def test_package_rows_as_table():
+    """A package keeps a tabular list's rows as a table, given as Items or
+    otherwise, and sets the options its rows use."""
+    from flopy4.mf6.gwf import Riv
+    from flopy4.mf6.item_table import ItemTable
+
+    riv = Riv(stress_period_data={0: [((0, 0, 0), 1.0, 2.0, 0.5, "b")]})
+    rows = riv.stress_period_data[0]
+    assert isinstance(rows, ItemTable)
+    assert riv.boundnames
+    assert rows[0] == Riv.StressPeriodData(
+        cellid=(0, 0, 0), stage=1.0, cond=2.0, rbot=0.5, boundname="b"
+    )
 
 
 @pytest.mark.parametrize("boundname", [None, "b"])
@@ -4399,4 +4612,4 @@ END continuous
 """
     basic = loads(mf6_input)["continuous FILEOUT x.csv"]
     typed = loads(mf6_input, component="utl-obs")["continuous FILEOUT x.csv"]
-    assert basic == typed["stress_period_data"][0].children
+    assert basic == typed["stress_period_data"]

@@ -7,6 +7,7 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.token_record -> token_record
 %import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
@@ -22,13 +23,13 @@
 %ignore BANG_COMMENT
 %ignore COMMA
 
-start: _NL* (block _NL*)*
+start: [_NL] (block [_NL])*
 block: options__block | packages__block
 
-options__block: _BEGIN "options"i [_remark] _NL _NL* options__fields _NL* _END "options"i
-packages__block: _BEGIN "packages"i [_remark] _NL _NL* packages__fields _NL* _END "packages"i
-options__fields: ((list__val | print_input__kw | print_flows__kw | save_flows__kw | newtonoptions__rec | nc_mesh2d_filerecord__rec | nc_structured_filerecord__rec | nc_filerecord__rec | open_close_redirect) _NL*)*
-packages__fields: ((packagesdata | open_close_redirect) _NL*)*
+options__block: _BEGIN "options"i [_remark] _NL options__fields _END "options"i
+packages__block: _BEGIN "packages"i [_remark] _NL packages__fields _END "packages"i
+options__fields: (list__val | print_input__kw | print_flows__kw | save_flows__kw | newtonoptions__rec | nc_mesh2d_filerecord__rec | nc_structured_filerecord__rec | nc_filerecord__rec | open_close_redirect _NL)*
+packages__fields: (packagesdata | open_close_redirect _NL)*
 list__val: "list"i string
 print_input__kw: "print_input"i  [_remark] _NL
 print_flows__kw: "print_flows"i  [_remark] _NL

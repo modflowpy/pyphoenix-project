@@ -8,6 +8,7 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.token_record -> token_record
 %import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
@@ -37,7 +38,7 @@
    literal that can never occur in real input keeps the rule well-formed
    but non-nullable (no escape sequences here -- an embedded raw NUL byte
    from a `\x00`-style escape trips Lark's own literal-eval). #}
-start: _NL* (block _NL*)*
+start: [_NL] (block [_NL])*
 block: {{ block_alts if blocks else '"NO_BLOCKS_DEFINED_FOR_THIS_COMPONENT"' }}
 
 {% for block in blocks -%}
@@ -99,6 +100,6 @@ double_index: block_index
 {% endfor -%}
 {% for block in blocks -%}
 {% for recarray in block.recarrays -%}
-{{ recarray.name }}: record+
+{{ recarray.name }}: {{ 'token_record' if block.standalone_fields else 'record' }}+
 {% endfor -%}
 {% endfor -%}

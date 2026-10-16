@@ -169,8 +169,8 @@
 
 {# Block definition macro. Newlines are significant (see the header note in
    component.lark.jinja), so the BEGIN line's own line ending must be
-   consumed explicitly before the block's fields start, and a run of blank
-   lines before END is tolerated defensively (mirrors basic.lark). #}
+   consumed explicitly before the block's fields start. It takes any blank
+   and comment-only lines after it too (see typed.lark's _NL). #}
 {%- macro block_def(block_name, has_index, header=none, index_rule='block_index') -%}
 {%- set block_rule = rule(block_name, tags=['block']) -%}
 {%- set fields_rule = rule(block_name, tags=['fields']) -%}
@@ -178,23 +178,24 @@
 {# A record header (OBS's "CONTINUOUS FILEOUT <file> [BINARY]"), which
    the END line may repeat. #}
 {%- set header_rule = rule(header, tags=['hdr']) -%}
-{{ block_rule }}: _BEGIN "{{ block_name }}"i {{ header_rule }} [_remark] _NL _NL* {{ fields_rule }} _NL* _END "{{ block_name }}"i [{{ header_rule }}]
+{{ block_rule }}: _BEGIN "{{ block_name }}"i {{ header_rule }} [_remark] _NL {{ fields_rule }} _END "{{ block_name }}"i [{{ header_rule }}]
 {%- elif has_index -%}
 {# Real corpus files overwhelmingly close an indexed block as bare
    "END <name>", not repeating the index -- confirmed ~91% (1503/1651)
    across a random corpus sample. The trailing index is still accepted
    when present (the remaining ~9%). #}
-{{ block_rule }}: _BEGIN "{{ block_name }}"i {{ index_rule }} [_remark] _NL _NL* {{ fields_rule }} _NL* _END "{{ block_name }}"i [{{ index_rule }}]
+{{ block_rule }}: _BEGIN "{{ block_name }}"i {{ index_rule }} [_remark] _NL {{ fields_rule }} _END "{{ block_name }}"i [{{ index_rule }}]
 {%- else -%}
-{{ block_rule }}: _BEGIN "{{ block_name }}"i [_remark] _NL _NL* {{ fields_rule }} _NL* _END "{{ block_name }}"i
+{{ block_rule }}: _BEGIN "{{ block_name }}"i [_remark] _NL {{ fields_rule }} _END "{{ block_name }}"i
 {%- endif -%}
 {%- endmacro %}
 
-{# Field list macro. Each field alternative is followed by `_NL*` to
-   tolerate a blank or comment-only line (SH_COMMENT is ignored, but its
-   own trailing line ending still needs consuming) between two fields --
-   confirmed needed against real fixtures with a stray "#" comment line
-   between GRIDDATA array fields.
+{# Field list macro. Each field alternative ends with its own line ending,
+   whose _NL takes any blank and comment-only lines after it (see
+   typed.lark), so the alternatives needn't be followed by `_NL*`. They
+   mustn't be: Lark makes every `_NL*` one shared rule, and LALR merges the
+   states after its `_NL` across blocks, so their lexer took one block's
+   terminals in another (RECORDS over a keyword after a comment line).
 
    Any block's entire content may also be redirected to an external file
    via a bare "OPEN/CLOSE <file>" line in place of its usual fields --
@@ -205,7 +206,9 @@
    plausible line must not hard-fail the whole block's parse -- so the
    alternative is accepted structurally here and simply dropped by the
    transformer (see `__default__`'s tuple-only field collection), same
-   disposition as the AUXILIARY dynamic-name fallback. #}
+   disposition as the AUXILIARY dynamic-name fallback. Its line ending is
+   here, not in the shared open_close_redirect rule, for the same reason
+   as `_NL*`: so the state after it is this block's. #}
 {%- macro field_list(block_name, fields, rules, recarray_name, redirect=true) -%}
 {%- set alts = [] -%}
 {%- for f in fields -%}
@@ -215,7 +218,7 @@
 {%- set _ = alts.append(recarray_name) -%}
 {%- endif -%}
 {%- if redirect -%}
-{%- set _ = alts.append('open_close_redirect') -%}
+{%- set _ = alts.append('open_close_redirect _NL') -%}
 {%- endif -%}
-{{ rule(block_name, tags=['fields']) }}: (({{ alts|join(' | ') }}) _NL*)*
+{{ rule(block_name, tags=['fields']) }}: ({{ alts|join(' | ') }})*
 {%- endmacro %}

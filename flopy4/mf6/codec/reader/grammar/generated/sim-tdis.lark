@@ -7,6 +7,7 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.token_record -> token_record
 %import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
@@ -22,15 +23,15 @@
 %ignore BANG_COMMENT
 %ignore COMMA
 
-start: _NL* (block _NL*)*
+start: [_NL] (block [_NL])*
 block: options__block | dimensions__block | perioddata__block
 
-options__block: _BEGIN "options"i [_remark] _NL _NL* options__fields _NL* _END "options"i
-dimensions__block: _BEGIN "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* _END "dimensions"i
-perioddata__block: _BEGIN "perioddata"i [_remark] _NL _NL* perioddata__fields _NL* _END "perioddata"i
-options__fields: ((time_units__val | start_date_time__val | ats_filerecord__rec | open_close_redirect) _NL*)*
-dimensions__fields: ((nper__val | open_close_redirect) _NL*)*
-perioddata__fields: ((perioddatadata | open_close_redirect) _NL*)*
+options__block: _BEGIN "options"i [_remark] _NL options__fields _END "options"i
+dimensions__block: _BEGIN "dimensions"i [_remark] _NL dimensions__fields _END "dimensions"i
+perioddata__block: _BEGIN "perioddata"i [_remark] _NL perioddata__fields _END "perioddata"i
+options__fields: (time_units__val | start_date_time__val | ats_filerecord__rec | open_close_redirect _NL)*
+dimensions__fields: (nper__val | open_close_redirect _NL)*
+perioddata__fields: (perioddatadata | open_close_redirect _NL)*
 time_units__val: "time_units"i string
 start_date_time__val: "start_date_time"i string
 ats_filerecord__rec: "ats6"i ats_filerecord__ats6_filename__val [_remark] _NL

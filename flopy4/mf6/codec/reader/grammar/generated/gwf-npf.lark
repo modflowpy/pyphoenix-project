@@ -7,6 +7,7 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.token_record -> token_record
 %import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
@@ -22,13 +23,13 @@
 %ignore BANG_COMMENT
 %ignore COMMA
 
-start: _NL* (block _NL*)*
+start: [_NL] (block [_NL])*
 block: options__block | griddata__block
 
-options__block: _BEGIN "options"i [_remark] _NL _NL* options__fields _NL* _END "options"i
-griddata__block: _BEGIN "griddata"i [_remark] _NL _NL* griddata__fields _NL* _END "griddata"i
-options__fields: ((save_flows__kw | print_flows__kw | alternative_cell_averaging__union | thickstrt__kw | cvoptions__rec | perched__kw | rewet_record__rec | xt3doptions__rec | highest_cell_saturation__kw | save_specific_discharge__kw | save_saturation__kw | k22overk__kw | k33overk__kw | tvk_filerecord__rec | export_array_ascii__kw | export_array_netcdf__kw | dev_no_newton__kw | dev_omega__val | open_close_redirect) _NL*)*
-griddata__fields: ((icelltype__val | k__val | k22__val | k33__val | angle1__val | angle2__val | angle3__val | wetdry__val | open_close_redirect) _NL*)*
+options__block: _BEGIN "options"i [_remark] _NL options__fields _END "options"i
+griddata__block: _BEGIN "griddata"i [_remark] _NL griddata__fields _END "griddata"i
+options__fields: (save_flows__kw | print_flows__kw | alternative_cell_averaging__union | thickstrt__kw | cvoptions__rec | perched__kw | rewet_record__rec | xt3doptions__rec | highest_cell_saturation__kw | save_specific_discharge__kw | save_saturation__kw | k22overk__kw | k33overk__kw | tvk_filerecord__rec | export_array_ascii__kw | export_array_netcdf__kw | dev_no_newton__kw | dev_omega__val | open_close_redirect _NL)*
+griddata__fields: (icelltype__val | k__val | k22__val | k33__val | angle1__val | angle2__val | angle3__val | wetdry__val | open_close_redirect _NL)*
 save_flows__kw: "save_flows"i  [_remark] _NL
 print_flows__kw: "print_flows"i  [_remark] _NL
 alternative_cell_averaging__union: "alternative_cell_averaging"i (alternative_cell_averaging__logarithmic__kw | alternative_cell_averaging__amt_lmk__kw | alternative_cell_averaging__amt_hmk__kw) [_remark] _NL

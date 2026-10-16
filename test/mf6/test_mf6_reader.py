@@ -76,12 +76,14 @@ INTERNAL FACTOR 1.0 IPRN 3
     assert str(iprn.data) == "iprn"
     assert str(iprn.children[0].data) == "integer"
     assert int(iprn.children[0].children[0]) == 3
+    # the lines of only numbers are one token
     data = readarray.children[-1]
-    assert len(data.children) == 28
-    assert str(data.children[0].data) == "double"
-    assert str(data.children[-1].data) == "double"
-    assert float(data.children[0].children[0]) == 1.2
-    assert float(data.children[-1].children[0]) == 8.8
+    assert len(data.children) == 1
+    assert data.children[0].type == "NUMBERS"
+    values = str(data.children[0]).split()
+    assert len(values) == 28
+    assert float(values[0]) == 1.2
+    assert float(values[-1]) == 8.8
 
 
 def test_parse_layered_array():
@@ -125,9 +127,11 @@ INTERNAL FACTOR 1.0 IPRN 3
     assert str(iprn.data) == "iprn"
     assert int(iprn.children[0].children[0]) == 3
     data = layer2.children[1]
-    assert len(data.children) == 28
-    assert float(data.children[0].children[0]) == 1.2
-    assert float(data.children[-1].children[0]) == 8.8
+    assert len(data.children) == 1
+    values = str(data.children[0]).split()
+    assert len(values) == 28
+    assert float(values[0]) == 1.2
+    assert float(values[-1]) == 8.8
 
 
 def test_parse_constant_array():
@@ -842,7 +846,7 @@ def test_typed_loads_words_starting_with_begin_or_end():
 
     obs = "BEGIN CONTINUOUS FILEOUT x.csv\n  endwell HEAD 1 1 1\nEND CONTINUOUS\n"
     typed = loads_typed(obs, "utl-obs")["continuous FILEOUT x.csv"]
-    assert typed["stress_period_data"][0].children == loads(obs)["CONTINUOUS FILEOUT x.csv"]
+    assert typed["stress_period_data"] == loads(obs)["CONTINUOUS FILEOUT x.csv"]
 
 
 def test_typed_loads_bare_begin_or_end_word():
@@ -865,7 +869,7 @@ def test_typed_loads_begin_or_end_after_row_start():
     assert rows == loads(ghb)["PERIOD 1"]
 
     ts = "BEGIN TIMESERIES\n  0.0 1.0 begin SP 1\n  1.0 2.0 end\nEND TIMESERIES\n"
-    typed = loads_typed(ts, "utl-ts")["timeseries"]["stress_period_data"][0].children
+    typed = loads_typed(ts, "utl-ts")["timeseries"]["stress_period_data"]
     assert typed == [[0.0, 1.0, "begin", "SP", 1], [1.0, 2.0, "end"]]
 
 
@@ -878,6 +882,132 @@ def test_typed_loads_bang_comment_after_number():
     rows = loads_typed(ghb, "gwf-ghb")["period 1"]["stress_period_data"]
     assert rows == [[1, 1, 1, 1.0, 10.0]]
     assert rows == loads(ghb)["PERIOD 1"]
+
+
+def test_typed_loads_number_lines_as_text():
+    """A list's rows that are only numbers come back as their text (a
+    NumberRows), as from the basic grammar, and a comment-only line
+    doesn't split a list. Rows with words among them are a list."""
+    from flopy4.mf6.codec.reader import loads, loads_typed
+    from flopy4.mf6.codec.reader.transformer.rows import NumberRows
+
+    ghb = (
+        "BEGIN PERIOD 1\n  1 1 1 1.0 10.0\n  # a comment\n  1 1 2 1.0D1, 10.0\nEND PERIOD\n"
+        "BEGIN PERIOD 2\n  1 1 1 1.0 10.0 a\n  # a comment\n  1 1 2 1.0 10.0\nEND PERIOD\n"
+    )
+    typed, basic = loads_typed(ghb, "gwf-ghb"), loads(ghb)
+    rows = typed["period 1"]["stress_period_data"]
+    assert isinstance(rows, NumberRows)
+    assert rows == [[1, 1, 1, 1.0, 10.0], [1, 1, 2, 10.0, 10.0]]
+    assert rows == basic["PERIOD 1"]
+    rows = typed["period 2"]["stress_period_data"]
+    assert rows == [[1, 1, 1, 1.0, 10.0, "a"], [1, 1, 2, 1.0, 10.0]]
+    assert rows == basic["PERIOD 2"]
+
+    # a block's list other than a period's
+    disv = "BEGIN VERTICES\n  1 0.0 0.0\n  2 1.0 0.0\nEND VERTICES\n"
+    assert loads_typed(disv, "gwf-disv")["vertices"]["stress_period_data"] == [
+        [1, 0.0, 0.0],
+        [2, 1.0, 0.0],
+    ]
+
+
+def test_typed_loads_records():
+    """Rows of words and numbers lex as one token (RECORDS) but read as
+    they would by value: a line with a quoted word or a trailing comment
+    still reads, and `end` after a row's first token is a word."""
+    from flopy4.mf6.codec.reader import loads_typed, parser
+
+    sfr = (
+        "BEGIN PERIOD 1\n  1 inflow 0.0\n  1 status active, 2 'a b' 3\n"
+        "  2 rainfall 1.0 # note\n  2 stage 1.5\n\n  # c\n  3 end 1\nEND PERIOD\n"
+    )
+    rows = loads_typed(sfr, "gwf-sfr")["period 1"]["stress_period_data"]
+    assert rows == [
+        [1, "inflow", 0.0],
+        [1, "status", "active", 2, "a b", 3],
+        [2, "rainfall", 1.0],
+        [2, "stage", 1.5],
+        [3, "end", 1],
+    ]
+    tokens = parser.get_typed_parser("gwf-sfr").lex("BEGIN PERIOD 1\n  1 inflow 0.0\nEND PERIOD\n")
+    assert "RECORDS" in [t.type.rsplit("__", 1)[-1] for t in tokens]
+
+    # a list beside another field (solutiongroup's MXITER) lexes by value
+    nam = "BEGIN SOLUTIONGROUP 1\n  MXITER 2\n  IMS6 sim.ims gwf\nEND SOLUTIONGROUP\n"
+    assert loads_typed(nam, "sim-nam")["solutiongroup 1"] == {
+        "mxiter": 2,
+        "stress_period_data": [["IMS6", "sim.ims", "gwf"]],
+    }
+    # ...its rows kept on either side of the field
+    nam = (
+        "BEGIN SOLUTIONGROUP 1\n  IMS6 a.ims gwf\n  MXITER 3\n  EMS6 b.ems gwe\nEND SOLUTIONGROUP\n"
+    )
+    assert loads_typed(nam, "sim-nam")["solutiongroup 1"] == {
+        "mxiter": 3,
+        "stress_period_data": [["IMS6", "a.ims", "gwf"], ["EMS6", "b.ems", "gwe"]],
+    }
+
+
+def test_typed_loads_keyword_after_comment_line():
+    """A keyword line after a comment-only line reads as the keyword, not
+    as RECORDS (which a period block's rows take)."""
+    from flopy4.mf6.codec.reader import loads_typed
+
+    chd = (
+        "BEGIN OPTIONS\n  #PRINT_INPUT\n  PRINT_FLOWS\n  # c\n\n  ! d\n  SAVE_FLOWS\n"
+        "END OPTIONS\nBEGIN DIMENSIONS\n  MAXBOUND 1\nEND DIMENSIONS\n"
+    )
+    assert loads_typed(chd, "gwf-chd") == {
+        "options": {"print_flows": True, "save_flows": True},
+        "dimensions": {"maxbound": 1},
+    }
+    # ...or after an OPEN/CLOSE line, which any block may have
+    chd = "BEGIN OPTIONS\n  OPEN/CLOSE opts.txt\n  PRINT_FLOWS\nEND OPTIONS\n"
+    assert loads_typed(chd, "gwf-chd") == {"options": {"print_flows": True}}
+
+
+def test_typed_grammars_no_line_token_beside_keyword():
+    """No typed grammar has a parser state whose contextual lexer takes a
+    line-run terminal (RECORDS, NUMBERS) beside a keyword it would match.
+    The run outranks the keyword, so the keyword's line would lex as rows.
+    A rule several blocks share, and that ends a line, makes such a state:
+    LALR merges the states after it, so the next line lexes with every
+    block's terminals (`_NL*`, or open_close_redirect's own `_NL`)."""
+    import re
+
+    from lark.lexer import PatternStr
+
+    from flopy4.mf6.codec.reader.parser import get_typed_parser
+
+    leaks = []
+    for path in sorted((BASE_GRAMMAR_PATH.parent / "generated").glob("*.lark")):
+        parser = get_typed_parser(path.stem)
+        runs = [t for t in parser.terminals if t.name.endswith(("RECORDS", "NUMBERS"))]
+        keywords = [t for t in parser.terminals if isinstance(t.pattern, PatternStr)]
+        # Lark -> ParsingFrontend -> LALR_Parser -> _Parser
+        states = parser.parser.parser.parser.parse_table.states
+        for run in runs:
+            rx = re.compile(run.pattern.to_regexp())
+            shadowed = {k.name for k in keywords if rx.match(k.pattern.value + "\n")}
+            for actions in states.values():
+                if run.name in actions and (both := shadowed & actions.keys()):
+                    leaks.append((path.stem, run.name, sorted(both)[:3]))
+    assert not leaks
+
+
+def test_typed_loads_array_number_lines():
+    """An array's lines of only numbers read as one, among lines that
+    aren't (a remark), comments and `D` exponents included."""
+    from flopy4.mf6.codec.reader import loads_typed
+
+    ic = (
+        "BEGIN GRIDDATA\n  STRT\n    INTERNAL\n      1 2.0\n      # a comment\n"
+        "      3.0D0 4\n      5 6 remark\n      7, 8\nEND GRIDDATA\n"
+    )
+    strt = loads_typed(ic, "gwf-ic")["griddata"]["strt"]["data"]
+    assert strt.dtype == np.float64
+    np.testing.assert_array_equal(strt, np.arange(1.0, 9.0))
 
 
 @pytest.mark.parametrize("component", ["gwf-maw", "gwf-wel"])

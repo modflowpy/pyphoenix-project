@@ -1,7 +1,7 @@
 // Newlines are significant here (only inline whitespace and COMMA are
 // %ignore'd, not NEWLINE) -- a blanket "%ignore" that swallowed newlines
 // couldn't reliably delimit list/record rows or bound a trailing per-line
-// remark, since an ignored whitespace run always maximal-munches past a
+// remark, since ignored whitespace always maximal-munches past a
 // bare newline whenever the following line is indented.
 
 integer: SIGNED_INT | INT
@@ -31,13 +31,17 @@ factor: "factor"i double
 iprn: "iprn"i integer
 binary: "(binary)"i
 filename: word
-data: _data_line+
+data: (_data_line | NUMBERS)+
 _data_line: double+ [_remark] _NL
 // begin/end after a record's first token are words, as in basic.lark: MF6
 // only takes a line's first word as a block keyword, so later ones are data
 // (a boundname `end`, test106's `0.0 ... begin SP 1` remark). `!` keeps the
 // filtered-out keyword token so the transformer can return it as a word.
-record: token (token | block_kw_word)* _NL
+record: token (token | block_kw_word)* _NL | NUMBERS | RECORDS
+// A list's row lexed by value, for a list that shares its block with other
+// fields (sim-nam's solutiongroup and its MXITER): RECORDS would take
+// their lines too.
+token_record: token (token | block_kw_word)* _NL | NUMBERS
 !block_kw_word: _BEGIN | _END
 // Whole tokens only, like the number terminals below. As "begin"i/"end"i
 // literals they outrank BARE_WORD (-1) and matched a word's prefix, so a
@@ -64,20 +68,43 @@ BARE_WORD.-1: /[a-zA-Z0-9'().\/:;<=>?@_~+\[\\-]+/
 // basic.lark, which imports this terminal.
 QUOTED_WORD.1: /'[^'\n]*'|"[^"\n]*"/
 _token: word | number
-// Excludes "," (not just whitespace) so a remark can never out-length a
-// COMMA-separated data run with no surrounding spaces (confirmed against a
+// Consecutive lines of only numbers (plus blank and comment-only lines after
+// them), as one token, so big files don't take a token per value. A line it
+// can't take whole lexes as a `record` or `_data_line` (basic.lark's `line`).
+// Not to be confused with NUMBER, one number.
+// A `record` that's one of these is all its rows. Possessive throughout:
+// a number's always followed by a separator or newline, so backtracking
+// into one can't match differently, and it's a third faster on big arrays.
+NUMBERS.3: /(?:[ \t,]*+[+-]?+(?:\d++(?:\.\d*+)?+|\.\d++)(?:[eEdD][+-]?+\d++)?+(?:[ \t,]++[+-]?+(?:\d++(?:\.\d*+)?+|\.\d++)(?:[eEdD][+-]?+\d++)?+)*+[ \t,]*+\r?\n(?:[ \t,]*+(?:[#!][^\n]*+)?\r?\n)*+)++/
+// Consecutive lines of plain words and numbers (plus blank and
+// comment-only lines after them), as one token, like NUMBERS for rows
+// that aren't only numbers (SFR's `1 inflow 0.0`). A word is a BARE_WORD
+// without a quote, so a line with a quoted word, a trailing comment or a
+// `begin`/`end`/`open/close` first lexes as a `record`. Below NUMBERS,
+// which takes lines of only numbers first (so it can be read by column).
+RECORDS.1: /(?:[ \t,]*+(?!(?i:begin|end|open\/close)(?![^\s,#!]))[a-zA-Z0-9().\/:;<=>?@_~+\[\\-]++(?:[ \t,]++[a-zA-Z0-9().\/:;<=>?@_~+\[\\-]++)*+[ \t,]*+\r?\n(?:[ \t,]*+(?:[#!][^\n]*+)?\r?\n)*+)++/
+// Excludes "," (not just whitespace) so a remark can never out-length
+// COMMA-separated data with no surrounding spaces (confirmed against a
 // real fixture: TDIS's "1.00000000,1,1.00000000" -- maximal munch always
 // prefers the longer match regardless of priority, so an unbounded \S+
 // remark starting right at the first comma would swallow the remaining
 // comma-joined values whole instead of letting COMMA (%ignore'd) separate
 // them). A remark containing commas (e.g. a "PERLEN,NSTP,TSMULT" label)
 // still works: it just lexes as several _REMARK tokens joined by ignored
-// commas, and `_remark: _REMARK+` accepts any run of them.
+// commas, and `_remark: _REMARK+` accepts any number of them.
 _REMARK.-1: /[^\s,]+/
 _remark: _REMARK+
-open_close_redirect: "open/close"i filename [_remark] _NL
+// Without its line ending, which each block's field list takes so the
+// state after it is that block's (see macros.jinja's field_list).
+open_close_redirect: "open/close"i filename [_remark]
 
-%import common.NEWLINE -> _NL
+// A line ending plus any blank and comment-only lines after it, like
+// NUMBERS' and RECORDS' tails, so two _NLs never come in a row: between
+// two line endings with no token, there's only what's %ignore'd (spaces,
+// tabs, commas, then a comment to the line's end), which this takes. The
+// grammars rely on that and have no `_NL*` (see macros.jinja's
+// field_list).
+_NL: /\r?\n(?:[ \t,]*+(?:[#!][^\n]*+)?\r?\n)*+/
 %import common.WS_INLINE
 %import common.CNAME
 %import common.SH_COMMENT

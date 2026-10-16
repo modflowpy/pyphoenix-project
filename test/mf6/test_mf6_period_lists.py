@@ -5,6 +5,7 @@ import pytest
 from flopy4.mf6._types import TimeSeriesRef
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.gwf import Chd, Evt, Hfb, Lak, Maw, Mvr, Oc, Sfr, Uzf, Wel
+from flopy4.mf6.item_table import ItemTable
 from flopy4.mf6.utl import Tvk
 
 NODATA = FILL_DNODATA
@@ -142,6 +143,60 @@ def test_summing_a_time_series_raises():
     wel = Wel(stress_period_data={0: [((0, 0, 0), "ts1"), ((0, 0, 0), -2.0)]}, dims=DIMS)
     with pytest.raises(ValueError, match="can't be summed"):
         wel.to_xarray(duplicates="sum")
+
+
+def test_periods_past_nper_are_dropped():
+    wel = Wel(stress_period_data={3: [((0, 0, 0), "ts1"), ((0, 0, 1), -1.0)]}, dims=DIMS)
+    with pytest.warns(UserWarning, match="past NPER"):
+        ds = wel.to_xarray()
+    assert (ds["q"].values == NODATA).all()
+    assert pd.isnull(ds.coords["q_ts"].values).all()
+
+
+# --- by column --------------------------------------------------------------
+
+
+def wells_by_column():
+    """Rows held as columns: repeats, a series, boundnames, aux."""
+    spd = {
+        0: [((0, 0, 0), -1.0, (1.0,), "a"), ((0, 1, 2), "ts1", (2.0,), None)],
+        2: [((0, 0, 1), -1.0, (3.0,), "b"), ((0, 0, 1), -2.0, (4.0,), "c")],
+    }
+    wel = Wel(stress_period_data=spd, auxiliary=["conc"], boundnames=True, dims=DIMS)
+    assert isinstance(wel.__dict__["_stress_period_data"][0], ItemTable)
+    return wel
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [{"sparse": True}, *({"duplicates": d} for d in ("first", "last", "sum"))],
+    ids=["sparse", "first", "last", "sum"],
+)
+def test_columns_give_what_rows_do(kwargs):
+    wel = wells_by_column()
+    tables = wel.__dict__["_stress_period_data"]
+    by_column = wel.to_xarray(**kwargs)
+    wel.__dict__["_stress_period_data"] = {k: t.to_items() for k, t in tables.items()}
+    assert by_column.identical(wel.to_xarray(**kwargs))
+
+
+@pytest.mark.parametrize("sparse", [True, False], ids=["sparse", "dense"])
+def test_tabular_rows_come_back_as_tables(sparse):
+    wel = wells_by_column()
+    tables = wel.__dict__["_stress_period_data"]
+    wel.from_xarray(wel.to_xarray(sparse=sparse, duplicates="last"))
+    spd = wel.__dict__["_stress_period_data"]
+    assert all(isinstance(t, ItemTable) for t in spd.values())
+    assert spd[0] == tables[0]
+    assert spd[0].columns["q"].dtype == object  # a series
+    assert spd[2].columns["q"].dtype == np.float64
+    if sparse:
+        assert spd == tables
+
+
+def test_columns_raise_on_repeats_as_rows_do():
+    with pytest.raises(ValueError, match=r"period 2 sets q at \(0, 0, 1\) twice"):
+        wells_by_column().to_xarray()
 
 
 # --- feature rows -------------------------------------------------------------

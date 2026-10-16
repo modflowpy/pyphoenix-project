@@ -14,6 +14,7 @@ from modflow_devtools.dfns import dim_value
 from flopy4.dimensions import DimensionProvider
 from flopy4.mf6._types import TimeArraySeriesRef
 from flopy4.mf6.block import block_list_type
+from flopy4.mf6.codec.reader.transformer.rows import BlockRows, NumberRows, parts, row_values
 from flopy4.mf6.component import Component, get_ftype
 from flopy4.mf6.item import (
     Item,
@@ -26,6 +27,7 @@ from flopy4.mf6.item import (
     parse_union_items,
     sized_by,
 )
+from flopy4.mf6.item_table import ItemTable, read_table
 from flopy4.mf6.load_context import LoadContext
 from flopy4.mf6.package import Package
 from flopy4.mf6.period_arrays import is_grid_package
@@ -60,10 +62,11 @@ def _parse_rows(
     union_forms: Callable[[Mapping[str, Any]], Any] | None = None,
     load_child: Callable[[Any, str], Any] | None = None,
     words: tuple[str, ...] = (),
-) -> list | None:
+) -> "list | ItemTable | None":
     """Parse lists of tokens (rows) into a list of Items (or, in a list of
     unions, its ``words``), their cellids' widths per the context (see
-    `LoadContext.ncelldim`)."""
+    `LoadContext.ncelldim`); a block of only numbers, into an `ItemTable`
+    if its rows allow."""
     if not rows:
         return None
     classes = item_cls if isinstance(item_cls, tuple) else (item_cls,)
@@ -75,17 +78,20 @@ def _parse_rows(
         return parse_union_items(
             rows, item_cls, words=words, context=row_context, load_child=load_child
         )
-    result = [
-        item_cls.from_tokens(
-            row,
-            row_context,
-            union_arm=union_arm,
-            union_forms=union_forms,
-            load_child=load_child,
-        )
-        for row in rows
-        if row
-    ]
+    # a block of only numeric lines, read by column if its rows allow, and
+    # kept so (see ItemTable)
+    if (
+        isinstance(rows, NumberRows)
+        and (table := read_table(item_cls, rows.text, row_context)) is not None
+    ):
+        return table or None
+    result = item_cls.from_rows(
+        [row for row in rows if row],
+        row_context,
+        union_arm=union_arm,
+        union_forms=union_forms,
+        load_child=load_child,
+    )
     return result or None
 
 
@@ -161,13 +167,15 @@ def _resolve_open_close_rows(rows: list, context: LoadContext) -> list:
     griddata's OPEN/CLOSE control record, but a different mechanism: the
     referenced file holds list rows, not a flat numeric array, so it's
     parsed the same way an inline block's own content would be (wrapped in
-    a synthetic block and run back through the block/token grammar) rather
+    a synthetic block and passed back through the block/token grammar) rather
     than through `_read_open_close_values`.
 
     Detects that shape -- a block whose *only* content is one OPEN/CLOSE
     row -- and returns the referenced file's rows in its place; otherwise
     returns `rows` unchanged.
     """
+    if isinstance(rows, (NumberRows, BlockRows)):
+        return rows  # has numbers (and counting them would read them)
     if len(rows) != 1 or not rows[0] or str(rows[0][0]).upper() != "OPEN/CLOSE":
         return rows
     row = rows[0]
@@ -180,6 +188,15 @@ def _resolve_open_close_rows(rows: list, context: LoadContext) -> list:
     text = path.read_text()
     wrapped = _codec_loads(f"BEGIN DATA\n{text}\nEND DATA\n")
     return wrapped.get("DATA", [])
+
+
+def _kind(part) -> str:
+    """A control record's kind (CONSTANT, INTERNAL, OPEN/CLOSE), or a
+    field's name, as written: the part's first token, in upper case. Empty
+    for number-only lines (a NumberRows)."""
+    if isinstance(part, NumberRows) or not part:
+        return ""
+    return str(part[0]).upper()
 
 
 def _numeric_prefix(row: list) -> list:
@@ -222,7 +239,7 @@ def _control_io(vrow: list, values: np.ndarray) -> ArrayIO:
     way: its kind, as an `ArrayFormat`, and ``IPRN <n>``; an OPEN/CLOSE
     record's file, as written (relative to the simulation directory), and
     the hash of the `values` read from it."""
-    kind = str(vrow[0]).upper() if vrow else ""
+    kind = _kind(vrow)
     if kind == "CONSTANT":
         return ArrayIO(format="constant")
     if kind not in ("INTERNAL", "OPEN/CLOSE"):
@@ -273,7 +290,7 @@ def _read_control_record(
     rows: list, i: int, context: LoadContext, dtype, length: int
 ) -> "tuple[np.ndarray, int]":
     """Read one CONSTANT/INTERNAL/OPEN-CLOSE array control record starting
-    at ``rows[i]``, shared by array blocks (`_parse_array_block`) and
+    at ``rows[i]`` (a block's `parts`), shared by array blocks (`_parse_array_block`) and
     READARRAY period (`_parse_readarray_period_block`) array ingress.
 
     Always returns a full ``length``-element ``ndarray`` (CONSTANT
@@ -284,7 +301,7 @@ def _read_control_record(
     ``length`` values are collected, rather than assuming exactly one row.
     """
     vrow = rows[i]
-    kind = str(vrow[0]).upper() if vrow else ""
+    kind = _kind(vrow)
     if kind == "CONSTANT":
         v = int(vrow[1]) if dtype == np.int64 else float(vrow[1])
         return np.full(length, v, dtype=dtype), i + 1
@@ -292,11 +309,18 @@ def _read_control_record(
         # read only the values the array needs; a file may hold more
         return _apply_factor(_read_open_close_values(vrow, context, dtype)[:length], vrow), i + 1
     j = i + 1 if kind == "INTERNAL" else i
-    values: list = []
-    while len(values) < length and j < len(rows):
-        values.extend(_numeric_prefix(rows[j]))
+    chunks: list[np.ndarray] = []
+    count = 0
+    while count < length and j < len(rows):
+        part = rows[j]
+        if isinstance(part, NumberRows):
+            chunk = row_values(part, dtype)
+        else:
+            chunk = np.array(_numeric_prefix(part), dtype=dtype)
+        chunks.append(chunk)
+        count += len(chunk)
         j += 1
-    array = np.array(values[:length], dtype=dtype)
+    array = np.concatenate(chunks)[:length] if chunks else np.array([], dtype=dtype)
     if kind == "INTERNAL":
         array = _apply_factor(array, vrow)
     return array, j
@@ -345,10 +369,11 @@ def _parse_array_block(
         return result
     ncpl = nodes // nlay if nlay else nodes
 
+    rows = parts(rows)
     i = 0
     while i < len(rows):
         row = rows[i]
-        if not row:
+        if not _kind(row):
             i += 1
             continue
         key = str(row[0]).lower()
@@ -384,7 +409,7 @@ def _parse_array_block(
             layer_ios = []
             while i < len(rows):
                 vrow = rows[i]
-                if not vrow or str(vrow[0]).upper() not in ("CONSTANT", "INTERNAL", "OPEN/CLOSE"):
+                if _kind(vrow) not in ("CONSTANT", "INTERNAL", "OPEN/CLOSE"):
                     break
                 value, j = _read_control_record(rows, i, context, dtype, record_len)
                 layer_ios.append(_control_io(vrow, value))
@@ -452,10 +477,11 @@ def _parse_readarray_period_block(
     ncpl = nodes // nlay if nlay > 1 else nodes
 
     result: dict[str, np.ndarray | TimeArraySeriesRef] = {}
+    rows = parts(rows)
     i = 0
     while i < len(rows):
         row = rows[i]
-        if not row:
+        if not _kind(row):
             i += 1
             continue
         key = str(row[0]).lower()
@@ -486,11 +512,7 @@ def _parse_readarray_period_block(
             if is_layered_unknown:
                 while i < len(rows):
                     vrow = rows[i]
-                    if not vrow or str(vrow[0]).upper() not in (
-                        "CONSTANT",
-                        "INTERNAL",
-                        "OPEN/CLOSE",
-                    ):
+                    if _kind(vrow) not in ("CONSTANT", "INTERNAL", "OPEN/CLOSE"):
                         break
                     _, i = _read_control_record(rows, i, context, np.float64, ncpl)
             elif i < len(rows):
@@ -510,7 +532,7 @@ def _parse_readarray_period_block(
             layer_ios = []
             while i < len(rows):
                 vrow = rows[i]
-                if not vrow or str(vrow[0]).upper() not in ("CONSTANT", "INTERNAL", "OPEN/CLOSE"):
+                if _kind(vrow) not in ("CONSTANT", "INTERNAL", "OPEN/CLOSE"):
                     break
                 value, j = _read_control_record(rows, i, context, dtype, ncpl)
                 layer_ios.append(_control_io(vrow, value))
@@ -783,14 +805,14 @@ def _group_repeating_rows(
 ) -> "dict[str, dict[Any, list]]":
     grouped: dict[str, dict[Any, list]] = {}
     for block_name, rows in raw_lower.items():
-        parts = block_name.split()
-        if len(parts) < 2 or parts[0] not in prefixes:
+        names = block_name.split()
+        if len(names) < 2 or names[0] not in prefixes:
             continue
         try:
-            header = cast(parts[1])
+            header = cast(names[1])
         except ValueError:
             continue
-        grouped.setdefault(parts[0], {})[header] = rows
+        grouped.setdefault(names[0], {})[header] = rows
     return grouped
 
 
@@ -1144,7 +1166,7 @@ def structure_component(
     if kper_rows:
         if period_field is not None:
             assert period_item_cls is not None  # set together with period_field above
-            spd: dict[int, list] = {}
+            spd: dict[int, list | ItemTable] = {}
             for kper, rows in sorted(kper_rows.items()):
                 if not rows:
                     # an empty period block turns off every boundary
@@ -1255,7 +1277,7 @@ def structure_component(
                 for header, rows in sorted(series_rows.items()):
                     if not rows:
                         continue
-                    value, _ = _read_control_record(rows, 0, context, dtype, length)
+                    value, _ = _read_control_record(parts(rows), 0, context, dtype, length)
                     series[header] = value
                 if series:
                     init_key = f.alias if f.alias else fname
