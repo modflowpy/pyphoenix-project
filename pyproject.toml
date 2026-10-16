@@ -181,7 +181,9 @@ description = "Show flopy4.mf6 sync status vs. discovered MF6 binary"
 [tool.pixi.feature.test.tasks]
 test = { cmd = "pytest -v -n auto --dist worksteal", env = { MPLBACKEND = "Agg" } }
 smoke = { cmd = "pytest -v -n auto --dist worksteal --smoke", env = { MPLBACKEND = "Agg" } }
-bench = { cmd = "pytest benchmarks --benchmark-enable --benchmark-autosave --benchmark-columns=min,mean,stddev,rounds --bench-manifest benchmarks/models-full.txt", env = { MPLBACKEND = "Agg" }, description = "Run the benchmarks, saving results to .benchmarks/" }
+bench = { cmd = "pytest benchmarks --benchmark-enable --benchmark-autosave --benchmark-columns=min,mean,stddev,rounds", env = { MPLBACKEND = "Agg" }, description = "Benchmark the standard tier, saving results to .benchmarks/" }
+bench-large = { cmd = "pytest benchmarks --benchmark-enable --benchmark-autosave --benchmark-columns=min,mean,stddev,rounds --bench-tier large", env = { MPLBACKEND = "Agg" }, description = "Benchmark the large tier (downloaded on first use)" }
+bench-full = { cmd = "pytest benchmarks --benchmark-enable --benchmark-autosave --benchmark-columns=min,mean,stddev,rounds --bench-tier full", env = { MPLBACKEND = "Agg" }, description = "Benchmark the full manifest, benchmarks/models-full.txt" }
 
 [tool.pixi.feature.lint.tasks]
 install = { cmd = "pre-commit install --install-hooks" }

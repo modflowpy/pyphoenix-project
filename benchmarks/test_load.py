@@ -80,7 +80,7 @@ def test_load_materialize_largest(benchmark, models, quiet, rank, library):
         pytest.skip(f"only {len(ranked)} models")
     model = ranked[rank - 1]
     benchmark.group = f"load-materialize-largest{rank}"
-    benchmark.extra_info.update(model=model.name, n_bytes=model.n_bytes)
+    benchmark.extra_info.update(model=model.name, n_bytes=model.n_bytes, tags=model.tags)
     benchmark.pedantic(
         _load_materialize, args=(library, [model]), rounds=ROUNDS, iterations=1, warmup_rounds=1
     )
@@ -104,6 +104,6 @@ def test_cold_start(benchmark, models, library):
         split.update(json.loads(proc.stdout.strip().splitlines()[-1]))
 
     benchmark.group = "load-cold"
-    benchmark.extra_info.update(model=model.name, n_bytes=model.n_bytes)
+    benchmark.extra_info.update(model=model.name, n_bytes=model.n_bytes, tags=model.tags)
     benchmark.pedantic(run, rounds=COLD_ROUNDS, iterations=1)
     benchmark.extra_info.update(split)

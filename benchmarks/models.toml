@@ -1,0 +1,90 @@
+# Benchmark models, by tier (`--bench-tier`).
+#
+# - smoke: a few tiny models, under a minute.
+# - standard (the default): the smoke tier, plus mid-size models.
+# - large: big models only, opt-in; the registry downloads them on first use.
+# - full: not listed here; the `models-full.txt` manifest.
+#
+# Every listed model must pass both checks (equal work and round trip):
+# a tier pins its models, so a model that fails one fails the run.
+#
+# Tags name each model's data shape, so results can be grouped by it:
+#
+# - array: big gridded arrays
+# - list: big stress-period lists
+# - openclose: data in OPEN/CLOSE files
+# - exg: exchanges between models
+# - sfr, lak: package-specific cases
+
+[[model]]
+name = "mf6/test/test001a_Tharmonic"
+tier = "smoke"
+tags = []
+
+# an OPEN/CLOSE list. Not test006_gwf3_disv_ext: flopy3 doesn't read its
+# OPEN/CLOSE dimensions block (nlay comes back None), so it fails equal work.
+[[model]]
+name = "mf6/test/test001a_Tharmonic_extlist"
+tier = "smoke"
+tags = ["openclose"]
+
+[[model]]
+name = "mf6/test/test028_sfr"
+tier = "smoke"
+tags = ["sfr"]
+
+[[model]]
+name = "mf6/test/test045_lake4ss_dev"
+tier = "smoke"
+tags = ["lak"]
+
+[[model]]
+name = "mf6/test/test120_mv_dis-lgr"
+tier = "smoke"
+tags = ["exg"]
+
+[[model]]
+name = "mf6/test/test016_Keating_dev"
+tier = "standard"
+tags = []
+
+[[model]]
+name = "mf6/test/test019_VilhelmsenGF"
+tier = "standard"
+tags = ["openclose"]
+
+[[model]]
+name = "mf6/test/test033_wtdecay"
+tier = "standard"
+tags = ["openclose"]
+
+# test_load.py's COLD_MODEL
+[[model]]
+name = "mf6/test/test050_circle_island"
+tier = "standard"
+tags = ["openclose"]
+
+[[model]]
+name = "mf6/large/test1000_751x751"
+tier = "large"
+tags = ["array"]
+
+[[model]]
+name = "mf6/test/test016_Keating_disu_mfusg"
+tier = "large"
+tags = ["array"]
+
+[[model]]
+name = "mf6/large/test1005_secp"
+tier = "large"
+tags = ["array"]
+
+[[model]]
+name = "mf6/large/test1002_biscqtg_disv_dev"
+tier = "large"
+tags = ["list"]
+
+[[model]]
+name = "mf6/large/test1001_Peterson"
+tier = "large"
+tags = ["array"]

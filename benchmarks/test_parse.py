@@ -3,9 +3,9 @@
 Measures only getting file *text* into Python, per file. For a full
 simulation load (and flopy3), see `test_load.py`.
 
-The corpus is every package file a `KNOWN_PASSING` model resolves,
-narrowed to files *both* grammars parse as-is, so basic and typed time
-identical input. `n_files`/`n_bytes` are recorded in each benchmark's
+The corpus is every package file the benchmark models (``--bench-tier``
+or ``--bench-manifest``) resolve, narrowed to files *both* grammars parse
+as-is, so basic and typed time identical input. `n_files`/`n_bytes` are recorded in each benchmark's
 `extra_info`: when comparing runs across a grammar change, check they
 match, since a file the changed grammar newly rejects silently drops out.
 
@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 import pytest
-from _models import known_passing
+from _models import known_passing, selection
 from _ops import load_flopy4, package_files
 
 ROUNDS = 3
@@ -62,9 +62,11 @@ def corpus(request, tmp_path_factory) -> Corpus:
         warnings.simplefilter("ignore")
         logging.disable(logging.CRITICAL)
         try:
-            names = sorted(known_passing())
             if pinned is not None:
+                names = sorted(known_passing())
                 names = [n for n in names if any(k.startswith(n + "/") for k in pinned)]
+            else:
+                names = selection(request.config).names
             for model_name in names:
                 workspace = copy_to(tmp_path_factory.mktemp("bench"), model_name, verbose=False)
                 if workspace is None or not (workspace / "mfsim.nam").exists():

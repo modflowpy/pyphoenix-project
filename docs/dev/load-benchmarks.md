@@ -7,8 +7,16 @@ measured against. Measured 2026-09-24 at commit `5bae03a` (on the unmerged
 numbers as history; the analysis of how each library reads data still holds.
 
 The benchmarks now live in `benchmarks/` and run with `pixi run -e dev bench`.
-They also time writing (`test_write.py`), on the models whose output both
-libraries reload intact (a round-trip check), recording bytes written.
+They also time writing (`test_write.py`), recording bytes written, after
+checking that each library's output reloads intact (a round-trip check).
+
+The models come in tiers, listed in `benchmarks/models.toml`: `smoke` (a few
+tiny models), `standard` (the default) and `large` (opt-in, downloaded on
+first use). A fourth tier, `full`, is the 165-model manifest this baseline
+used, `benchmarks/models-full.txt`. Every tier pins its models: a model that
+fails either check fails the run rather than dropping out, so a regression
+can't quietly shrink what's compared. The numbers below are from the full
+manifest.
 
 ## What's compared, and at which level
 
@@ -29,11 +37,11 @@ There are two benchmark modules, both opt-in pytest-benchmark modules under
 | module | `test_parse.py` | `test_load.py` |
 | question | is one flopy4 parser faster than the other? | how fast is loading for a user, vs. flopy3? |
 | compares | flopy4 basic vs. typed parser | flopy3 vs. flopy4 (basic) |
-| unit of work | 2,149 package files' text, pre-read into memory | 165 whole simulations, from disk |
+| unit of work (full tier) | 2,149 package files' text, pre-read into memory | 165 whole simulations, from disk |
 | benchmarks | `test_parse`, `test_parse_transform`, `test_typed_grammar_build` | `test_load`, `test_load_materialize`, `test_load_materialize_largest`, `test_cold_start` |
-| pinning | optional `--bench-parse-manifest` (file list) | always, `models-full.txt` via `--bench-manifest` |
+| pinning | the tier's models, or `--bench-parse-manifest` (file list) | always: the tier, or `--bench-manifest` |
 | equal-work check | both grammars parse the file | both loaders open exactly the same files |
-| runtime | ~4 min | ~6.5 min |
+| runtime (full tier) | ~4 min | ~6.5 min |
 
 Use the parse benchmarks for grammar/transformer changes and the load
 benchmarks for anything user-visible.
@@ -329,15 +337,19 @@ directly.
 ## Reproducing
 
 ```shell
-# all benchmarks (opt-in); load models pinned to benchmarks/models-full.txt
+# all benchmarks (opt-in), on the standard tier (benchmarks/models.toml)
 pixi run -e dev bench
+pixi run -e dev bench --bench-tier smoke            # under a minute
+pixi run -e dev bench-large                         # the large tier
+pixi run -e dev bench-full                          # benchmarks/models-full.txt
 pixi run -e dev bench --benchmark-compare           # vs. the last saved run
 pixi run -e dev bench -k test_load                  # load only
 pixi run -e dev bench -k test_parse                 # parse only
 pixi run -e dev bench -k test_write                 # write only
 
-# re-derive the model set: point the manifest option at a new path.
-# Later options win, so this overrides the task's own --bench-manifest
+# benchmark the models listed in a file instead of a tier. If the file
+# doesn't exist, discover the models from KNOWN_PASSING: the ones that pass
+# the equal-work check are written to it, and the others listed at the end
 pixi run -e dev bench --bench-manifest /path/to/new-models.txt
 
 # the file-set check or the cold start by hand, for one or more workspaces
@@ -351,9 +363,11 @@ so `--benchmark-compare` against an older save won't match names; rerun to
 get a fresh save. Each benchmark's
 `extra_info` records:
 
-- `n_models`, `n_bytes`, `n_excluded`, the flopy version and the flopy3
-  load options;
-- the model name, for the per-model and cold-start groups.
+- `models` (the tier or manifest), `n_models`, `n_bytes`, `n_excluded`, the
+  flopy version and the flopy3 load options;
+- the model name and its `models.toml` tags, for the per-model and
+  cold-start groups;
+- `n_files_written` and `n_bytes_written`, for the write groups.
 
 The per-model distribution and the griddata coverage check came from scratch
 scripts. Both are easy to reconstruct from `benchmarks/_ops.py`:

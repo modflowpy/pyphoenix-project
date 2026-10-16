@@ -2,12 +2,12 @@
 
 `check`: do flopy3 and flopy4 open the same files? Loads and materializes
 a model with both libraries, recording the files each opens under the
-workspace with an audit hook. A model is benchmarked only if the two file
-sets are equal.
+workspace with an audit hook. A model whose two file sets differ fails
+the benchmarks.
 
 `round_trip`: does a library's output hold what it loaded? Writes a model,
 reloads the output with the same library, and compares the two. A model
-is write-benchmarked only if both libraries' round trips hold.
+whose round trip fails with either library fails the write benchmarks.
 
 `check`'s audit hook is process-wide and can't be removed, so it runs as a
 script in its own interpreter, never in the benchmark process::

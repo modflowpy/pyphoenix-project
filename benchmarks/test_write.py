@@ -2,8 +2,8 @@
 (`Simulation.write`).
 
 Each round writes already-loaded simulations into fresh, empty
-directories; loading isn't timed. Only models whose output round-trips
-with both libraries are written (see `write_models` in `conftest.py`).
+directories; loading isn't timed. Each library's output is first checked
+to reload intact (see `write_models` in `conftest.py`).
 
 Benchmarks, each parametrized by library:
 
@@ -64,5 +64,7 @@ def test_write_largest(benchmark, write_models, quiet, tmp_path, rank, library):
         pytest.skip(f"only {len(ranked)} models")
     model = ranked[rank - 1]
     benchmark.group = f"write-largest{rank}"
-    benchmark.extra_info.update(model=model.name, **write_models.info(library, [model]))
+    benchmark.extra_info.update(
+        model=model.name, tags=model.tags, **write_models.info(library, [model])
+    )
     _bench_write(benchmark, tmp_path, library, [model])

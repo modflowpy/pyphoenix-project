@@ -3,6 +3,13 @@
 Benchmarks are opt-in: `pytest.ini` passes ``--benchmark-disable``, so
 every module here skips unless ``--benchmark-enable`` is given (the pixi
 ``bench*`` tasks pass it).
+
+The models come from ``--bench-tier`` (see `models.toml`), or from
+``--bench-manifest``. Either way they're pinned: a model that's missing,
+doesn't do equal work, or doesn't round-trip fails the run, so a
+regression can't quietly shrink what's compared. Only discovery (a
+``--bench-manifest`` path that doesn't exist yet) leaves failing models
+out, and writes the rest to that path.
 """
 
 from __future__ import annotations
@@ -17,7 +24,7 @@ from typing import NamedTuple
 
 import pytest
 from _check import exclusion_reason, round_trip, round_trip_reason
-from _models import known_passing
+from _models import TIERS, model_tags, selection
 from _ops import FLOPY3_OPTIONS, LIBRARIES
 
 BENCH_DIR = Path(__file__).parent
@@ -28,11 +35,18 @@ _EXCLUDED: dict[str, dict[str, str]] = {}
 
 def pytest_addoption(parser):
     parser.addoption(
+        "--bench-tier",
+        choices=[*TIERS, "full"],
+        default="standard",
+        help="Which models to benchmark: a tier from benchmarks/models.toml, "
+        "or full (benchmarks/models-full.txt). Default: standard.",
+    )
+    parser.addoption(
         "--bench-manifest",
         type=Path,
         default=None,
-        help="Pin the benchmark models to this list, writing it on first use, "
-        "so later runs time identical input.",
+        help="Benchmark the models listed in this file instead of a tier. If "
+        "it doesn't exist, discover them from KNOWN_PASSING and write it.",
     )
     parser.addoption(
         "--bench-parse-manifest",
@@ -67,17 +81,21 @@ class Model(NamedTuple):
     ws: Path
     load_only: list[str]  # flopy3's, matching what flopy4 loads
     n_bytes: int  # input files both libraries open
+    tags: list[str]
 
 
 class Models(NamedTuple):
+    source: str
     models: list[Model]
     excluded: dict[str, str]  # model -> reason
+    pinned: bool
 
     @property
     def info(self) -> dict:
         import flopy
 
         return {
+            "models": self.source,
             "n_models": len(self.models),
             "n_bytes": sum(m.n_bytes for m in self.models),
             "n_excluded": len(self.excluded),
@@ -89,13 +107,12 @@ class Models(NamedTuple):
 @pytest.fixture(scope="session")
 def models(request, tmp_path_factory) -> Models:
     """The benchmark models, copied from the registry and checked for
-    equal work. A model the check rejects is excluded, or fails the
-    session if the manifest pins it."""
+    equal work. A model the check rejects fails the session, unless
+    discovering a manifest, which leaves it out."""
     from modflow_devtools.models import copy_to
 
-    manifest: Path | None = request.config.getoption("bench_manifest")
-    pinned = manifest.read_text().split() if manifest and manifest.exists() else None
-    names = pinned if pinned is not None else sorted(known_passing())
+    sel = selection(request.config)
+    names = sel.names
 
     workspaces = {}
     for name in names:
@@ -103,7 +120,7 @@ def models(request, tmp_path_factory) -> Models:
         if ws is not None and (ws / "mfsim.nam").exists():
             workspaces[str(ws)] = (name, ws)
     missing = set(names) - {name for name, _ in workspaces.values()}
-    if pinned is not None and missing:
+    if sel.pinned and missing:
         pytest.fail(f"pinned models not found: {sorted(missing)}")
 
     # a fresh interpreter, so the audit hook never touches the timed process
@@ -116,20 +133,23 @@ def models(request, tmp_path_factory) -> Models:
     results = [json.loads(line) for line in proc.stdout.splitlines() if line.startswith("{")]
     assert len(results) == len(workspaces), proc.stderr[-2000:]
 
+    tags = model_tags()
     models, excluded = [], {}
     for result in results:
         name, ws = workspaces[result["ws"]]
         if result.get("equal"):
-            models.append(Model(name, ws, result["load_only"], result["n_bytes"]))
+            models.append(
+                Model(name, ws, result["load_only"], result["n_bytes"], tags.get(name, []))
+            )
         else:
             excluded[name] = exclusion_reason(result)
-    if pinned is not None and excluded:
-        pytest.fail(f"pinned models no longer load with equal work: {excluded}")
-    assert models, "no benchmark models"
-    if pinned is None and manifest is not None:
-        manifest.write_text("\n".join(m.name for m in models) + "\n")
     _EXCLUDED["equal work"] = excluded
-    return Models(models, excluded)
+    if sel.pinned and excluded:
+        pytest.fail(f"pinned models don't load with equal work: {excluded}")
+    assert models, "no benchmark models"
+    if not sel.pinned:
+        Path(sel.source).write_text("\n".join(m.name for m in models) + "\n")
+    return Models(sel.source, models, excluded, sel.pinned)
 
 
 class Written(NamedTuple):
@@ -156,9 +176,10 @@ class WriteModels(NamedTuple):
 
 @pytest.fixture(scope="session")
 def write_models(models, tmp_path_factory) -> WriteModels:
-    """The benchmark models whose output, reloaded, holds what was loaded,
-    with both libraries. The others are excluded from write benchmarks, so
-    neither library is timed writing less than it should."""
+    """The benchmark models, once each library's output, reloaded, is
+    checked to hold what was loaded, so neither library is timed writing
+    less than it should. A model that fails fails the session, unless
+    discovering a manifest, which leaves it out of the write benchmarks."""
     kept, excluded, written = [], {}, {}
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -182,6 +203,8 @@ def write_models(models, tmp_path_factory) -> WriteModels:
         finally:
             logging.disable(logging.NOTSET)
     _EXCLUDED["round trip"] = excluded
+    if models.pinned and excluded:
+        pytest.fail(f"pinned models don't round-trip: {excluded}")
     assert kept, "no models round-trip with both libraries"
     return WriteModels(kept, excluded, written)
 
