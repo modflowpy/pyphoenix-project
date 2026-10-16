@@ -21,6 +21,7 @@ from flopy4.mf6.dims_provider_methods import DimsProviderMethods
 from flopy4.mf6.item import (
     Item,
     RowContext,
+    _plannable,
     conditional_fields,
     dim_lookup,
     inline_dim,
@@ -30,6 +31,7 @@ from flopy4.mf6.item import (
     sized_by,
     union_value,
 )
+from flopy4.mf6.item_table import ItemTable
 from flopy4.mf6.load_context import LoadContext
 from flopy4.mf6.period_arrays import (
     dense,
@@ -178,17 +180,18 @@ class Package(Component, ABC):
                     for kper, rows in raw.items()
                 }
                 object.__setattr__(self, f.name, coerced)
-                rows = [r for kper_rows in coerced.values() for r in kper_rows]
+                lists = list(coerced.values())
                 if dim:
                     nrows = max((len(r) for r in coerced.values()), default=0)
                     self._set_dim_from_rows(dim, nrows, bound)
             else:
                 rows = self._coerce_item_list(raw, item_cls, words)
                 object.__setattr__(self, f.name, rows)
+                lists = [rows]
                 if dim:
                     self._set_dim_from_rows(dim, len(rows), bound)
             if not isinstance(item_cls, tuple):
-                self._set_dims_from_counts(item_cls, rows)
+                self._set_dims_from_counts(item_cls, lists)
 
     def _counted_lists(self):
         """Yield ``(bound, dim, nrows)`` for each list whose rows a
@@ -246,8 +249,10 @@ class Package(Component, ABC):
                 if "(" not in shape:  # not a row lookup
                     continue
                 looked_up: list[str] = []
+                # each row's count by its key, the first row with it
+                counts: dict[str, dict] = {}
 
-                def select(path: str, key: Any, f=f) -> Any:
+                def select(path: str, key: Any, f=f, counts=counts) -> Any:
                     *_, block, count_col = path.split(".")
                     target = next(
                         (g for g in fields if g.metadata.get("block") == block and g is not f), None
@@ -261,9 +266,12 @@ class Package(Component, ABC):
                     if pk is None:
                         return None
                     looked_up.append(path)
-                    return next(
-                        (getattr(r, count_col) for r in target_rows if getattr(r, pk) == key), None
-                    )
+                    if (by_key := counts.get(path)) is None:
+                        by_key = counts[path] = {}
+                        keys = _column_values(target_rows, pk)
+                        for k, n in zip(keys, _column_values(target_rows, count_col)):
+                            by_key.setdefault(k, n)
+                    return by_key.get(key)
 
                 for r in rows:
                     n = len(getattr(r, col.name) or ())
@@ -351,10 +359,11 @@ class Package(Component, ABC):
         else:
             _check_rows(dim, declared, nrows, bound)
 
-    def _set_dims_from_counts(self, item_cls: "type[Item]", rows: list) -> None:
+    def _set_dims_from_counts(self, item_cls: "type[Item]", lists: list) -> None:
         """Set the dimensions counting array columns (GNC's numalphaj counts
         cellidsj and alphasj, EVT's nseg-1 counts pxdp) from the columns'
-        lengths, unless given."""
+        lengths in ``lists`` (a period's rows each, or the one list's), unless
+        given."""
         values = {a.name: getattr(self, a.name) for a in attrs.fields(type(self))}
 
         def lookup(name: str) -> Any:
@@ -362,7 +371,7 @@ class Package(Component, ABC):
 
         for f in package_sized_fields(item_cls):
             shape = inline_dim(f) or ""
-            lengths = {len(v) for r in rows if (v := getattr(r, f.name))}
+            lengths = {n for rows in lists for n in _lengths(rows, f.name)}
             if len(lengths) > 1:
                 raise ValueError(f"{f.name} lengths differ across rows: {sorted(lengths)}")
             if not lengths:
@@ -406,8 +415,9 @@ class Package(Component, ABC):
 
     def _coerce_item_list(
         self, data, item_cls: "type[Item] | tuple[type[Item], ...]", words: tuple[str, ...] = ()
-    ) -> list:
-        """Convert user-supplied list/dict data to a list of Item instances.
+    ) -> "list | ItemTable":
+        """Convert user-supplied list/dict data to a list of Item instances,
+        an `ItemTable` for a tabular list (see `item._plannable`).
 
         For a plain (non-union) item_cls, accepts:
           - list of item_cls instances → returned as-is
@@ -428,7 +438,10 @@ class Package(Component, ABC):
         A row with a field an option turns on (a boundname) sets that
         option.
         """
-        if isinstance(data, list) and all(isinstance(row, item_cls) for row in data):
+        items: list | ItemTable
+        if isinstance(data, ItemTable) and data.item_cls is item_cls:
+            items = data  # as loaded: kept (it isn't a copy, either)
+        elif isinstance(data, list) and all(isinstance(row, item_cls) for row in data):
             # Items already (as loaded): no context needed, which is costly
             # to resolve per period
             items = list(data)
@@ -443,10 +456,13 @@ class Package(Component, ABC):
         on = {
             option
             for name, option in conditional_fields(item_cls).items()
-            if unset(option) and any(getattr(item, name, None) is not None for item in items)
+            if unset(option) and _any_set(items, name)
         }
         for option in on:
             object.__setattr__(self, option, True)
+        if not isinstance(items, ItemTable) and not isinstance(item_cls, tuple):
+            if _plannable(item_cls):  # type: ignore[arg-type]  # lru_cache wants Hashable
+                items = ItemTable.from_items(item_cls, items)
         return items
 
     def _items_from(
@@ -575,15 +591,14 @@ class Package(Component, ABC):
             value = getattr(self, f.name)
             periods = value if isinstance(value, dict) else {None: value}
             for kper, rows in periods.items():
-                for row in rows or []:
-                    for name in _ts_names(row):
-                        if name.lower() not in defined:
-                            where = f" period {kper}" if kper is not None else ""
-                            raise ValueError(
-                                f"{type(self).__name__}.{f.name.lstrip('_')}:{where} "
-                                f"names time series {name!r}, which no TS6 file "
-                                f"defines (defined: {sorted(defined) or 'none'})"
-                            )
+                for name in _rows_ts_names(rows or []):
+                    if name.lower() not in defined:
+                        where = f" period {kper}" if kper is not None else ""
+                        raise ValueError(
+                            f"{type(self).__name__}.{f.name.lstrip('_')}:{where} "
+                            f"names time series {name!r}, which no TS6 file "
+                            f"defines (defined: {sorted(defined) or 'none'})"
+                        )
 
     def _check_obs_ids(self) -> None:
         """Warn if an observation names a boundname MF6 may read as a cell."""
@@ -593,7 +608,7 @@ class Package(Component, ABC):
                 continue
             value = getattr(self, f.name)
             for rows in (value if isinstance(value, dict) else {None: value}).values():
-                boundnames |= {b for row in rows or [] if (b := getattr(row, "boundname", None))}
+                boundnames |= {b for b in _boundnames(rows or []) if b}
         numeric = {b.lower() for b in boundnames if _reads_as_number(b)}
         if not numeric:
             return
@@ -745,7 +760,11 @@ class Package(Component, ABC):
             # object columns in a list of unions, whose arms leave each
             # other's empty: else an int column with gaps would turn float
             dtype = object if union else None
-            df = pd.DataFrame([_row_dict(row, keyword=union) for row in _spd[kper]], dtype=dtype)
+            rows = _spd[kper]
+            if isinstance(rows, ItemTable):
+                df = pd.DataFrame(_table_dict(rows))
+            else:
+                df = pd.DataFrame([_row_dict(row, keyword=union) for row in rows], dtype=dtype)
             df.insert(0, "kper", kper)
             frames.append(df)
         return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
@@ -765,7 +784,7 @@ class Package(Component, ABC):
         f = self._period_item_field()
         item_cls = item_list_type(f.type)
         assert item_cls is not None
-        spd: dict[int, list] = {}
+        spd: dict[int, list | ItemTable] = {}
         for kper, group in df.groupby("kper"):
             group = group.drop(columns=["kper"])
             # A missing optional column (e.g. boundname), or another arm's
@@ -977,6 +996,32 @@ def _union_row(
     return union_value(values, (words, arms), context)
 
 
+def _column_values(rows: Any, name: str) -> list:
+    """The field ``name``'s values in ``rows``, a row's each."""
+    if isinstance(rows, ItemTable):
+        return rows.values(name)
+    return [getattr(r, name) for r in rows]
+
+
+def _lengths(rows: Any, name: str) -> set[int]:
+    """The lengths of the array field ``name``'s values in ``rows``, those
+    not empty."""
+    if isinstance(rows, ItemTable):
+        col = rows.columns.get(name)
+        if col is not None and col.dtype != object:
+            return {col.shape[1]} if len(col) and col.shape[1] else set()
+        rows = rows.values(name)
+        return {len(v) for v in rows if v}
+    return {len(v) for r in rows if (v := getattr(r, name))}
+
+
+def _any_set(rows: Any, name: str) -> bool:
+    """Whether a row has a value for the field ``name``."""
+    if isinstance(rows, ItemTable):
+        return rows.any_set(name)
+    return any(getattr(row, name, None) is not None for row in rows)
+
+
 def _row_dict(row: Any, keyword: bool = False) -> dict[str, Any]:
     """A table row as a DataFrame record: `attrs.asdict`, except that
     time-series references and union arms stay as they are (asdict would
@@ -994,6 +1039,42 @@ def _row_dict(row: Any, keyword: bool = False) -> dict[str, Any]:
         elif isinstance(v, Item):
             record[f.name] = v
     return record
+
+
+def _boundnames(rows: Any) -> list:
+    """The rows' boundnames, a row's each (None for none)."""
+    if isinstance(rows, ItemTable):
+        if "boundname" not in rows.columns:
+            return []
+        return rows.values("boundname")
+    return [getattr(row, "boundname", None) for row in rows]
+
+
+def _rows_ts_names(rows: Any) -> list[str]:
+    """The time-series names the rows use (see `_ts_names`). A table's are
+    in its columns of objects only: the others are all numbers."""
+    if not isinstance(rows, ItemTable):
+        return [name for row in rows for name in _ts_names(row)]
+    names: list[str] = []
+    for f in attrs.fields(rows.item_cls):  # type: ignore[arg-type]
+        col = rows.columns.get(f.name)
+        if col is None or col.dtype != object or not f.metadata.get("time_series"):
+            continue
+        for value in col.tolist():
+            values = value if isinstance(value, tuple) else (value,)
+            names += [v.name for v in values if isinstance(v, TimeSeriesRef)]
+    return names
+
+
+def _table_dict(table: ItemTable) -> dict[str, list]:
+    """A table's columns as a DataFrame's, as `_row_dict` makes each row."""
+    out = {}
+    for f in attrs.fields(table.item_cls):  # type: ignore[arg-type]
+        values = table.values(f.name)
+        if f.metadata.get("time_series"):
+            values = [list(v) if isinstance(v, tuple) else v for v in values]
+        out[f.name] = values
+    return out
 
 
 def _ts_names(row: Any) -> list[str]:

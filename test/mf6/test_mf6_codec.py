@@ -2043,6 +2043,57 @@ def test_table_declines(item_cls, text):
     assert read_table(cls, text, context) is None
 
 
+def test_table_rows():
+    """A table's rows are its Items: equal to them, written back to when
+    set, and edited as a list's."""
+    import copy
+
+    from flopy4.mf6._types import TimeSeriesRef
+    from flopy4.mf6.gwf import Riv
+    from flopy4.mf6.item import RowContext
+    from flopy4.mf6.item_table import read_table
+
+    cls = Riv.StressPeriodData
+    text = "1 5 1.0 2.0 0.5\n2 7 3.0 4.0 0.25\n"
+    context = RowContext(ncelldim=2, sizes={"auxiliary": 0})
+    table = read_table(cls, text, context)
+    items = cls.from_rows([line.split() for line in text.splitlines()], context)
+    assert table == items and items == table
+    assert isinstance(table[0], cls) and table[0] == items[0] and items[0] == table[0]
+    assert repr(table) == repr(items)
+    assert table.tokens() == [item.to_tokens() for item in items]
+
+    table[0].stage = 9.0
+    assert table.columns["stage"].tolist() == [9.0, 3.0]
+    table[1].cond = TimeSeriesRef("s")  # not a number: a column of objects
+    table[0].boundname = "b"
+    assert table[1].cond == TimeSeriesRef("s") and table[0].boundname == "b"
+    assert table[1].boundname is None
+    assert table.tokens() is None  # left to each row's to_tokens
+
+    table.append(cls(cellid=(2, 2), stage=1.0, cond=1.0, rbot=1.0))
+    del table[0]
+    assert [row.cellid for row in table] == [(1, 6), (2, 2)]
+    assert type(copy.deepcopy(table[0])) is cls
+    with pytest.raises(TypeError):
+        table.append(((0, 0), 1.0, 1.0, 1.0))
+
+
+def test_package_rows_as_table():
+    """A package keeps a tabular list's rows as a table, given as Items or
+    otherwise, and sets the options its rows use."""
+    from flopy4.mf6.gwf import Riv
+    from flopy4.mf6.item_table import ItemTable
+
+    riv = Riv(stress_period_data={0: [((0, 0, 0), 1.0, 2.0, 0.5, "b")]})
+    rows = riv.stress_period_data[0]
+    assert isinstance(rows, ItemTable)
+    assert riv.boundnames
+    assert rows[0] == Riv.StressPeriodData(
+        cellid=(0, 0, 0), stage=1.0, cond=2.0, rbot=0.5, boundname="b"
+    )
+
+
 @pytest.mark.parametrize("boundname", [None, "b"])
 def test_row_positional_trailing_boundname(boundname):
     """A positional row's last value is its boundname, absent (None) or

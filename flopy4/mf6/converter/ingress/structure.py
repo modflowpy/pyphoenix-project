@@ -27,7 +27,7 @@ from flopy4.mf6.item import (
     parse_union_items,
     sized_by,
 )
-from flopy4.mf6.item_table import read_table
+from flopy4.mf6.item_table import ItemTable, read_table
 from flopy4.mf6.load_context import LoadContext
 from flopy4.mf6.package import Package
 from flopy4.mf6.period_arrays import is_grid_package
@@ -62,10 +62,11 @@ def _parse_rows(
     union_forms: Callable[[Mapping[str, Any]], Any] | None = None,
     load_child: Callable[[Any, str], Any] | None = None,
     words: tuple[str, ...] = (),
-) -> list | None:
+) -> "list | ItemTable | None":
     """Parse lists of tokens (rows) into a list of Items (or, in a list of
     unions, its ``words``), their cellids' widths per the context (see
-    `LoadContext.ncelldim`)."""
+    `LoadContext.ncelldim`); a block of only numbers, into an `ItemTable`
+    if its rows allow."""
     if not rows:
         return None
     classes = item_cls if isinstance(item_cls, tuple) else (item_cls,)
@@ -77,12 +78,13 @@ def _parse_rows(
         return parse_union_items(
             rows, item_cls, words=words, context=row_context, load_child=load_child
         )
-    # a block of only numeric lines, read by column if its rows allow
+    # a block of only numeric lines, read by column if its rows allow, and
+    # kept so (see ItemTable)
     if (
         isinstance(rows, NumberRows)
         and (table := read_table(item_cls, rows.text, row_context)) is not None
     ):
-        return table.to_items() or None
+        return table or None
     result = item_cls.from_rows(
         [row for row in rows if row],
         row_context,
@@ -1150,7 +1152,7 @@ def structure_component(
     if kper_rows:
         if period_field is not None:
             assert period_item_cls is not None  # set together with period_field above
-            spd: dict[int, list] = {}
+            spd: dict[int, list | ItemTable] = {}
             for kper, rows in sorted(kper_rows.items()):
                 if not rows:
                     # an empty period block turns off every boundary
