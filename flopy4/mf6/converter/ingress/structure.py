@@ -14,7 +14,7 @@ from modflow_devtools.dfns import dim_value
 from flopy4.dimensions import DimensionProvider
 from flopy4.mf6._types import TimeArraySeriesRef
 from flopy4.mf6.block import block_list_type
-from flopy4.mf6.codec.reader.transformer.rows import BlockRows, NumberRows, parts, run_values
+from flopy4.mf6.codec.reader.transformer.rows import BlockRows, NumberRows, parts, row_values
 from flopy4.mf6.component import Component, get_ftype
 from flopy4.mf6.item import (
     Item,
@@ -167,7 +167,7 @@ def _resolve_open_close_rows(rows: list, context: LoadContext) -> list:
     griddata's OPEN/CLOSE control record, but a different mechanism: the
     referenced file holds list rows, not a flat numeric array, so it's
     parsed the same way an inline block's own content would be (wrapped in
-    a synthetic block and run back through the block/token grammar) rather
+    a synthetic block and passed back through the block/token grammar) rather
     than through `_read_open_close_values`.
 
     Detects that shape -- a block whose *only* content is one OPEN/CLOSE
@@ -192,8 +192,8 @@ def _resolve_open_close_rows(rows: list, context: LoadContext) -> list:
 
 def _kind(part) -> str:
     """A control record's kind (CONSTANT, INTERNAL, OPEN/CLOSE), or a
-    field's name, as written: the part's first token, in upper case. None
-    for a run of number-only lines."""
+    field's name, as written: the part's first token, in upper case. Empty
+    for number-only lines (a NumberRows)."""
     if isinstance(part, NumberRows) or not part:
         return ""
     return str(part[0]).upper()
@@ -314,7 +314,7 @@ def _read_control_record(
     while count < length and j < len(rows):
         part = rows[j]
         if isinstance(part, NumberRows):
-            chunk = run_values(part, dtype)
+            chunk = row_values(part, dtype)
         else:
             chunk = np.array(_numeric_prefix(part), dtype=dtype)
         chunks.append(chunk)

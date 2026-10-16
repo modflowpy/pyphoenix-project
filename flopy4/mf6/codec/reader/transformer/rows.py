@@ -1,4 +1,4 @@
-"""Runs of number-only lines (the grammars' NUMBER_LINES), kept as text."""
+"""Consecutive number-only lines (the grammars' NUMBERS tokens), kept as text."""
 
 from collections.abc import Iterator, Sequence
 
@@ -6,7 +6,7 @@ import numpy as np
 
 
 class NumberRows(Sequence):
-    """NUMBER_LINES' rows, each a list of numbers as basic's `line` or
+    """NUMBERS' rows, each a list of numbers as basic's `line` or
     typed's `record` reads it, read when first used. A list that's only
     these lines keeps them as such, so its text can be read by column
     instead (see `item_table.read_table`); both transformers splice them in
@@ -43,7 +43,7 @@ class NumberRows(Sequence):
         return len(self.rows)
 
     def __bool__(self) -> bool:
-        return True  # NUMBER_LINES has a numeric line (so no need to read them)
+        return True  # NUMBERS has a numeric line (so no need to read them)
 
     def __getitem__(self, i):  # type: ignore[override]
         return self.rows[i]
@@ -61,9 +61,9 @@ class NumberRows(Sequence):
 
 
 class BlockRows(Sequence):
-    """A block's rows, some of them runs of NUMBER_LINES (each a
+    """A block's rows, some of them NUMBERS tokens (each a
     `NumberRows`, its own part), flattened when first used. An array
-    block reads its number runs' text instead (see `parts`)."""
+    block reads their text instead (see `parts`)."""
 
     __slots__ = ("parts", "_rows")
 
@@ -105,7 +105,7 @@ class BlockRows(Sequence):
 
 
 def parts(rows: Sequence) -> list:
-    """A block's rows with its runs of number-only lines kept as such, each
+    """A block's rows with its NUMBERS tokens kept as such, each
     a `NumberRows`, for reading them by text (an array's data)."""
     if isinstance(rows, BlockRows):
         return rows.parts
@@ -115,14 +115,14 @@ def parts(rows: Sequence) -> list:
 
 
 def _number(value: str) -> int | float:
-    """`parse_number` for a value NUMBER_LINES took, `D`s already `E`."""
+    """`parse_number` for a value NUMBERS took, `D`s already `E`."""
     if "." in value or "e" in value or "E" in value:
         return float(value)
     return int(value)
 
 
 def without_comments(text: str) -> str:
-    """The text without its comment-only lines (NUMBER_LINES allows them)."""
+    """The text without its comment-only lines (NUMBERS allows them)."""
     if "#" not in text and "!" not in text:
         return text
     return "\n".join(
@@ -131,11 +131,11 @@ def without_comments(text: str) -> str:
 
 
 def number_values(text: str) -> np.ndarray:
-    """NUMBER_LINES' values, in order, as floats (an array's data)."""
+    """NUMBERS' values, in order, as floats (an array's data)."""
     return np.array(without_comments(NumberRows(text).text).split(), dtype=float)
 
 
-def run_values(run: NumberRows, dtype=float) -> np.ndarray:
-    """A run's values, in order, as `dtype` (an array's data)."""
-    values = np.array(without_comments(run.text).split(), dtype=float)
+def row_values(rows: NumberRows, dtype=float) -> np.ndarray:
+    """The rows' values, in order, as `dtype` (an array's data)."""
+    values = np.array(without_comments(rows.text).split(), dtype=float)
     return values if dtype is float or dtype == np.float64 else values.astype(dtype)

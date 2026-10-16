@@ -15,12 +15,12 @@ class _Element(tuple):
     """A (name, value) for one element of a list, which collects them."""
 
 
-def _is_number_lines(item: Any) -> bool:
-    return isinstance(item, Token) and item.type.endswith("NUMBER_LINES")
+def _is_numbers(item: Any) -> bool:
+    return isinstance(item, Token) and item.type.rsplit("__", 1)[-1] == "NUMBERS"
 
 
-def _is_record_lines(item: Any) -> bool:
-    return isinstance(item, Token) and item.type.endswith("RECORD_LINES")
+def _is_records(item: Any) -> bool:
+    return isinstance(item, Token) and item.type.rsplit("__", 1)[-1] == "RECORDS"
 
 
 # A whole token that's a number, as typed.lark's number terminals take one.
@@ -28,7 +28,7 @@ _NUMBER = re.compile(r"[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?")
 
 
 def record_rows(text: str) -> list[list[Any]]:
-    """RECORD_LINES' rows, each a list of numbers and words as `record`
+    """RECORDS' rows, each a list of numbers and words as `record`
     reads them. Blank and comment-only lines aren't rows."""
     rows = []
     for line in text.replace(",", " ").split("\n"):
@@ -45,9 +45,9 @@ def _is_rows(item: Any) -> bool:
 
 
 def _rows(parts: list[Any]) -> list | NumberRows:
-    """A list's rows, from `record`s and runs of number-only lines (a
+    """A list's rows, from `record`s and NUMBERS tokens (a
     NumberRows each), or from groups of these (a list's rule, split where
-    a comment-only line ends one). Rows that are all one run stay one, so
+    a comment-only line ends one). Rows that are all one NumberRows stay one, so
     their text can be read by column."""
     if len(parts) == 1 and isinstance(parts[0], NumberRows):
         return parts[0]
@@ -249,12 +249,12 @@ class TypedTransformer(Transformer):
         return parse_number(str(items[0]))
 
     def data(self, items: list[Any]) -> np.ndarray:
-        if not any(_is_number_lines(i) for i in items):
+        if not any(_is_numbers(i) for i in items):
             return np.array(items)
         parts: list[np.ndarray] = []
         values: list[float] = []
         for item in items:
-            if _is_number_lines(item):
+            if _is_numbers(item):
                 if values:
                     parts.append(np.array(values, dtype=float))
                     values = []
@@ -277,14 +277,14 @@ class TypedTransformer(Transformer):
         return _rows(items)
 
     def record(self, items: list[Any]) -> list[Any] | NumberRows:
-        """A list row, or a run of number-only rows (a NumberRows).
+        """A list row, or a NUMBERS token's rows (a NumberRows) or a RECORDS token's.
 
         The parser gives us stress_token trees plus a NEWLINE token.
         Extract values from stress_token trees and filter out the NEWLINE token.
         """
-        if len(items) == 1 and _is_number_lines(items[0]):
+        if len(items) == 1 and _is_numbers(items[0]):
             return NumberRows(str(items[0]))
-        if len(items) == 1 and _is_record_lines(items[0]):
+        if len(items) == 1 and _is_records(items[0]):
             return record_rows(str(items[0]))
         values = []
         for item in items:

@@ -79,7 +79,7 @@ INTERNAL FACTOR 1.0 IPRN 3
     # the lines of only numbers are one token
     data = readarray.children[-1]
     assert len(data.children) == 1
-    assert data.children[0].type == "NUMBER_LINES"
+    assert data.children[0].type == "NUMBERS"
     values = str(data.children[0]).split()
     assert len(values) == 28
     assert float(values[0]) == 1.2
@@ -912,8 +912,8 @@ def test_typed_loads_number_lines_as_text():
     ]
 
 
-def test_typed_loads_record_lines():
-    """Rows of words and numbers lex as one run (RECORD_LINES) but read as
+def test_typed_loads_records():
+    """Rows of words and numbers lex as one token (RECORDS) but read as
     they would by value: a line with a quoted word or a trailing comment
     still reads, and `end` after a row's first token is a word."""
     from flopy4.mf6.codec.reader import loads_typed, parser
@@ -931,7 +931,7 @@ def test_typed_loads_record_lines():
         [3, "end", 1],
     ]
     tokens = parser.get_typed_parser("gwf-sfr").lex("BEGIN PERIOD 1\n  1 inflow 0.0\nEND PERIOD\n")
-    assert "RECORD_LINES" in [t.type.rsplit("__", 1)[-1] for t in tokens]
+    assert "RECORDS" in [t.type.rsplit("__", 1)[-1] for t in tokens]
 
     # a list beside another field (solutiongroup's MXITER) lexes by value
     nam = "BEGIN SOLUTIONGROUP 1\n  MXITER 2\n  IMS6 sim.ims gwf\nEND SOLUTIONGROUP\n"

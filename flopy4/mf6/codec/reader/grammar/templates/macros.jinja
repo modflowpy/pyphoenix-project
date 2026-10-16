@@ -169,7 +169,7 @@
 
 {# Block definition macro. Newlines are significant (see the header note in
    component.lark.jinja), so the BEGIN line's own line ending must be
-   consumed explicitly before the block's fields start, and a run of blank
+   consumed explicitly before the block's fields start, and blank
    lines before END is tolerated defensively (mirrors basic.lark). #}
 {%- macro block_def(block_name, has_index, header=none, index_rule='block_index') -%}
 {%- set block_rule = rule(block_name, tags=['block']) -%}

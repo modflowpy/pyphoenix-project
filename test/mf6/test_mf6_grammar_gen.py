@@ -147,7 +147,7 @@ def test_make_grammar_overwrites_existing(tmp_path, minimal_dfn):
 )
 def test_array_field_type(shape, rule):
     """An array with no shape or a bounded one (OC's STEPS arm, "<=nstp")
-    has no fixed length: a bare run of values. An exact shape is a readarray."""
+    has no fixed length: just values. An exact shape is a readarray."""
     from flopy4.mf6.codec.reader.grammar.filters import field_type
 
     assert field_type(Array(name="steps", dtype="integer", shape=shape)) == rule

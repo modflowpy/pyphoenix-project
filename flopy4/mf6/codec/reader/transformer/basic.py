@@ -18,8 +18,8 @@ def _value(value: str) -> str | int | float:
     return value
 
 
-class _WordRows(list):
-    """WORD_LINES' rows, which `block` splices in among its other lines."""
+class _RecordRows(list):
+    """RECORDS' rows, which `block` splices in among its other lines."""
 
 
 class BasicTransformer(Transformer):
@@ -50,7 +50,7 @@ class BasicTransformer(Transformer):
         # BEGIN name line... END name
         body: list[Any] = []
         for item in items[2:-2]:
-            if isinstance(item, _WordRows):
+            if isinstance(item, _RecordRows):
                 body.extend(item)
             else:
                 body.append(item)
@@ -81,16 +81,16 @@ class BasicTransformer(Transformer):
     def TOKEN(self, token: Token) -> str | int | float:
         return _value(str(token))
 
-    def WORD_LINES(self, token: Token) -> _WordRows:
+    def RECORDS(self, token: Token) -> _RecordRows:
         # Each line a row, as `line` reads it; blank and comment-only lines
         # aren't rows.
-        rows = _WordRows()
+        rows = _RecordRows()
         for line in str(token).replace(",", " ").split("\n"):
             if (values := line.split()) and values[0][0] not in "#!":
                 rows.append([_value(v) for v in values])
         return rows
 
-    def NUMBER_LINES(self, token: Token) -> NumberRows:
+    def NUMBERS(self, token: Token) -> NumberRows:
         return NumberRows(str(token))
 
     def QUOTED_WORD(self, token: Token) -> str:

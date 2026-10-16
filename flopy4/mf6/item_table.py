@@ -493,7 +493,7 @@ def _column(f: attrs.Attribute, took: tuple, values: np.ndarray) -> np.ndarray |
 
 
 def read_table(item_cls: type[Item], text: str, context: RowContext) -> ItemTable | None:
-    """A block's rows from its text (NUMBER_LINES', all numbers), if each
+    """A block's rows from its text (NUMBERS', all numbers), if each
     has as many values, in the same layout (see `item._positions`), and
     every field converts by column; else None, for `Item.from_rows`."""
     text = without_comments(text)

@@ -49,7 +49,7 @@ dynamically, not a declared class field) weren't recognized, corrupting
 the next row read as data; an `OPEN/CLOSE`-referenced griddata array file
 with comma-separated values and no spaces wasn't split into tokens --
 ~87% (211/242). Then `basic.lark`'s `word` token allowed a bare `,`
-(never split as a separator), so *any* comma-joined run -- not just
+(never split as a separator), so *any* comma-joined values -- not just
 `OPEN/CLOSE`-referenced files -- stayed one token; excluding it exposed
 that `word`'s character class was, by an unrelated pre-existing quirk (a
 `-` sitting where it formed an unintended range), matching a much wider

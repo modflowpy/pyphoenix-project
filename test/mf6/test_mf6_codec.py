@@ -65,7 +65,7 @@ END options
 
 
 def test_loads_number_only_lines():
-    # Lines of only numbers are read in bulk (NUMBER_LINES), and must read
+    # Lines of only numbers are read in bulk (NUMBERS), and must read
     # as any other line would: each value int or float as written, blank
     # and comment-only lines dropped, a line with anything else on it whole.
     mf6_input = """
@@ -99,8 +99,8 @@ END griddata
     assert [type(v) for v in result["griddata"][3]] == [float, float, float, int]
 
 
-def test_loads_word_lines():
-    # Lines with a word on them are read in bulk too (WORD_LINES), and must
+def test_loads_records():
+    # Lines with a word on them are read in bulk too (RECORDS), and must
     # read as any other line would; a line that can't be (BEGIN/END first,
     # a quote, a trailing comment) is read on its own.
     from lark import Token
@@ -138,8 +138,8 @@ END period
         [100000.0, "e", 2],
     ]
     tree = BASIC_PARSER.parse(mf6_input)
-    runs = [t for t in tree.scan_values(lambda v: isinstance(v, Token)) if t.type == "WORD_LINES"]
-    assert [str(t).split("\n")[0].strip() for t in runs] == ["1 inflow 0.0", "2 begin sp 1"]
+    tokens = [t for t in tree.scan_values(lambda v: isinstance(v, Token)) if t.type == "RECORDS"]
+    assert [str(t).split("\n")[0].strip() for t in tokens] == ["1 inflow 0.0", "2 begin sp 1"]
 
 
 def test_dumps_ic():
@@ -1719,8 +1719,8 @@ def test_tas_array_ncpl_not_nodes():
     (gwf-rcha, gwf-evta, utl-spca) with no `layered` form of their own --
     its flat length is ncpl (one layer), not the full-grid nodes count.
     Regression test: with nlay=2 (nodes=6, ncpl=3) and 6 values physically
-    present in the TIME block (e.g. a neighboring, unrelated INTERNAL run
-    of numbers), a nodes-sized read would wrongly consume all 6."""
+    present in the TIME block (e.g. a neighboring, unrelated INTERNAL array's
+    numbers), a nodes-sized read would wrongly consume all 6."""
     from flopy4.mf6.converter.ingress.structure import structure_component
     from flopy4.mf6.utl.tas import Tas
 
