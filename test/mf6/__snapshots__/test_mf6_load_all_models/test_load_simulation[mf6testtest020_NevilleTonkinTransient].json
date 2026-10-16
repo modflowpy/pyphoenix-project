@@ -1,0 +1,507 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": true,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf GWF_1>"
+    ],
+    "mxiter": 1,
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/GWF_1": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [],
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [],
+    "evt": [],
+    "filename": "NT_Transient.nam",
+    "ghb": [],
+    "ic": "<Ic ic>",
+    "lak": [],
+    "maw": [
+      "<Maw MAW-NT_Well>"
+    ],
+    "name": "GWF_1",
+    "newtonoptions": {
+      "__type__": "Newtonoptions",
+      "under_relaxation": null
+    },
+    "npf": "<Npf npf>",
+    "obs": "<Obs obs>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [],
+    "riv": [],
+    "save_flows": false,
+    "sfr": [],
+    "sto": "<Sto sto>",
+    "uzf": [],
+    "wel": [],
+    "workspace": "<workspace>"
+  },
+  "simulation/GWF_1/MAW-NT_Well": {
+    "__type__": "Maw",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "ifno": "int64[1] 05fe405753166f12",
+        "mawsetting": {
+          "__table__": "Rate",
+          "n": 1,
+          "rate": "float64[1] ef6828b5087102f9"
+        },
+        "n": 1
+      }
+    },
+    "boundnames": true,
+    "budget_file": "nt-maw.cbc",
+    "connectiondata": {
+      "__table__": "Connectiondata",
+      "cellid": "int64[2, 3] a9b415ad8dc44eef",
+      "hk_skin": "float64[2] c802ed7de10d43e3",
+      "icon": "int64[2] 031ee8071545c35f",
+      "ifno": "int64[2] e129f27c5103bc5c",
+      "n": 2,
+      "radius_skin": "float64[2] e129f27c5103bc5c",
+      "scrn_bot": "float64[2] ded71c81501c799a",
+      "scrn_top": "float64[2] 511635225ba01242"
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 101,
+      "ncpl": 10201,
+      "nlay": 2,
+      "nodes": 20402,
+      "nrow": 101
+    },
+    "filename": "NT_Transient.maw",
+    "flow_correction": false,
+    "flowing_wells": false,
+    "head_file": "nt-maw.head.bin",
+    "mover": false,
+    "name": "MAW-NT_Well",
+    "nmawwells": 1,
+    "no_well_storage": true,
+    "non_vertical_wells": false,
+    "obs": "<Obs obs>",
+    "packagedata": {
+      "__table__": "Packagedata",
+      "aux": "float64[1, 0] da39a3ee5e6b4b0d",
+      "bottom": "float64[1] 8cfd0ea4e76701be",
+      "boundname": [
+        "ntwell"
+      ],
+      "condeqn": [
+        "SPECIFIED"
+      ],
+      "ifno": "int64[1] 05fe405753166f12",
+      "n": 1,
+      "ngwfnodes": "int64[1] b0aa4b549f325cca",
+      "radius": "float64[1] 9efa2c34b883f508",
+      "strt": "float64[1] 615b3ec84f41b14b"
+    },
+    "print_flows": true,
+    "print_head": true,
+    "print_input": true,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/GWF_1/MAW-NT_Well/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            0,
+            1,
+            null,
+            null,
+            null
+          ],
+          "id_": [
+            "ntwell",
+            "ntwell",
+            "ntwell",
+            "ntwell",
+            "ntwell",
+            "ntwell",
+            "ntwell",
+            "ntwell",
+            0,
+            0,
+            "ntwell",
+            0,
+            "ntwell"
+          ],
+          "n": 13,
+          "obsname": [
+            "from-mvr",
+            "maw",
+            "rate",
+            "rate-to-mvr",
+            "fw-rate",
+            "fw-to-mvr",
+            "storage",
+            "constant",
+            "cond1-1",
+            "cond1-2",
+            "cond",
+            "fw-cond1",
+            "fw-cond"
+          ],
+          "obstype": [
+            "from-mvr",
+            "maw",
+            "rate",
+            "rate-to-mvr",
+            "fw-rate",
+            "fw-to-mvr",
+            "storage",
+            "constant",
+            "conductance",
+            "conductance",
+            "conductance",
+            "fw-conductance",
+            "fw-conductance"
+          ]
+        },
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null
+          ],
+          "id_": "int64[2] e129f27c5103bc5c",
+          "n": 2,
+          "obsname": [
+            "M1HEAD0",
+            "M1RATE0"
+          ],
+          "obstype": [
+            "HEAD",
+            "RATE"
+          ]
+        },
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            0,
+            1,
+            null
+          ],
+          "id_": [
+            0,
+            0,
+            0,
+            0,
+            "NTWELL"
+          ],
+          "n": 5,
+          "obsname": [
+            "M1HEAD",
+            "M1RATE",
+            "L1FLOW",
+            "L2FLOW",
+            "AQFLOW"
+          ],
+          "obstype": [
+            "HEAD",
+            "RATE",
+            "MAW",
+            "MAW",
+            "MAW"
+          ]
+        }
+      ],
+      "n": 3,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[3] 29e2dcfbb16f63bb",
+        "n": 3,
+        "obs_output_file_name": [
+          "budget.maw.csv",
+          "NT_MAW_Transient1.csv",
+          "NT_MAW_Transient2.csv"
+        ]
+      }
+    },
+    "digits": 10,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 101,
+      "ncpl": 10201,
+      "nlay": 2,
+      "nodes": 20402,
+      "nrow": 101
+    },
+    "filename": "NT_Transient.maw.obs",
+    "name": "obs",
+    "print_input": true
+  },
+  "simulation/GWF_1/dis": {
+    "__type__": "Dis",
+    "botm": "float64[20402] 5e9df69f30ccb2a6",
+    "delc": "float64[101] 304deb3a59d2552d",
+    "delr": "float64[101] 304deb3a59d2552d",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "NT_Transient.dis",
+    "idomain": "int64[20402] 29b3549dc850ef62",
+    "length_units": "METERS",
+    "name": "dis",
+    "ncol": 101,
+    "nlay": 2,
+    "nogrb": false,
+    "nrow": 101,
+    "top": "float64[10201] 98fabc3811041d21"
+  },
+  "simulation/GWF_1/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 101,
+      "ncpl": 10201,
+      "nlay": 2,
+      "nodes": 20402,
+      "nrow": 101
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "NT_Transient.ic",
+    "name": "ic",
+    "strt": "float64[20402] 3d6c0d3971ca5bfc"
+  },
+  "simulation/GWF_1/npf": {
+    "__type__": "Npf",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 101,
+      "ncpl": 10201,
+      "nlay": 2,
+      "nodes": 20402,
+      "nrow": 101
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "NT_Transient.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[20402] ecb76f853c2810bb",
+    "k": "float64[20402] c89665f5c6b81f7c",
+    "k22overk": false,
+    "k33": "float64[20402] 682c211704b16e03",
+    "k33overk": false,
+    "name": "npf",
+    "perched": false,
+    "print_flows": false,
+    "save_flows": false,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false
+  },
+  "simulation/GWF_1/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null
+          ],
+          "id_": "int64[2, 3] a9b415ad8dc44eef",
+          "n": 2,
+          "obsname": [
+            "L1",
+            "L2"
+          ],
+          "obstype": [
+            "head",
+            "head"
+          ]
+        },
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null
+          ],
+          "id_": "int64[2, 3] a9b415ad8dc44eef",
+          "n": 2,
+          "obsname": [
+            "L1ddn",
+            "L2ddn"
+          ],
+          "obstype": [
+            "drawdown",
+            "drawdown"
+          ]
+        }
+      ],
+      "n": 2,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[2] 1489f923c4dca729",
+        "n": 2,
+        "obs_output_file_name": [
+          "NT_Transient.csv",
+          "NT_GWFTransient.csv"
+        ]
+      }
+    },
+    "digits": 10,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 101,
+      "ncpl": 10201,
+      "nlay": 2,
+      "nodes": 20402,
+      "nrow": 101
+    },
+    "filename": "NT_Transient.obs",
+    "name": "obs",
+    "print_input": true
+  },
+  "simulation/GWF_1/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Print",
+          "ocsetting": {
+            "__type__": "Frequency",
+            "frequency": 1
+          },
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": {
+            "__type__": "Frequency",
+            "frequency": 1
+          },
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": {
+            "__type__": "Frequency",
+            "frequency": 1
+          },
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "LAST",
+          "rtype": "HEAD"
+        }
+      ]
+    },
+    "budget_file": "NT_Transient.cbc",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 101,
+      "ncpl": 10201,
+      "nlay": 2,
+      "nodes": 20402,
+      "nrow": 101
+    },
+    "filename": "NT_Transient.oc",
+    "head_file": "NT_Transient.hds",
+    "name": "oc"
+  },
+  "simulation/GWF_1/sto": {
+    "__type__": "Sto",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 101,
+      "ncpl": 10201,
+      "nlay": 2,
+      "nodes": 20402,
+      "nrow": 101
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "NT_Transient.sto",
+    "iconvert": "int64[20402] a06d321f04d88747",
+    "name": "sto",
+    "save_flows": false,
+    "ss": "float64[20402] b51b740031a3d645",
+    "ss_confined_only": false,
+    "storagecoefficient": false,
+    "sy": "float64[20402] fdb06f808f2801f0"
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "backtracking_number": 0,
+    "backtracking_reduction_factor": "0.6",
+    "backtracking_residual_limit": "1.0",
+    "backtracking_tolerance": "2.0",
+    "dims": {},
+    "filename": "model.ims",
+    "inner_dvclose": "0.0001",
+    "inner_maximum": 100,
+    "linear_acceleration": "bicgstab",
+    "models": [
+      "GWF_1"
+    ],
+    "name": "ims",
+    "outer_dvclose": "0.0001",
+    "outer_maximum": 500,
+    "print_option": "all",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "0.1",
+      "rclose_option": null
+    },
+    "relaxation_factor": "1.0",
+    "reordering_method": "none",
+    "scaling_method": "none",
+    "under_relaxation": "none",
+    "under_relaxation_gamma": "0.0",
+    "under_relaxation_kappa": "0.0001",
+    "under_relaxation_momentum": "0.1",
+    "under_relaxation_theta": "0.9"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "simulation.tdis",
+    "name": "tdis",
+    "nper": 1,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 1,
+      "nstp": "int64[1] 33995c108f600964",
+      "perlen": "float64[1] 0700b5688c4887c8",
+      "tsmult": "float64[1] 9013e912dba88e86"
+    },
+    "time_units": "DAYS"
+  }
+}

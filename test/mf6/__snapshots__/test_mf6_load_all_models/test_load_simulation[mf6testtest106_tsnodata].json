@@ -1,0 +1,626 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": false,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf GWF_1>"
+    ],
+    "mxiter": 1,
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/GWF_1": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [
+      "<Chd CHD_LEFT>",
+      "<Chd CHD_RIGHT>"
+    ],
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [],
+    "evt": [],
+    "filename": "model.nam",
+    "ghb": [],
+    "ic": "<Ic ic>",
+    "lak": [],
+    "maw": [],
+    "name": "GWF_1",
+    "npf": "<Npf npf>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [],
+    "riv": [],
+    "save_flows": false,
+    "sfr": [],
+    "sto": "<Sto sto>",
+    "uzf": [],
+    "wel": [
+      "<Wel wel0>"
+    ],
+    "workspace": "<workspace>"
+  },
+  "simulation/GWF_1/CHD_LEFT": {
+    "__type__": "Chd",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[40, 0] da39a3ee5e6b4b0d",
+        "boundname": "480 chars 09c21ce678c9edd6",
+        "cellid": "int64[40, 3] f0a363c352cc617a",
+        "head": "float64[40] c0fe3ca5720faaaf",
+        "n": 40
+      }
+    },
+    "boundnames": true,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 20,
+      "ncpl": 800,
+      "nlay": 1,
+      "nodes": 800,
+      "nrow": 40
+    },
+    "filename": "model_left.chd",
+    "name": "CHD_LEFT",
+    "obs": "<Obs obs>",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": true,
+    "ts": []
+  },
+  "simulation/GWF_1/CHD_LEFT/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null
+          ],
+          "id_": [
+            "int64[3] 46492fba870b553d",
+            "CHD_LEFT"
+          ],
+          "n": 2,
+          "obsname": [
+            "chd_3_flow",
+            "left_chd"
+          ],
+          "obstype": [
+            "CHD",
+            "CHD"
+          ]
+        }
+      ],
+      "n": 1,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[1] 5ba93c9db0cff93f",
+        "n": 1,
+        "obs_output_file_name": [
+          "model_left.continuous.chd.csv"
+        ]
+      }
+    },
+    "digits": 10,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 20,
+      "ncpl": 800,
+      "nlay": 1,
+      "nodes": 800,
+      "nrow": 40
+    },
+    "filename": "model_left.chd.obs",
+    "name": "obs",
+    "print_input": true
+  },
+  "simulation/GWF_1/CHD_RIGHT": {
+    "__type__": "Chd",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[40, 0] da39a3ee5e6b4b0d",
+        "boundname": "240 chars 65361fa17dffc6e6",
+        "cellid": "int64[40, 3] e91c6b3d1e011af8",
+        "head": "float64[40] e00eb753f6d80fd3",
+        "n": 40
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 20,
+      "ncpl": 800,
+      "nlay": 1,
+      "nodes": 800,
+      "nrow": 40
+    },
+    "filename": "model_right.chd",
+    "name": "CHD_RIGHT",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": true,
+    "ts": []
+  },
+  "simulation/GWF_1/dis": {
+    "__type__": "Dis",
+    "botm": "float64[800] 73ad371b8999b580",
+    "delc": "float64[40] ddbd774456e1d0a7",
+    "delr": "float64[20] 1704336043bae9ad",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "model.dis",
+    "name": "dis",
+    "ncol": 20,
+    "nlay": 1,
+    "nogrb": false,
+    "nrow": 40,
+    "top": "float64[800] fe1bdb36cd210121"
+  },
+  "simulation/GWF_1/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 20,
+      "ncpl": 800,
+      "nlay": 1,
+      "nodes": 800,
+      "nrow": 40
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "model.ic",
+    "name": "ic",
+    "strt": "float64[800] fe1bdb36cd210121"
+  },
+  "simulation/GWF_1/npf": {
+    "__type__": "Npf",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 20,
+      "ncpl": 800,
+      "nlay": 1,
+      "nodes": 800,
+      "nrow": 40
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "model.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[800] 73ad371b8999b580",
+    "k": "float64[800] fe1bdb36cd210121",
+    "k22overk": false,
+    "k33": "float64[800] fe1bdb36cd210121",
+    "k33overk": false,
+    "name": "npf",
+    "perched": false,
+    "print_flows": true,
+    "save_flows": true,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false
+  },
+  "simulation/GWF_1/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        }
+      ]
+    },
+    "budget_file": "model.cbc",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 20,
+      "ncpl": 800,
+      "nlay": 1,
+      "nodes": 800,
+      "nrow": 40
+    },
+    "filename": "model.oc",
+    "head_file": "model.hds",
+    "name": "oc"
+  },
+  "simulation/GWF_1/sto": {
+    "__type__": "Sto",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "n": 1,
+        "storage": [
+          "steady-state"
+        ]
+      },
+      "1": {
+        "__table__": "StressPeriodData",
+        "n": 1,
+        "storage": [
+          "transient"
+        ]
+      }
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 20,
+      "ncpl": 800,
+      "nlay": 1,
+      "nodes": 800,
+      "nrow": 40
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "model.sto",
+    "iconvert": "int64[800] 2ac8ae26cfef701b",
+    "name": "sto",
+    "save_flows": true,
+    "ss": "float64[800] b8e8a15f70c48199",
+    "ss_confined_only": false,
+    "storagecoefficient": false,
+    "sy": "float64[800] 792547c5259dcbbf"
+  },
+  "simulation/GWF_1/wel0": {
+    "__type__": "Wel",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[1, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          "well_4"
+        ],
+        "cellid": "int64[1, 3] f8cb8d3449e347d8",
+        "n": 1,
+        "q": {
+          "__table__": "TimeSeriesRef",
+          "n": 1,
+          "name": [
+            "rate_4"
+          ]
+        }
+      },
+      "1": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[3, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          "well_2",
+          "well_4",
+          "well_5"
+        ],
+        "cellid": "int64[3, 3] ffa640045dd72d23",
+        "n": 3,
+        "q": {
+          "__table__": "TimeSeriesRef",
+          "n": 3,
+          "name": [
+            "rate_2",
+            "rate_4",
+            "rate_5"
+          ]
+        }
+      },
+      "2": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[4, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          "well_1",
+          "well_2",
+          "well_4",
+          "well_5"
+        ],
+        "cellid": "int64[4, 3] d264baf632361b24",
+        "n": 4,
+        "q": {
+          "__table__": "TimeSeriesRef",
+          "n": 4,
+          "name": [
+            "rate_1",
+            "rate_2",
+            "rate_4",
+            "rate_5"
+          ]
+        }
+      },
+      "3": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[5, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          "well_1",
+          "well_2",
+          "well_3",
+          "well_4",
+          "well_5"
+        ],
+        "cellid": "int64[5, 3] f1a16f42c043594d",
+        "n": 5,
+        "q": {
+          "__table__": "TimeSeriesRef",
+          "n": 5,
+          "name": [
+            "rate_1",
+            "rate_2",
+            "rate_3",
+            "rate_4",
+            "rate_5"
+          ]
+        }
+      },
+      "5": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[6, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          "well_1",
+          "well_2",
+          "well_3",
+          "well_4",
+          "well_5",
+          "well_6"
+        ],
+        "cellid": "int64[6, 3] 36d172a4ea8db8e2",
+        "n": 6,
+        "q": [
+          {
+            "__type__": "TimeSeriesRef",
+            "name": "rate_1"
+          },
+          {
+            "__type__": "TimeSeriesRef",
+            "name": "rate_2"
+          },
+          {
+            "__type__": "TimeSeriesRef",
+            "name": "rate_3"
+          },
+          {
+            "__type__": "TimeSeriesRef",
+            "name": "rate_4"
+          },
+          {
+            "__type__": "TimeSeriesRef",
+            "name": "rate_5"
+          },
+          "-17.0"
+        ]
+      },
+      "6": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[7, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          "well_1",
+          "well_2",
+          "well_3",
+          "well_4",
+          "well_5",
+          "well_6",
+          "well_7"
+        ],
+        "cellid": "int64[7, 3] c1ed2bffb735b5a4",
+        "n": 7,
+        "q": [
+          {
+            "__type__": "TimeSeriesRef",
+            "name": "rate_1"
+          },
+          {
+            "__type__": "TimeSeriesRef",
+            "name": "rate_2"
+          },
+          {
+            "__type__": "TimeSeriesRef",
+            "name": "rate_3"
+          },
+          {
+            "__type__": "TimeSeriesRef",
+            "name": "rate_4"
+          },
+          {
+            "__type__": "TimeSeriesRef",
+            "name": "rate_5"
+          },
+          "-16.0",
+          {
+            "__type__": "TimeSeriesRef",
+            "name": "rate_5"
+          }
+        ]
+      },
+      "8": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[6, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          "well_1",
+          "well_2",
+          "well_4",
+          "well_5",
+          "well_6",
+          "well_7"
+        ],
+        "cellid": "int64[6, 3] 272a015db7bc3d82",
+        "n": 6,
+        "q": [
+          {
+            "__type__": "TimeSeriesRef",
+            "name": "rate_1"
+          },
+          {
+            "__type__": "TimeSeriesRef",
+            "name": "rate_2"
+          },
+          {
+            "__type__": "TimeSeriesRef",
+            "name": "rate_4"
+          },
+          {
+            "__type__": "TimeSeriesRef",
+            "name": "rate_5"
+          },
+          "-15.0",
+          {
+            "__type__": "TimeSeriesRef",
+            "name": "rate_5"
+          }
+        ]
+      },
+      "9": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[5, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          "well_2",
+          "well_4",
+          "well_5",
+          "well_6",
+          "well_7"
+        ],
+        "cellid": "int64[5, 3] c5e95c65ac388678",
+        "n": 5,
+        "q": [
+          {
+            "__type__": "TimeSeriesRef",
+            "name": "rate_2"
+          },
+          {
+            "__type__": "TimeSeriesRef",
+            "name": "rate_4"
+          },
+          {
+            "__type__": "TimeSeriesRef",
+            "name": "rate_5"
+          },
+          "-14.0",
+          {
+            "__type__": "TimeSeriesRef",
+            "name": "rate_5"
+          }
+        ]
+      }
+    },
+    "boundnames": true,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 20,
+      "ncpl": 800,
+      "nlay": 1,
+      "nodes": 800,
+      "nrow": 40
+    },
+    "filename": "model.wel",
+    "flow_reduction_length": false,
+    "mover": false,
+    "name": "wel0",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": true,
+    "ts": [
+      "<Ts ts0>"
+    ]
+  },
+  "simulation/GWF_1/wel0/ts0": {
+    "__type__": "Ts",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 20,
+      "ncpl": 800,
+      "nlay": 1,
+      "nodes": 800,
+      "nrow": 40
+    },
+    "filename": "model_well_pump.ts",
+    "interpolation_method": {
+      "__type__": "InterpolationMethod",
+      "interpolation_method": [
+        "LINEAR",
+        "LINEAR",
+        "LINEAR",
+        "STEPWISE",
+        "STEPWISE"
+      ]
+    },
+    "name": "ts0",
+    "time_series_name": {
+      "__type__": "TimeSeriesName",
+      "time_series_names": [
+        "rate_1",
+        "rate_2",
+        "rate_3",
+        "rate_4",
+        "rate_5"
+      ]
+    },
+    "timeseries": {
+      "__table__": "Timeseries",
+      "n": 19,
+      "ts_array": "float64[19, 5] 53ea3da5f0cae357",
+      "ts_time": "float64[19] 45c9ff3a4609fea3"
+    }
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "dims": {},
+    "filename": "model.ims",
+    "inner_dvclose": "0.0001",
+    "inner_maximum": 100,
+    "linear_acceleration": "cg",
+    "models": [
+      "GWF_1"
+    ],
+    "name": "ims",
+    "outer_dvclose": "0.0001",
+    "outer_maximum": 500,
+    "print_option": "summary",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "0.001",
+      "rclose_option": null
+    },
+    "relaxation_factor": "0.97",
+    "reordering_method": "none",
+    "scaling_method": "none",
+    "under_relaxation": "none"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "simulation.tdis",
+    "name": "tdis",
+    "nper": 10,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 10,
+      "nstp": "int64[10] aeeb4497501d740d",
+      "perlen": "float64[10] 885fadabe7953ad2",
+      "tsmult": "float64[10] 90c11e38db7a0435"
+    },
+    "time_units": "MINUTES"
+  }
+}

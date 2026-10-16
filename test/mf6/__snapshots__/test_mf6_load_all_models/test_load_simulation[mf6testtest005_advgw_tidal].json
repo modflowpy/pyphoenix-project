@@ -1,0 +1,1089 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": false,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "memory_print_option": "SUMMARY",
+    "models": [
+      "<Gwf GWF_1>"
+    ],
+    "mxiter": 1,
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/GWF_1": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [],
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [],
+    "evt": [
+      "<Evt EVT>"
+    ],
+    "filename": "AdvGW_tidal.nam",
+    "ghb": [
+      "<Ghb GHB-TIDAL>"
+    ],
+    "ic": "<Ic ic>",
+    "lak": [],
+    "maw": [],
+    "name": "GWF_1",
+    "npf": "<Npf npf>",
+    "obs": "<Obs obs>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [
+      "<Rch RCH-ZONE_1>",
+      "<Rch RCH-ZONE_2>",
+      "<Rch RCH-ZONE_3>"
+    ],
+    "riv": [
+      "<Riv RIV>"
+    ],
+    "save_flows": false,
+    "sfr": [],
+    "sto": "<Sto sto>",
+    "uzf": [],
+    "wel": [
+      "<Wel WEL>"
+    ],
+    "workspace": "<workspace>"
+  },
+  "simulation/GWF_1/EVT": {
+    "__type__": "Evt",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[150, 0] da39a3ee5e6b4b0d",
+        "boundname": "900 chars dadc720a94af07cd",
+        "cellid": "int64[150, 3] 682f58cd913c7892",
+        "depth": "float64[150] 097fff99729da30d",
+        "n": 150,
+        "petm": "float64[150, 2] b83b19556869637b",
+        "petm0": "900 chars dadc720a94af07cd",
+        "pxdp": "float64[150, 2] 1c2131b9e6082359",
+        "rate": "float64[150] dad9eec0ea41fa25",
+        "surface": "float64[150] 227b8ed184ae2346"
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 3,
+      "nodes": 450,
+      "nrow": 15
+    },
+    "filename": "AdvGW_tidal.evt",
+    "fixed_cell": false,
+    "name": "EVT",
+    "nseg": 3,
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": true,
+    "surf_rate_specified": false,
+    "ts": []
+  },
+  "simulation/GWF_1/GHB-TIDAL": {
+    "__type__": "Ghb",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[30, 0] da39a3ee5e6b4b0d",
+        "bhead": {
+          "__table__": "TimeSeriesRef",
+          "n": 30,
+          "name": "270 chars f9610687eb4da577"
+        },
+        "boundname": "420 chars 7b775882cf831410",
+        "cellid": "int64[30, 3] 039fa4d07a6ca244",
+        "cond": "float64[30] 58bb29110cf80a58",
+        "n": 30
+      }
+    },
+    "boundnames": true,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 3,
+      "nodes": 450,
+      "nrow": 15
+    },
+    "filename": "AdvGW_tidal.ghb",
+    "mover": false,
+    "name": "GHB-TIDAL",
+    "obs": "<Obs obs>",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": true,
+    "ts": [
+      "<Ts ts0>"
+    ]
+  },
+  "simulation/GWF_1/GHB-TIDAL/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null
+          ],
+          "id_": "int64[2, 3] e9ca57c01877930d",
+          "n": 2,
+          "obsname": [
+            "ghb-2-6-10",
+            "ghb-3-6-10"
+          ],
+          "obstype": [
+            "GHB",
+            "GHB"
+          ]
+        },
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null
+          ],
+          "id_": [
+            "Estuary-L2",
+            "Estuary-L3"
+          ],
+          "n": 2,
+          "obsname": [
+            "Estuary2",
+            "Estuary3"
+          ],
+          "obstype": [
+            "GHB",
+            "GHB"
+          ]
+        }
+      ],
+      "n": 2,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[2] 1489f923c4dca729",
+        "n": 2,
+        "obs_output_file_name": [
+          "ghb_obs.csv",
+          "ghb_flows.csv"
+        ]
+      }
+    },
+    "digits": 10,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 3,
+      "nodes": 450,
+      "nrow": 15
+    },
+    "filename": "AdvGW_tidal.ghb.obs",
+    "name": "obs",
+    "print_input": true
+  },
+  "simulation/GWF_1/GHB-TIDAL/ts0": {
+    "__type__": "Ts",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 3,
+      "nodes": 450,
+      "nrow": 15
+    },
+    "filename": "tides.ts",
+    "interpolation_methodrecord_single": {
+      "__type__": "InterpolationMethodrecordSingle",
+      "interpolation_method_single": "linear"
+    },
+    "name": "ts0",
+    "time_series_name": {
+      "__type__": "TimeSeriesName",
+      "time_series_names": [
+        "tides"
+      ]
+    },
+    "timeseries": {
+      "__table__": "Timeseries",
+      "n": 365,
+      "ts_array": "float64[365, 1] 03744db8bb813b76",
+      "ts_time": "float64[365] 1d4a65c4cc51c8ef"
+    }
+  },
+  "simulation/GWF_1/RCH-ZONE_1": {
+    "__type__": "Rch",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[84, 1] 2fd8c8204a745a8a",
+        "boundname": "519 chars ef8d6e62e7fe88d5",
+        "cellid": "int64[84, 3] e36a580a2cb5ecc8",
+        "n": 84,
+        "recharge": {
+          "__table__": "TimeSeriesRef",
+          "n": 84,
+          "name": "756 chars 9206f3aa3208e27d"
+        }
+      }
+    },
+    "auxiliary": [
+      "MULTIPLIER"
+    ],
+    "auxmultname": "MULTIPLIER",
+    "boundnames": true,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 3,
+      "nodes": 450,
+      "nrow": 15
+    },
+    "filename": "AdvGW_tidal_1.rch",
+    "fixed_cell": true,
+    "name": "RCH-ZONE_1",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": true,
+    "ts": [
+      "<Ts ts0>"
+    ]
+  },
+  "simulation/GWF_1/RCH-ZONE_1/ts0": {
+    "__type__": "Ts",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 3,
+      "nodes": 450,
+      "nrow": 15
+    },
+    "filename": "recharge_rates_1.ts",
+    "interpolation_method": {
+      "__type__": "InterpolationMethod",
+      "interpolation_method": [
+        "stepwise"
+      ]
+    },
+    "name": "ts0",
+    "time_series_name": {
+      "__type__": "TimeSeriesName",
+      "time_series_names": [
+        "rch_1"
+      ]
+    },
+    "timeseries": {
+      "__table__": "Timeseries",
+      "n": 5,
+      "ts_array": "float64[5, 1] bfb372ac43ce3f95",
+      "ts_time": "float64[5] 383582a5e303dcb2"
+    }
+  },
+  "simulation/GWF_1/RCH-ZONE_2": {
+    "__type__": "Rch",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[20, 1] 9dc3ae7e6232a6ef",
+        "boundname": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "cellid": "int64[20, 3] 58f0ace759c99092",
+        "n": 20,
+        "recharge": {
+          "__table__": "TimeSeriesRef",
+          "n": 20,
+          "name": [
+            "rch_2",
+            "rch_2",
+            "rch_2",
+            "rch_2",
+            "rch_2",
+            "rch_2",
+            "rch_2",
+            "rch_2",
+            "rch_2",
+            "rch_2",
+            "rch_2",
+            "rch_2",
+            "rch_2",
+            "rch_2",
+            "rch_2",
+            "rch_2",
+            "rch_2",
+            "rch_2",
+            "rch_2",
+            "rch_2"
+          ]
+        }
+      }
+    },
+    "auxiliary": [
+      "MULTIPLIER"
+    ],
+    "auxmultname": "MULTIPLIER",
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 3,
+      "nodes": 450,
+      "nrow": 15
+    },
+    "filename": "AdvGW_tidal_2.rch",
+    "fixed_cell": true,
+    "name": "RCH-ZONE_2",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": true,
+    "ts": [
+      "<Ts ts0>"
+    ]
+  },
+  "simulation/GWF_1/RCH-ZONE_2/ts0": {
+    "__type__": "Ts",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 3,
+      "nodes": 450,
+      "nrow": 15
+    },
+    "filename": "recharge_rates_2.ts",
+    "interpolation_method": {
+      "__type__": "InterpolationMethod",
+      "interpolation_method": [
+        "linear"
+      ]
+    },
+    "name": "ts0",
+    "time_series_name": {
+      "__type__": "TimeSeriesName",
+      "time_series_names": [
+        "rch_2"
+      ]
+    },
+    "timeseries": {
+      "__table__": "Timeseries",
+      "n": 5,
+      "ts_array": "float64[5, 1] 5884106bd76689b1",
+      "ts_time": "float64[5] 383582a5e303dcb2"
+    }
+  },
+  "simulation/GWF_1/RCH-ZONE_3": {
+    "__type__": "Rch",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[54, 1] 83371e6a8740e19c",
+        "boundname": "324 chars 8642ba1b5ea57b28",
+        "cellid": "int64[54, 3] f96bb4e037db5c49",
+        "n": 54,
+        "recharge": {
+          "__table__": "TimeSeriesRef",
+          "n": 54,
+          "name": "486 chars 85c8f78b40b1802d"
+        }
+      }
+    },
+    "auxiliary": [
+      "MULTIPLIER"
+    ],
+    "auxmultname": "MULTIPLIER",
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 3,
+      "nodes": 450,
+      "nrow": 15
+    },
+    "filename": "AdvGW_tidal_3.rch",
+    "fixed_cell": true,
+    "name": "RCH-ZONE_3",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": true,
+    "ts": [
+      "<Ts ts0>"
+    ]
+  },
+  "simulation/GWF_1/RCH-ZONE_3/ts0": {
+    "__type__": "Ts",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 3,
+      "nodes": 450,
+      "nrow": 15
+    },
+    "filename": "recharge_rates_3.ts",
+    "interpolation_method": {
+      "__type__": "InterpolationMethod",
+      "interpolation_method": [
+        "linear"
+      ]
+    },
+    "name": "ts0",
+    "time_series_name": {
+      "__type__": "TimeSeriesName",
+      "time_series_names": [
+        "rch_3"
+      ]
+    },
+    "timeseries": {
+      "__table__": "Timeseries",
+      "n": 5,
+      "ts_array": "float64[5, 1] fefe89c7dd15c0ab",
+      "ts_time": "float64[5] 383582a5e303dcb2"
+    }
+  },
+  "simulation/GWF_1/RIV": {
+    "__type__": "Riv",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[20, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          "riv1_c6",
+          "riv1_c7",
+          null,
+          null,
+          null,
+          "riv2_upper",
+          "riv2_upper",
+          "riv2_upper",
+          null,
+          null,
+          "riv2_c6",
+          "riv2_c7",
+          null,
+          null,
+          null
+        ],
+        "cellid": "int64[20, 3] c348af2c335b3d47",
+        "cond": "float64[20] bf5b8d08fe5d1a34",
+        "n": 20,
+        "rbot": "float64[20] 3a7a48042720f7ad",
+        "stage": {
+          "__table__": "TimeSeriesRef",
+          "n": 20,
+          "name": "340 chars 46698ce9f50b9336"
+        }
+      }
+    },
+    "boundnames": true,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 3,
+      "nodes": 450,
+      "nrow": 15
+    },
+    "filename": "AdvGW_tidal.riv",
+    "mover": false,
+    "name": "RIV",
+    "obs": "<Obs obs>",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": true,
+    "ts": [
+      "<Ts ts0>"
+    ]
+  },
+  "simulation/GWF_1/RIV/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "id_": "268 chars f9dcca8fb272bf05",
+          "n": 11,
+          "obsname": [
+            "rv1-3-1",
+            "rv1-4-2",
+            "rv1-5-3",
+            "rv1-5-4",
+            "rv1-6-5",
+            "rv1-c6",
+            "rv1-c7",
+            "rv2-upper",
+            "rv2-7-4",
+            "rv2-8-5",
+            "rv2-9-6"
+          ],
+          "obstype": [
+            "RIV",
+            "RIV",
+            "RIV",
+            "RIV",
+            "RIV",
+            "RIV",
+            "RIV",
+            "RIV",
+            "RIV",
+            "RIV",
+            "RIV"
+          ]
+        },
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            null
+          ],
+          "id_": "int64[3, 3] 1f3ffde63d7ea6bb",
+          "n": 3,
+          "obsname": [
+            "riv1-3-1",
+            "riv1-4-2",
+            "riv1-5-3"
+          ],
+          "obstype": [
+            "RIV",
+            "RIV",
+            "RIV"
+          ]
+        },
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            null
+          ],
+          "id_": "int64[3, 3] bd87ec95629acbbb",
+          "n": 3,
+          "obsname": [
+            "riv2-10-1",
+            "riv2-9-2",
+            "riv2-8-3"
+          ],
+          "obstype": [
+            "RIV",
+            "RIV",
+            "RIV"
+          ]
+        }
+      ],
+      "n": 3,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[3] 29e2dcfbb16f63bb",
+        "n": 3,
+        "obs_output_file_name": [
+          "riv_obs.csv",
+          "riv_flowsA.csv",
+          "riv_flowsB.csv"
+        ]
+      }
+    },
+    "digits": 10,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 3,
+      "nodes": 450,
+      "nrow": 15
+    },
+    "filename": "AdvGW_tidal.riv.obs",
+    "name": "obs",
+    "print_input": true
+  },
+  "simulation/GWF_1/RIV/ts0": {
+    "__type__": "Ts",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 3,
+      "nodes": 450,
+      "nrow": 15
+    },
+    "filename": "river_stages.ts",
+    "interpolation_method": {
+      "__type__": "InterpolationMethod",
+      "interpolation_method": [
+        "linear",
+        "stepwise"
+      ]
+    },
+    "name": "ts0",
+    "time_series_name": {
+      "__type__": "TimeSeriesName",
+      "time_series_names": [
+        "river_stage_1",
+        "river_stage_2"
+      ]
+    },
+    "timeseries": {
+      "__table__": "Timeseries",
+      "n": 9,
+      "ts_array": "float64[9, 2] 0ea4cf87fb6cc41b",
+      "ts_time": "float64[9] 9ce6c035452a40dc"
+    }
+  },
+  "simulation/GWF_1/WEL": {
+    "__type__": "Wel",
+    "_stress_period_data": {
+      "1": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[3, 3] bf0885c47eb4ae12",
+        "boundname": [
+          null,
+          "well_1",
+          "well_2"
+        ],
+        "cellid": "int64[3, 3] a47492557029ecfd",
+        "n": 3,
+        "q": [
+          "-50.0",
+          {
+            "__type__": "TimeSeriesRef",
+            "name": "well_1_rate"
+          },
+          {
+            "__type__": "TimeSeriesRef",
+            "name": "well_2_rate"
+          }
+        ]
+      },
+      "2": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[2, 3] 5d743b3a72f75e8e",
+        "boundname": [
+          "well_2",
+          "well_1"
+        ],
+        "cellid": "int64[2, 3] 06a5b26a790ee0a8",
+        "n": 2,
+        "q": {
+          "__table__": "TimeSeriesRef",
+          "n": 2,
+          "name": [
+            "well_2_rate",
+            "well_1_rate"
+          ]
+        }
+      },
+      "3": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[5, 3] 9975910ffde7e0ef",
+        "boundname": [
+          "well_1",
+          "well_2",
+          null,
+          null,
+          null
+        ],
+        "cellid": "int64[5, 3] 772bd6825d0a00f5",
+        "n": 5,
+        "q": [
+          {
+            "__type__": "TimeSeriesRef",
+            "name": "well_1_rate"
+          },
+          {
+            "__type__": "TimeSeriesRef",
+            "name": "well_2_rate"
+          },
+          "-10.0",
+          "-20.0",
+          "-40.0"
+        ]
+      }
+    },
+    "auxiliary": [
+      "var1",
+      "var2",
+      "var3"
+    ],
+    "boundnames": true,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 3,
+      "nodes": 450,
+      "nrow": 15
+    },
+    "filename": "AdvGW_tidal.wel",
+    "flow_reduction_length": false,
+    "mover": false,
+    "name": "WEL",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": true,
+    "ts": [
+      "<Ts ts0>"
+    ]
+  },
+  "simulation/GWF_1/WEL/ts0": {
+    "__type__": "Ts",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 3,
+      "nodes": 450,
+      "nrow": 15
+    },
+    "filename": "well_rates.ts",
+    "interpolation_methodrecord_single": {
+      "__type__": "InterpolationMethodrecordSingle",
+      "interpolation_method_single": "stepwise"
+    },
+    "name": "ts0",
+    "time_series_name": {
+      "__type__": "TimeSeriesName",
+      "time_series_names": [
+        "well_1_rate",
+        "well_2_rate",
+        "well_6_rate"
+      ]
+    },
+    "timeseries": {
+      "__table__": "Timeseries",
+      "n": 5,
+      "ts_array": "float64[5, 3] ec48cb4efa69b4d0",
+      "ts_time": "float64[5] 383582a5e303dcb2"
+    }
+  },
+  "simulation/GWF_1/dis": {
+    "__type__": "Dis",
+    "botm": "float64[450] 974004aa294c2bf2",
+    "delc": "float64[15] 498734d65ef5c32d",
+    "delr": "float64[10] 1ed555d7277878fb",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "AdvGW_tidal.dis",
+    "name": "dis",
+    "ncol": 10,
+    "nlay": 3,
+    "nogrb": false,
+    "nrow": 15,
+    "top": "float64[150] 227b8ed184ae2346"
+  },
+  "simulation/GWF_1/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 3,
+      "nodes": 450,
+      "nrow": 15
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "AdvGW_tidal.ic",
+    "name": "ic",
+    "strt": "float64[450] 1ed0b223aa87fcc4"
+  },
+  "simulation/GWF_1/npf": {
+    "__type__": "Npf",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 3,
+      "nodes": 450,
+      "nrow": 15
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "AdvGW_tidal.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[450] 537d142e202b26a2",
+    "k": "float64[450] 63f0c2f1e2de6647",
+    "k22overk": false,
+    "k33": "float64[450] a3a7ecc366f537f6",
+    "k33overk": false,
+    "name": "npf",
+    "perched": false,
+    "print_flows": false,
+    "save_flows": true,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false
+  },
+  "simulation/GWF_1/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null
+          ],
+          "id_": "int64[1, 3] e005d3e77ace81ac",
+          "n": 1,
+          "obsname": [
+            "h1_13_8"
+          ],
+          "obstype": [
+            "HEAD"
+          ]
+        },
+        {
+          "__table__": "Continuous",
+          "id2": "int64[1, 3] 3995702002507497",
+          "id_": "int64[1, 3] 682459c150e00f3c",
+          "n": 1,
+          "obsname": [
+            "ICF1_1.0"
+          ],
+          "obstype": [
+            "FLOW-JA-FACE"
+          ]
+        },
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "id_": "int64[5, 3] a637e28c2d6d4c48",
+          "n": 5,
+          "obsname": [
+            "h3-13-9",
+            "h3-12-8",
+            "h1-4-3",
+            "h1-12-3",
+            "h1-13-9"
+          ],
+          "obstype": [
+            "HEAD",
+            "HEAD",
+            "HEAD",
+            "HEAD",
+            "HEAD"
+          ]
+        }
+      ],
+      "n": 3,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[3] 29e2dcfbb16f63bb",
+        "n": 3,
+        "obs_output_file_name": [
+          "head_obs.csv",
+          "intercell_flow_obs1.csv",
+          "head_hydrographs.csv"
+        ]
+      }
+    },
+    "digits": 10,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 3,
+      "nodes": 450,
+      "nrow": 15
+    },
+    "filename": "AdvGW_tidal.obs",
+    "name": "obs",
+    "print_input": true
+  },
+  "simulation/GWF_1/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Print",
+          "ocsetting": "FIRST",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "LAST",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "LAST",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        }
+      ]
+    },
+    "budget_file": "AdvGW_tidal.cbc",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 3,
+      "nodes": 450,
+      "nrow": 15
+    },
+    "filename": "AdvGW_tidal.oc",
+    "head_file": "AdvGW_tidal.hds",
+    "headprint": {
+      "__type__": "Headprint",
+      "formatrecord": {
+        "__type__": "Format",
+        "columns": 10,
+        "digits": 6,
+        "format_": "GENERAL",
+        "width": 15
+      }
+    },
+    "name": "oc"
+  },
+  "simulation/GWF_1/sto": {
+    "__type__": "Sto",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "n": 1,
+        "storage": [
+          "STEADY-STATE"
+        ]
+      },
+      "1": {
+        "__table__": "StressPeriodData",
+        "n": 1,
+        "storage": [
+          "TRANSIENT"
+        ]
+      }
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 3,
+      "nodes": 450,
+      "nrow": 15
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "AdvGW_tidal.sto",
+    "iconvert": "int64[450] b6ef05254bc9f1bc",
+    "name": "sto",
+    "save_flows": true,
+    "ss": "float64[450] b1a3de0b97dd99ab",
+    "ss_confined_only": false,
+    "storagecoefficient": false,
+    "sy": "float64[450] 450f72f145d4702a"
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "complexity": "simple",
+    "dims": {},
+    "filename": "model.ims",
+    "inner_dvclose": "0.0001",
+    "inner_maximum": 100,
+    "linear_acceleration": "cg",
+    "models": [
+      "GWF_1"
+    ],
+    "name": "ims",
+    "outer_dvclose": "0.0001",
+    "outer_maximum": 500,
+    "print_option": "summary",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "0.001",
+      "rclose_option": null
+    },
+    "relaxation_factor": "0.97",
+    "reordering_method": "none",
+    "scaling_method": "none",
+    "under_relaxation": "none"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "simulation.tdis",
+    "name": "tdis",
+    "nper": 4,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 4,
+      "nstp": "int64[4] 00d978c8eb66dadf",
+      "perlen": "float64[4] d5093a996dc032a6",
+      "tsmult": "float64[4] 4c26b435423089d4"
+    },
+    "time_units": "DAYS"
+  }
+}

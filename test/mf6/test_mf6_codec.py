@@ -2132,6 +2132,42 @@ def test_table_declines(item_cls, text):
     assert read_table(cls, text, context) is None
 
 
+def test_ragged_as_rows_read():
+    """A block of only numbers whose rows have different widths reads by
+    column, a width at a time, as `from_rows` reads it, in row order."""
+    from flopy4.mf6.codec.reader.transformer.rows import NumberRows
+    from flopy4.mf6.gwf import Disv
+    from flopy4.mf6.item import RowContext
+    from flopy4.mf6.item_table import read_ragged
+
+    text = "1 0.5 0.5 5 1 2 3 4 1\n# a comment\n2 1.5 0.5 4 2 5 6 3\n\n3 2.5 0.5 5 5 7 8 6 5\n"
+    context = RowContext(ncelldim=1)
+    rows = NumberRows(text)
+    items = read_ragged(Disv.Cell2d, rows.text, context)
+    expected = Disv.Cell2d.from_rows(list(rows), context)
+    assert items == expected
+    assert [repr(item) for item in items] == [repr(item) for item in expected]
+    assert [item.icell2d for item in items] == [0, 1, 2]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # a row whose count isn't its width's first row's (`_plan` reads
+        # it by `from_tokens`)
+        "1 0.5 0.5 5 1 2 3 4 1\n2 1.5 0.5 6 2 5 6 3 2\n",
+        "1 0.5 0.5 5 1 2 3 4 1\n2 1.5 x 4 2 5 6 3\n",  # not all numbers
+    ],
+)
+def test_ragged_declines(text):
+    """Rows a width's columns can't hold are left to `from_rows`."""
+    from flopy4.mf6.gwf import Disv
+    from flopy4.mf6.item import RowContext
+    from flopy4.mf6.item_table import read_ragged
+
+    assert read_ragged(Disv.Cell2d, text, RowContext(ncelldim=1)) is None
+
+
 def test_table_rows():
     """A table's rows are its Items: equal to them, written back to when
     set, and edited as a list's."""

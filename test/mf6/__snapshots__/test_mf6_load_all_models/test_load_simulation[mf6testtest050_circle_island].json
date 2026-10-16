@@ -1,0 +1,249 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": false,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf CI>"
+    ],
+    "mxiter": 1,
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/CI": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [],
+    "dims": {},
+    "dis": "<Disv dis>",
+    "drn": [],
+    "evt": [],
+    "filename": "ci.nam",
+    "ghb": [
+      "<Ghb ghb0>"
+    ],
+    "ic": "<Ic ic>",
+    "lak": [],
+    "maw": [],
+    "name": "CI",
+    "npf": "<Npf npf>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [
+      "<Rcha rch0>"
+    ],
+    "riv": [],
+    "save_flows": false,
+    "sfr": [],
+    "uzf": [],
+    "wel": [],
+    "workspace": "<workspace>"
+  },
+  "simulation/CI/dis": {
+    "__type__": "Disv",
+    "botm": "float64[10480] fb0e9157edb5a417",
+    "cell2d": {
+      "__table__": "Cell2d",
+      "icell2d": "int64[5240] cc192ff48fbaaff2",
+      "icvert": "int64[5240, 3] 3618d6133c38b94a",
+      "n": 5240,
+      "ncvert": "int64[5240] 2f28ff891ea8d69a",
+      "xc": "float64[5240] 6d3e75e04e43740d",
+      "yc": "float64[5240] 9a077fe5ac616aca"
+    },
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "ci.disv",
+    "idomain": "int64[10480] b6fb5deb818304a4",
+    "name": "dis",
+    "ncpl": 5240,
+    "nlay": 2,
+    "nogrb": false,
+    "nvert": 2778,
+    "top": "float64[5240] 094e37a0090d3024",
+    "vertices": {
+      "__table__": "Vertices",
+      "iv": "int64[2778] 1209d519dfb29251",
+      "n": 2778,
+      "xv": "float64[2778] 43ea8555af652d3f",
+      "yv": "float64[2778] 40e2f18f7951e8a1"
+    }
+  },
+  "simulation/CI/ghb0": {
+    "__type__": "Ghb",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[3173, 0] da39a3ee5e6b4b0d",
+        "bhead": "float64[3173] 9c843e222292bb19",
+        "boundname": "19038 chars 1022679bc88b0d64",
+        "cellid": "int64[3173, 2] cee0f2706324f461",
+        "cond": "float64[3173] d2b49297955b23b9",
+        "n": 3173
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 2,
+      "ncpl": 5240,
+      "nlay": 2,
+      "nodes": 10480,
+      "nvert": 2778
+    },
+    "filename": "ci.ghb",
+    "mover": false,
+    "name": "ghb0",
+    "print_flows": false,
+    "print_input": false,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/CI/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 2,
+      "ncpl": 5240,
+      "nlay": 2,
+      "nodes": 10480,
+      "nvert": 2778
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "ci.ic",
+    "name": "ic",
+    "strt": "float64[10480] ef0e8037f43c19be"
+  },
+  "simulation/CI/npf": {
+    "__type__": "Npf",
+    "dims": {
+      "ncelldim": 2,
+      "ncpl": 5240,
+      "nlay": 2,
+      "nodes": 10480,
+      "nvert": 2778
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "ci.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[10480] ef0e8037f43c19be",
+    "k": "float64[10480] a150038e64945d9b",
+    "k22overk": false,
+    "k33": "float64[10480] 0037ac840da2b007",
+    "k33overk": false,
+    "name": "npf",
+    "perched": false,
+    "print_flows": false,
+    "save_flows": true,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false
+  },
+  "simulation/CI/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        }
+      ]
+    },
+    "budget_file": "ci.output.cbb",
+    "dims": {
+      "ncelldim": 2,
+      "ncpl": 5240,
+      "nlay": 2,
+      "nodes": 10480,
+      "nvert": 2778
+    },
+    "filename": "ci.oc",
+    "head_file": "ci.output.hds",
+    "name": "oc"
+  },
+  "simulation/CI/rch0": {
+    "__type__": "Rcha",
+    "dims": {
+      "ncelldim": 2,
+      "ncpl": 5240,
+      "nlay": 2,
+      "nodes": 10480,
+      "nvert": 2778
+    },
+    "export_array_netcdf": false,
+    "filename": "ci.rch",
+    "fixed_cell": false,
+    "name": "rch0",
+    "print_flows": false,
+    "print_input": false,
+    "readasarrays": true,
+    "recharge": {
+      "0": "float64[5240] 7cb28ad8fdfdb6aa"
+    },
+    "save_flows": true,
+    "tas": []
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "dims": {},
+    "filename": "ci.ims",
+    "inner_dvclose": "1e-06",
+    "inner_maximum": 1000,
+    "linear_acceleration": "bicgstab",
+    "models": [
+      "CI"
+    ],
+    "name": "ims",
+    "outer_dvclose": "1e-06",
+    "outer_maximum": 500,
+    "print_option": "summary",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "1e-06",
+      "rclose_option": null
+    },
+    "relaxation_factor": "0.0",
+    "under_relaxation": "none"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "ci.tdis",
+    "name": "tdis",
+    "nper": 1,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 1,
+      "nstp": "int64[1] 3da89ee273be1343",
+      "perlen": "float64[1] 3eafb06982d26cb8",
+      "tsmult": "float64[1] 3eafb06982d26cb8"
+    },
+    "time_units": "DAYS"
+  }
+}

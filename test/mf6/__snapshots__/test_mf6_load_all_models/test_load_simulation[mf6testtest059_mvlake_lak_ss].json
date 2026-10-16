@@ -1,0 +1,402 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": false,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf mv>"
+    ],
+    "mxiter": 1,
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "complexity": "simple",
+    "dims": {},
+    "filename": "mv.ims",
+    "inner_dvclose": "1e-06",
+    "inner_maximum": 100,
+    "models": [
+      "mv"
+    ],
+    "name": "ims",
+    "outer_dvclose": "1e-05",
+    "outer_maximum": 10000,
+    "print_option": "summary",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "1e-06",
+      "rclose_option": null
+    }
+  },
+  "simulation/mv": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [],
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [],
+    "evt": [],
+    "filename": "mv.nam",
+    "ghb": [],
+    "ic": "<Ic ic>",
+    "lak": [
+      "<Lak lak0>"
+    ],
+    "list_": "mv.lst",
+    "maw": [],
+    "name": "mv",
+    "npf": "<Npf npf>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [
+      "<Rcha rch0>"
+    ],
+    "riv": [
+      "<Riv riv0>"
+    ],
+    "save_flows": false,
+    "sfr": [],
+    "uzf": [],
+    "wel": [
+      "<Wel wel0>"
+    ],
+    "workspace": "<workspace>"
+  },
+  "simulation/mv/dis": {
+    "__type__": "Dis",
+    "angrot": "0.0",
+    "botm": "float64[5000] ca4be755348fad97",
+    "delc": "float64[40] 6027ef109382b85a",
+    "delr": "float64[25] 820e2740e0921adf",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "mv.dis",
+    "idomain": "int64[5000] 14ccf2c3c06974aa",
+    "length_units": "FEET",
+    "name": "dis",
+    "ncol": 25,
+    "nlay": 5,
+    "nogrb": false,
+    "nrow": 40,
+    "top": "float64[1000] 31165b39f8e3233a",
+    "xorigin": "0.0",
+    "yorigin": "0.0"
+  },
+  "simulation/mv/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 25,
+      "ncpl": 1000,
+      "nlay": 5,
+      "nodes": 5000,
+      "nrow": 40
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "mv.ic",
+    "name": "ic",
+    "strt": "float64[5000] e52fb5ba3b76c691"
+  },
+  "simulation/mv/lak0": {
+    "__type__": "Lak",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Status",
+          "lakeno": 0,
+          "status": "active"
+        },
+        {
+          "__type__": "Rainfall",
+          "lakeno": 0,
+          "rainfall": "0.00821918"
+        },
+        {
+          "__type__": "Evaporation",
+          "evaporation": "0.0062296",
+          "lakeno": 0
+        }
+      ]
+    },
+    "boundnames": true,
+    "connectiondata": {
+      "__table__": "Connectiondata",
+      "bedleak": "840 chars dfc843b329cc14c4",
+      "belev": "float64[105] 14a04ec24a85dd8d",
+      "cellid": "int64[105, 3] 8b694efd5bca4052",
+      "claktype": "1340 chars ca352a571672ea96",
+      "connlen": "float64[105] 74d51b2b1d9a6f40",
+      "connwidth": "float64[105] 7bb5ffa3311d7cc2",
+      "iconn": "int64[105] 0aca75493e9fed82",
+      "ifno": "int64[105] 712afbf4bdf24b6f",
+      "n": 105,
+      "telev": "float64[105] 14a04ec24a85dd8d"
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 25,
+      "ncpl": 1000,
+      "nlay": 5,
+      "nodes": 5000,
+      "nrow": 40
+    },
+    "filename": "mv.lak",
+    "implicit": false,
+    "mover": false,
+    "name": "lak0",
+    "nlakes": 1,
+    "noutlets": 0,
+    "packagedata": {
+      "__table__": "Packagedata",
+      "aux": "float64[1, 0] da39a3ee5e6b4b0d",
+      "boundname": [
+        "LAKE_HARBAUGH"
+      ],
+      "ifno": "int64[1] 05fe405753166f12",
+      "n": 1,
+      "nlakeconn": "int64[1] be9792b484628d62",
+      "strt": "float64[1] 0bee11916e57acc1"
+    },
+    "print_flows": true,
+    "print_input": true,
+    "print_stage": true,
+    "save_flows": true,
+    "stage_file": "lake_harbaugh.stage.bin",
+    "ts": []
+  },
+  "simulation/mv/npf": {
+    "__type__": "Npf",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 25,
+      "ncpl": 1000,
+      "nlay": 5,
+      "nodes": 5000,
+      "nrow": 40
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "mv.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[5000] d36ce68056cabe78",
+    "k": "float64[5000] 7a97050355a1f635",
+    "k22overk": false,
+    "k33": "float64[5000] 0319bb8b4160b94b",
+    "k33overk": false,
+    "name": "npf",
+    "perched": false,
+    "print_flows": false,
+    "save_flows": true,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false
+  },
+  "simulation/mv/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        }
+      ]
+    },
+    "budget_file": "mv.cbc",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 25,
+      "ncpl": 1000,
+      "nlay": 5,
+      "nodes": 5000,
+      "nrow": 40
+    },
+    "filename": "mv.oc",
+    "head_file": "mv.hds",
+    "headprint": {
+      "__type__": "Headprint",
+      "formatrecord": {
+        "__type__": "Format",
+        "columns": 25,
+        "digits": 2,
+        "format_": "FIXED",
+        "width": 7
+      }
+    },
+    "name": "oc"
+  },
+  "simulation/mv/rch0": {
+    "__type__": "Rcha",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 25,
+      "ncpl": 1000,
+      "nlay": 5,
+      "nodes": 5000,
+      "nrow": 40
+    },
+    "export_array_netcdf": false,
+    "filename": "mv.rch",
+    "fixed_cell": false,
+    "name": "rch0",
+    "print_flows": false,
+    "print_input": false,
+    "readasarrays": true,
+    "recharge": {
+      "0": "float64[1000] 1c5f74234c748fb7"
+    },
+    "save_flows": true,
+    "tas": []
+  },
+  "simulation/mv/riv0": {
+    "__type__": "Riv",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[18, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "cellid": "int64[18, 3] ab6d0d7471ef587d",
+        "cond": "float64[18] ec5e8dc19075678f",
+        "n": 18,
+        "rbot": "float64[18] 6fc9401bd2d67abf",
+        "stage": "float64[18] 9cba96307678fb8c"
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 25,
+      "ncpl": 1000,
+      "nlay": 5,
+      "nodes": 5000,
+      "nrow": 40
+    },
+    "filename": "mv.riv",
+    "mover": false,
+    "name": "riv0",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": true,
+    "ts": []
+  },
+  "simulation/mv/wel0": {
+    "__type__": "Wel",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[3, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          null,
+          null,
+          null
+        ],
+        "cellid": "int64[3, 3] 410d9dbd5ed122e4",
+        "n": 3,
+        "q": "float64[3] d3399b7262fb56cb"
+      },
+      "1": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[3, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          null,
+          null,
+          null
+        ],
+        "cellid": "int64[3, 3] 410d9dbd5ed122e4",
+        "n": 3,
+        "q": "float64[3] 1c7c6fbd21bec6b6"
+      },
+      "2": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[3, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          null,
+          null,
+          null
+        ],
+        "cellid": "int64[3, 3] 410d9dbd5ed122e4",
+        "n": 3,
+        "q": "float64[3] e82a36211bd4e4cb"
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 25,
+      "ncpl": 1000,
+      "nlay": 5,
+      "nodes": 5000,
+      "nrow": 40
+    },
+    "filename": "mv.wel",
+    "flow_reduction_length": false,
+    "mover": false,
+    "name": "wel0",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": true,
+    "ts": []
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "mv.tdis",
+    "name": "tdis",
+    "nper": 3,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 3,
+      "nstp": "int64[3] 8aaab8ea3dc5e112",
+      "perlen": "float64[3] 12a72e95677fc01d",
+      "tsmult": "float64[3] 12a72e95677fc01d"
+    },
+    "time_units": "days"
+  }
+}

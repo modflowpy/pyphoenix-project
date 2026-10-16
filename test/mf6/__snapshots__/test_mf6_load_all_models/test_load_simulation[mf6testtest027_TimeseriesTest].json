@@ -1,0 +1,583 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": true,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf GWF_1>"
+    ],
+    "mxiter": 1,
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/GWF_1": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [],
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [],
+    "evt": [],
+    "filename": "timeseriestest.nam",
+    "ghb": [
+      "<Ghb ghb0>"
+    ],
+    "ic": "<Ic ic>",
+    "lak": [],
+    "maw": [],
+    "name": "GWF_1",
+    "npf": "<Npf npf>",
+    "obs": "<Obs obs>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [
+      "<Rcha rch0>"
+    ],
+    "riv": [],
+    "save_flows": false,
+    "sfr": [],
+    "sto": "<Sto sto>",
+    "uzf": [],
+    "wel": [
+      "<Wel wel0>"
+    ],
+    "workspace": "<workspace>"
+  },
+  "simulation/GWF_1/dis": {
+    "__type__": "Dis",
+    "botm": "float64[5202] a78c808b44b704ee",
+    "delc": "float64[51] c5feb1c5f64480c5",
+    "delr": "float64[51] c5feb1c5f64480c5",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "timeseriestest.dis",
+    "idomain": "int64[5202] f20d0ca4b6951c68",
+    "length_units": "METERS",
+    "name": "dis",
+    "ncol": 51,
+    "nlay": 2,
+    "nogrb": false,
+    "nrow": 51,
+    "top": "float64[2601] 6385983e32846178"
+  },
+  "simulation/GWF_1/ghb0": {
+    "__type__": "Ghb",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[102, 0] da39a3ee5e6b4b0d",
+        "bhead": {
+          "__table__": "TimeSeriesRef",
+          "n": 102,
+          "name": "1020 chars d19b93e36e46bd52"
+        },
+        "boundname": "612 chars bd03048f91bd943a",
+        "cellid": "int64[102, 3] 3148b5fa658099f5",
+        "cond": {
+          "__table__": "TimeSeriesRef",
+          "n": 102,
+          "name": "1020 chars 700f895fe2652e39"
+        },
+        "n": 102
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 51,
+      "ncpl": 2601,
+      "nlay": 2,
+      "nodes": 5202,
+      "nrow": 51
+    },
+    "filename": "timeseriestest.ghb",
+    "mover": false,
+    "name": "ghb0",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": false,
+    "ts": [
+      "<Ts ts0>"
+    ]
+  },
+  "simulation/GWF_1/ghb0/ts0": {
+    "__type__": "Ts",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 51,
+      "ncpl": 2601,
+      "nlay": 2,
+      "nodes": 5202,
+      "nrow": 51
+    },
+    "filename": "timeseries.ghb.ts",
+    "interpolation_method": {
+      "__type__": "InterpolationMethod",
+      "interpolation_method": [
+        "linear",
+        "linear",
+        "linear",
+        "linear"
+      ]
+    },
+    "name": "ts0",
+    "time_series_name": {
+      "__type__": "TimeSeriesName",
+      "time_series_names": [
+        "ghbh_1",
+        "ghbh_2",
+        "ghbc_1",
+        "ghbc_2"
+      ]
+    },
+    "timeseries": {
+      "__table__": "Timeseries",
+      "n": 4,
+      "ts_array": "float64[4, 4] bdcf000933890f2e",
+      "ts_time": "float64[4] cbfdaa505fc9a0ea"
+    }
+  },
+  "simulation/GWF_1/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 51,
+      "ncpl": 2601,
+      "nlay": 2,
+      "nodes": 5202,
+      "nrow": 51
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "timeseriestest.ic",
+    "name": "ic",
+    "strt": "float64[5202] 0fdd676a59cda049"
+  },
+  "simulation/GWF_1/npf": {
+    "__type__": "Npf",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 51,
+      "ncpl": 2601,
+      "nlay": 2,
+      "nodes": 5202,
+      "nrow": 51
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "timeseriestest.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[5202] f20d0ca4b6951c68",
+    "k": "float64[5202] 3105a24a0b3968af",
+    "k22overk": false,
+    "k33": "float64[5202] 75f76a6344a960b9",
+    "k33overk": false,
+    "name": "npf",
+    "perched": false,
+    "print_flows": false,
+    "save_flows": false,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false
+  },
+  "simulation/GWF_1/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null
+          ],
+          "id_": "int64[2, 3] 376b6e66c209bc04",
+          "n": 2,
+          "obsname": [
+            "L1",
+            "L2"
+          ],
+          "obstype": [
+            "head",
+            "head"
+          ]
+        }
+      ],
+      "n": 1,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[1] 5ba93c9db0cff93f",
+        "n": 1,
+        "obs_output_file_name": [
+          "timeseries_gwf.csv"
+        ]
+      }
+    },
+    "digits": 10,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 51,
+      "ncpl": 2601,
+      "nlay": 2,
+      "nodes": 5202,
+      "nrow": 51
+    },
+    "filename": "timeseriestest.obs",
+    "name": "obs",
+    "print_input": true
+  },
+  "simulation/GWF_1/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Print",
+          "ocsetting": {
+            "__type__": "Frequency",
+            "frequency": 1
+          },
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": {
+            "__type__": "Frequency",
+            "frequency": 1
+          },
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": {
+            "__type__": "Frequency",
+            "frequency": 1
+          },
+          "rtype": "HEAD"
+        }
+      ]
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 51,
+      "ncpl": 2601,
+      "nlay": 2,
+      "nodes": 5202,
+      "nrow": 51
+    },
+    "filename": "timeseriestest.oc",
+    "head_file": "timeseriestest.hds",
+    "name": "oc"
+  },
+  "simulation/GWF_1/rch0": {
+    "__type__": "Rcha",
+    "aux": {
+      "0": {
+        "Auxarray1": "float64[2601] 58b0bff3110ac78f",
+        "RchMult": "float64[2601] e30c4eea185042d8"
+      }
+    },
+    "auxiliary": [
+      "Auxarray1",
+      "RchMult"
+    ],
+    "auxmultname": "RchMult",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 51,
+      "ncpl": 2601,
+      "nlay": 2,
+      "nodes": 5202,
+      "nrow": 51
+    },
+    "export_array_netcdf": false,
+    "filename": "timeseriestest.rch",
+    "fixed_cell": true,
+    "name": "rch0",
+    "print_flows": true,
+    "print_input": true,
+    "readasarrays": true,
+    "recharge": {
+      "0": {
+        "__type__": "TimeArraySeriesRef",
+        "name": "RchSeries"
+      }
+    },
+    "save_flows": false,
+    "tas": [
+      "<Tas tas0>"
+    ]
+  },
+  "simulation/GWF_1/rch0/tas0": {
+    "__type__": "Tas",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 51,
+      "ncpl": 2601,
+      "nlay": 2,
+      "nodes": 5202,
+      "nrow": 51
+    },
+    "filename": "timearrayseries.rch.tas",
+    "interpolation_method": {
+      "__type__": "InterpolationMethod",
+      "interpolation_method": "STEPWISE"
+    },
+    "name": "tas0",
+    "sfac": {
+      "__type__": "Sfac",
+      "sfacval": "float64[1] 8f688ce4f0389109"
+    },
+    "tas_array": "503 chars b6c8ddf5b9f29c36",
+    "time_series_name": {
+      "__type__": "TimeSeriesName",
+      "time_series_name": [
+        "RchSeries"
+      ]
+    }
+  },
+  "simulation/GWF_1/sto": {
+    "__type__": "Sto",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "n": 1,
+        "storage": [
+          "steady-state"
+        ]
+      },
+      "1": {
+        "__table__": "StressPeriodData",
+        "n": 1,
+        "storage": [
+          "transient"
+        ]
+      }
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 51,
+      "ncpl": 2601,
+      "nlay": 2,
+      "nodes": 5202,
+      "nrow": 51
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "timeseriestest.sto",
+    "iconvert": "int64[5202] f20d0ca4b6951c68",
+    "name": "sto",
+    "save_flows": false,
+    "ss": "float64[5202] d09b21c36336b0ee",
+    "ss_confined_only": true,
+    "storagecoefficient": false,
+    "sy": "float64[5202] ff6ea1f11dba6b1d"
+  },
+  "simulation/GWF_1/wel0": {
+    "__type__": "Wel",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[1, 3] 13fe6b83ce302f3b",
+        "boundname": [
+          "well_1"
+        ],
+        "cellid": "int64[1, 3] dcfcc2a724d16d2e",
+        "n": 1,
+        "q": {
+          "__table__": "TimeSeriesRef",
+          "n": 1,
+          "name": [
+            "wrate_1"
+          ]
+        }
+      },
+      "1": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[1, 3] c59d523d209b4ac5",
+        "boundname": [
+          "well_1"
+        ],
+        "cellid": "int64[1, 3] dcfcc2a724d16d2e",
+        "n": 1,
+        "q": "float64[1] 638942eb5136433e"
+      },
+      "2": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[1, 3] f4808ad5793e72bc",
+        "boundname": [
+          "well_1"
+        ],
+        "cellid": "int64[1, 3] dcfcc2a724d16d2e",
+        "n": 1,
+        "q": {
+          "__table__": "TimeSeriesRef",
+          "n": 1,
+          "name": [
+            "wrate_2"
+          ]
+        }
+      }
+    },
+    "auxiliary": [
+      "Aux1",
+      "Aux2",
+      "MyMult"
+    ],
+    "auxmultname": "MyMult",
+    "boundnames": true,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 51,
+      "ncpl": 2601,
+      "nlay": 2,
+      "nodes": 5202,
+      "nrow": 51
+    },
+    "filename": "timeseriestest.wel",
+    "flow_reduction_length": false,
+    "mover": false,
+    "name": "wel0",
+    "obs": "<Obs obs>",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": false,
+    "ts": [
+      "<Ts ts0>"
+    ]
+  },
+  "simulation/GWF_1/wel0/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null
+          ],
+          "id_": [
+            "well_1"
+          ],
+          "n": 1,
+          "obsname": [
+            "rate"
+          ],
+          "obstype": [
+            "WEL"
+          ]
+        }
+      ],
+      "n": 1,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[1] 5ba93c9db0cff93f",
+        "n": 1,
+        "obs_output_file_name": [
+          "timeseries_well.csv"
+        ]
+      }
+    },
+    "digits": 10,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 51,
+      "ncpl": 2601,
+      "nlay": 2,
+      "nodes": 5202,
+      "nrow": 51
+    },
+    "filename": "timeseriestest.wel.obs",
+    "name": "obs",
+    "print_input": true
+  },
+  "simulation/GWF_1/wel0/ts0": {
+    "__type__": "Ts",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 51,
+      "ncpl": 2601,
+      "nlay": 2,
+      "nodes": 5202,
+      "nrow": 51
+    },
+    "filename": "timeseries.well.ts",
+    "interpolation_method": {
+      "__type__": "InterpolationMethod",
+      "interpolation_method": [
+        "stepwise",
+        "linear"
+      ]
+    },
+    "name": "ts0",
+    "time_series_name": {
+      "__type__": "TimeSeriesName",
+      "time_series_names": [
+        "wrate_1",
+        "wrate_2"
+      ]
+    },
+    "timeseries": {
+      "__table__": "Timeseries",
+      "n": 2,
+      "ts_array": "float64[2, 2] f3134134ad726e50",
+      "ts_time": "float64[2] 6821f42627caffc6"
+    }
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "backtracking_number": 0,
+    "backtracking_reduction_factor": "0.6",
+    "backtracking_residual_limit": "1.0",
+    "backtracking_tolerance": "2.0",
+    "dims": {},
+    "filename": "model.ims",
+    "inner_dvclose": "1e-09",
+    "inner_maximum": 100,
+    "linear_acceleration": "cg",
+    "models": [
+      "GWF_1"
+    ],
+    "name": "ims",
+    "outer_dvclose": "1e-09",
+    "outer_maximum": 50,
+    "print_option": "summary",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "0.001",
+      "rclose_option": null
+    },
+    "relaxation_factor": "0.99",
+    "reordering_method": "none",
+    "scaling_method": "none",
+    "under_relaxation": "none",
+    "under_relaxation_gamma": "0.0",
+    "under_relaxation_kappa": "0.0001",
+    "under_relaxation_momentum": "0.1",
+    "under_relaxation_theta": "0.9"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "simulation.tdis",
+    "name": "tdis",
+    "nper": 3,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 3,
+      "nstp": "int64[3] 3f9c0af26ae9a701",
+      "perlen": "float64[3] 07cdc9952304a528",
+      "tsmult": "float64[3] 12a72e95677fc01d"
+    },
+    "time_units": "DAYS"
+  }
+}

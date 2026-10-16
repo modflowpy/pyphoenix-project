@@ -1,0 +1,279 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": false,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "memory_print_option": "ALL",
+    "models": [
+      "<Gwf flow15>"
+    ],
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/flow15": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [
+      "<Chd chd0>"
+    ],
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [],
+    "evt": [
+      "<Evt evt0>"
+    ],
+    "filename": "flow15.nam",
+    "ghb": [],
+    "ic": "<Ic ic>",
+    "lak": [],
+    "maw": [],
+    "name": "flow15",
+    "npf": "<Npf npf>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [],
+    "riv": [],
+    "save_flows": false,
+    "sfr": [],
+    "uzf": [],
+    "wel": [],
+    "workspace": "<workspace>"
+  },
+  "simulation/flow15/chd0": {
+    "__type__": "Chd",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[2, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          null,
+          null
+        ],
+        "cellid": "int64[2, 3] cbff2d659cdc467f",
+        "head": "float64[2] dabb286bd5f9d77a",
+        "n": 2
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 10,
+      "nlay": 1,
+      "nodes": 10,
+      "nrow": 1
+    },
+    "filename": "flow15_constant.chd",
+    "name": "chd0",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": true,
+    "ts": []
+  },
+  "simulation/flow15/dis": {
+    "__type__": "Dis",
+    "botm": "float64[10] 0ff76dfb0237f562",
+    "delc": "float64[1] a2821b987161a593",
+    "delr": "float64[10] 9112a51869c2f7c8",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "flow15.dis",
+    "length_units": "METERS",
+    "name": "dis",
+    "ncol": 10,
+    "nlay": 1,
+    "nogrb": false,
+    "nrow": 1,
+    "top": "float64[10] 7880455745addd07"
+  },
+  "simulation/flow15/evt0": {
+    "__type__": "Evt",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[10, 1] 914861f62b20aea9",
+        "boundname": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "cellid": "int64[10, 3] 1e908a82f8cf7c8f",
+        "depth": "float64[10] cca424e7532bea93",
+        "n": 10,
+        "petm": "float64[10, 0] da39a3ee5e6b4b0d",
+        "petm0": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "pxdp": "float64[10, 0] da39a3ee5e6b4b0d",
+        "rate": "float64[10] c52c453032853779",
+        "surface": "float64[10] 7880455745addd07"
+      }
+    },
+    "auxiliary": [
+      "MYEVTMULT"
+    ],
+    "auxmultname": "MYEVTMULT",
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 10,
+      "nlay": 1,
+      "nodes": 10,
+      "nrow": 1
+    },
+    "filename": "flow15.evt",
+    "fixed_cell": true,
+    "name": "evt0",
+    "print_flows": false,
+    "print_input": false,
+    "save_flows": false,
+    "surf_rate_specified": false,
+    "ts": []
+  },
+  "simulation/flow15/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 10,
+      "nlay": 1,
+      "nodes": 10,
+      "nrow": 1
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "flow15.ic",
+    "name": "ic",
+    "strt": "float64[10] fd26c27e4ac99dc7"
+  },
+  "simulation/flow15/npf": {
+    "__type__": "Npf",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 10,
+      "nlay": 1,
+      "nodes": 10,
+      "nrow": 1
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "flow15.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[10] bc0901e40bc31807",
+    "k": "float64[10] 7880455745addd07",
+    "k22overk": false,
+    "k33overk": false,
+    "name": "npf",
+    "perched": false,
+    "print_flows": false,
+    "save_flows": true,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false
+  },
+  "simulation/flow15/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        }
+      ]
+    },
+    "budget_file": "flow15_flow.cbc",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 10,
+      "nlay": 1,
+      "nodes": 10,
+      "nrow": 1
+    },
+    "filename": "flow15.oc",
+    "head_file": "flow15_flow.hds",
+    "name": "oc"
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "complexity": "simple",
+    "dims": {},
+    "filename": "flow15.ims",
+    "inner_dvclose": "1e-06",
+    "inner_maximum": 30,
+    "linear_acceleration": "cg",
+    "models": [
+      "flow15"
+    ],
+    "name": "ims",
+    "outer_dvclose": "9.9999997e-06",
+    "outer_maximum": 50,
+    "print_option": "all",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "9.9999997e-06",
+      "rclose_option": null
+    },
+    "under_relaxation": "none"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "flow15.tdis",
+    "name": "tdis",
+    "nper": 1,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 1,
+      "nstp": "int64[1] 3da89ee273be1343",
+      "perlen": "float64[1] 3eafb06982d26cb8",
+      "tsmult": "float64[1] 3eafb06982d26cb8"
+    },
+    "start_date_time": "1997-07-16T19:20:30.45+01:00",
+    "time_units": "DAYS"
+  }
+}

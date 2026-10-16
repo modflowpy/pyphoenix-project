@@ -1,0 +1,294 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": false,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf mawconf>"
+    ],
+    "mxiter": 1,
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "complexity": "simple",
+    "dims": {},
+    "filename": "test020_mawconfined.ims",
+    "inner_dvclose": "1e-07",
+    "inner_maximum": 100,
+    "linear_acceleration": "cg",
+    "models": [
+      "mawconf"
+    ],
+    "name": "ims",
+    "number_orthogonalizations": 2,
+    "outer_dvclose": "1e-06",
+    "outer_maximum": 500,
+    "print_option": "summary",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "0.001",
+      "rclose_option": null
+    },
+    "relaxation_factor": "1.0",
+    "reordering_method": "none",
+    "under_relaxation": "none",
+    "under_relaxation_gamma": "0.0",
+    "under_relaxation_kappa": "0.0",
+    "under_relaxation_momentum": "0.0",
+    "under_relaxation_theta": "0.0"
+  },
+  "simulation/mawconf": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [],
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [],
+    "evt": [],
+    "filename": "test020_mawconfined.nam",
+    "ghb": [],
+    "ic": "<Ic ic>",
+    "lak": [],
+    "list_": "test020_mawconfined.lst",
+    "maw": [
+      "<Maw MAW_1>"
+    ],
+    "name": "mawconf",
+    "npf": "<Npf npf>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [],
+    "riv": [],
+    "save_flows": true,
+    "sfr": [],
+    "sto": "<Sto sto>",
+    "uzf": [],
+    "wel": [],
+    "workspace": "<workspace>"
+  },
+  "simulation/mawconf/MAW_1": {
+    "__type__": "Maw",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "ifno": "int64[1] 05fe405753166f12",
+        "mawsetting": {
+          "__table__": "Rate",
+          "n": 1,
+          "rate": "float64[1] 325596ece976a0e5"
+        },
+        "n": 1
+      }
+    },
+    "boundnames": true,
+    "connectiondata": {
+      "__table__": "Connectiondata",
+      "cellid": "int64[1, 3] 3c848efd7ddca336",
+      "hk_skin": "float64[1] 05fe405753166f12",
+      "icon": "int64[1] 05fe405753166f12",
+      "ifno": "int64[1] 05fe405753166f12",
+      "n": 1,
+      "radius_skin": "float64[1] 05fe405753166f12",
+      "scrn_bot": "float64[1] 6b6821364cdcaac9",
+      "scrn_top": "float64[1] 05fe405753166f12"
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 101,
+      "ncpl": 10201,
+      "nlay": 1,
+      "nodes": 10201,
+      "nrow": 101
+    },
+    "filename": "test020_mawconfined.maw",
+    "flow_correction": false,
+    "flowing_wells": false,
+    "mover": false,
+    "name": "MAW_1",
+    "nmawwells": 1,
+    "no_well_storage": true,
+    "non_vertical_wells": false,
+    "packagedata": {
+      "__table__": "Packagedata",
+      "aux": "float64[1, 0] da39a3ee5e6b4b0d",
+      "bottom": "float64[1] 6b6821364cdcaac9",
+      "boundname": [
+        "WELL"
+      ],
+      "condeqn": [
+        "THIEM"
+      ],
+      "ifno": "int64[1] 05fe405753166f12",
+      "n": 1,
+      "ngwfnodes": "int64[1] 3da89ee273be1343",
+      "radius": "float64[1] 9efa2c34b883f508",
+      "strt": "float64[1] 05fe405753166f12"
+    },
+    "print_flows": true,
+    "print_head": false,
+    "print_input": true,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/mawconf/dis": {
+    "__type__": "Dis",
+    "botm": "float64[10201] 83987ca90bbc3784",
+    "delc": "float64[101] 304deb3a59d2552d",
+    "delr": "float64[101] 304deb3a59d2552d",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "test020_mawconfined.dis",
+    "idomain": "int64[10201] 51c7960224d52cf2",
+    "length_units": "METERS",
+    "name": "dis",
+    "ncol": 101,
+    "nlay": 1,
+    "nogrb": false,
+    "nrow": 101,
+    "top": "float64[10201] dcbd36a903ded6f2"
+  },
+  "simulation/mawconf/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 101,
+      "ncpl": 10201,
+      "nlay": 1,
+      "nodes": 10201,
+      "nrow": 101
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "test020_mawconfined.ic",
+    "name": "ic",
+    "strt": "float64[10201] dcbd36a903ded6f2"
+  },
+  "simulation/mawconf/npf": {
+    "__type__": "Npf",
+    "cvoptions": {
+      "__type__": "Cvoptions",
+      "dewatered": true
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 101,
+      "ncpl": 10201,
+      "nlay": 1,
+      "nodes": 10201,
+      "nrow": 101
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "test020_mawconfined.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[10201] dcbd36a903ded6f2",
+    "k": "float64[10201] 8f2ae4837660723f",
+    "k22overk": false,
+    "k33": "float64[10201] 8f2ae4837660723f",
+    "k33overk": false,
+    "name": "npf",
+    "perched": true,
+    "print_flows": false,
+    "save_flows": false,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false
+  },
+  "simulation/mawconf/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        }
+      ]
+    },
+    "budget_file": "test020_mawconfined.cbc",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 101,
+      "ncpl": 10201,
+      "nlay": 1,
+      "nodes": 10201,
+      "nrow": 101
+    },
+    "filename": "test020_mawconfined.oc",
+    "head_file": "test020_mawconfined.hds",
+    "headprint": {
+      "__type__": "Headprint",
+      "formatrecord": {
+        "__type__": "Format",
+        "columns": 10,
+        "digits": 4,
+        "format_": "GENERAL",
+        "width": 11
+      }
+    },
+    "name": "oc"
+  },
+  "simulation/mawconf/sto": {
+    "__type__": "Sto",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 101,
+      "ncpl": 10201,
+      "nlay": 1,
+      "nodes": 10201,
+      "nrow": 101
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "test020_mawconfined.sto",
+    "iconvert": "int64[10201] dcbd36a903ded6f2",
+    "name": "sto",
+    "save_flows": false,
+    "ss": "float64[10201] eb49dbf4f3ef9c3f",
+    "ss_confined_only": false,
+    "storagecoefficient": false,
+    "sy": "float64[10201] dcbd36a903ded6f2"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "test020_mawconfined.tdis",
+    "name": "tdis",
+    "nper": 1,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 1,
+      "nstp": "int64[1] 33995c108f600964",
+      "perlen": "float64[1] 0ff8a2587ed6e23e",
+      "tsmult": "float64[1] 9013e912dba88e86"
+    },
+    "time_units": "DAYS"
+  }
+}

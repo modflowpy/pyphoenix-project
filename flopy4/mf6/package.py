@@ -330,6 +330,28 @@ class Package(Component, ABC):
                             by_key.setdefault(k, n)
                     return by_key.get(key)
 
+                # the first row's, noting what it reads: if a row's count is
+                # just a referenced row's (SFR's), check the rest by column
+                # rather than evaluate each's (SFR's 10k connectiondata rows)
+                names: list[str] = []
+
+                def lookup(name: str, first=rows[0], names=names) -> Any:
+                    names.append(name)
+                    return getattr(first, name, None)
+
+                dim_value(shape, lookup=lookup, select=select)
+                if looked_up and len(set(names)) == 1:
+                    by_key = counts[looked_up[-1]]
+                    keys = _column_values(rows, names[0])
+                    for key, value in zip(keys, _column_values(rows, col.name)):
+                        if key is None or (expected := by_key.get(key)) is None:
+                            continue
+                        if (n := len(value or ())) != int(expected):
+                            raise ValueError(
+                                f"{f.name} {col.name} has {n} values but "
+                                f"{looked_up[-1]} is {int(expected)}"
+                            )
+                    continue
                 for r in rows:
                     n = len(getattr(r, col.name) or ())
                     expected = dim_value(

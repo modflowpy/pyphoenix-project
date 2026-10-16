@@ -1,0 +1,605 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": false,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf lake0_e>"
+    ],
+    "mxiter": 1,
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "complexity": "simple",
+    "dims": {},
+    "filename": "lake0_embedded.ims",
+    "inner_dvclose": "1e-06",
+    "inner_maximum": 100,
+    "linear_acceleration": "cg",
+    "models": [
+      "lake0_e"
+    ],
+    "name": "ims",
+    "number_orthogonalizations": 2,
+    "outer_dvclose": "1e-05",
+    "outer_maximum": 500,
+    "preconditioner_drop_tolerance": "0.001",
+    "preconditioner_levels": 7,
+    "print_option": "summary",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "0.001",
+      "rclose_option": null
+    },
+    "reordering_method": "none",
+    "under_relaxation": "none",
+    "under_relaxation_gamma": "0.0",
+    "under_relaxation_kappa": "0.0",
+    "under_relaxation_momentum": "0.0",
+    "under_relaxation_theta": "0.0"
+  },
+  "simulation/lake0_e": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [
+      "<Chd chd0>"
+    ],
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [],
+    "evt": [],
+    "filename": "lake0_embedded.nam",
+    "ghb": [],
+    "ic": "<Ic ic>",
+    "lak": [
+      "<Lak lak0>"
+    ],
+    "maw": [],
+    "name": "lake0_e",
+    "npf": "<Npf npf>",
+    "obs": "<Obs obs>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [],
+    "riv": [],
+    "save_flows": false,
+    "sfr": [],
+    "uzf": [],
+    "wel": [],
+    "workspace": "<workspace>"
+  },
+  "simulation/lake0_e/chd0": {
+    "__type__": "Chd",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[16, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "cellid": "int64[16, 3] 2e2febfe3fce3f2c",
+        "head": {
+          "__table__": "TimeSeriesRef",
+          "n": 16,
+          "name": [
+            "chdh_1",
+            "chdh_1",
+            "chdh_1",
+            "chdh_1",
+            "chdh_1",
+            "chdh_1",
+            "chdh_1",
+            "chdh_1",
+            "chdh_1",
+            "chdh_1",
+            "chdh_1",
+            "chdh_1",
+            "chdh_1",
+            "chdh_1",
+            "chdh_1",
+            "chdh_1"
+          ]
+        },
+        "n": 16
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 1,
+      "nodes": 25,
+      "nrow": 5
+    },
+    "filename": "lake0_embedded.chd",
+    "name": "chd0",
+    "print_flows": false,
+    "print_input": true,
+    "save_flows": false,
+    "ts": [
+      "<Ts ts0>"
+    ]
+  },
+  "simulation/lake0_e/chd0/ts0": {
+    "__type__": "Ts",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 1,
+      "nodes": 25,
+      "nrow": 5
+    },
+    "filename": "chd.ts",
+    "interpolation_method": {
+      "__type__": "InterpolationMethod",
+      "interpolation_method": [
+        "linear"
+      ]
+    },
+    "name": "ts0",
+    "time_series_name": {
+      "__type__": "TimeSeriesName",
+      "time_series_names": [
+        "chdh_1"
+      ]
+    },
+    "timeseries": {
+      "__table__": "Timeseries",
+      "n": 5,
+      "ts_array": "float64[5, 1] 42dc115d6dbe2395",
+      "ts_time": "float64[5] 9abca3302629697d"
+    }
+  },
+  "simulation/lake0_e/dis": {
+    "__type__": "Dis",
+    "botm": "float64[25] c45d01b195decd87",
+    "delc": "float64[5] ce629dd65af99e28",
+    "delr": "float64[5] ce629dd65af99e28",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "lake0_embedded.dis",
+    "idomain": "int64[25] 585aa66cbe25ed88",
+    "length_units": "UNDEFINED",
+    "name": "dis",
+    "ncol": 5,
+    "nlay": 1,
+    "nogrb": false,
+    "nrow": 5,
+    "top": "float64[25] d4cbb33769129565"
+  },
+  "simulation/lake0_e/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 1,
+      "nodes": 25,
+      "nrow": 5
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "lake0_embedded.ic",
+    "name": "ic",
+    "strt": "float64[25] d0510308133a7a1f"
+  },
+  "simulation/lake0_e/lak0": {
+    "__type__": "Lak",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "Rainfall",
+        "lakeno": "int64[3] ab2fa50ae23ce035",
+        "n": 3,
+        "rainfall": "float64[3] ca0c1870a4f65519"
+      }
+    },
+    "boundnames": true,
+    "connectiondata": {
+      "__table__": "Connectiondata",
+      "bedleak": "float64[3] 12a72e95677fc01d",
+      "belev": "float64[3] d3399b7262fb56cb",
+      "cellid": "int64[3, 3] 9bf5bd97d3a2ded4",
+      "claktype": [
+        "EMBEDDEDV",
+        "EMBEDDEDV",
+        "EMBEDDEDV"
+      ],
+      "connlen": "float64[3] cdf1bc6b590e9bd9",
+      "connwidth": "float64[3] d3399b7262fb56cb",
+      "iconn": "int64[3] d3399b7262fb56cb",
+      "ifno": "int64[3] ab2fa50ae23ce035",
+      "n": 3,
+      "telev": "float64[3] d3399b7262fb56cb"
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 1,
+      "nodes": 25,
+      "nrow": 5
+    },
+    "filename": "lake0_embedded.lak",
+    "implicit": false,
+    "mover": false,
+    "name": "lak0",
+    "nlakes": 3,
+    "noutlets": 0,
+    "ntables": 3,
+    "obs": "<Obs obs>",
+    "packagedata": {
+      "__table__": "Packagedata",
+      "aux": "float64[3, 0] da39a3ee5e6b4b0d",
+      "boundname": [
+        "elake01",
+        "elake02",
+        "elake03"
+      ],
+      "ifno": "int64[3] ab2fa50ae23ce035",
+      "n": 3,
+      "nlakeconn": "int64[3] 8aaab8ea3dc5e112",
+      "strt": "float64[3] d6766fd43c468aec"
+    },
+    "print_flows": true,
+    "print_input": true,
+    "print_stage": false,
+    "save_flows": false,
+    "tables": {
+      "__table__": "Tables",
+      "ifno": "int64[3] ab2fa50ae23ce035",
+      "laktab": [
+        "<Laktab tables0>",
+        "<Laktab tables1>",
+        "<Laktab tables2>"
+      ],
+      "n": 3
+    },
+    "ts": []
+  },
+  "simulation/lake0_e/lak0/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            null,
+            "ELAKE01",
+            "ELAKE01",
+            null,
+            null,
+            null,
+            "ELAKE02",
+            "ELAKE02",
+            null,
+            null,
+            null,
+            "ELAKE03",
+            "ELAKE03"
+          ],
+          "id_": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            "ELAKE02",
+            "ELAKE02",
+            1,
+            1,
+            2,
+            "ELAKE03",
+            "ELAKE03",
+            2,
+            2
+          ],
+          "n": 15,
+          "obsname": [
+            "L1STAGE",
+            "L1VOL",
+            "L1SA",
+            "L1WA",
+            "L1CONDUCTANCE",
+            "L2STAGE",
+            "L2VOL",
+            "L2SA",
+            "L2WA",
+            "L2CONDUCTANCE",
+            "L3STAGE",
+            "L3VOL",
+            "L3SA",
+            "L3WA",
+            "L3CONDUCTANCE"
+          ],
+          "obstype": [
+            "STAGE",
+            "VOLUME",
+            "SURFACE-AREA",
+            "WETTED-AREA",
+            "CONDUCTANCE",
+            "STAGE",
+            "VOLUME",
+            "SURFACE-AREA",
+            "WETTED-AREA",
+            "CONDUCTANCE",
+            "STAGE",
+            "VOLUME",
+            "SURFACE-AREA",
+            "WETTED-AREA",
+            "CONDUCTANCE"
+          ]
+        }
+      ],
+      "n": 1,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[1] 5ba93c9db0cff93f",
+        "n": 1,
+        "obs_output_file_name": [
+          "lake0_embedded.lak.csv"
+        ]
+      }
+    },
+    "digits": 10,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 1,
+      "nodes": 25,
+      "nrow": 5
+    },
+    "filename": "lake0_embedded.lak.obs",
+    "name": "obs",
+    "print_input": true
+  },
+  "simulation/lake0_e/lak0/tables0": {
+    "__type__": "Laktab",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 1,
+      "nodes": 25,
+      "nrow": 5
+    },
+    "filename": "l1_table.ref",
+    "name": "tables0",
+    "ncol": 4,
+    "nrow": 7,
+    "table": {
+      "__table__": "Table",
+      "barea": "float64[7] e2ae95720bc6b406",
+      "n": 7,
+      "sarea": "float64[7] fc470b38a497acdf",
+      "stage": "float64[7] e5311854ae781595",
+      "volume": "float64[7] 69e2c7a6ee9f5260"
+    }
+  },
+  "simulation/lake0_e/lak0/tables1": {
+    "__type__": "Laktab",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 1,
+      "nodes": 25,
+      "nrow": 5
+    },
+    "filename": "l2_table.ref",
+    "name": "tables1",
+    "ncol": 5,
+    "nrow": 7,
+    "table": {
+      "__table__": "Table",
+      "barea": "float64[7] 13e42d86bd9629d9",
+      "n": 7,
+      "sarea": "float64[7] a54b74cd3d400a7d",
+      "stage": "float64[7] e5311854ae781595",
+      "volume": "float64[7] 52645fd5b65c6a95"
+    }
+  },
+  "simulation/lake0_e/lak0/tables2": {
+    "__type__": "Laktab",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 1,
+      "nodes": 25,
+      "nrow": 5
+    },
+    "filename": "l3_table.ref",
+    "name": "tables2",
+    "ncol": 5,
+    "nrow": 9,
+    "table": {
+      "__table__": "Table",
+      "barea": "float64[9] b3a85666b41dc129",
+      "n": 9,
+      "sarea": "float64[9] 4e715807641d89ad",
+      "stage": "float64[9] c61ce31466248039",
+      "volume": "float64[9] f5937ab1287d7009"
+    }
+  },
+  "simulation/lake0_e/npf": {
+    "__type__": "Npf",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 1,
+      "nodes": 25,
+      "nrow": 5
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "lake0_embedded.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[25] 585aa66cbe25ed88",
+    "k": "float64[25] 85c079c938b246b8",
+    "k22overk": false,
+    "k33": "float64[25] 85c079c938b246b8",
+    "k33overk": false,
+    "name": "npf",
+    "perched": false,
+    "print_flows": false,
+    "rewet": {
+      "__type__": "Rewet",
+      "ihdwet": 0,
+      "iwetit": 1,
+      "wetfct": "1.0"
+    },
+    "save_flows": false,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false,
+    "wetdry": "float64[25] 8dce944fb196f76d"
+  },
+  "simulation/lake0_e/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            null
+          ],
+          "id_": "int64[3, 3] 3bef1b2aa7bef976",
+          "n": 3,
+          "obsname": [
+            "edge",
+            "o1",
+            "center"
+          ],
+          "obstype": [
+            "head",
+            "head",
+            "head"
+          ]
+        }
+      ],
+      "n": 1,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[1] 5ba93c9db0cff93f",
+        "n": 1,
+        "obs_output_file_name": [
+          "lake0_embedded_gwf.csv"
+        ]
+      }
+    },
+    "digits": 10,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 1,
+      "nodes": 25,
+      "nrow": 5
+    },
+    "filename": "lake0_embedded.obs",
+    "name": "obs",
+    "print_input": true
+  },
+  "simulation/lake0_e/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Print",
+          "ocsetting": "LAST",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "LAST",
+          "rtype": "HEAD"
+        }
+      ]
+    },
+    "budget_file": "lake0_embedded.cbc",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 1,
+      "nodes": 25,
+      "nrow": 5
+    },
+    "filename": "lake0_embedded.oc",
+    "head_file": "lake0_embedded.hds",
+    "headprint": {
+      "__type__": "Headprint",
+      "formatrecord": {
+        "__type__": "Format",
+        "columns": 10,
+        "digits": 4,
+        "format_": "GENERAL",
+        "width": 11
+      }
+    },
+    "name": "oc"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "lake0_embedded.tdis",
+    "name": "tdis",
+    "nper": 2,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 2,
+      "nstp": "int64[2] 508b76e1cf0a5780",
+      "perlen": "float64[2] ff9f1f5ade82fd6a",
+      "tsmult": "float64[2] cd01b3e39400da33"
+    },
+    "time_units": "DAYS"
+  }
+}

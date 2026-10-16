@@ -1,0 +1,600 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": false,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf lakeex2a>"
+    ],
+    "mxiter": 1,
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "complexity": "simple",
+    "dims": {},
+    "filename": "lakeex2a.ims",
+    "inner_dvclose": "1e-06",
+    "inner_maximum": 100,
+    "linear_acceleration": "cg",
+    "models": [
+      "lakeex2a"
+    ],
+    "name": "ims",
+    "number_orthogonalizations": 2,
+    "outer_dvclose": "1e-06",
+    "outer_maximum": 500,
+    "print_option": "summary",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "0.001",
+      "rclose_option": null
+    },
+    "relaxation_factor": "1.0",
+    "reordering_method": "none",
+    "under_relaxation": "none",
+    "under_relaxation_gamma": "0.0",
+    "under_relaxation_kappa": "0.0",
+    "under_relaxation_momentum": "0.0",
+    "under_relaxation_theta": "0.0"
+  },
+  "simulation/lakeex2a": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [
+      "<Chd chd0>"
+    ],
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [],
+    "evt": [
+      "<Evta evt0>"
+    ],
+    "filename": "lakeex2a.nam",
+    "ghb": [],
+    "ic": "<Ic ic>",
+    "lak": [
+      "<Lak LAK_XSFR>"
+    ],
+    "maw": [],
+    "mvr": "<Mvr mvr>",
+    "name": "lakeex2a",
+    "npf": "<Npf npf>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [
+      "<Rcha rch0>"
+    ],
+    "riv": [],
+    "save_flows": false,
+    "sfr": [],
+    "sto": "<Sto sto>",
+    "uzf": [],
+    "wel": [],
+    "workspace": "<workspace>"
+  },
+  "simulation/lakeex2a/LAK_XSFR": {
+    "__type__": "Lak",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Rainfall",
+          "lakeno": 0,
+          "rainfall": "0.0116"
+        },
+        {
+          "__type__": "Evaporation",
+          "evaporation": "0.0103",
+          "lakeno": 0
+        },
+        {
+          "__type__": "Rainfall",
+          "lakeno": 1,
+          "rainfall": "0.0116"
+        },
+        {
+          "__type__": "Evaporation",
+          "evaporation": "0.0103",
+          "lakeno": 1
+        },
+        {
+          "__type__": "Inflow",
+          "inflow": "691200.0",
+          "lakeno": 0
+        }
+      ]
+    },
+    "boundnames": true,
+    "budget_file": "lak.cbc",
+    "connectiondata": {
+      "__table__": "Connectiondata",
+      "bedleak": "float64[114] 15d961938ff3f9be",
+      "belev": "float64[114] fc9c01f516517bfb",
+      "cellid": "int64[114, 3] adaa6dffb7572ee5",
+      "claktype": "1496 chars f5b6400a78676171",
+      "connlen": "float64[114] 342516f6045dc63e",
+      "connwidth": "float64[114] f807070a5a1dcd36",
+      "iconn": "int64[114] 2102505c5e520a1f",
+      "ifno": "int64[114] d5c743e02589574e",
+      "n": 114,
+      "telev": "float64[114] fc9c01f516517bfb"
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 17,
+      "ncpl": 459,
+      "nlay": 5,
+      "nodes": 2295,
+      "nrow": 27
+    },
+    "filename": "lakeex2a_xsfre.lak",
+    "implicit": false,
+    "length_conversion": "3.28081",
+    "mover": true,
+    "name": "LAK_XSFR",
+    "nlakes": 2,
+    "noutlets": 2,
+    "obs": "<Obs obs>",
+    "outlets": {
+      "__table__": "Outlets",
+      "couttype": [
+        "weir",
+        "weir"
+      ],
+      "invert": "float64[2] d49780b6d3e29a58",
+      "lakein": "int64[2] 031ee8071545c35f",
+      "lakeout": "int64[2] 6facff61488a0baf",
+      "n": 2,
+      "outletno": "int64[2] 031ee8071545c35f",
+      "rough": "float64[2] e129f27c5103bc5c",
+      "slope": "float64[2] e129f27c5103bc5c",
+      "width": {
+        "__table__": "TimeSeriesRef",
+        "n": 2,
+        "name": [
+          "l1width",
+          "l2width"
+        ]
+      }
+    },
+    "packagedata": {
+      "__table__": "Packagedata",
+      "aux": "float64[2, 0] da39a3ee5e6b4b0d",
+      "boundname": [
+        "LAKE_001",
+        "LAKE_002"
+      ],
+      "ifno": "int64[2] 031ee8071545c35f",
+      "n": 2,
+      "nlakeconn": "int64[2] 731ac7691f3c5a70",
+      "strt": "float64[2] fd6bc586c17e717d"
+    },
+    "print_flows": true,
+    "print_input": true,
+    "print_stage": true,
+    "save_flows": false,
+    "time_conversion": "86400.0",
+    "ts": [
+      "<Ts ts0>"
+    ]
+  },
+  "simulation/lakeex2a/LAK_XSFR/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "id_": "int64[12] 648f062bf4fe0959",
+          "n": 12,
+          "obsname": [
+            "L1STAGE",
+            "L2STAGE",
+            "L1VOL",
+            "L2VOL",
+            "L1INFLOW",
+            "L1SURFOUT",
+            "L2INFLOW",
+            "L2SURFOUT",
+            "FROM-MVR1",
+            "TO-MVR1",
+            "FROM-MVR2",
+            "TO-MVR2"
+          ],
+          "obstype": [
+            "STAGE",
+            "STAGE",
+            "VOLUME",
+            "VOLUME",
+            "INFLOW",
+            "OUTLET",
+            "INFLOW",
+            "OUTLET",
+            "FROM-MVR",
+            "TO-MVR",
+            "FROM-MVR",
+            "TO-MVR"
+          ]
+        }
+      ],
+      "n": 1,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[1] 5ba93c9db0cff93f",
+        "n": 1,
+        "obs_output_file_name": [
+          "lakeex2a.lak.csv"
+        ]
+      }
+    },
+    "digits": 25,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 17,
+      "ncpl": 459,
+      "nlay": 5,
+      "nodes": 2295,
+      "nrow": 27
+    },
+    "filename": "lakeex2a.lak.obs",
+    "name": "obs",
+    "print_input": true
+  },
+  "simulation/lakeex2a/LAK_XSFR/ts0": {
+    "__type__": "Ts",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 17,
+      "ncpl": 459,
+      "nlay": 5,
+      "nodes": 2295,
+      "nrow": 27
+    },
+    "filename": "lake_xsfrd.ts",
+    "interpolation_method": {
+      "__type__": "InterpolationMethod",
+      "interpolation_method": [
+        "linearend",
+        "linearend",
+        "linearend"
+      ]
+    },
+    "name": "ts0",
+    "time_series_name": {
+      "__type__": "TimeSeriesName",
+      "time_series_names": [
+        "l1inflow",
+        "l1width",
+        "l2width"
+      ]
+    },
+    "timeseries": {
+      "__table__": "Timeseries",
+      "n": 201,
+      "ts_array": "float64[201, 3] 71ce2e1a60a1c024",
+      "ts_time": "float64[201] ef496a1befad5c6c"
+    }
+  },
+  "simulation/lakeex2a/chd0": {
+    "__type__": "Chd",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[420, 0] da39a3ee5e6b4b0d",
+        "boundname": "2520 chars a78a0caf1acc69ad",
+        "cellid": "int64[420, 3] 84b252e9035246fd",
+        "head": "float64[420] 2491e5135ca64bb3",
+        "n": 420
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 17,
+      "ncpl": 459,
+      "nlay": 5,
+      "nodes": 2295,
+      "nrow": 27
+    },
+    "filename": "lakeex2a.chd",
+    "name": "chd0",
+    "print_flows": false,
+    "print_input": true,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/lakeex2a/dis": {
+    "__type__": "Dis",
+    "botm": "float64[2295] 1c3e5e9bc2819903",
+    "delc": "float64[27] 3be5b4b87b6ccbbb",
+    "delr": "float64[17] f4dedec0892403b3",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "lakeex2a.dis",
+    "idomain": "int64[2295] ea64f45ad688ed1d",
+    "length_units": "UNDEFINED",
+    "name": "dis",
+    "ncol": 17,
+    "nlay": 5,
+    "nogrb": false,
+    "nrow": 27,
+    "top": "float64[459] 9592d91ccef2e4b8"
+  },
+  "simulation/lakeex2a/evt0": {
+    "__type__": "Evta",
+    "depth": {
+      "0": "float64[459] 8084c389c29ef1d7"
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 17,
+      "ncpl": 459,
+      "nlay": 5,
+      "nodes": 2295,
+      "nrow": 27
+    },
+    "export_array_netcdf": false,
+    "filename": "lakeex2a.evt",
+    "fixed_cell": true,
+    "name": "evt0",
+    "print_flows": false,
+    "print_input": true,
+    "rate": {
+      "0": "float64[459] ecacce933676e29d"
+    },
+    "readasarrays": true,
+    "save_flows": false,
+    "surface": {
+      "0": "float64[459] 77e0063c0c2d45c4"
+    },
+    "tas": []
+  },
+  "simulation/lakeex2a/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 17,
+      "ncpl": 459,
+      "nlay": 5,
+      "nodes": 2295,
+      "nrow": 27
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "lakeex2a.ic",
+    "name": "ic",
+    "strt": "float64[2295] b9d7c2965357e85d"
+  },
+  "simulation/lakeex2a/mvr": {
+    "__type__": "Mvr",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "id1": "int64[1] 05fe405753166f12",
+        "id2": "int64[1] 3da89ee273be1343",
+        "mname1": [
+          null
+        ],
+        "mname2": [
+          null
+        ],
+        "mvrtype": [
+          "FACTOR"
+        ],
+        "n": 1,
+        "pname1": [
+          "LAK_XSFR"
+        ],
+        "pname2": [
+          "LAK_XSFR"
+        ],
+        "value": "float64[1] f9feb2494b079b19"
+      }
+    },
+    "budget_file": "mvr.cbc",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 17,
+      "ncpl": 459,
+      "nlay": 5,
+      "nodes": 2295,
+      "nrow": 27
+    },
+    "filename": "lakeex2a.mvr",
+    "maxmvr": 1,
+    "maxpackages": 1,
+    "modelnames": false,
+    "name": "mvr",
+    "packages": {
+      "__table__": "Packages",
+      "mname": [
+        null
+      ],
+      "n": 1,
+      "pname": [
+        "LAK_XSFR"
+      ]
+    },
+    "print_flows": true,
+    "print_input": true
+  },
+  "simulation/lakeex2a/npf": {
+    "__type__": "Npf",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 17,
+      "ncpl": 459,
+      "nlay": 5,
+      "nodes": 2295,
+      "nrow": 27
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "lakeex2a.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[2295] 01a1912b79ffc1b2",
+    "k": "float64[2295] 0970eb18b97f382c",
+    "k22overk": false,
+    "k33": "float64[2295] 0970eb18b97f382c",
+    "k33overk": false,
+    "name": "npf",
+    "perched": true,
+    "print_flows": false,
+    "rewet": {
+      "__type__": "Rewet",
+      "ihdwet": 0,
+      "iwetit": 1,
+      "wetfct": "1.0"
+    },
+    "save_flows": false,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false,
+    "wetdry": "float64[2295] 8a3da7b397dde306"
+  },
+  "simulation/lakeex2a/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Print",
+          "ocsetting": {
+            "__type__": "Steps",
+            "steps": "int64[20] f9d8a68fc955ce0a"
+          },
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": {
+            "__type__": "Steps",
+            "steps": "int64[20] f9d8a68fc955ce0a"
+          },
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": {
+            "__type__": "Steps",
+            "steps": "int64[20] f9d8a68fc955ce0a"
+          },
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": {
+            "__type__": "Steps",
+            "steps": "int64[20] f9d8a68fc955ce0a"
+          },
+          "rtype": "HEAD"
+        }
+      ]
+    },
+    "budget_file": "lakeex2a.cbc",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 17,
+      "ncpl": 459,
+      "nlay": 5,
+      "nodes": 2295,
+      "nrow": 27
+    },
+    "filename": "lakeex2a.oc",
+    "head_file": "lakeex2a.hds",
+    "headprint": {
+      "__type__": "Headprint",
+      "formatrecord": {
+        "__type__": "Format",
+        "columns": 10,
+        "digits": 4,
+        "format_": "GENERAL",
+        "width": 11
+      }
+    },
+    "name": "oc"
+  },
+  "simulation/lakeex2a/rch0": {
+    "__type__": "Rcha",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 17,
+      "ncpl": 459,
+      "nlay": 5,
+      "nodes": 2295,
+      "nrow": 27
+    },
+    "export_array_netcdf": false,
+    "filename": "lakeex2a.rch",
+    "fixed_cell": false,
+    "name": "rch0",
+    "print_flows": false,
+    "print_input": false,
+    "readasarrays": true,
+    "recharge": {
+      "0": "float64[459] 5deee65b261c7c07"
+    },
+    "save_flows": false,
+    "tas": []
+  },
+  "simulation/lakeex2a/sto": {
+    "__type__": "Sto",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 17,
+      "ncpl": 459,
+      "nlay": 5,
+      "nodes": 2295,
+      "nrow": 27
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "lakeex2a.sto",
+    "iconvert": "int64[2295] 01a1912b79ffc1b2",
+    "name": "sto",
+    "save_flows": false,
+    "ss": "float64[2295] 6beba8b5222a198f",
+    "ss_confined_only": true,
+    "storagecoefficient": true,
+    "sy": "float64[2295] 21eb705814b327fe"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "lakeex2a.tdis",
+    "name": "tdis",
+    "nper": 1,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 1,
+      "nstp": "int64[1] 0fa4ec0a84ae2770",
+      "perlen": "float64[1] 2389380f710b7c5f",
+      "tsmult": "float64[1] c2406f805206cc07"
+    },
+    "time_units": "DAYS"
+  }
+}

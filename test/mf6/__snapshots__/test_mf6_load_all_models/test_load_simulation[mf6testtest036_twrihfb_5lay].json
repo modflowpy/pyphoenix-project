@@ -1,0 +1,394 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": false,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf twrihfb_5lay>"
+    ],
+    "mxiter": 1,
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "complexity": "simple",
+    "dims": {},
+    "filename": "test036_twrihfb.ims",
+    "inner_dvclose": "1e-07",
+    "inner_maximum": 50,
+    "linear_acceleration": "cg",
+    "models": [
+      "twrihfb_5lay"
+    ],
+    "name": "ims",
+    "outer_dvclose": "1e-06",
+    "outer_maximum": 100,
+    "print_option": "summary",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "0.1",
+      "rclose_option": null
+    },
+    "relaxation_factor": "0.97",
+    "under_relaxation": "none",
+    "under_relaxation_gamma": "0.0",
+    "under_relaxation_kappa": "0.0",
+    "under_relaxation_momentum": "0.0",
+    "under_relaxation_theta": "0.0"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "test036_twrihfb.tdis",
+    "name": "tdis",
+    "nper": 1,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 1,
+      "nstp": "int64[1] 3da89ee273be1343",
+      "perlen": "float64[1] 68b7b36b61ed9b78",
+      "tsmult": "float64[1] 3eafb06982d26cb8"
+    },
+    "time_units": "SECONDS"
+  },
+  "simulation/twrihfb_5lay": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [
+      "<Chd CHD-IB>"
+    ],
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [
+      "<Drn DRN>"
+    ],
+    "evt": [],
+    "filename": "test036_twrihfb.nam",
+    "ghb": [],
+    "hfb": "<Hfb HFB>",
+    "ic": "<Ic ic>",
+    "lak": [],
+    "list_": "test036_twrihfb.lst",
+    "maw": [],
+    "name": "twrihfb_5lay",
+    "npf": "<Npf npf>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [
+      "<Rcha RCH>"
+    ],
+    "riv": [],
+    "save_flows": false,
+    "sfr": [],
+    "uzf": [],
+    "wel": [
+      "<Wel wel0>"
+    ],
+    "workspace": "<workspace>"
+  },
+  "simulation/twrihfb_5lay/CHD-IB": {
+    "__type__": "Chd",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[30, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "cellid": "int64[30, 3] 74c6ead8b36155f2",
+        "head": "float64[30] de0e7c9e496fdd65",
+        "n": 30
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 15,
+      "ncpl": 225,
+      "nlay": 5,
+      "nodes": 1125,
+      "nrow": 15
+    },
+    "filename": "test036_twrihfb.ibound.chd",
+    "name": "CHD-IB",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/twrihfb_5lay/DRN": {
+    "__type__": "Drn",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[9, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "cellid": "int64[9, 3] a739c4e81e7fcc75",
+        "cond": "float64[9] b4673fb8d4b35fc1",
+        "elev": "float64[9] 178acf539bc8ca0e",
+        "n": 9
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 15,
+      "ncpl": 225,
+      "nlay": 5,
+      "nodes": 1125,
+      "nrow": 15
+    },
+    "filename": "test036_twrihfb.drn",
+    "mover": false,
+    "name": "DRN",
+    "print_flows": false,
+    "print_input": true,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/twrihfb_5lay/HFB": {
+    "__type__": "Hfb",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "cellid1": "int64[8, 3] 02dceaba8b46f882",
+        "cellid2": "int64[8, 3] 72e6bd24c0aff195",
+        "hydchr": "float64[8] 0b5723e83d65ca4a",
+        "n": 8
+      }
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 15,
+      "ncpl": 225,
+      "nlay": 5,
+      "nodes": 1125,
+      "nrow": 15
+    },
+    "filename": "test036_twrihfb.hfb",
+    "maxhfb": 8,
+    "name": "HFB",
+    "print_input": true
+  },
+  "simulation/twrihfb_5lay/RCH": {
+    "__type__": "Rcha",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 15,
+      "ncpl": 225,
+      "nlay": 5,
+      "nodes": 1125,
+      "nrow": 15
+    },
+    "export_array_netcdf": false,
+    "filename": "test036_twrihfb.rch",
+    "fixed_cell": true,
+    "name": "RCH",
+    "print_flows": false,
+    "print_input": false,
+    "readasarrays": true,
+    "recharge": {
+      "0": "float64[225] 51446b53f94ba76c"
+    },
+    "save_flows": false,
+    "tas": []
+  },
+  "simulation/twrihfb_5lay/dis": {
+    "__type__": "Dis",
+    "botm": "float64[1125] 2ddf012831bc5f4f",
+    "delc": "float64[15] 368dd641dfa92c82",
+    "delr": "float64[15] 368dd641dfa92c82",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "test036_twrihfb.dis",
+    "length_units": "METERS",
+    "name": "dis",
+    "ncol": 15,
+    "nlay": 5,
+    "nogrb": false,
+    "nrow": 15,
+    "top": "float64[225] 45e1ac5b66c81f62"
+  },
+  "simulation/twrihfb_5lay/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 15,
+      "ncpl": 225,
+      "nlay": 5,
+      "nodes": 1125,
+      "nrow": 15
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "test036_twrihfb.ic",
+    "name": "ic",
+    "strt": "float64[1125] 980eb7886d6d6ce2"
+  },
+  "simulation/twrihfb_5lay/npf": {
+    "__type__": "Npf",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 15,
+      "ncpl": 225,
+      "nlay": 5,
+      "nodes": 1125,
+      "nrow": 15
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "test036_twrihfb.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[1125] 5b21aa7589e61b22",
+    "k": "float64[1125] 1245c7bb411c1e7f",
+    "k22overk": false,
+    "k33": "float64[1125] 9f05e52cb604c0fc",
+    "k33overk": false,
+    "name": "npf",
+    "perched": false,
+    "print_flows": false,
+    "save_flows": false,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false
+  },
+  "simulation/twrihfb_5lay/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        }
+      ]
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 15,
+      "ncpl": 225,
+      "nlay": 5,
+      "nodes": 1125,
+      "nrow": 15
+    },
+    "filename": "test036_twrihfb.oc",
+    "head_file": "test036_twrihfb.hds",
+    "headprint": {
+      "__type__": "Headprint",
+      "formatrecord": {
+        "__type__": "Format",
+        "columns": 6,
+        "digits": 4,
+        "format_": "GENERAL",
+        "width": 11
+      }
+    },
+    "name": "oc"
+  },
+  "simulation/twrihfb_5lay/wel0": {
+    "__type__": "Wel",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[15, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "cellid": "int64[15, 3] a8422799ea669341",
+        "n": 15,
+        "q": "float64[15] 26321494944b09e7"
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 15,
+      "ncpl": 225,
+      "nlay": 5,
+      "nodes": 1125,
+      "nrow": 15
+    },
+    "filename": "test036_twrihfb.wel",
+    "flow_reduction_length": false,
+    "mover": false,
+    "name": "wel0",
+    "print_flows": false,
+    "print_input": true,
+    "save_flows": false,
+    "ts": []
+  }
+}

@@ -1,0 +1,365 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": false,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf test1ss_ic>"
+    ],
+    "mxiter": 1,
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "complexity": "simple",
+    "dims": {},
+    "filename": "test1ss_ic.ims",
+    "inner_dvclose": "1e-05",
+    "inner_maximum": 100,
+    "linear_acceleration": "cg",
+    "models": [
+      "test1ss_ic"
+    ],
+    "name": "ims",
+    "number_orthogonalizations": 2,
+    "outer_dvclose": "0.0001",
+    "outer_maximum": 150,
+    "preconditioner_drop_tolerance": "0.001",
+    "preconditioner_levels": 7,
+    "print_option": "summary",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "0.1",
+      "rclose_option": null
+    },
+    "reordering_method": "none",
+    "under_relaxation": "none",
+    "under_relaxation_gamma": "0.0",
+    "under_relaxation_kappa": "0.0",
+    "under_relaxation_momentum": "0.0",
+    "under_relaxation_theta": "0.0"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "test1ss_ic.tdis",
+    "name": "tdis",
+    "nper": 1,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 1,
+      "nstp": "int64[1] 3da89ee273be1343",
+      "perlen": "float64[1] 68b7b36b61ed9b78",
+      "tsmult": "float64[1] 3eafb06982d26cb8"
+    },
+    "time_units": "SECONDS"
+  },
+  "simulation/test1ss_ic": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [],
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [],
+    "evt": [
+      "<Evta evt0>"
+    ],
+    "filename": "test1ss_ic.nam",
+    "ghb": [
+      "<Ghb ghb0>"
+    ],
+    "ic": "<Ic ic>",
+    "lak": [],
+    "maw": [],
+    "name": "test1ss_ic",
+    "npf": "<Npf npf>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [
+      "<Rcha rch0>"
+    ],
+    "riv": [],
+    "save_flows": false,
+    "sfr": [
+      "<Sfr SFR_1>"
+    ],
+    "uzf": [],
+    "wel": [],
+    "workspace": "<workspace>"
+  },
+  "simulation/test1ss_ic/SFR_1": {
+    "__type__": "Sfr",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "ifno": "int64[145] a7e128fdbd870a91",
+        "n": 145,
+        "sfrsetting": "6468 chars aea9e0115b6e5036"
+      }
+    },
+    "boundnames": false,
+    "connectiondata": {
+      "__table__": "Connectiondata",
+      "ic": "1152 chars 6e23413d901632a4",
+      "ifno": "int64[36] 51a96655666ba753",
+      "n": 36
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 1,
+      "nodes": 150,
+      "nrow": 15
+    },
+    "diversions": {
+      "__table__": "Diversions",
+      "cprior": [
+        "UPTO"
+      ],
+      "iconr": "int64[1] a5bbebbdf11c537a",
+      "idv": "int64[1] 05fe405753166f12",
+      "ifno": "int64[1] ef4862c8fb031cd5",
+      "n": 1
+    },
+    "filename": "test1ss_ic.sfr",
+    "length_conversion": "3.28081",
+    "maximum_depth_change": "0.0001",
+    "mover": false,
+    "name": "SFR_1",
+    "nreaches": 36,
+    "packagedata": {
+      "__table__": "Packagedata",
+      "aux": "float64[36, 0] da39a3ee5e6b4b0d",
+      "boundname": "216 chars 36ca99dfb649a830",
+      "cellid": "int64[36, 3] f78c3655719ecbf4",
+      "ifno": "int64[36] 51a96655666ba753",
+      "man": "float64[36] 7cd80a2ff494d8ff",
+      "n": 36,
+      "ncon": "int64[36] 2d643d7c4e0d2dcf",
+      "ndv": "int64[36] 98f30492528b2aad",
+      "rbth": "float64[36] 452b15d44bbcff17",
+      "rgrd": "float64[36] 5eed57de81b05634",
+      "rhk": "float64[36] d533ffa8b2be66a5",
+      "rlen": "float64[36] 8e4055b7094fbe91",
+      "rtp": "float64[36] d383a2e79c9f5ae2",
+      "rwid": "float64[36] 7d0f2933376f6d50",
+      "ustrf": "float64[36] 345629e61073e84b"
+    },
+    "print_flows": true,
+    "print_input": false,
+    "print_stage": true,
+    "save_flows": true,
+    "storage": false,
+    "ts": []
+  },
+  "simulation/test1ss_ic/dis": {
+    "__type__": "Dis",
+    "botm": "float64[150] 0181af489c5d6556",
+    "delc": "float64[15] 368dd641dfa92c82",
+    "delr": "float64[10] 027424ad624f326a",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "test1ss_ic.dis",
+    "idomain": "int64[150] 399dd095cc44e735",
+    "length_units": "FEET",
+    "name": "dis",
+    "ncol": 10,
+    "nlay": 1,
+    "nogrb": false,
+    "nrow": 15,
+    "top": "float64[150] 556b3670a83b717f"
+  },
+  "simulation/test1ss_ic/evt0": {
+    "__type__": "Evta",
+    "depth": {
+      "0": "float64[150] 1cb0b1cae4a7d17b"
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 1,
+      "nodes": 150,
+      "nrow": 15
+    },
+    "export_array_netcdf": false,
+    "filename": "test1ss_ic.evt",
+    "fixed_cell": true,
+    "name": "evt0",
+    "print_flows": false,
+    "print_input": true,
+    "rate": {
+      "0": "float64[150] 5997c03bf88a3b26"
+    },
+    "readasarrays": true,
+    "save_flows": true,
+    "surface": {
+      "0": "float64[150] e2354c9459314a70"
+    },
+    "tas": []
+  },
+  "simulation/test1ss_ic/ghb0": {
+    "__type__": "Ghb",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[2, 0] da39a3ee5e6b4b0d",
+        "bhead": "float64[2] 5c05b40737dca5f1",
+        "boundname": [
+          null,
+          null
+        ],
+        "cellid": "int64[2, 3] 14be008d94fb5fbc",
+        "cond": "float64[2] b9c8dcff41172651",
+        "n": 2
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 1,
+      "nodes": 150,
+      "nrow": 15
+    },
+    "filename": "test1ss_ic.ghb",
+    "mover": false,
+    "name": "ghb0",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/test1ss_ic/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 1,
+      "nodes": 150,
+      "nrow": 15
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "test1ss_ic.ic",
+    "name": "ic",
+    "strt": "float64[150] 87ac100d79ffb4e2"
+  },
+  "simulation/test1ss_ic/npf": {
+    "__type__": "Npf",
+    "cvoptions": {
+      "__type__": "Cvoptions",
+      "dewatered": true
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 1,
+      "nodes": 150,
+      "nrow": 15
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "test1ss_ic.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[150] 43011d97d60c77f0",
+    "k": "float64[150] 1bcc22df53e46871",
+    "k22overk": false,
+    "k33": "float64[150] 1bcc22df53e46871",
+    "k33overk": false,
+    "name": "npf",
+    "perched": true,
+    "print_flows": false,
+    "save_flows": false,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false
+  },
+  "simulation/test1ss_ic/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        }
+      ]
+    },
+    "budget_file": "test1ss_ic_test1ss_ic1.cbc",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 1,
+      "nodes": 150,
+      "nrow": 15
+    },
+    "filename": "test1ss_ic.oc",
+    "head_file": "test1ss_ic_test1ss_ic1.hds",
+    "headprint": {
+      "__type__": "Headprint",
+      "formatrecord": {
+        "__type__": "Format",
+        "columns": 15,
+        "digits": 2,
+        "format_": "FIXED",
+        "width": 7
+      }
+    },
+    "name": "oc"
+  },
+  "simulation/test1ss_ic/rch0": {
+    "__type__": "Rcha",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 1,
+      "nodes": 150,
+      "nrow": 15
+    },
+    "export_array_netcdf": false,
+    "filename": "test1ss_ic.rch",
+    "fixed_cell": true,
+    "name": "rch0",
+    "print_flows": false,
+    "print_input": false,
+    "readasarrays": true,
+    "recharge": {
+      "0": "float64[150] 09c51f6582a85743"
+    },
+    "save_flows": false,
+    "tas": []
+  }
+}

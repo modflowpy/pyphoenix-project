@@ -1,0 +1,606 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": true,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf GWF_1>"
+    ],
+    "mxiter": 1,
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/GWF_1": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [],
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [],
+    "evt": [],
+    "filename": "NT_EI.nam",
+    "ghb": [],
+    "ic": "<Ic ic>",
+    "lak": [],
+    "maw": [
+      "<Maw MAW-1>",
+      "<Maw MAW-2>"
+    ],
+    "mvr": "<Mvr mvr>",
+    "name": "GWF_1",
+    "newtonoptions": {
+      "__type__": "Newtonoptions",
+      "under_relaxation": null
+    },
+    "npf": "<Npf npf>",
+    "obs": "<Obs obs>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [],
+    "riv": [],
+    "save_flows": false,
+    "sfr": [],
+    "sto": "<Sto sto>",
+    "uzf": [],
+    "wel": [],
+    "workspace": "<workspace>"
+  },
+  "simulation/GWF_1/MAW-1": {
+    "__type__": "Maw",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "ifno": "int64[1] 05fe405753166f12",
+        "mawsetting": {
+          "__table__": "Rate",
+          "n": 1,
+          "rate": "float64[1] ef6828b5087102f9"
+        },
+        "n": 1
+      },
+      "1": {
+        "__table__": "StressPeriodData",
+        "ifno": "int64[1] 05fe405753166f12",
+        "mawsetting": {
+          "__table__": "Rate",
+          "n": 1,
+          "rate": "float64[1] 45789e7b60a52dec"
+        },
+        "n": 1
+      }
+    },
+    "boundnames": true,
+    "budget_file": "extraction.cbc",
+    "connectiondata": {
+      "__table__": "Connectiondata",
+      "cellid": "int64[2, 3] a9b415ad8dc44eef",
+      "hk_skin": "float64[2] c802ed7de10d43e3",
+      "icon": "int64[2] 031ee8071545c35f",
+      "ifno": "int64[2] e129f27c5103bc5c",
+      "n": 2,
+      "radius_skin": "float64[2] e129f27c5103bc5c",
+      "scrn_bot": "float64[2] ded71c81501c799a",
+      "scrn_top": "float64[2] 511635225ba01242"
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 101,
+      "ncpl": 10201,
+      "nlay": 2,
+      "nodes": 20402,
+      "nrow": 101
+    },
+    "filename": "Extraction.maw",
+    "flow_correction": false,
+    "flowing_wells": false,
+    "head_file": "extraction.head.bin",
+    "mover": true,
+    "name": "MAW-1",
+    "nmawwells": 1,
+    "no_well_storage": true,
+    "non_vertical_wells": false,
+    "obs": "<Obs obs>",
+    "packagedata": {
+      "__table__": "Packagedata",
+      "aux": "float64[1, 0] da39a3ee5e6b4b0d",
+      "bottom": "float64[1] d0946f10bc97d3cf",
+      "boundname": [
+        "pwell"
+      ],
+      "condeqn": [
+        "specified"
+      ],
+      "ifno": "int64[1] 05fe405753166f12",
+      "n": 1,
+      "ngwfnodes": "int64[1] b0aa4b549f325cca",
+      "radius": "float64[1] 9efa2c34b883f508",
+      "strt": "float64[1] 615b3ec84f41b14b"
+    },
+    "print_flows": true,
+    "print_head": false,
+    "print_input": true,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/GWF_1/MAW-1/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            0,
+            1,
+            null
+          ],
+          "id_": [
+            0,
+            0,
+            0,
+            0,
+            "pwell"
+          ],
+          "n": 5,
+          "obsname": [
+            "M1HEAD0",
+            "M1RATE0",
+            "L1FLOW",
+            "L2FLOW",
+            "AQFLOW"
+          ],
+          "obstype": [
+            "HEAD",
+            "RATE",
+            "MAW",
+            "MAW",
+            "MAW"
+          ]
+        }
+      ],
+      "n": 1,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[1] 5ba93c9db0cff93f",
+        "n": 1,
+        "obs_output_file_name": [
+          "Extraction.csv"
+        ]
+      }
+    },
+    "digits": 10,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 101,
+      "ncpl": 10201,
+      "nlay": 2,
+      "nodes": 20402,
+      "nrow": 101
+    },
+    "filename": "Extraction.maw.obs",
+    "name": "obs",
+    "print_input": true
+  },
+  "simulation/GWF_1/MAW-2": {
+    "__type__": "Maw",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "ifno": "int64[1] 05fe405753166f12",
+        "mawsetting": {
+          "__table__": "Status",
+          "n": 1,
+          "status": [
+            "inactive"
+          ]
+        },
+        "n": 1
+      },
+      "1": {
+        "__table__": "StressPeriodData",
+        "ifno": "int64[1] 05fe405753166f12",
+        "mawsetting": {
+          "__table__": "Status",
+          "n": 1,
+          "status": [
+            "active"
+          ]
+        },
+        "n": 1
+      }
+    },
+    "boundnames": true,
+    "budget_file": "injection.cbc",
+    "connectiondata": {
+      "__table__": "Connectiondata",
+      "cellid": "int64[1, 3] b9665065420af968",
+      "hk_skin": "float64[1] 06d0ef1317b83c0a",
+      "icon": "int64[1] 05fe405753166f12",
+      "ifno": "int64[1] 05fe405753166f12",
+      "n": 1,
+      "radius_skin": "float64[1] 05fe405753166f12",
+      "scrn_bot": "float64[1] 8cfd0ea4e76701be",
+      "scrn_top": "float64[1] 3c7d522a43408f51"
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 101,
+      "ncpl": 10201,
+      "nlay": 2,
+      "nodes": 20402,
+      "nrow": 101
+    },
+    "filename": "Injection.maw",
+    "flow_correction": false,
+    "flowing_wells": false,
+    "head_file": "injection.head.bin",
+    "mover": true,
+    "name": "MAW-2",
+    "nmawwells": 1,
+    "no_well_storage": true,
+    "non_vertical_wells": false,
+    "obs": "<Obs obs>",
+    "packagedata": {
+      "__table__": "Packagedata",
+      "aux": "float64[1, 0] da39a3ee5e6b4b0d",
+      "bottom": "float64[1] d0946f10bc97d3cf",
+      "boundname": [
+        "iwell"
+      ],
+      "condeqn": [
+        "specified"
+      ],
+      "ifno": "int64[1] 05fe405753166f12",
+      "n": 1,
+      "ngwfnodes": "int64[1] 3da89ee273be1343",
+      "radius": "float64[1] 332b4bde9725ae2e",
+      "strt": "float64[1] 615b3ec84f41b14b"
+    },
+    "print_flows": true,
+    "print_head": false,
+    "print_input": true,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/GWF_1/MAW-2/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            0,
+            null
+          ],
+          "id_": "int64[4] de8a847bff8c343d",
+          "n": 4,
+          "obsname": [
+            "M1HEAD0",
+            "M1RATE0",
+            "L1FLOW",
+            "IWFROM-MVR"
+          ],
+          "obstype": [
+            "HEAD",
+            "RATE",
+            "MAW",
+            "FROM-MVR"
+          ]
+        }
+      ],
+      "n": 1,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[1] 5ba93c9db0cff93f",
+        "n": 1,
+        "obs_output_file_name": [
+          "Injection.csv"
+        ]
+      }
+    },
+    "digits": 10,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 101,
+      "ncpl": 10201,
+      "nlay": 2,
+      "nodes": 20402,
+      "nrow": 101
+    },
+    "filename": "Injection.maw.obs",
+    "name": "obs",
+    "print_input": true
+  },
+  "simulation/GWF_1/dis": {
+    "__type__": "Dis",
+    "botm": "float64[20402] 5e9df69f30ccb2a6",
+    "delc": "float64[101] 304deb3a59d2552d",
+    "delr": "float64[101] 304deb3a59d2552d",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "NT_EI.dis",
+    "idomain": "int64[20402] 29b3549dc850ef62",
+    "length_units": "METERS",
+    "name": "dis",
+    "ncol": 101,
+    "nlay": 2,
+    "nogrb": false,
+    "nrow": 101,
+    "top": "float64[10201] 98fabc3811041d21"
+  },
+  "simulation/GWF_1/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 101,
+      "ncpl": 10201,
+      "nlay": 2,
+      "nodes": 20402,
+      "nrow": 101
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "NT_EI.ic",
+    "name": "ic",
+    "strt": "float64[20402] 3d6c0d3971ca5bfc"
+  },
+  "simulation/GWF_1/mvr": {
+    "__type__": "Mvr",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "id1": "int64[1] 05fe405753166f12",
+        "id2": "int64[1] 05fe405753166f12",
+        "mname1": [
+          null
+        ],
+        "mname2": [
+          null
+        ],
+        "mvrtype": [
+          "FACTOR"
+        ],
+        "n": 1,
+        "pname1": [
+          "MAW-1"
+        ],
+        "pname2": [
+          "MAW-2"
+        ],
+        "value": "float64[1] 3eafb06982d26cb8"
+      }
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 101,
+      "ncpl": 10201,
+      "nlay": 2,
+      "nodes": 20402,
+      "nrow": 101
+    },
+    "filename": "NT_EI.mvr",
+    "maxmvr": 10,
+    "maxpackages": 2,
+    "modelnames": false,
+    "name": "mvr",
+    "packages": {
+      "__table__": "Packages",
+      "mname": [
+        null,
+        null
+      ],
+      "n": 2,
+      "pname": [
+        "MAW-1",
+        "MAW-2"
+      ]
+    },
+    "print_flows": true,
+    "print_input": true
+  },
+  "simulation/GWF_1/npf": {
+    "__type__": "Npf",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 101,
+      "ncpl": 10201,
+      "nlay": 2,
+      "nodes": 20402,
+      "nrow": 101
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "NT_EI.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[20402] a06d321f04d88747",
+    "k": "float64[20402] c89665f5c6b81f7c",
+    "k22overk": false,
+    "k33": "float64[20402] 682c211704b16e03",
+    "k33overk": false,
+    "name": "npf",
+    "perched": false,
+    "print_flows": false,
+    "save_flows": false,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false
+  },
+  "simulation/GWF_1/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            null,
+            null
+          ],
+          "id_": "int64[4, 3] 859f00c35449e55f",
+          "n": 4,
+          "obsname": [
+            "PWELLL1",
+            "PWELLL2",
+            "IWELLL1",
+            "IWELLL2"
+          ],
+          "obstype": [
+            "head",
+            "head",
+            "head",
+            "head"
+          ]
+        }
+      ],
+      "n": 1,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[1] 5ba93c9db0cff93f",
+        "n": 1,
+        "obs_output_file_name": [
+          "NT_EI_GW.csv"
+        ]
+      }
+    },
+    "digits": 10,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 101,
+      "ncpl": 10201,
+      "nlay": 2,
+      "nodes": 20402,
+      "nrow": 101
+    },
+    "filename": "NT_EI.obs",
+    "name": "obs",
+    "print_input": true
+  },
+  "simulation/GWF_1/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Print",
+          "ocsetting": {
+            "__type__": "Steps",
+            "steps": "int64[6] 84a9c4dec47e4a43"
+          },
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": {
+            "__type__": "Steps",
+            "steps": "int64[6] 84a9c4dec47e4a43"
+          },
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": {
+            "__type__": "Steps",
+            "steps": "int64[6] 84a9c4dec47e4a43"
+          },
+          "rtype": "HEAD"
+        }
+      ]
+    },
+    "budget_file": "NT_EI.cbc",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 101,
+      "ncpl": 10201,
+      "nlay": 2,
+      "nodes": 20402,
+      "nrow": 101
+    },
+    "filename": "NT_EI.oc",
+    "head_file": "NT_EI.hds",
+    "name": "oc"
+  },
+  "simulation/GWF_1/sto": {
+    "__type__": "Sto",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 101,
+      "ncpl": 10201,
+      "nlay": 2,
+      "nodes": 20402,
+      "nrow": 101
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "NT_EI.sto",
+    "iconvert": "int64[20402] a06d321f04d88747",
+    "name": "sto",
+    "save_flows": false,
+    "ss": "float64[20402] b51b740031a3d645",
+    "ss_confined_only": false,
+    "storagecoefficient": false,
+    "sy": "float64[20402] fdb06f808f2801f0"
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "backtracking_number": 0,
+    "backtracking_reduction_factor": "0.6",
+    "backtracking_residual_limit": "1.0",
+    "backtracking_tolerance": "2.0",
+    "dims": {},
+    "filename": "model.ims",
+    "inner_dvclose": "1e-06",
+    "inner_maximum": 100,
+    "linear_acceleration": "bicgstab",
+    "models": [
+      "GWF_1"
+    ],
+    "name": "ims",
+    "outer_dvclose": "1e-05",
+    "outer_maximum": 500,
+    "print_option": "all",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "0.1",
+      "rclose_option": null
+    },
+    "relaxation_factor": "1.0",
+    "reordering_method": "none",
+    "scaling_method": "none",
+    "under_relaxation": "none",
+    "under_relaxation_gamma": "0.0",
+    "under_relaxation_kappa": "0.0001",
+    "under_relaxation_momentum": "0.1",
+    "under_relaxation_theta": "0.9"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "simulation.tdis",
+    "name": "tdis",
+    "nper": 2,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 2,
+      "nstp": "int64[2] 5835af0410d0f754",
+      "perlen": "float64[2] a52b1a2fa1a08ff6",
+      "tsmult": "float64[2] de9068d596535e23"
+    },
+    "time_units": "DAYS"
+  }
+}

@@ -1,0 +1,374 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": false,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf fhb2015>"
+    ],
+    "mxiter": 1,
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/fhb2015": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [
+      "<Chd chd0>"
+    ],
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [],
+    "evt": [],
+    "filename": "fhb2015.nam",
+    "ghb": [],
+    "ic": "<Ic ic>",
+    "lak": [],
+    "maw": [],
+    "name": "fhb2015",
+    "npf": "<Npf npf>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [],
+    "riv": [],
+    "save_flows": false,
+    "sfr": [],
+    "sto": "<Sto sto>",
+    "uzf": [],
+    "wel": [
+      "<Wel wel0>"
+    ],
+    "workspace": "<workspace>"
+  },
+  "simulation/fhb2015/chd0": {
+    "__type__": "Chd",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[3, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          null,
+          null,
+          null
+        ],
+        "cellid": "int64[3, 3] 27ba9ddc4c39a0fe",
+        "head": {
+          "__table__": "TimeSeriesRef",
+          "n": 3,
+          "name": [
+            "head",
+            "head",
+            "head"
+          ]
+        },
+        "n": 3
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 30,
+      "nlay": 1,
+      "nodes": 30,
+      "nrow": 3
+    },
+    "filename": "fhb2015.chd",
+    "name": "chd0",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": true,
+    "ts": [
+      "<Ts ts0>"
+    ]
+  },
+  "simulation/fhb2015/chd0/ts0": {
+    "__type__": "Ts",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 30,
+      "nlay": 1,
+      "nodes": 30,
+      "nrow": 3
+    },
+    "filename": "fhb_head.ts",
+    "interpolation_method": {
+      "__type__": "InterpolationMethod",
+      "interpolation_method": [
+        "linearend"
+      ]
+    },
+    "name": "ts0",
+    "time_series_name": {
+      "__type__": "TimeSeriesName",
+      "time_series_names": [
+        "head"
+      ]
+    },
+    "timeseries": {
+      "__table__": "Timeseries",
+      "n": 4,
+      "ts_array": "float64[4, 1] 2092cc17fde66dd7",
+      "ts_time": "float64[4] faf15dbdbd95f01c"
+    }
+  },
+  "simulation/fhb2015/dis": {
+    "__type__": "Dis",
+    "botm": "float64[30] 49c8a3c06dec3add",
+    "delc": "float64[3] 2c872bb690fdef5e",
+    "delr": "float64[10] db1f7fddc2100537",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "fhb2015.dis",
+    "length_units": "UNDEFINED",
+    "name": "dis",
+    "ncol": 10,
+    "nlay": 1,
+    "nogrb": false,
+    "nrow": 3,
+    "top": "float64[30] 95ddcd2482edd7c0"
+  },
+  "simulation/fhb2015/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 30,
+      "nlay": 1,
+      "nodes": 30,
+      "nrow": 3
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "fhb2015.ic",
+    "name": "ic",
+    "strt": "float64[30] de0e7c9e496fdd65"
+  },
+  "simulation/fhb2015/npf": {
+    "__type__": "Npf",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 30,
+      "nlay": 1,
+      "nodes": 30,
+      "nrow": 3
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "fhb2015.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[30] de0e7c9e496fdd65",
+    "k": "float64[30] ec67607024253560",
+    "k22overk": false,
+    "k33": "float64[30] db6c68b449a8d086",
+    "k33overk": false,
+    "name": "npf",
+    "perched": true,
+    "print_flows": false,
+    "save_flows": false,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false
+  },
+  "simulation/fhb2015/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        }
+      ],
+      "2": [
+        {
+          "__type__": "Print",
+          "ocsetting": "LAST",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "LAST",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        }
+      ]
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 30,
+      "nlay": 1,
+      "nodes": 30,
+      "nrow": 3
+    },
+    "filename": "fhb2015.oc",
+    "head_file": "fhb2015_fhb.hds",
+    "headprint": {
+      "__type__": "Headprint",
+      "formatrecord": {
+        "__type__": "Format",
+        "columns": 20,
+        "digits": 2,
+        "format_": "FIXED",
+        "width": 5
+      }
+    },
+    "name": "oc"
+  },
+  "simulation/fhb2015/sto": {
+    "__type__": "Sto",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 30,
+      "nlay": 1,
+      "nodes": 30,
+      "nrow": 3
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "fhb2015.sto",
+    "iconvert": "int64[30] de0e7c9e496fdd65",
+    "name": "sto",
+    "save_flows": false,
+    "ss": "float64[30] ed033593cb3b1802",
+    "ss_confined_only": false,
+    "storagecoefficient": true,
+    "sy": "float64[30] de0e7c9e496fdd65"
+  },
+  "simulation/fhb2015/wel0": {
+    "__type__": "Wel",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[1, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          null
+        ],
+        "cellid": "int64[1, 3] 746940d0368bfe3e",
+        "n": 1,
+        "q": {
+          "__table__": "TimeSeriesRef",
+          "n": 1,
+          "name": [
+            "flow"
+          ]
+        }
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 30,
+      "nlay": 1,
+      "nodes": 30,
+      "nrow": 3
+    },
+    "filename": "fhb2015.wel",
+    "flow_reduction_length": false,
+    "mover": false,
+    "name": "wel0",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": true,
+    "ts": [
+      "<Ts ts0>"
+    ]
+  },
+  "simulation/fhb2015/wel0/ts0": {
+    "__type__": "Ts",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 30,
+      "nlay": 1,
+      "nodes": 30,
+      "nrow": 3
+    },
+    "filename": "fhb_flow.ts",
+    "interpolation_method": {
+      "__type__": "InterpolationMethod",
+      "interpolation_method": [
+        "linear"
+      ]
+    },
+    "name": "ts0",
+    "time_series_name": {
+      "__type__": "TimeSeriesName",
+      "time_series_names": [
+        "flow"
+      ]
+    },
+    "timeseries": {
+      "__table__": "Timeseries",
+      "n": 4,
+      "ts_array": "float64[4, 1] 6ebe686eae527837",
+      "ts_time": "float64[4] faf15dbdbd95f01c"
+    }
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "complexity": "simple",
+    "dims": {},
+    "filename": "fhb2015.ims",
+    "inner_dvclose": "0.0001",
+    "inner_maximum": 100,
+    "linear_acceleration": "cg",
+    "models": [
+      "fhb2015"
+    ],
+    "name": "ims",
+    "outer_dvclose": "0.001",
+    "outer_maximum": 120,
+    "print_option": "summary",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "0.1",
+      "rclose_option": null
+    },
+    "under_relaxation": "none"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "fhb2015.tdis",
+    "name": "tdis",
+    "nper": 3,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 3,
+      "nstp": "int64[3] 323d48500c1d8991",
+      "perlen": "float64[3] b358a3cc21f90494",
+      "tsmult": "float64[3] 2e0bd10592220a45"
+    },
+    "time_units": "DAYS"
+  }
+}

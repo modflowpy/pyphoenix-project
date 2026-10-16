@@ -1,0 +1,387 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": false,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf ls>"
+    ],
+    "mxiter": 1,
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "complexity": "simple",
+    "dims": {},
+    "filename": "drylake.ims",
+    "inner_dvclose": "1e-06",
+    "inner_maximum": 100,
+    "linear_acceleration": "cg",
+    "models": [
+      "ls"
+    ],
+    "name": "ims",
+    "number_orthogonalizations": 2,
+    "outer_dvclose": "1e-05",
+    "outer_maximum": 500,
+    "preconditioner_drop_tolerance": "0.001",
+    "preconditioner_levels": 7,
+    "print_option": "summary",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "0.001",
+      "rclose_option": null
+    },
+    "reordering_method": "none",
+    "under_relaxation": "none",
+    "under_relaxation_gamma": "0.0",
+    "under_relaxation_kappa": "0.0",
+    "under_relaxation_momentum": "0.0",
+    "under_relaxation_theta": "0.0"
+  },
+  "simulation/ls": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [
+      "<Chd chd0>"
+    ],
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [],
+    "evt": [],
+    "filename": "drylake.nam",
+    "ghb": [],
+    "ic": "<Ic ic>",
+    "lak": [
+      "<Lak lak0>"
+    ],
+    "maw": [],
+    "name": "ls",
+    "npf": "<Npf npf>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [],
+    "riv": [],
+    "save_flows": false,
+    "sfr": [],
+    "uzf": [],
+    "wel": [],
+    "workspace": "<workspace>"
+  },
+  "simulation/ls/chd0": {
+    "__type__": "Chd",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[16, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "cellid": "int64[16, 3] 512878260a5e818a",
+        "head": "float64[16] 6ae0b0b1a204d7f3",
+        "n": 16
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 2,
+      "nodes": 50,
+      "nrow": 5
+    },
+    "filename": "drylake.chd",
+    "name": "chd0",
+    "print_flows": false,
+    "print_input": true,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/ls/dis": {
+    "__type__": "Dis",
+    "botm": "float64[50] 2d5f08b8bc18260f",
+    "delc": "float64[5] 21663d0069061930",
+    "delr": "float64[5] 21663d0069061930",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "drylake.dis",
+    "idomain": "int64[50] 845ccca098fc4f0b",
+    "length_units": "UNDEFINED",
+    "name": "dis",
+    "ncol": 5,
+    "nlay": 2,
+    "nogrb": false,
+    "nrow": 5,
+    "top": "float64[25] d4cbb33769129565"
+  },
+  "simulation/ls/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 2,
+      "nodes": 50,
+      "nrow": 5
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "drylake.ic",
+    "name": "ic",
+    "strt": "float64[50] 5bb164f74a07a0f8"
+  },
+  "simulation/ls/lak0": {
+    "__type__": "Lak",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Rainfall",
+          "lakeno": 0,
+          "rainfall": "0.001"
+        },
+        {
+          "__type__": "Evaporation",
+          "evaporation": "0.0",
+          "lakeno": 0
+        }
+      ]
+    },
+    "boundnames": true,
+    "connectiondata": {
+      "__table__": "Connectiondata",
+      "bedleak": "float64[5] 21663d0069061930",
+      "belev": "float64[5] b80de5d138758541",
+      "cellid": "int64[5, 3] 35963c23f2808751",
+      "claktype": [
+        "VERTICAL",
+        "HORIZONTAL",
+        "HORIZONTAL",
+        "HORIZONTAL",
+        "HORIZONTAL"
+      ],
+      "connlen": "float64[5] 97dfa9ec4ce5031a",
+      "connwidth": "float64[5] f8b9006955292547",
+      "iconn": "int64[5] 0f4dbf66f47ef210",
+      "ifno": "int64[5] b80de5d138758541",
+      "n": 5,
+      "telev": "float64[5] b80de5d138758541"
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 2,
+      "nodes": 50,
+      "nrow": 5
+    },
+    "filename": "drylake.lak",
+    "implicit": false,
+    "mover": false,
+    "name": "lak0",
+    "nlakes": 1,
+    "noutlets": 0,
+    "obs": "<Obs obs>",
+    "packagedata": {
+      "__table__": "Packagedata",
+      "aux": "float64[1, 0] da39a3ee5e6b4b0d",
+      "boundname": [
+        "simple_lake"
+      ],
+      "ifno": "int64[1] 05fe405753166f12",
+      "n": 1,
+      "nlakeconn": "int64[1] 93ea9b45a7f52bd8",
+      "strt": "float64[1] 739c1dd4df44b519"
+    },
+    "print_flows": true,
+    "print_input": true,
+    "print_stage": false,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/ls/lak0/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "id_": "int64[7] 9438e360f578e12c",
+          "n": 7,
+          "obsname": [
+            "L1STAGE",
+            "L1VOL",
+            "VFLOW",
+            "HFLOW1",
+            "HFLOW2",
+            "HFLOW3",
+            "HFLOW4"
+          ],
+          "obstype": [
+            "STAGE",
+            "VOLUME",
+            "LAK",
+            "LAK",
+            "LAK",
+            "LAK",
+            "LAK"
+          ]
+        }
+      ],
+      "n": 1,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[1] 5ba93c9db0cff93f",
+        "n": 1,
+        "obs_output_file_name": [
+          "drylake.lak.csv"
+        ]
+      }
+    },
+    "digits": 10,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 2,
+      "nodes": 50,
+      "nrow": 5
+    },
+    "filename": "drylake.lak.obs",
+    "name": "obs",
+    "print_input": true
+  },
+  "simulation/ls/npf": {
+    "__type__": "Npf",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 2,
+      "nodes": 50,
+      "nrow": 5
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "drylake.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[50] 6a6a7acf06af1d7f",
+    "k": "float64[50] 0208fd2e61469f85",
+    "k22overk": false,
+    "k33": "float64[50] 0208fd2e61469f85",
+    "k33overk": false,
+    "name": "npf",
+    "perched": false,
+    "print_flows": false,
+    "rewet": {
+      "__type__": "Rewet",
+      "ihdwet": 0,
+      "iwetit": 1,
+      "wetfct": "1.0"
+    },
+    "save_flows": false,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false,
+    "wetdry": "float64[50] e89d761e54c6dcdf"
+  },
+  "simulation/ls/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        }
+      ]
+    },
+    "budget_file": "drylake.cbc",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 2,
+      "nodes": 50,
+      "nrow": 5
+    },
+    "filename": "drylake.oc",
+    "head_file": "drylake.hds",
+    "headprint": {
+      "__type__": "Headprint",
+      "formatrecord": {
+        "__type__": "Format",
+        "columns": 10,
+        "digits": 4,
+        "format_": "GENERAL",
+        "width": 11
+      }
+    },
+    "name": "oc"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "drylake.tdis",
+    "name": "tdis",
+    "nper": 1,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 1,
+      "nstp": "int64[1] 3da89ee273be1343",
+      "perlen": "float64[1] 3eafb06982d26cb8",
+      "tsmult": "float64[1] 3eafb06982d26cb8"
+    },
+    "time_units": "DAYS"
+  }
+}

@@ -1,0 +1,586 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": false,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf uzfp2_nouzf>"
+    ],
+    "mxiter": 1,
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "backtracking_number": 0,
+    "backtracking_reduction_factor": "0.7",
+    "backtracking_residual_limit": "1.0",
+    "backtracking_tolerance": "1.1",
+    "complexity": "simple",
+    "dims": {},
+    "filename": "uzfp2_nouzf.ims",
+    "inner_dvclose": "1e-05",
+    "inner_maximum": 100,
+    "linear_acceleration": "cg",
+    "models": [
+      "uzfp2_nouzf"
+    ],
+    "name": "ims",
+    "outer_dvclose": "1e-05",
+    "outer_maximum": 100,
+    "print_option": "summary",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "0.1",
+      "rclose_option": null
+    },
+    "relaxation_factor": "0.99",
+    "reordering_method": "none",
+    "scaling_method": "none",
+    "under_relaxation": "none",
+    "under_relaxation_gamma": "0.0",
+    "under_relaxation_kappa": "0.0001",
+    "under_relaxation_momentum": "0.1",
+    "under_relaxation_theta": "0.85"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "uzfp2_nouzf.tdis",
+    "name": "tdis",
+    "nper": 12,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 12,
+      "nstp": "int64[12] a2b1b33ea32136fb",
+      "perlen": "float64[12] 83f399ee311eb408",
+      "tsmult": "float64[12] 3bac04910fa3f33d"
+    },
+    "time_units": "SECONDS"
+  },
+  "simulation/uzfp2_nouzf": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [],
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [],
+    "evt": [
+      "<Evta EVT-1>"
+    ],
+    "filename": "uzfp2_nouzf.nam",
+    "ghb": [
+      "<Ghb ghb0>"
+    ],
+    "ic": "<Ic ic>",
+    "lak": [],
+    "list_": "uzfp2_nouzf.lst",
+    "maw": [],
+    "name": "uzfp2_nouzf",
+    "npf": "<Npf npf>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [
+      "<Rcha RCH-1>"
+    ],
+    "riv": [],
+    "save_flows": false,
+    "sfr": [
+      "<Sfr SFR_1>"
+    ],
+    "sto": "<Sto sto>",
+    "uzf": [],
+    "wel": [
+      "<Wel wel0>"
+    ],
+    "workspace": "<workspace>"
+  },
+  "simulation/uzfp2_nouzf/EVT-1": {
+    "__type__": "Evta",
+    "depth": {
+      "0": "float64[150] 1cb0b1cae4a7d17b"
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 1,
+      "nodes": 150,
+      "nrow": 15
+    },
+    "export_array_netcdf": false,
+    "filename": "uzfp2_nouzf.evt",
+    "fixed_cell": false,
+    "name": "EVT-1",
+    "print_flows": true,
+    "print_input": true,
+    "rate": {
+      "0": "float64[150] e2e0db11a493dcee"
+    },
+    "readasarrays": true,
+    "save_flows": false,
+    "surface": {
+      "0": "float64[150] 556b3670a83b717f"
+    },
+    "tas": []
+  },
+  "simulation/uzfp2_nouzf/RCH-1": {
+    "__type__": "Rcha",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 1,
+      "nodes": 150,
+      "nrow": 15
+    },
+    "export_array_netcdf": false,
+    "filename": "uzfp2_nouzf.rch",
+    "fixed_cell": false,
+    "name": "RCH-1",
+    "print_flows": true,
+    "print_input": false,
+    "readasarrays": true,
+    "recharge": "419 chars 7c2b3e730665009b",
+    "save_flows": false,
+    "tas": []
+  },
+  "simulation/uzfp2_nouzf/SFR_1": {
+    "__type__": "Sfr",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "ifno": "int64[145] 3c23a39afefd23c8",
+        "n": 145,
+        "sfrsetting": "6468 chars 40cea7d4554e1c8f"
+      }
+    },
+    "boundnames": false,
+    "connectiondata": {
+      "__table__": "Connectiondata",
+      "ic": "1152 chars 6e23413d901632a4",
+      "ifno": "int64[36] 51a96655666ba753",
+      "n": 36
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 1,
+      "nodes": 150,
+      "nrow": 15
+    },
+    "diversions": {
+      "__table__": "Diversions",
+      "cprior": [
+        "UPTO"
+      ],
+      "iconr": "int64[1] a5bbebbdf11c537a",
+      "idv": "int64[1] 05fe405753166f12",
+      "ifno": "int64[1] ef4862c8fb031cd5",
+      "n": 1
+    },
+    "filename": "uzfp2_nouzf.sfr",
+    "length_conversion": "3.28081",
+    "maximum_depth_change": "1e-06",
+    "mover": false,
+    "name": "SFR_1",
+    "nreaches": 36,
+    "packagedata": {
+      "__table__": "Packagedata",
+      "aux": "float64[36, 0] da39a3ee5e6b4b0d",
+      "boundname": "216 chars 36ca99dfb649a830",
+      "cellid": "int64[36, 3] f78c3655719ecbf4",
+      "ifno": "int64[36] 51a96655666ba753",
+      "man": "float64[36] db3cebfa1ec3eb81",
+      "n": 36,
+      "ncon": "int64[36] 2d643d7c4e0d2dcf",
+      "ndv": "int64[36] 98f30492528b2aad",
+      "rbth": "float64[36] 452b15d44bbcff17",
+      "rgrd": "float64[36] 19c27683b7b06489",
+      "rhk": "float64[36] f16d52a22ba6e2f5",
+      "rlen": "float64[36] 8e4055b7094fbe91",
+      "rtp": "float64[36] 60f5c6b9d32bdc97",
+      "rwid": "float64[36] f304b8f0470e018c",
+      "ustrf": "float64[36] 345629e61073e84b"
+    },
+    "print_flows": true,
+    "print_input": false,
+    "print_stage": true,
+    "save_flows": false,
+    "storage": false,
+    "ts": []
+  },
+  "simulation/uzfp2_nouzf/dis": {
+    "__type__": "Dis",
+    "botm": "float64[150] fbf25b3afcbf3294",
+    "delc": "float64[15] 368dd641dfa92c82",
+    "delr": "float64[10] 027424ad624f326a",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "uzfp2_nouzf.dis",
+    "idomain": "int64[150] 399dd095cc44e735",
+    "length_units": "FEET",
+    "name": "dis",
+    "ncol": 10,
+    "nlay": 1,
+    "nogrb": false,
+    "nrow": 15,
+    "top": "float64[150] 556b3670a83b717f"
+  },
+  "simulation/uzfp2_nouzf/ghb0": {
+    "__type__": "Ghb",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[2, 0] da39a3ee5e6b4b0d",
+        "bhead": "float64[2] 5c05b40737dca5f1",
+        "boundname": [
+          null,
+          null
+        ],
+        "cellid": "int64[2, 3] 14be008d94fb5fbc",
+        "cond": "float64[2] b9c8dcff41172651",
+        "n": 2
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 1,
+      "nodes": 150,
+      "nrow": 15
+    },
+    "filename": "uzfp2_nouzf.ghb",
+    "mover": false,
+    "name": "ghb0",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/uzfp2_nouzf/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 1,
+      "nodes": 150,
+      "nrow": 15
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "uzfp2_nouzf.ic",
+    "name": "ic",
+    "strt": "float64[150] 0d41c632fb8b1f91"
+  },
+  "simulation/uzfp2_nouzf/npf": {
+    "__type__": "Npf",
+    "cvoptions": {
+      "__type__": "Cvoptions",
+      "dewatered": true
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 1,
+      "nodes": 150,
+      "nrow": 15
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "uzfp2_nouzf.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[150] 43011d97d60c77f0",
+    "k": "float64[150] 1bcc22df53e46871",
+    "k22overk": false,
+    "k33": "float64[150] 5cc5e29ca9737a64",
+    "k33overk": false,
+    "name": "npf",
+    "perched": true,
+    "print_flows": false,
+    "save_flows": false,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false
+  },
+  "simulation/uzfp2_nouzf/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        }
+      ],
+      "1": [
+        {
+          "__type__": "Print",
+          "ocsetting": "LAST",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "LAST",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "LAST",
+          "rtype": "HEAD"
+        }
+      ]
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 1,
+      "nodes": 150,
+      "nrow": 15
+    },
+    "filename": "uzfp2_nouzf.oc",
+    "head_file": "uzfp2_nouzf.hds",
+    "headprint": {
+      "__type__": "Headprint",
+      "formatrecord": {
+        "__type__": "Format",
+        "columns": 10,
+        "digits": 4,
+        "format_": "GENERAL",
+        "width": 11
+      }
+    },
+    "name": "oc"
+  },
+  "simulation/uzfp2_nouzf/sto": {
+    "__type__": "Sto",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "n": 1,
+        "storage": [
+          "STEADY-STATE"
+        ]
+      },
+      "1": {
+        "__table__": "StressPeriodData",
+        "n": 1,
+        "storage": [
+          "TRANSIENT"
+        ]
+      }
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 1,
+      "nodes": 150,
+      "nrow": 15
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "uzfp2_nouzf.sto",
+    "iconvert": "int64[150] 43011d97d60c77f0",
+    "name": "sto",
+    "save_flows": false,
+    "ss": "float64[150] 5cc5e29ca9737a64",
+    "ss_confined_only": true,
+    "storagecoefficient": false,
+    "sy": "float64[150] 837f288590c22f6b"
+  },
+  "simulation/uzfp2_nouzf/wel0": {
+    "__type__": "Wel",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[10, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "cellid": "int64[10, 3] ffff444d2fa4242f",
+        "n": 10,
+        "q": "float64[10] fc2f474a3ffea575"
+      },
+      "10": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[10, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "cellid": "int64[10, 3] ffff444d2fa4242f",
+        "n": 10,
+        "q": "float64[10] fefe62be516873d9"
+      },
+      "11": {
+        "__table__": "StressPeriodData",
+        "aux": [],
+        "boundname": [],
+        "cellid": [],
+        "n": 0,
+        "q": []
+      },
+      "2": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[10, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "cellid": "int64[10, 3] ffff444d2fa4242f",
+        "n": 10,
+        "q": "float64[10] 0a6920c55d9f43f5"
+      },
+      "4": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[10, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "cellid": "int64[10, 3] ffff444d2fa4242f",
+        "n": 10,
+        "q": "float64[10] fefe62be516873d9"
+      },
+      "5": {
+        "__table__": "StressPeriodData",
+        "aux": [],
+        "boundname": [],
+        "cellid": [],
+        "n": 0,
+        "q": []
+      },
+      "6": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[10, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "cellid": "int64[10, 3] ffff444d2fa4242f",
+        "n": 10,
+        "q": "float64[10] fc2f474a3ffea575"
+      },
+      "7": {
+        "__table__": "StressPeriodData",
+        "aux": [],
+        "boundname": [],
+        "cellid": [],
+        "n": 0,
+        "q": []
+      },
+      "8": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[10, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "cellid": "int64[10, 3] ffff444d2fa4242f",
+        "n": 10,
+        "q": "float64[10] 0a6920c55d9f43f5"
+      },
+      "9": {
+        "__table__": "StressPeriodData",
+        "aux": [],
+        "boundname": [],
+        "cellid": [],
+        "n": 0,
+        "q": []
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 1,
+      "nodes": 150,
+      "nrow": 15
+    },
+    "filename": "uzfp2_nouzf.wel",
+    "flow_reduction_length": false,
+    "mover": false,
+    "name": "wel0",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": false,
+    "ts": []
+  }
+}

@@ -1,0 +1,311 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": false,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf GWF_1>"
+    ],
+    "mxiter": 1,
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/GWF_1": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [],
+    "dims": {},
+    "dis": "<Disu dis>",
+    "drn": [],
+    "evt": [],
+    "filename": "keating.nam",
+    "ghb": [
+      "<Ghb ghb0>"
+    ],
+    "gnc": "<Gnc gnc>",
+    "ic": "<Ic ic>",
+    "lak": [],
+    "maw": [],
+    "name": "GWF_1",
+    "newtonoptions": {
+      "__type__": "Newtonoptions",
+      "under_relaxation": true
+    },
+    "npf": "<Npf npf>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [
+      "<Rch rch0>"
+    ],
+    "riv": [],
+    "save_flows": false,
+    "sfr": [],
+    "uzf": [],
+    "wel": [],
+    "workspace": "<workspace>"
+  },
+  "simulation/GWF_1/dis": {
+    "__type__": "Disu",
+    "angldegx": "float64[2076] 51ca62d31eedfbf2",
+    "area": "float64[324] 03912e1e8e141fc4",
+    "bot": "float64[324] 5c31dd047c32345e",
+    "cell2d": {
+      "__table__": "Cell2d",
+      "icell2d": "int64[324] 5b8c21f1be1ba35e",
+      "icvert": "int64[324, 4] 61d9a520327925e3",
+      "n": 324,
+      "ncvert": "int64[324] 4bfbd457872fda4d",
+      "xc": "float64[324] 425ed57c11336058",
+      "yc": "float64[324] 846f37e8417520b9"
+    },
+    "cl12": "float64[2076] 41388f85ab7b1393",
+    "dims": {},
+    "export_array_ascii": false,
+    "filename": "keating.disu",
+    "hwva": "float64[2076] 52f83d4ce0d6e332",
+    "iac": "int64[324] 6ee649755c319539",
+    "ihc": "int64[2076] eee0adb821875d1f",
+    "ja": "int64[2076] 32da051394ff2245",
+    "name": "dis",
+    "nja": 2076,
+    "nodes": 324,
+    "nogrb": false,
+    "nvert": 162,
+    "top": "float64[324] b8043ee805b56fc1",
+    "vertical_offset_tolerance": "0.0",
+    "vertices": {
+      "__table__": "Vertices",
+      "iv": "int64[162] a4154110e6dab76e",
+      "n": 162,
+      "xv": "float64[162] fce17a73e4b705fa",
+      "yv": "float64[162] 2b262c7e96f0d700"
+    }
+  },
+  "simulation/GWF_1/ghb0": {
+    "__type__": "Ghb",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[5, 0] da39a3ee5e6b4b0d",
+        "bhead": "float64[5] 04d99f5c20e110c6",
+        "boundname": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "cellid": "int64[5, 1] f7d595f31b0d7a96",
+        "cond": "float64[5] 393611d7ca4cba18",
+        "n": 5
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 1,
+      "nja": 2076,
+      "nodes": 324,
+      "nvert": 162
+    },
+    "filename": "keating.ghb",
+    "mover": false,
+    "name": "ghb0",
+    "print_flows": false,
+    "print_input": false,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/GWF_1/gnc": {
+    "__type__": "Gnc",
+    "dims": {
+      "ncelldim": 1,
+      "nja": 2076,
+      "nodes": 324,
+      "nvert": 162
+    },
+    "explicit": false,
+    "filename": "keating.gnc",
+    "gncdata": {
+      "__table__": "Gncdata",
+      "alphasj": "float64[554, 1] afc2e6f2ef3bbd91",
+      "cellidm": "int64[554, 1] 27ef780ded2e1981",
+      "cellidn": "int64[554, 1] b0a3b742f568dd32",
+      "cellidsj": "int64[554, 1, 1] fcb664ed7ccc0a3b",
+      "n": 554
+    },
+    "name": "gnc",
+    "numalphaj": 1,
+    "numgnc": 554,
+    "print_flows": true,
+    "print_input": false
+  },
+  "simulation/GWF_1/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 1,
+      "nja": 2076,
+      "nodes": 324,
+      "nvert": 162
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "keating.ic",
+    "name": "ic",
+    "strt": "float64[324] 6e82861e3df5264b"
+  },
+  "simulation/GWF_1/npf": {
+    "__type__": "Npf",
+    "dims": {
+      "ncelldim": 1,
+      "nja": 2076,
+      "nodes": 324,
+      "nvert": 162
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "keating.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[324] 325c7e9279fe415b",
+    "k": "float64[324] 51c84665a3c15bd0",
+    "k22overk": false,
+    "k33overk": false,
+    "name": "npf",
+    "perched": false,
+    "print_flows": true,
+    "save_flows": false,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false
+  },
+  "simulation/GWF_1/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        }
+      ]
+    },
+    "budget_file": "keating.cbb",
+    "dims": {
+      "ncelldim": 1,
+      "nja": 2076,
+      "nodes": 324,
+      "nvert": 162
+    },
+    "filename": "keating.oc",
+    "head_file": "keating.hds",
+    "name": "oc"
+  },
+  "simulation/GWF_1/rch0": {
+    "__type__": "Rch",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[3, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          null,
+          null,
+          null
+        ],
+        "cellid": "int64[3, 1] b3d3733047f19866",
+        "n": 3,
+        "recharge": "float64[3] 07e5df4a99901052"
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 1,
+      "nja": 2076,
+      "nodes": 324,
+      "nvert": 162
+    },
+    "filename": "keating.rch",
+    "fixed_cell": false,
+    "name": "rch0",
+    "print_flows": false,
+    "print_input": false,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "backtracking_number": 20,
+    "backtracking_reduction_factor": "0.2",
+    "backtracking_residual_limit": "0.0005",
+    "backtracking_tolerance": "2.0",
+    "dims": {},
+    "filename": "model.ims",
+    "inner_dvclose": "1e-05",
+    "inner_maximum": 100,
+    "linear_acceleration": "bicgstab",
+    "models": [
+      "GWF_1"
+    ],
+    "name": "ims",
+    "no_ptc": {
+      "__type__": "NoPtc",
+      "no_ptc_option": null
+    },
+    "number_orthogonalizations": 2,
+    "outer_dvclose": "0.0001",
+    "outer_maximum": 2000,
+    "preconditioner_drop_tolerance": "0.001",
+    "preconditioner_levels": 8,
+    "print_option": "all",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "0.0001",
+      "rclose_option": "relative_rclose"
+    },
+    "relaxation_factor": "0.0",
+    "reordering_method": "none",
+    "scaling_method": "none",
+    "under_relaxation": "cooley",
+    "under_relaxation_gamma": "0.05",
+    "under_relaxation_kappa": "0.08",
+    "under_relaxation_momentum": "0.0",
+    "under_relaxation_theta": "0.7"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "simulation.tdis",
+    "name": "tdis",
+    "nper": 1,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 1,
+      "nstp": "int64[1] 3da89ee273be1343",
+      "perlen": "float64[1] dc5d6b3cd1f99802",
+      "tsmult": "float64[1] 3eafb06982d26cb8"
+    },
+    "time_units": "DAYS"
+  }
+}

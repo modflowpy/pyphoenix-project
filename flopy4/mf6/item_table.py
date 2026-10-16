@@ -7,6 +7,7 @@ A table is a list of its Items as well: a row is a view of it (see
 `_view_class`), an instance of the Item class whose fields read and write
 the columns."""
 
+import io
 import operator
 from collections.abc import Iterable, Iterator, MutableSequence
 from functools import lru_cache
@@ -23,7 +24,12 @@ from flopy4.mf6.item import (
     _array_elem_type,
     _is_one_cellid,
     _positions,
+    _row_plannable,
     _signed,
+    _sized_by_field,
+    _spans,
+    _union_field_arms,
+    inline_dim,
     is_cellid,
 )
 from flopy4.spec import is_array
@@ -503,13 +509,12 @@ def read_table(item_cls: type[Item], text: str, context: RowContext) -> ItemTabl
     spans = _positions(item_cls, [_number(v) for v in first], context)
     if spans is None:
         return None
-    data = text.encode("ascii")
-    if not ((widths := _widths(data)) == len(first)).all():
+    try:  # raises on a row of another width (or not all numbers)
+        values = np.loadtxt(io.StringIO(text), ndmin=2, comments=None)
+    except ValueError:
         return None
-    flat = np.fromstring(data, sep=" ")  # type: ignore[call-overload]
-    if flat.size != widths.size * len(first):
+    if values.shape[1] != len(first):
         return None
-    values = flat.reshape(-1, len(first))
     columns: dict[str, Any] = {}
     for f, took, a, b in spans:
         if f is None:
@@ -518,3 +523,53 @@ def read_table(item_cls: type[Item], text: str, context: RowContext) -> ItemTabl
             return None
         columns[f.name] = col
     return ItemTable(item_cls, columns, len(values))
+
+
+def read_ragged(item_cls: type[Item], text: str, context: RowContext) -> list[Item] | None:
+    """A block's rows from its text (NUMBERS', all numbers) whose rows
+    have different numbers of values (DISV's cell2d, by ncvert), read by
+    column a width at a time, as `Item.from_rows` reads them, if each
+    width's rows have one layout (see `item._plan`) and every field
+    converts by column; else None, for `Item.from_rows`."""
+    if not _row_plannable(item_cls):  # type: ignore[arg-type]  # lru_cache wants Hashable
+        return None
+    text = without_comments(text)
+    try:
+        flat = np.array(text.split(), dtype=float)
+    except ValueError:
+        return None
+    widths = _widths(text.encode("ascii"))
+    if flat.size != widths.sum():
+        return None
+    starts = np.concatenate(([0], np.cumsum(widths)[:-1]))
+    lines = None  # the non-blank lines, for a width's first row
+    items: list = [None] * len(widths)
+    for w in np.unique(widths).tolist():
+        rows = np.flatnonzero(widths == w)
+        if lines is None:
+            lines = [line for line in text.split("\n") if line.split()]
+        first = [_number(v) for v in lines[rows[0]].split()]
+        try:
+            if (spans := _spans(item_cls, first, context)) is None:
+                return None
+        except ValueError:  # no layout: `Item.from_rows` says so
+            return None
+        values = flat[starts[rows][:, None] + np.arange(w)]
+        at = {f.name: a for f, took, a, _ in spans if f is not None and took[0] == "value"}
+        columns: dict[str, Any] = {}
+        for f, took, a, b in spans:
+            if f is None or (took[0] == "rest" and _union_field_arms(item_cls, f) is not None):
+                return None  # a boundname, all digits; an arm's keyword; arms
+            if _sized_by_field(item_cls, f) and len(took) > 2:
+                # an array counted by another column, which each row's
+                # count must give (as `_plan` checks)
+                if (count_at := at.get(inline_dim(f) or "")) is None:
+                    return None
+                if not (values[:, count_at] == (b - a) // took[2]).all():
+                    return None
+            if (col := _column(f, took, values[:, a:b] if b else values[:, a])) is None:
+                return None
+            columns[f.name] = col
+        for i, item in zip(rows.tolist(), ItemTable(item_cls, columns, len(rows)).to_items()):
+            items[i] = item
+    return items

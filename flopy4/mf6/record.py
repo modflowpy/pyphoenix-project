@@ -179,6 +179,9 @@ def record_type(field_type: Any) -> "type[Record] | None":
 class Record:
     """Mixin for record types."""
 
+    # no __dict__, so the generated (slotted) classes' instances have none
+    __slots__ = ()
+
     @classmethod
     def fields(cls: type["Record"]) -> list[attrs.Attribute]:
         """Record (or Item) class' fields, in declaration order."""
