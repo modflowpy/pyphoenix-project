@@ -8,8 +8,7 @@ to reload intact (see `write_models` in `conftest.py`).
 Benchmarks, each parametrized by library:
 
 - `test_write` -- write every model.
-- `test_write_largest` -- the same, per model, for the `N_LARGEST` models
-  by input bytes.
+- `test_write_model` -- the same, per model.
 
 `extra_info` records the files and bytes each library writes: flopy3
 writes about twice the bytes for the same data (it pads every value), so
@@ -27,7 +26,6 @@ import pytest
 from _ops import LIBRARIES, load, write
 
 ROUNDS = 3
-N_LARGEST = 5
 
 
 def _bench_write(benchmark, tmp_path, library, models):
@@ -56,15 +54,10 @@ def test_write(benchmark, write_models, quiet, tmp_path, library):
 
 
 @pytest.mark.parametrize("library", LIBRARIES)
-@pytest.mark.parametrize("rank", range(1, N_LARGEST + 1), ids=lambda r: f"largest{r}")
-def test_write_largest(benchmark, write_models, quiet, tmp_path, rank, library):
-    """Write each of the largest models (by input bytes) on its own."""
-    ranked = sorted(write_models.models, key=lambda m: -m.n_bytes)
-    if rank > len(ranked):
-        pytest.skip(f"only {len(ranked)} models")
-    model = ranked[rank - 1]
-    benchmark.group = f"write-largest{rank}"
+def test_write_model(benchmark, write_models, write_model, quiet, tmp_path, library):
+    """Write one model."""
+    benchmark.group = f"write:{write_model.name.rsplit('/', 1)[-1]}"
     benchmark.extra_info.update(
-        model=model.name, tags=model.tags, **write_models.info(library, [model])
+        model=write_model.name, tags=write_model.tags, **write_models.info(library, [write_model])
     )
-    _bench_write(benchmark, tmp_path, library, [model])
+    _bench_write(benchmark, tmp_path, library, [write_model])

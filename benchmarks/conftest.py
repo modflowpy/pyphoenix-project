@@ -161,6 +161,26 @@ def models(request, tmp_path_factory) -> Models:
     return Models(sel.source, models, excluded, sel.pinned)
 
 
+def pytest_generate_tests(metafunc):
+    # one test per model, for the per-model benchmarks; at collection, so
+    # by name: a model left out while discovering a manifest skips
+    if "model_name" in metafunc.fixturenames:
+        names = selection(metafunc.config).names
+        metafunc.parametrize("model_name", names, ids=lambda n: n.rsplit("/", 1)[-1])
+
+
+def _model(models: list[Model], name: str) -> Model:
+    model = next((m for m in models if m.name == name), None)
+    if model is None:  # left out while discovering a manifest
+        pytest.skip(f"{name} isn't among the benchmark models")
+    return model
+
+
+@pytest.fixture
+def model(models, model_name) -> Model:
+    return _model(models.models, model_name)
+
+
 class Written(NamedTuple):
     files: int
     bytes: int
@@ -216,6 +236,11 @@ def write_models(models, tmp_path_factory) -> WriteModels:
         pytest.fail(f"pinned models don't round-trip: {excluded}")
     assert kept, "no models round-trip with both libraries"
     return WriteModels(kept, excluded, written)
+
+
+@pytest.fixture
+def write_model(write_models, model_name) -> Model:
+    return _model(write_models.models, model_name)
 
 
 # memory benchmarks' recorded properties, by test: nodeid -> properties

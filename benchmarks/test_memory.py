@@ -31,23 +31,9 @@ import sys
 from pathlib import Path
 
 import pytest
-from _models import selection
 from _ops import LIBRARIES, load, materialize, write
 
 WORKER = Path(__file__).parent / "_worker.py"
-
-
-def pytest_generate_tests(metafunc):
-    if "model_name" in metafunc.fixturenames:
-        names = selection(metafunc.config).names
-        metafunc.parametrize("model_name", names, ids=lambda n: n.rsplit("/", 1)[-1])
-
-
-def _model(models, name):
-    model = next((m for m in models if m.name == name), None)
-    if model is None:  # left out while discovering a manifest
-        pytest.skip(f"{name} isn't among the benchmark models")
-    return model
 
 
 def _record(record_property, op, library, model) -> None:
@@ -59,20 +45,10 @@ def _record(record_property, op, library, model) -> None:
 
 
 @pytest.fixture
-def model(models, model_name):
-    return _model(models.models, model_name)
-
-
-@pytest.fixture
 def warm(quiet, model, request):
     library = request.node.callspec.params["library"]
     materialize(library, load(library, model.ws, model.load_only))
     gc.collect()  # so the warm-up's garbage isn't freed while tracking
-
-
-@pytest.fixture
-def write_model(write_models, model_name):
-    return _model(write_models.models, model_name)
 
 
 @pytest.mark.parametrize("library", LIBRARIES)

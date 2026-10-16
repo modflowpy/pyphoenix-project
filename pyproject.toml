@@ -186,6 +186,8 @@ bench = { cmd = "pytest benchmarks --benchmark-enable --benchmark-autosave --ben
 bench-large = { cmd = "pytest benchmarks --benchmark-enable --benchmark-autosave --benchmark-columns=min,mean,stddev,rounds --bench-tier large", env = { MPLBACKEND = "Agg" }, description = "Benchmark the large tier (downloaded on first use)" }
 bench-full = { cmd = "pytest benchmarks --benchmark-enable --benchmark-autosave --benchmark-columns=min,mean,stddev,rounds --bench-tier full", env = { MPLBACKEND = "Agg" }, description = "Benchmark the full manifest, benchmarks/models-full.txt" }
 bench-memory = { cmd = "pytest benchmarks --memray --trace-python-allocators --hide-memray-summary", env = { MPLBACKEND = "Agg" }, description = "Peak memory per library, model and operation (pytest-memray; not on Windows), saving to .benchmarks/memory/" }
+bench-report = { cmd = "python benchmarks/report.py -o .benchmarks/report.md", description = "Write a Markdown report of the newest saved runs to .benchmarks/report.md" }
+bench-compare = { cmd = "python benchmarks/report.py --compare", description = "Compare the newest saved run with the one before it on the same tier (--memory: memory runs)" }
 
 [tool.pixi.feature.lint.tasks]
 install = { cmd = "pre-commit install --install-hooks" }

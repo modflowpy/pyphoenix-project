@@ -38,7 +38,7 @@ There are two benchmark modules, both opt-in pytest-benchmark modules under
 | question | is one flopy4 parser faster than the other? | how fast is loading for a user, vs. flopy3? |
 | compares | flopy4 basic vs. typed parser | flopy3 vs. flopy4 (basic) |
 | unit of work (full tier) | 2,149 package files' text, pre-read into memory | 165 whole simulations, from disk |
-| benchmarks | `test_parse`, `test_parse_transform`, `test_typed_grammar_build` | `test_load`, `test_load_materialize`, `test_load_materialize_largest`, `test_cold_start` |
+| benchmarks | `test_parse`, `test_parse_transform`, `test_typed_grammar_build` | `test_load`, `test_load_materialize`, `test_load_materialize_model`, `test_cold_start` |
 | pinning | the tier's models, or `--bench-parse-manifest` (file list) | always: the tier, or `--bench-manifest` |
 | equal-work check | both grammars parse the file | both loaders open exactly the same files |
 | runtime (full tier) | ~4 min | ~6.5 min |
@@ -342,7 +342,6 @@ pixi run -e dev bench
 pixi run -e dev bench --bench-tier smoke            # under a minute
 pixi run -e dev bench-large                         # the large tier
 pixi run -e dev bench-full                          # benchmarks/models-full.txt
-pixi run -e dev bench --benchmark-compare           # vs. the last saved run
 pixi run -e dev bench -k test_load                  # load only
 pixi run -e dev bench -k test_parse                 # parse only
 pixi run -e dev bench -k test_write                 # write only
@@ -351,6 +350,14 @@ pixi run -e dev bench -k test_write                 # write only
 # Windows); a session of its own, since tracking slows everything down.
 # Takes --bench-tier and --bench-manifest like the timing benchmarks
 pixi run -e dev bench-memory
+
+# Markdown from saved runs (benchmarks/report.py): a report of the newest
+# run of each tier at the newest commit, timing and memory, to
+# .benchmarks/report.md; or the newest run vs. the one before it on the same
+# tier. Either also takes run files: report.py RUN ..., --compare BASE NEW
+pixi run -e dev bench-report
+pixi run -e dev bench-compare                       # timing
+pixi run -e dev bench-compare --memory              # memory
 
 # benchmark the models listed in a file instead of a tier. If the file
 # doesn't exist, discover the models from KNOWN_PASSING: the ones that pass
@@ -365,8 +372,8 @@ pixi run -e dev python benchmarks/_worker.py import flopy4 [rss]
 
 Saved runs go to `.benchmarks/`, which is git-ignored. Benchmark names
 changed since this baseline was recorded (e.g. `flopy4-basic` → `flopy4`),
-so `--benchmark-compare` against an older save won't match names; rerun to
-get a fresh save. Each benchmark's
+so a comparison with an older save won't match names; rerun to get a fresh
+save. Each benchmark's
 `extra_info` records:
 
 - `models` (the tier or manifest), `n_models`, `n_bytes`, `n_excluded`, the

@@ -7,8 +7,8 @@ Benchmarks, each parametrized by library:
   arrays (see `_ops.py`).
 - `test_load_materialize` -- load, then fetch and sum every array and
   list. **The fair comparison.**
-- `test_load_materialize_largest` -- the same, per model, for the
-  `N_LARGEST` models by input bytes, where per-model differences show most.
+- `test_load_materialize_model` -- the same, per model, where per-model
+  differences show; the totals above are dominated by the biggest models.
 - `test_cold_start` -- a fresh interpreter per round: import, then load +
   materialize one mid-size model (`COLD_MODEL`). The child's own
   import/load/materialize split goes in `extra_info`.
@@ -28,7 +28,6 @@ from _ops import LIBRARIES, load, materialize
 
 ROUNDS = 3
 COLD_ROUNDS = 5
-N_LARGEST = 5
 # a mid-size DISV model (~0.55 MB, 5 packages + an OPEN/CLOSE array);
 # the corpus median is ~12 KB, so "mid" is relative to the models that
 # take long enough to measure
@@ -71,15 +70,9 @@ def test_load_materialize(benchmark, models, quiet, library):
 
 
 @pytest.mark.parametrize("library", LIBRARIES)
-@pytest.mark.parametrize("rank", range(1, N_LARGEST + 1), ids=lambda r: f"largest{r}")
-def test_load_materialize_largest(benchmark, models, quiet, rank, library):
-    """Load + materialize of each of the largest models (by input bytes),
-    where per-model differences show most."""
-    ranked = sorted(models.models, key=lambda m: -m.n_bytes)
-    if rank > len(ranked):
-        pytest.skip(f"only {len(ranked)} models")
-    model = ranked[rank - 1]
-    benchmark.group = f"load-materialize-largest{rank}"
+def test_load_materialize_model(benchmark, model, quiet, library):
+    """Load + materialize of one model."""
+    benchmark.group = f"load-materialize:{model.name.rsplit('/', 1)[-1]}"
     benchmark.extra_info.update(model=model.name, n_bytes=model.n_bytes, tags=model.tags)
     benchmark.pedantic(
         _load_materialize, args=(library, [model]), rounds=ROUNDS, iterations=1, warmup_rounds=1
