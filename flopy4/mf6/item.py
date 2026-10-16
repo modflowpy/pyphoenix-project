@@ -667,6 +667,20 @@ def _plannable(cls: type) -> bool:
     return True
 
 
+@lru_cache(maxsize=None)
+def _row_plannable(cls: type) -> bool:
+    """Whether a file row's layout depends only on how many values it has,
+    as for `_plannable`, though it may also have an arm's keyword, or end
+    with a union of arms (SFR's sfrsetting) read by the arm its values name.
+    Not tabular, so only for `Item.from_rows`."""
+    for slot in _slots(cls, True):
+        if slot.kind not in ("value", "cellid", "sized", "rest", "keyword"):
+            return False
+        if slot.kind == "value" and slot.field.metadata.get("child"):
+            return False
+    return True
+
+
 def _ts_value(token: Any) -> Any:
     """A time series column's token, as `_coerce` reads it: a number, or
     else a name."""
@@ -700,6 +714,14 @@ def _positions(
     at ``a``, with ``b`` 0). The boundname's field is None."""
     if not _plannable(cls):
         return None
+    return _spans(cls, values, context)
+
+
+def _spans(
+    cls: type, values: list, context: RowContext
+) -> "list[tuple[attrs.Attribute | None, tuple, int, int]] | None":
+    """`_positions`, for a class `_row_plannable` allows. An arm's keyword
+    has no field and takes ``("keyword",)``."""
     out = _solve(cls, values, context, file=True)
     if any(took[0] == "none" for took in out.values()):
         return None
@@ -707,6 +729,10 @@ def _positions(
     pos = 0
     for slot in _slots(cls, True):
         f = slot.field
+        if slot.kind == "keyword":
+            spans.append((None, ("keyword",), pos, 0))
+            pos += 1
+            continue
         if (took := out.get(f.name)) is None:
             continue
         if took[0] == "value":
@@ -721,22 +747,65 @@ def _positions(
     return spans
 
 
+def _union_reader(
+    cls: type,
+    f: attrs.Attribute,
+    context: RowContext,
+    load_child: Callable[[attrs.Attribute, str], Any] | None,
+) -> Callable[[list], Any]:
+    """A union of arms' values to one of its words or arm instances, as
+    `_convert` reads them, each arm by a plan per length (see `_plan`)."""
+    arms = _union_field_arms(cls, f)
+    assert arms is not None
+    words, classes = arms
+    by_keyword = {c.keyword().upper(): c for c in classes if c.keyword()}
+    plans: dict[tuple[type, int], Callable[[list], dict[str, Any] | None] | None] = {}
+
+    def read(raw: list) -> Any:
+        if len(raw) == 1 and str(raw[0]).upper() in words:
+            return str(raw[0]).upper()
+        arm = next((c for t in raw if (c := by_keyword.get(str(t).upper()))), None)
+        if arm is None:
+            raise ValueError(f"{cls.__name__}.{f.name}: no arm of {f.type} reads {raw}")
+        if (key := (arm, len(raw))) not in plans:
+            try:
+                plans[key] = _plan(arm, raw, context, load_child)
+            except ValueError:
+                plans[key] = None
+        if (plan := plans[key]) is not None and (kwargs := plan(raw)) is not None:
+            return arm(**kwargs)
+        return arm.from_tokens(raw, context, load_child=load_child)
+
+    return read
+
+
 def _plan(
-    cls: type, values: list, context: RowContext
+    cls: type,
+    values: list,
+    context: RowContext,
+    load_child: Callable[[attrs.Attribute, str], Any] | None = None,
 ) -> "Callable[[list], dict[str, Any] | None] | None":
     """How to read the fields of a file row with as many values as
-    ``values``, if every such row's layout is the same (see `_positions`).
-    The reader returns None for a row it can't convert (a cellid of NONE),
-    which `_layout` then reads."""
-    if (spans := _positions(cls, values, context)) is None:
+    ``values``, if every such row's layout is the same (see `_positions`
+    and `_row_plannable`). The reader returns None for a row it can't
+    convert (a cellid of NONE, another arm's keyword), which `_layout` then
+    reads."""
+    if not _row_plannable(cls) or (spans := _spans(cls, values, context)) is None:
         return None
     readers: list[tuple[str, int, int, Callable[[Any], Any]]] = []
     for f, took, a, b in spans:
         read: Callable[[Any], Any]
+        if took[0] == "keyword":
+            readers.append(
+                ("", a, b, partial(_check_keyword, cast(type[Record], cls).keyword().upper()))
+            )
+            continue
         if f is None:
             readers.append(("boundname", a, b, str))
             continue
-        if took[0] == "value":
+        if took[0] == "rest" and _union_field_arms(cls, f) is not None:
+            read = _union_reader(cls, f, context, load_child)
+        elif took[0] == "value":
             read = _value_reader(f)
         elif took[0] == "cellid":
             read = partial(_file_cellid, f)
@@ -749,11 +818,19 @@ def _plan(
 
     def read_row(row: list) -> "dict[str, Any] | None":
         try:
-            return {name: read(row[a:b] if b else row[a]) for name, a, b, read in readers}
+            kwargs = {name: read(row[a:b] if b else row[a]) for name, a, b, read in readers}
         except (ValueError, TypeError):
             return None
+        kwargs.pop("", None)  # the keyword's
+        return kwargs
 
     return read_row
+
+
+def _check_keyword(keyword: str, token: Any) -> None:
+    """Raise unless a token is the arm's keyword."""
+    if str(token).upper() != keyword:
+        raise ValueError(f"not {keyword}: {token}")
 
 
 def _file_cellids(f: attrs.Attribute, width: int, tokens: list) -> tuple:
@@ -1001,7 +1078,7 @@ class Item(Record):
         for tokens in rows:
             values = tokens.split() if isinstance(tokens, str) else tokens
             if (n := len(values)) not in plans:
-                plans[n] = _plan(cls, values, context)
+                plans[n] = _plan(cls, values, context, load_child)
             if (plan := plans[n]) is not None and (kwargs := plan(values)) is not None:
                 items.append(cls(**kwargs))
                 continue
