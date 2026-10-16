@@ -274,7 +274,9 @@ class ItemTable(MutableSequence):
         """A field's values, a row's each."""
         f = attrs.fields_dict(self.item_cls)[name]  # type: ignore[arg-type]
         if (col := self.columns.get(name)) is None:
-            return [_default(f) for _ in range(self._n)]
+            if isinstance(f.default, attrs.Factory):  # type: ignore[arg-type]
+                return [_default(f) for _ in range(self._n)]  # a row's own
+            return [_default(f)] * self._n
         return _values(f, col)
 
     def any_set(self, name: str) -> bool:
