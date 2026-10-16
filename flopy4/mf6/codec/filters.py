@@ -1,5 +1,6 @@
 """Filters shared by both reader and writer."""
 
+from collections.abc import Sequence
 from typing import Any, Literal
 
 import xarray as xr
@@ -28,6 +29,6 @@ def field_type(value: Any) -> FieldType:
         if value.dtype == "object":
             return "list"
         return "array"
-    if isinstance(value, (list, xr.Dataset)):
+    if isinstance(value, (Sequence, xr.Dataset)):  # a list, or Rows
         return "list"
     raise ValueError(f"Unsupported field type: {type(value)}")

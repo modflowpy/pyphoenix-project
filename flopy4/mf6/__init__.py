@@ -180,14 +180,18 @@ def _write_mf6(component: Component, context=None, **kwargs) -> None:
 
 
 def _write_json(component: Component) -> None:
+    from flopy4.mf6.converter.egress.unstructure import materialize
+
     with _open_for_write(component) as fp:
-        data = unstructure(component)
+        data = materialize(unstructure(component))
         dump_json(data, fp, indent=4)
 
 
 def _write_toml(component: Component) -> None:
+    from flopy4.mf6.converter.egress.unstructure import materialize
+
     with _open_for_write(component, "wb") as fp:
-        data = unstructure(component)
+        data = materialize(unstructure(component))
         dump_toml(data, fp)
 
 
