@@ -222,6 +222,7 @@ class Package(Component, ABC):
         here too (see `spec.list_`), and dimensions counting its rows
         follow on the next `_sync_dims`."""
         item_cls = item_list_type(f.type)
+        assert item_cls is not None
         words = item_list_words(f.type)
         value: Any
         if f.metadata.get("fill_forward"):
@@ -243,6 +244,7 @@ class Package(Component, ABC):
         `PeriodRows`, as `_coerce_list_field` takes each period's."""
         f = attrs.fields_dict(type(self))[name]  # type: ignore[arg-type]
         item_cls = item_list_type(f.type)
+        assert item_cls is not None
         rows = self._coerce_item_list(rows, item_cls, item_list_words(f.type))
         if not isinstance(item_cls, tuple):
             self._set_dims_from_counts(item_cls, [rows])  # type: ignore[arg-type]
@@ -832,7 +834,7 @@ class Package(Component, ABC):
         and, for a list of unions, a ``keyword`` column naming each row's arm.
         """
         if df.empty:
-            self._stress_period_data = {}
+            setattr(self, self._period_item_field().name, {})
             return
         if "kper" not in df.columns:
             raise ValueError("DataFrame must have a 'kper' column")
@@ -863,7 +865,7 @@ class Package(Component, ABC):
 
     @stress_period_data.setter  # type: ignore[attr-defined, no-redef]
     def stress_period_data(self, value) -> None:  # type: ignore[override]
-        self._stress_period_data = value
+        setattr(self, "_stress_period_data", value)
 
     def _period_array_fields(self) -> list:
         """Period array fields (not list ones): READARRAY packages' q, recharge, aux, ..."""
