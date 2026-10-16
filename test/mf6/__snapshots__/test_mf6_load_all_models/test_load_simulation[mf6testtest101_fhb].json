@@ -1,0 +1,456 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": false,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf test_fhb>"
+    ],
+    "mxiter": 1,
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "complexity": "simple",
+    "dims": {},
+    "filename": "test_fhb.ims",
+    "inner_dvclose": "1e-06",
+    "inner_maximum": 100,
+    "linear_acceleration": "cg",
+    "models": [
+      "test_fhb"
+    ],
+    "name": "ims",
+    "number_orthogonalizations": 2,
+    "outer_dvclose": "1e-05",
+    "outer_maximum": 120,
+    "preconditioner_drop_tolerance": "0.001",
+    "preconditioner_levels": 7,
+    "print_option": "summary",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "0.1",
+      "rclose_option": null
+    },
+    "reordering_method": "none",
+    "under_relaxation": "none",
+    "under_relaxation_gamma": "0.0",
+    "under_relaxation_kappa": "0.0",
+    "under_relaxation_momentum": "0.0",
+    "under_relaxation_theta": "0.0"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "test_fhb.tdis",
+    "name": "tdis",
+    "nper": 3,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 3,
+      "nstp": "int64[3] 323d48500c1d8991",
+      "perlen": "float64[3] b358a3cc21f90494",
+      "tsmult": "float64[3] 2e0bd10592220a45"
+    },
+    "time_units": "DAYS"
+  },
+  "simulation/test_fhb": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [
+      "<Chd CHD-HEAD(FHB)>"
+    ],
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [
+      "<Drn drn0>"
+    ],
+    "evt": [],
+    "filename": "test_fhb.nam",
+    "ghb": [],
+    "ic": "<Ic ic>",
+    "lak": [],
+    "maw": [],
+    "name": "test_fhb",
+    "npf": "<Npf npf>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [],
+    "riv": [],
+    "save_flows": false,
+    "sfr": [],
+    "sto": "<Sto sto>",
+    "uzf": [],
+    "wel": [
+      "<Wel WEL-FLOWS(FHB)>"
+    ],
+    "workspace": "<workspace>"
+  },
+  "simulation/test_fhb/CHD-HEAD(FHB)": {
+    "__type__": "Chd",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[3, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          null,
+          null,
+          null
+        ],
+        "cellid": "int64[3, 3] 27ba9ddc4c39a0fe",
+        "head": {
+          "__table__": "TimeSeriesRef",
+          "n": 3,
+          "name": [
+            "HEAD_L1_R1_C10_1",
+            "HEAD_L1_R2_C10_2",
+            "HEAD_L1_R3_C10_3"
+          ]
+        },
+        "n": 3
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 30,
+      "nlay": 1,
+      "nodes": 30,
+      "nrow": 3
+    },
+    "filename": "test_fhb.fhb.chd",
+    "name": "CHD-HEAD(FHB)",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": false,
+    "ts": [
+      "<Ts ts0>"
+    ]
+  },
+  "simulation/test_fhb/CHD-HEAD(FHB)/ts0": {
+    "__type__": "Ts",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 30,
+      "nlay": 1,
+      "nodes": 30,
+      "nrow": 3
+    },
+    "filename": "test_fhb.fhb.chd.ts",
+    "interpolation_methodrecord_single": {
+      "__type__": "InterpolationMethodrecordSingle",
+      "interpolation_method_single": "LINEAREND"
+    },
+    "name": "ts0",
+    "sfacrecord_single": {
+      "__type__": "SfacrecordSingle",
+      "sfacval": "1.2"
+    },
+    "time_series_name": {
+      "__type__": "TimeSeriesName",
+      "time_series_names": [
+        "HEAD_L1_R1_C10_1",
+        "HEAD_L1_R2_C10_2",
+        "HEAD_L1_R3_C10_3"
+      ]
+    },
+    "timeseries": {
+      "__table__": "Timeseries",
+      "n": 4,
+      "ts_array": "float64[4, 3] 3ed2acd7bf3bd5d0",
+      "ts_time": "float64[4] faf15dbdbd95f01c"
+    }
+  },
+  "simulation/test_fhb/WEL-FLOWS(FHB)": {
+    "__type__": "Wel",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[1, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          null
+        ],
+        "cellid": "int64[1, 3] 746940d0368bfe3e",
+        "n": 1,
+        "q": {
+          "__table__": "TimeSeriesRef",
+          "n": 1,
+          "name": [
+            "FLOW_L1_R2_C1_1"
+          ]
+        }
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 30,
+      "nlay": 1,
+      "nodes": 30,
+      "nrow": 3
+    },
+    "filename": "test_fhb.fhb.wel",
+    "flow_reduction_length": false,
+    "mover": false,
+    "name": "WEL-FLOWS(FHB)",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": false,
+    "ts": [
+      "<Ts ts0>"
+    ]
+  },
+  "simulation/test_fhb/WEL-FLOWS(FHB)/ts0": {
+    "__type__": "Ts",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 30,
+      "nlay": 1,
+      "nodes": 30,
+      "nrow": 3
+    },
+    "filename": "test_fhb.fhb.wel.ts",
+    "interpolation_methodrecord_single": {
+      "__type__": "InterpolationMethodrecordSingle",
+      "interpolation_method_single": "LINEAR"
+    },
+    "name": "ts0",
+    "sfacrecord_single": {
+      "__type__": "SfacrecordSingle",
+      "sfacval": "1.1"
+    },
+    "time_series_name": {
+      "__type__": "TimeSeriesName",
+      "time_series_names": [
+        "FLOW_L1_R2_C1_1"
+      ]
+    },
+    "timeseries": {
+      "__table__": "Timeseries",
+      "n": 4,
+      "ts_array": "float64[4, 1] 6ebe686eae527837",
+      "ts_time": "float64[4] faf15dbdbd95f01c"
+    }
+  },
+  "simulation/test_fhb/dis": {
+    "__type__": "Dis",
+    "botm": "float64[30] 49c8a3c06dec3add",
+    "delc": "float64[3] 2c872bb690fdef5e",
+    "delr": "float64[10] db1f7fddc2100537",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "test_fhb.dis",
+    "length_units": "UNDEFINED",
+    "name": "dis",
+    "ncol": 10,
+    "nlay": 1,
+    "nogrb": false,
+    "nrow": 3,
+    "top": "float64[30] 95ddcd2482edd7c0"
+  },
+  "simulation/test_fhb/drn0": {
+    "__type__": "Drn",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[2, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          "drain_r1",
+          "drain_r3"
+        ],
+        "cellid": "int64[2, 3] 4aad3e2472ca11c5",
+        "cond": "float64[2] ff9f1f5ade82fd6a",
+        "elev": "float64[2] bdd2510035a0b398",
+        "n": 2
+      }
+    },
+    "boundnames": true,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 30,
+      "nlay": 1,
+      "nodes": 30,
+      "nrow": 3
+    },
+    "filename": "test_fhb.drn",
+    "mover": false,
+    "name": "drn0",
+    "obs": "<Obs obs>",
+    "print_flows": false,
+    "print_input": false,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/test_fhb/drn0/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null
+          ],
+          "id_": [
+            "drain_r1",
+            "int64[3] 0dad132086b6d213"
+          ],
+          "n": 2,
+          "obsname": [
+            "drn_r1",
+            "drn_r3"
+          ],
+          "obstype": [
+            "DRN",
+            "DRN"
+          ]
+        }
+      ],
+      "n": 1,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[1] 5ba93c9db0cff93f",
+        "n": 1,
+        "obs_output_file_name": [
+          "test_fhb.continuous.drn.csv"
+        ]
+      }
+    },
+    "digits": 10,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 30,
+      "nlay": 1,
+      "nodes": 30,
+      "nrow": 3
+    },
+    "filename": "test_fhb.drn.obs",
+    "name": "obs",
+    "print_input": true
+  },
+  "simulation/test_fhb/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 30,
+      "nlay": 1,
+      "nodes": 30,
+      "nrow": 3
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "test_fhb.ic",
+    "name": "ic",
+    "strt": "float64[30] de0e7c9e496fdd65"
+  },
+  "simulation/test_fhb/npf": {
+    "__type__": "Npf",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 30,
+      "nlay": 1,
+      "nodes": 30,
+      "nrow": 3
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "test_fhb.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[30] de0e7c9e496fdd65",
+    "k": "float64[30] ec67607024253560",
+    "k22overk": false,
+    "k33": "float64[30] db6c68b449a8d086",
+    "k33overk": false,
+    "name": "npf",
+    "perched": true,
+    "print_flows": false,
+    "save_flows": false,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false
+  },
+  "simulation/test_fhb/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        }
+      ]
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 30,
+      "nlay": 1,
+      "nodes": 30,
+      "nrow": 3
+    },
+    "filename": "test_fhb.oc",
+    "head_file": "test_fhb_testfhb.hds",
+    "headprint": {
+      "__type__": "Headprint",
+      "formatrecord": {
+        "__type__": "Format",
+        "columns": 20,
+        "digits": 2,
+        "format_": "FIXED",
+        "width": 5
+      }
+    },
+    "name": "oc"
+  },
+  "simulation/test_fhb/sto": {
+    "__type__": "Sto",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 30,
+      "nlay": 1,
+      "nodes": 30,
+      "nrow": 3
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "test_fhb.sto",
+    "iconvert": "int64[30] de0e7c9e496fdd65",
+    "name": "sto",
+    "save_flows": false,
+    "ss": "float64[30] ed033593cb3b1802",
+    "ss_confined_only": false,
+    "storagecoefficient": true,
+    "sy": "float64[30] de0e7c9e496fdd65"
+  }
+}

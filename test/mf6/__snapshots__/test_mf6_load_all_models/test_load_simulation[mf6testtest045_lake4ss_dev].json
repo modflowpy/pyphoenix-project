@@ -1,0 +1,410 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": false,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf lakeex4>"
+    ],
+    "mxiter": 1,
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "complexity": "simple",
+    "dims": {},
+    "filename": "lakeex4.ims",
+    "inner_dvclose": "1e-06",
+    "inner_maximum": 100,
+    "linear_acceleration": "cg",
+    "models": [
+      "lakeex4"
+    ],
+    "name": "ims",
+    "number_orthogonalizations": 2,
+    "outer_dvclose": "1e-05",
+    "outer_maximum": 10000,
+    "print_option": "summary",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "0.001",
+      "rclose_option": null
+    },
+    "relaxation_factor": "0.97",
+    "reordering_method": "none",
+    "under_relaxation": "none"
+  },
+  "simulation/lakeex4": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [
+      "<Chd CHD-IB>"
+    ],
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [],
+    "evt": [],
+    "filename": "lakeex4.nam",
+    "ghb": [],
+    "ic": "<Ic ic>",
+    "lak": [
+      "<Lak lak0>"
+    ],
+    "maw": [],
+    "name": "lakeex4",
+    "npf": "<Npf npf>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [
+      "<Rcha rch0>"
+    ],
+    "riv": [],
+    "save_flows": false,
+    "sfr": [],
+    "uzf": [],
+    "wel": [],
+    "workspace": "<workspace>"
+  },
+  "simulation/lakeex4/CHD-IB": {
+    "__type__": "Chd",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[352, 0] da39a3ee5e6b4b0d",
+        "boundname": "2112 chars 9ceac4e25648e11c",
+        "cellid": "int64[352, 3] 03a632afe5a5a1bd",
+        "head": "float64[352] 45f284ee0d6a777f",
+        "n": 352
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 23,
+      "ncpl": 828,
+      "nlay": 8,
+      "nodes": 6624,
+      "nrow": 36
+    },
+    "filename": "lakeex4.ibound.chd",
+    "name": "CHD-IB",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": true,
+    "ts": []
+  },
+  "simulation/lakeex4/dis": {
+    "__type__": "Dis",
+    "botm": "float64[6624] 5e9a2ff08e0eeb7e",
+    "delc": "float64[36] 80372cf5d26b87e3",
+    "delr": "float64[23] 1fde4dabaa00ac29",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "lakeex4.dis",
+    "idomain": "int64[6624] 88b9cbae3e051330",
+    "length_units": "UNDEFINED",
+    "name": "dis",
+    "ncol": 23,
+    "nlay": 8,
+    "nogrb": false,
+    "nrow": 36,
+    "top": "float64[828] d164f6b37e876c1c"
+  },
+  "simulation/lakeex4/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 23,
+      "ncpl": 828,
+      "nlay": 8,
+      "nodes": 6624,
+      "nrow": 36
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "lakeex4.ic",
+    "name": "ic",
+    "strt": "float64[6624] e939affa2498c7d8"
+  },
+  "simulation/lakeex4/lak0": {
+    "__type__": "Lak",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Rainfall",
+          "lakeno": 0,
+          "rainfall": "0.0"
+        },
+        {
+          "__type__": "Evaporation",
+          "evaporation": "0.0",
+          "lakeno": 0
+        }
+      ]
+    },
+    "boundnames": true,
+    "connectiondata": {
+      "__table__": "Connectiondata",
+      "bedleak": "float64[110] 701750b5497b818d",
+      "belev": "float64[110] 973c9f51425416d3",
+      "cellid": "int64[110, 3] 38c6bbb40468f2bc",
+      "claktype": "1418 chars ba802a96c4bbef0f",
+      "connlen": "float64[110] fec4300d3dd8db54",
+      "connwidth": "float64[110] 89315c7f0b50cfa1",
+      "iconn": "int64[110] 73696d1ea4be8e19",
+      "ifno": "int64[110] 27312237900b57f1",
+      "n": 110,
+      "telev": "float64[110] 973c9f51425416d3"
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 23,
+      "ncpl": 828,
+      "nlay": 8,
+      "nodes": 6624,
+      "nrow": 36
+    },
+    "filename": "lakeex4.lak",
+    "implicit": false,
+    "mover": false,
+    "name": "lak0",
+    "nlakes": 2,
+    "noutlets": 0,
+    "obs": "<Obs obs>",
+    "packagedata": {
+      "__table__": "Packagedata",
+      "aux": "float64[2, 0] da39a3ee5e6b4b0d",
+      "boundname": [
+        "LAKE_1",
+        "LAKE_2"
+      ],
+      "ifno": "int64[2] 031ee8071545c35f",
+      "n": 2,
+      "nlakeconn": "int64[2] 9aa2bca594947a35",
+      "strt": "float64[2] 22163b57b5780a0b"
+    },
+    "print_flows": true,
+    "print_input": true,
+    "print_stage": false,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/lakeex4/lak0/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            null,
+            null
+          ],
+          "id_": "int64[4] 593a42b05d60259e",
+          "n": 4,
+          "obsname": [
+            "L1STAGE",
+            "L1VOL",
+            "L2STAGE",
+            "L2VOL"
+          ],
+          "obstype": [
+            "STAGE",
+            "VOLUME",
+            "STAGE",
+            "VOLUME"
+          ]
+        }
+      ],
+      "n": 1,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[1] 5ba93c9db0cff93f",
+        "n": 1,
+        "obs_output_file_name": [
+          "lakeex4.lak.csv"
+        ]
+      }
+    },
+    "digits": 10,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 23,
+      "ncpl": 828,
+      "nlay": 8,
+      "nodes": 6624,
+      "nrow": 36
+    },
+    "filename": "lakeex4.lak.obs",
+    "name": "obs",
+    "print_input": true
+  },
+  "simulation/lakeex4/npf": {
+    "__type__": "Npf",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 23,
+      "ncpl": 828,
+      "nlay": 8,
+      "nodes": 6624,
+      "nrow": 36
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "lakeex4.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[6624] dea5d8d50c55a145",
+    "k": "float64[6624] 1c7d892b500d0b3b",
+    "k22overk": false,
+    "k33": "float64[6624] fd30ecee082f1d43",
+    "k33overk": false,
+    "name": "npf",
+    "perched": false,
+    "print_flows": false,
+    "save_flows": false,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false
+  },
+  "simulation/lakeex4/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        }
+      ]
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 23,
+      "ncpl": 828,
+      "nlay": 8,
+      "nodes": 6624,
+      "nrow": 36
+    },
+    "filename": "lakeex4.oc",
+    "head_file": "lakeex4.hds",
+    "headprint": {
+      "__type__": "Headprint",
+      "formatrecord": {
+        "__type__": "Format",
+        "columns": 10,
+        "digits": 4,
+        "format_": "GENERAL",
+        "width": 11
+      }
+    },
+    "name": "oc"
+  },
+  "simulation/lakeex4/rch0": {
+    "__type__": "Rcha",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 23,
+      "ncpl": 828,
+      "nlay": 8,
+      "nodes": 6624,
+      "nrow": 36
+    },
+    "export_array_netcdf": false,
+    "filename": "lakeex4.rch",
+    "fixed_cell": true,
+    "name": "rch0",
+    "obs": "<Obs obs>",
+    "print_flows": false,
+    "print_input": false,
+    "readasarrays": true,
+    "recharge": {
+      "0": "float64[828] 4167f059810de2f0"
+    },
+    "save_flows": false,
+    "tas": []
+  },
+  "simulation/lakeex4/rch0/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null
+          ],
+          "id_": "int64[2, 3] 2efaa2ae02bf611e",
+          "n": 2,
+          "obsname": [
+            "rch1",
+            "rch2"
+          ],
+          "obstype": [
+            "RCH",
+            "RCH"
+          ]
+        }
+      ],
+      "n": 1,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[1] 5ba93c9db0cff93f",
+        "n": 1,
+        "obs_output_file_name": [
+          "rch.obs.csv"
+        ]
+      }
+    },
+    "digits": 10,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 23,
+      "ncpl": 828,
+      "nlay": 8,
+      "nodes": 6624,
+      "nrow": 36
+    },
+    "filename": "rch.obs",
+    "name": "obs",
+    "print_input": true
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "lakeex4.tdis",
+    "name": "tdis",
+    "nper": 1,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 1,
+      "nstp": "int64[1] 3da89ee273be1343",
+      "perlen": "float64[1] 70741a3c20104653",
+      "tsmult": "float64[1] 3eafb06982d26cb8"
+    },
+    "time_units": "DAYS"
+  }
+}

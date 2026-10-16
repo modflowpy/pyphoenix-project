@@ -1,0 +1,540 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": true,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf holly>"
+    ],
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/holly": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [
+      "<Chd chd0>"
+    ],
+    "csub": "<Csub csub>",
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [],
+    "evt": [],
+    "filename": "holly.nam",
+    "ghb": [],
+    "ic": "<Ic ic>",
+    "lak": [],
+    "maw": [],
+    "name": "holly",
+    "newtonoptions": {
+      "__type__": "Newtonoptions",
+      "under_relaxation": null
+    },
+    "npf": "<Npf npf>",
+    "obs": "<Obs head_obs>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [],
+    "riv": [],
+    "save_flows": false,
+    "sfr": [],
+    "sto": "<Sto sto>",
+    "uzf": [],
+    "wel": [],
+    "workspace": "<workspace>"
+  },
+  "simulation/holly/chd0": {
+    "__type__": "Chd",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[4, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          null,
+          null,
+          null,
+          null
+        ],
+        "cellid": "int64[4, 3] 883fca32d1e0344c",
+        "head": {
+          "__table__": "TimeSeriesRef",
+          "n": 4,
+          "name": [
+            "upper",
+            "middle",
+            "middle",
+            "lower"
+          ]
+        },
+        "n": 4
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 1,
+      "ncpl": 1,
+      "nlay": 14,
+      "nodes": 14,
+      "nrow": 1
+    },
+    "filename": "holly.chd",
+    "name": "chd0",
+    "print_flows": false,
+    "print_input": false,
+    "save_flows": true,
+    "ts": [
+      "<Ts ts0>"
+    ]
+  },
+  "simulation/holly/chd0/ts0": {
+    "__type__": "Ts",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 1,
+      "ncpl": 1,
+      "nlay": 14,
+      "nodes": 14,
+      "nrow": 1
+    },
+    "filename": "chd-heads.ts",
+    "interpolation_method": {
+      "__type__": "InterpolationMethod",
+      "interpolation_method": [
+        "linear",
+        "linear",
+        "linear"
+      ]
+    },
+    "name": "ts0",
+    "time_series_name": {
+      "__type__": "TimeSeriesName",
+      "time_series_names": [
+        "upper",
+        "middle",
+        "lower"
+      ]
+    },
+    "timeseries": {
+      "__table__": "Timeseries",
+      "n": 6053,
+      "ts_array": "float64[6053, 3] 50b1c0d6e8f12510",
+      "ts_time": "float64[6053] e8861a84e080887d"
+    }
+  },
+  "simulation/holly/csub": {
+    "__type__": "Csub",
+    "beta": "2.22222222e-08",
+    "boundnames": true,
+    "cell_fraction": false,
+    "cg_ske_cr": "float64[14] a5621d32664f55cb",
+    "cg_theta": "float64[14] a83bf1678a29b03a",
+    "compression_indices": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 1,
+      "ncpl": 1,
+      "nlay": 14,
+      "nodes": 14,
+      "nrow": 1
+    },
+    "effective_stress_lag": false,
+    "elastic_inelastic_smoothing": false,
+    "filename": "holly.csub",
+    "gammaw": "62.4",
+    "head_based": false,
+    "initial_preconsolidation_head": false,
+    "name": "csub",
+    "ndelaycells": 39,
+    "ninterbeds": 13,
+    "obs": "<Obs obs>",
+    "packagedata": {
+      "__table__": "Packagedata",
+      "boundname": [
+        "cunit",
+        "cunit",
+        "cunit",
+        "nodelay",
+        "nodelay",
+        "aquitard",
+        "aquitard",
+        "aquitard",
+        "nodelay",
+        "nodelay",
+        "delay",
+        "delay",
+        "delay"
+      ],
+      "cdelay": [
+        "nodelay",
+        "nodelay",
+        "nodelay",
+        "nodelay",
+        "nodelay",
+        "nodelay",
+        "nodelay",
+        "nodelay",
+        "nodelay",
+        "nodelay",
+        "delay",
+        "delay",
+        "delay"
+      ],
+      "cellid": "int64[13, 3] c5590c5709e12f19",
+      "h0": "float64[13] 13b83ea114dac576",
+      "icsubno": "int64[13] 773329f7c3d82415",
+      "kv": "float64[13] 69b8ceb7c72a204c",
+      "n": 13,
+      "pcs0": "float64[13] 1b43163509551594",
+      "rnb": "float64[13] 8c91f54b2521f95f",
+      "sse_cr": "float64[13] f5a5111dde194ba3",
+      "ssv_cc": "float64[13] 83d8db39a18299ea",
+      "theta": "float64[13] a464a9fb601887a1",
+      "thick_frac": "float64[13] 0721fabc8fb2a27b"
+    },
+    "print_input": false,
+    "save_flows": false,
+    "sgm": "float64[14] fb7124d9a607412d",
+    "sgs": "float64[14] 6e8ba4484f91fdac",
+    "specified_initial_delay_head": false,
+    "specified_initial_interbed_state": true,
+    "specified_initial_preconsolidation_stress": false,
+    "strict_effective_stress": false,
+    "ts": [],
+    "update_material_properties": true
+  },
+  "simulation/holly/csub/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "id_": "622 chars 582669e5f0e6bfc1",
+          "n": 33,
+          "obsname": "321 chars 7f806d77aa7a4403",
+          "obstype": "699 chars c3ec040d074f22c6"
+        },
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null
+          ],
+          "id_": "int64[1, 3] 4f6b9fdcd114ebbc",
+          "n": 1,
+          "obsname": [
+            "es14"
+          ],
+          "obstype": [
+            "estress-cell"
+          ]
+        }
+      ],
+      "n": 2,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[2] 1489f923c4dca729",
+        "n": 2,
+        "obs_output_file_name": [
+          "holly.csub.fig5.obs.csv",
+          "holly.csub.estress.obs.csv"
+        ]
+      }
+    },
+    "digits": 20,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 1,
+      "ncpl": 1,
+      "nlay": 14,
+      "nodes": 14,
+      "nrow": 1
+    },
+    "filename": "holly.csub.obs",
+    "name": "obs",
+    "print_input": true
+  },
+  "simulation/holly/dis": {
+    "__type__": "Dis",
+    "botm": "float64[14] 80442c74abe2b84c",
+    "delc": "float64[1] 732873cf65c471aa",
+    "delr": "float64[1] 732873cf65c471aa",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "holly.dis",
+    "name": "dis",
+    "ncol": 1,
+    "nlay": 14,
+    "nogrb": false,
+    "nrow": 1,
+    "top": "float64[1] 05fe405753166f12"
+  },
+  "simulation/holly/head_obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "id_": "int64[14, 3] 8e8908ac1ad7636a",
+          "n": 14,
+          "obsname": [
+            "hd02",
+            "hd03",
+            "hd04",
+            "hd05",
+            "hd07",
+            "hd08",
+            "hd09",
+            "hd10",
+            "hd12",
+            "hd14",
+            "hd01",
+            "hd06",
+            "hd11",
+            "hd13"
+          ],
+          "obstype": [
+            "head",
+            "head",
+            "head",
+            "head",
+            "head",
+            "head",
+            "head",
+            "head",
+            "head",
+            "head",
+            "head",
+            "head",
+            "head",
+            "head"
+          ]
+        }
+      ],
+      "n": 1,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[1] 5ba93c9db0cff93f",
+        "n": 1,
+        "obs_output_file_name": [
+          "holly.gwf.obs.csv"
+        ]
+      }
+    },
+    "digits": 10,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 1,
+      "ncpl": 1,
+      "nlay": 14,
+      "nodes": 14,
+      "nrow": 1
+    },
+    "filename": "holly.gwf.obs",
+    "name": "head_obs",
+    "print_input": true
+  },
+  "simulation/holly/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 1,
+      "ncpl": 1,
+      "nlay": 14,
+      "nodes": 14,
+      "nrow": 1
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "holly.ic",
+    "name": "ic",
+    "strt": "float64[14] 08791266cde8fbab"
+  },
+  "simulation/holly/npf": {
+    "__type__": "Npf",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 1,
+      "ncpl": 1,
+      "nlay": 14,
+      "nodes": 14,
+      "nrow": 1
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "holly.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[14] 5c0168621a045c60",
+    "k": "float64[14] 28173ea4190683c0",
+    "k22overk": false,
+    "k33": "float64[14] 9ab11409d5a89c07",
+    "k33overk": false,
+    "name": "npf",
+    "perched": false,
+    "print_flows": false,
+    "save_flows": true,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false
+  },
+  "simulation/holly/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "352": {
+        "__table__": "Save",
+        "n": 2,
+        "ocsetting": [
+          "ALL",
+          "ALL"
+        ],
+        "rtype": [
+          "head",
+          "budget"
+        ]
+      }
+    },
+    "budget_file": "holly.cbc",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 1,
+      "ncpl": 1,
+      "nlay": 14,
+      "nodes": 14,
+      "nrow": 1
+    },
+    "filename": "holly.oc",
+    "head_file": "holly.hds",
+    "name": "oc"
+  },
+  "simulation/holly/sto": {
+    "__type__": "Sto",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "n": 1,
+        "storage": [
+          "TRANSIENT"
+        ]
+      }
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 1,
+      "ncpl": 1,
+      "nlay": 14,
+      "nodes": 14,
+      "nrow": 1
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "holly.sto",
+    "iconvert": "int64[14] ecefa9fc1f6876b4",
+    "name": "sto",
+    "save_flows": false,
+    "ss": "float64[14] 5c0168621a045c60",
+    "ss_confined_only": false,
+    "storagecoefficient": false,
+    "sy": "float64[14] 5c0168621a045c60"
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "complexity": "complex",
+    "dims": {},
+    "filename": "holly.ims",
+    "inner_dvclose": "1e-06",
+    "inner_maximum": 100,
+    "models": [
+      "holly"
+    ],
+    "name": "ims",
+    "outer_dvclose": "1e-06",
+    "outer_maximum": 200,
+    "print_option": "summary",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "0.001",
+      "rclose_option": null
+    },
+    "relaxation_factor": "0.97",
+    "reordering_method": "none",
+    "scaling_method": "none",
+    "under_relaxation": "none"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "holly.tdis",
+    "name": "tdis",
+    "nper": 353,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 353,
+      "nstp": "int64[353] f637eb90a2a34220",
+      "perlen": "float64[353] 056883e2d7c8f0d8",
+      "tsmult": "float64[353] bbb0576c740157ed"
+    },
+    "time_units": "days"
+  }
+}

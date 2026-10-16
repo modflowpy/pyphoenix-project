@@ -1,0 +1,590 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": false,
+    "dims": {},
+    "exchanges": [
+      "<Gwfgwt gwfgwt>"
+    ],
+    "filename": "mfsim.nam",
+    "maxerrors": 1000,
+    "models": [
+      "<Gwf gwf_elder>",
+      "<Gwt gwt_elder>"
+    ],
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>",
+      "<Ims ims1>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/gwf_elder": {
+    "__type__": "Gwf",
+    "api": [],
+    "buy": "<Buy buy>",
+    "chd": [],
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [],
+    "evt": [],
+    "filename": "gwf_elder.nam",
+    "ghb": [],
+    "ic": "<Ic ic>",
+    "lak": [],
+    "maw": [],
+    "name": "gwf_elder",
+    "newtonoptions": {
+      "__type__": "Newtonoptions",
+      "under_relaxation": null
+    },
+    "npf": "<Npf npf>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [],
+    "riv": [],
+    "save_flows": false,
+    "sfr": [],
+    "sto": "<Sto sto>",
+    "uzf": [],
+    "wel": [],
+    "workspace": "<workspace>"
+  },
+  "simulation/gwf_elder/buy": {
+    "__type__": "Buy",
+    "denseref": "1000.0",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 88,
+      "ncpl": 88,
+      "nlay": 52,
+      "nodes": 4576,
+      "nrow": 1
+    },
+    "filename": "gwf_elder.buy",
+    "hhformulation_rhs": false,
+    "name": "buy",
+    "nrhospecies": 1,
+    "packagedata": {
+      "__table__": "Packagedata",
+      "auxspeciesname": [
+        "CONCENTRATION"
+      ],
+      "crhoref": "float64[1] 05fe405753166f12",
+      "drhodc": "float64[1] a3841abfabbfd742",
+      "irhospec": "int64[1] 05fe405753166f12",
+      "modelname": [
+        "GWT_ELDER"
+      ],
+      "n": 1
+    }
+  },
+  "simulation/gwf_elder/dis": {
+    "__type__": "Dis",
+    "botm": "float64[4576] 33c1af9fba68e3f5",
+    "delc": "float64[1] 3eafb06982d26cb8",
+    "delr": "float64[88] 9610e7dd7bbc74d9",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "gwf_elder.dis",
+    "name": "dis",
+    "ncol": 88,
+    "nlay": 52,
+    "nogrb": false,
+    "nrow": 1,
+    "top": "float64[88] 9c053510fd33404e"
+  },
+  "simulation/gwf_elder/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 88,
+      "ncpl": 88,
+      "nlay": 52,
+      "nodes": 4576,
+      "nrow": 1
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "gwf_elder.ic",
+    "name": "ic",
+    "strt": "float64[4576] cbe0b1bcb111ca83"
+  },
+  "simulation/gwf_elder/npf": {
+    "__type__": "Npf",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 88,
+      "ncpl": 88,
+      "nlay": 52,
+      "nodes": 4576,
+      "nrow": 1
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "gwf_elder.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[4576] 888dbf200a0edd08",
+    "k": "float64[4576] ba1653ab16536cdd",
+    "k22overk": false,
+    "k33overk": false,
+    "name": "npf",
+    "perched": false,
+    "print_flows": false,
+    "save_flows": true,
+    "save_saturation": false,
+    "save_specific_discharge": true,
+    "thickstrt": false
+  },
+  "simulation/gwf_elder/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Save",
+          "ocsetting": "LAST",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "LAST",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "LAST",
+          "rtype": "BUDGET"
+        }
+      ],
+      "1": {
+        "__table__": "Save",
+        "n": 2,
+        "ocsetting": [
+          "LAST",
+          "LAST"
+        ],
+        "rtype": [
+          "HEAD",
+          "BUDGET"
+        ]
+      },
+      "199": [
+        {
+          "__type__": "Save",
+          "ocsetting": "LAST",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "LAST",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "LAST",
+          "rtype": "BUDGET"
+        }
+      ]
+    },
+    "budget_file": "gwf_elder.cbc",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 88,
+      "ncpl": 88,
+      "nlay": 52,
+      "nodes": 4576,
+      "nrow": 1
+    },
+    "filename": "gwf_elder.oc",
+    "head_file": "gwf_elder.hds",
+    "headprint": {
+      "__type__": "Headprint",
+      "formatrecord": {
+        "__type__": "Format",
+        "columns": 10,
+        "digits": 6,
+        "format_": "GENERAL",
+        "width": 15
+      }
+    },
+    "name": "oc"
+  },
+  "simulation/gwf_elder/sto": {
+    "__type__": "Sto",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 88,
+      "ncpl": 88,
+      "nlay": 52,
+      "nodes": 4576,
+      "nrow": 1
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "gwf_elder.sto",
+    "iconvert": "int64[4576] 888dbf200a0edd08",
+    "name": "sto",
+    "save_flows": false,
+    "ss": "float64[4576] 97d75d59a8cfa39f",
+    "ss_confined_only": false,
+    "storagecoefficient": false,
+    "sy": "float64[4576] 6f2bb436ea32419d"
+  },
+  "simulation/gwfgwt": {
+    "__type__": "Gwfgwt",
+    "dims": {},
+    "exgmnamea": "gwf_elder",
+    "exgmnameb": "gwt_elder",
+    "filename": "elder.gwfgwt",
+    "name": "gwfgwt"
+  },
+  "simulation/gwt_elder": {
+    "__type__": "Gwt",
+    "adv": "<Adv adv>",
+    "api": [],
+    "cnc": [
+      "<Cnc cnc0>"
+    ],
+    "dependent_variable_scaling": false,
+    "dims": {},
+    "dis": "<Dis dis>",
+    "dsp": "<Dsp dsp>",
+    "filename": "gwt_elder.nam",
+    "ic": "<Ic ic>",
+    "ist": [],
+    "lkt": [],
+    "mst": "<Mst mst>",
+    "mwt": [],
+    "name": "gwt_elder",
+    "obs": "<Obs obs_0>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "save_flows": false,
+    "sft": [],
+    "src": [],
+    "uzt": [],
+    "workspace": "<workspace>"
+  },
+  "simulation/gwt_elder/adv": {
+    "__type__": "Adv",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 88,
+      "ncpl": 88,
+      "nlay": 52,
+      "nodes": 4576,
+      "nrow": 1
+    },
+    "filename": "gwt_elder.adv",
+    "name": "adv",
+    "scheme": "central"
+  },
+  "simulation/gwt_elder/cnc0": {
+    "__type__": "Cnc",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[176, 0] da39a3ee5e6b4b0d",
+        "boundname": "1056 chars 8e496e98369d28cd",
+        "cellid": "int64[176, 3] 1ef70eb90893c0e2",
+        "conc": "float64[176] 318a9887ce9933a4",
+        "n": 176
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 88,
+      "ncpl": 88,
+      "nlay": 52,
+      "nodes": 4576,
+      "nrow": 1
+    },
+    "filename": "gwt_elder.cnc",
+    "name": "cnc0",
+    "print_flows": false,
+    "print_input": false,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/gwt_elder/dis": {
+    "__type__": "Dis",
+    "botm": "float64[4576] 33c1af9fba68e3f5",
+    "delc": "float64[1] 3eafb06982d26cb8",
+    "delr": "float64[88] 9610e7dd7bbc74d9",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "gwt_elder.dis",
+    "name": "dis",
+    "ncol": 88,
+    "nlay": 52,
+    "nogrb": false,
+    "nrow": 1,
+    "top": "float64[88] 9c053510fd33404e"
+  },
+  "simulation/gwt_elder/dsp": {
+    "__type__": "Dsp",
+    "alh": "float64[4576] 888dbf200a0edd08",
+    "ath1": "float64[4576] 888dbf200a0edd08",
+    "diffc": "float64[4576] c3eb0f810c0057de",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 88,
+      "ncpl": 88,
+      "nlay": 52,
+      "nodes": 4576,
+      "nrow": 1
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "gwt_elder.dsp",
+    "name": "dsp",
+    "xt3d_off": true,
+    "xt3d_rhs": false
+  },
+  "simulation/gwt_elder/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 88,
+      "ncpl": 88,
+      "nlay": 52,
+      "nodes": 4576,
+      "nrow": 1
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "gwt_elder.ic",
+    "name": "ic",
+    "strt": "float64[4576] 888dbf200a0edd08"
+  },
+  "simulation/gwt_elder/mst": {
+    "__type__": "Mst",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 88,
+      "ncpl": 88,
+      "nlay": 52,
+      "nodes": 4576,
+      "nrow": 1
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "gwt_elder.mst",
+    "first_order_decay": false,
+    "name": "mst",
+    "porosity": "float64[4576] 6f2bb436ea32419d",
+    "save_flows": false,
+    "zero_order_decay": false
+  },
+  "simulation/gwt_elder/obs_0": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null
+          ],
+          "id_": "int64[2, 3] 4b3daa0f8ccd32f5",
+          "n": 2,
+          "obsname": [
+            "conc1",
+            "conc2"
+          ],
+          "obstype": [
+            "concentration",
+            "concentration"
+          ]
+        }
+      ],
+      "n": 1,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[1] 5ba93c9db0cff93f",
+        "n": 1,
+        "obs_output_file_name": [
+          "gwt_elder.obs.csv"
+        ]
+      }
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 88,
+      "ncpl": 88,
+      "nlay": 52,
+      "nodes": 4576,
+      "nrow": 1
+    },
+    "filename": "gwt_elder.obs",
+    "name": "obs_0",
+    "print_input": false
+  },
+  "simulation/gwt_elder/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Save",
+          "ocsetting": "LAST",
+          "rtype": "CONCENTRATION"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "LAST",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "FIRST",
+          "rtype": "CONCENTRATION"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "LAST",
+          "rtype": "BUDGET"
+        }
+      ],
+      "1": {
+        "__table__": "Save",
+        "n": 1,
+        "ocsetting": [
+          "LAST"
+        ],
+        "rtype": [
+          "CONCENTRATION"
+        ]
+      },
+      "199": [
+        {
+          "__type__": "Save",
+          "ocsetting": "LAST",
+          "rtype": "CONCENTRATION"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "LAST",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "LAST",
+          "rtype": "CONCENTRATION"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "LAST",
+          "rtype": "BUDGET"
+        }
+      ]
+    },
+    "budget_file": "gwt_elder.cbc",
+    "concentration_file": "gwt_elder.ucn",
+    "concentrationprint": {
+      "__type__": "Concentrationprint",
+      "formatrecord": {
+        "__type__": "Format",
+        "columns": 10,
+        "digits": 6,
+        "format_": "GENERAL",
+        "width": 15
+      }
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 88,
+      "ncpl": 88,
+      "nlay": 52,
+      "nodes": 4576,
+      "nrow": 1
+    },
+    "filename": "gwt_elder.oc",
+    "name": "oc"
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "dims": {},
+    "filename": "gwf_elder.ims",
+    "inner_dvclose": "1e-09",
+    "inner_maximum": 300,
+    "linear_acceleration": "bicgstab",
+    "models": [
+      "gwf_elder"
+    ],
+    "name": "ims",
+    "no_ptc": {
+      "__type__": "NoPtc",
+      "no_ptc_option": "true"
+    },
+    "outer_dvclose": "1e-08",
+    "outer_maximum": 100,
+    "print_option": "all",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "1e-08",
+      "rclose_option": null
+    },
+    "relaxation_factor": "0.97",
+    "reordering_method": "none",
+    "scaling_method": "none",
+    "under_relaxation": "dbd"
+  },
+  "simulation/ims1": {
+    "__type__": "Ims",
+    "dims": {},
+    "filename": "gwt_elder.ims",
+    "inner_dvclose": "1e-09",
+    "inner_maximum": 300,
+    "linear_acceleration": "bicgstab",
+    "models": [
+      "gwt_elder"
+    ],
+    "name": "ims1",
+    "outer_dvclose": "1e-08",
+    "outer_maximum": 100,
+    "print_option": "all",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "1e-08",
+      "rclose_option": null
+    },
+    "relaxation_factor": "0.97",
+    "reordering_method": "none",
+    "scaling_method": "none",
+    "under_relaxation": "none"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "elder.tdis",
+    "name": "tdis",
+    "nper": 200,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 200,
+      "nstp": "int64[200] 1a4c980dfe1da369",
+      "perlen": "float64[200] a6a08d0b3614368f",
+      "tsmult": "float64[200] e90b4b9d0b7c934d"
+    },
+    "time_units": "days"
+  }
+}

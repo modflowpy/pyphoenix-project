@@ -1,0 +1,423 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": false,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf lbf>"
+    ],
+    "mxiter": 1,
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "complexity": "simple",
+    "dims": {},
+    "filename": "lbf.ims",
+    "inner_dvclose": "1e-06",
+    "inner_maximum": 100,
+    "linear_acceleration": "cg",
+    "models": [
+      "lbf"
+    ],
+    "name": "ims",
+    "number_orthogonalizations": 2,
+    "outer_dvclose": "1e-06",
+    "outer_maximum": 500,
+    "preconditioner_drop_tolerance": "0.0",
+    "preconditioner_levels": 0,
+    "print_option": "summary",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "0.001",
+      "rclose_option": null
+    },
+    "relaxation_factor": "1.0",
+    "reordering_method": "none",
+    "under_relaxation": "none",
+    "under_relaxation_gamma": "0.0",
+    "under_relaxation_kappa": "0.0",
+    "under_relaxation_momentum": "0.0",
+    "under_relaxation_theta": "0.0"
+  },
+  "simulation/lbf": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [],
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [],
+    "evt": [],
+    "filename": "lbf.nam",
+    "ghb": [],
+    "ic": "<Ic ic>",
+    "lak": [
+      "<Lak lak0>"
+    ],
+    "maw": [],
+    "name": "lbf",
+    "npf": "<Npf npf>",
+    "obs": "<Obs obs>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [
+      "<Rcha rch0>"
+    ],
+    "riv": [],
+    "save_flows": false,
+    "sfr": [],
+    "sto": "<Sto sto>",
+    "uzf": [],
+    "wel": [],
+    "workspace": "<workspace>"
+  },
+  "simulation/lbf/dis": {
+    "__type__": "Dis",
+    "botm": "float64[75] ca1e7471ed49e14d",
+    "delc": "float64[5] 7d986ee1635dbd78",
+    "delr": "float64[5] 7d986ee1635dbd78",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "lbf.dis",
+    "idomain": "int64[75] 270931df9785a6ff",
+    "length_units": "UNDEFINED",
+    "name": "dis",
+    "ncol": 5,
+    "nlay": 3,
+    "nogrb": false,
+    "nrow": 5,
+    "top": "float64[25] 33375dbc0c85922e"
+  },
+  "simulation/lbf/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 3,
+      "nodes": 75,
+      "nrow": 5
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "lbf.ic",
+    "name": "ic",
+    "strt": "float64[75] 3cac5be3f5ac0ba2"
+  },
+  "simulation/lbf/lak0": {
+    "__type__": "Lak",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Rainfall",
+          "lakeno": 0,
+          "rainfall": "0.714275"
+        },
+        {
+          "__type__": "Evaporation",
+          "evaporation": "0.0",
+          "lakeno": 0
+        }
+      ]
+    },
+    "boundnames": true,
+    "connectiondata": {
+      "__table__": "Connectiondata",
+      "bedleak": "float64[5] 21663d0069061930",
+      "belev": "float64[5] b80de5d138758541",
+      "cellid": "int64[5, 3] 35963c23f2808751",
+      "claktype": [
+        "VERTICAL",
+        "HORIZONTAL",
+        "HORIZONTAL",
+        "HORIZONTAL",
+        "HORIZONTAL"
+      ],
+      "connlen": "float64[5] baec4bea4e8e301a",
+      "connwidth": "float64[5] 5f7f1d456201c18b",
+      "iconn": "int64[5] 0f4dbf66f47ef210",
+      "ifno": "int64[5] b80de5d138758541",
+      "n": 5,
+      "telev": "float64[5] b80de5d138758541"
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 3,
+      "nodes": 75,
+      "nrow": 5
+    },
+    "filename": "lbf.lak",
+    "implicit": false,
+    "mover": false,
+    "name": "lak0",
+    "nlakes": 1,
+    "noutlets": 0,
+    "obs": "<Obs obs>",
+    "packagedata": {
+      "__table__": "Packagedata",
+      "aux": "float64[1, 0] da39a3ee5e6b4b0d",
+      "boundname": [
+        "fillerup"
+      ],
+      "ifno": "int64[1] 05fe405753166f12",
+      "n": 1,
+      "nlakeconn": "int64[1] 93ea9b45a7f52bd8",
+      "strt": "float64[1] 29c11b43765ff85a"
+    },
+    "print_flows": true,
+    "print_input": true,
+    "print_stage": false,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/lbf/lak0/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            0,
+            1
+          ],
+          "id_": "int64[3] d3399b7262fb56cb",
+          "n": 3,
+          "obsname": [
+            "M1HEAD",
+            "VFLOW",
+            "HFLOW"
+          ],
+          "obstype": [
+            "STAGE",
+            "LAK",
+            "LAK"
+          ]
+        }
+      ],
+      "n": 1,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[1] 5ba93c9db0cff93f",
+        "n": 1,
+        "obs_output_file_name": [
+          "lbf.lak.csv"
+        ]
+      }
+    },
+    "digits": 10,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 3,
+      "nodes": 75,
+      "nrow": 5
+    },
+    "filename": "lbf.lak.obs",
+    "name": "obs",
+    "print_input": true
+  },
+  "simulation/lbf/npf": {
+    "__type__": "Npf",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 3,
+      "nodes": 75,
+      "nrow": 5
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "lbf.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[75] 52364d9b26df152c",
+    "k": "float64[75] 22cc5ee3e68490f9",
+    "k22overk": false,
+    "k33": "float64[75] b4dc3c246b298eae",
+    "k33overk": false,
+    "name": "npf",
+    "perched": false,
+    "print_flows": false,
+    "rewet": {
+      "__type__": "Rewet",
+      "ihdwet": 0,
+      "iwetit": 1,
+      "wetfct": "1.0"
+    },
+    "save_flows": false,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false,
+    "wetdry": "float64[75] 438bc112c5432a43"
+  },
+  "simulation/lbf/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null
+          ],
+          "id_": "int64[2, 3] 9f292a98a1d0df74",
+          "n": 2,
+          "obsname": [
+            "L2",
+            "L3"
+          ],
+          "obstype": [
+            "head",
+            "head"
+          ]
+        }
+      ],
+      "n": 1,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[1] 5ba93c9db0cff93f",
+        "n": 1,
+        "obs_output_file_name": [
+          "lbf.csv"
+        ]
+      }
+    },
+    "digits": 10,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 3,
+      "nodes": 75,
+      "nrow": 5
+    },
+    "filename": "lbf.obs",
+    "name": "obs",
+    "print_input": true
+  },
+  "simulation/lbf/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        }
+      ]
+    },
+    "budget_file": "lbf.cbc",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 3,
+      "nodes": 75,
+      "nrow": 5
+    },
+    "filename": "lbf.oc",
+    "head_file": "lbf.hds",
+    "headprint": {
+      "__type__": "Headprint",
+      "formatrecord": {
+        "__type__": "Format",
+        "columns": 10,
+        "digits": 4,
+        "format_": "GENERAL",
+        "width": 11
+      }
+    },
+    "name": "oc"
+  },
+  "simulation/lbf/rch0": {
+    "__type__": "Rcha",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 3,
+      "nodes": 75,
+      "nrow": 5
+    },
+    "export_array_netcdf": false,
+    "filename": "lbf.rch",
+    "fixed_cell": false,
+    "name": "rch0",
+    "print_flows": false,
+    "print_input": false,
+    "readasarrays": true,
+    "recharge": {
+      "0": "float64[25] 56f2b2b4906cf00c"
+    },
+    "save_flows": false,
+    "tas": []
+  },
+  "simulation/lbf/sto": {
+    "__type__": "Sto",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 3,
+      "nodes": 75,
+      "nrow": 5
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "lbf.sto",
+    "iconvert": "int64[75] 52364d9b26df152c",
+    "name": "sto",
+    "save_flows": false,
+    "ss": "float64[75] fbe9593fee4bc6b4",
+    "ss_confined_only": true,
+    "storagecoefficient": false,
+    "sy": "float64[75] 5ead33161a2e0267"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "lbf.tdis",
+    "name": "tdis",
+    "nper": 1,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 1,
+      "nstp": "int64[1] fb9e5000a8e6444d",
+      "perlen": "float64[1] f86f0aa72b960ca2",
+      "tsmult": "float64[1] 3eafb06982d26cb8"
+    },
+    "time_units": "DAYS"
+  }
+}

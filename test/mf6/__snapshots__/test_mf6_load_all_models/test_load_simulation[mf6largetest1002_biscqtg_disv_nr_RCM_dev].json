@@ -1,0 +1,379 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": false,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf Biscayne>"
+    ],
+    "mxiter": 1,
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/Biscayne": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [
+      "<Chd chd0>"
+    ],
+    "dims": {},
+    "dis": "<Disv dis>",
+    "drn": [],
+    "evt": [
+      "<Evta evt0>"
+    ],
+    "filename": "biscayne.nam",
+    "ghb": [],
+    "ic": "<Ic ic>",
+    "lak": [],
+    "maw": [],
+    "name": "Biscayne",
+    "newtonoptions": {
+      "__type__": "Newtonoptions",
+      "under_relaxation": true
+    },
+    "npf": "<Npf npf>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [
+      "<Rcha rch0>"
+    ],
+    "riv": [
+      "<Riv riv0>"
+    ],
+    "save_flows": false,
+    "sfr": [],
+    "sto": "<Sto sto>",
+    "uzf": [],
+    "wel": [
+      "<Wel wel0>"
+    ],
+    "workspace": "<workspace>"
+  },
+  "simulation/Biscayne/chd0": {
+    "__type__": "Chd",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[3536, 0] da39a3ee5e6b4b0d",
+        "boundname": "21216 chars ca6cbcc81e1d47a7",
+        "cellid": "int64[3536, 2] 0bec98f2d78b71bb",
+        "head": "float64[3536] a94196bfed271de5",
+        "n": 3536
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 2,
+      "ncpl": 106257,
+      "nlay": 1,
+      "nodes": 106257,
+      "nvert": 121090
+    },
+    "filename": "biscayne.chd",
+    "name": "chd0",
+    "print_flows": false,
+    "print_input": false,
+    "save_flows": true,
+    "ts": []
+  },
+  "simulation/Biscayne/dis": {
+    "__type__": "Disv",
+    "botm": "float64[106257] aa69699d813051c8",
+    "cell2d": {
+      "__table__": "Cell2d",
+      "icell2d": "int64[106257] 6896ce74b4837a28",
+      "icvert": "3081453 chars fa67028367232c44",
+      "n": 106257,
+      "ncvert": "int64[106257] 64a0874d48904311",
+      "xc": "float64[106257] 9c2ca7ca129bdc5f",
+      "yc": "float64[106257] 0e7c16db74d22083"
+    },
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "biscayne.disv",
+    "idomain": "int64[106257] 03e090345b70f817",
+    "name": "dis",
+    "ncpl": 106257,
+    "nlay": 1,
+    "nogrb": false,
+    "nvert": 121090,
+    "top": "float64[106257] 1ff07629fe3cb439",
+    "vertices": {
+      "__table__": "Vertices",
+      "iv": "int64[121090] 84230b8edca88e62",
+      "n": 121090,
+      "xv": "float64[121090] 2e60455b9f56642f",
+      "yv": "float64[121090] 4e315a5063e48f05"
+    }
+  },
+  "simulation/Biscayne/evt0": {
+    "__type__": "Evta",
+    "depth": {
+      "0": "float64[106257] 0426b0dc4454abfc"
+    },
+    "dims": {
+      "ncelldim": 2,
+      "ncpl": 106257,
+      "nlay": 1,
+      "nodes": 106257,
+      "nvert": 121090
+    },
+    "export_array_netcdf": false,
+    "filename": "biscayne.evt",
+    "fixed_cell": true,
+    "name": "evt0",
+    "print_flows": false,
+    "print_input": false,
+    "rate": "4190 chars 6b005662f40ad623",
+    "readasarrays": true,
+    "save_flows": true,
+    "surface": {
+      "0": "float64[106257] 1ff07629fe3cb439"
+    },
+    "tas": []
+  },
+  "simulation/Biscayne/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 2,
+      "ncpl": 106257,
+      "nlay": 1,
+      "nodes": 106257,
+      "nvert": 121090
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "biscayne.ic",
+    "name": "ic",
+    "strt": "float64[106257] b1ad79ad050874c8"
+  },
+  "simulation/Biscayne/npf": {
+    "__type__": "Npf",
+    "alternative_cell_averaging": "AMT-HMK",
+    "dims": {
+      "ncelldim": 2,
+      "ncpl": 106257,
+      "nlay": 1,
+      "nodes": 106257,
+      "nvert": 121090
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "biscayne.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[106257] 693c536fc6d657c6",
+    "k": "float64[106257] a250ea40f89752e7",
+    "k22overk": false,
+    "k33": "float64[106257] 0426b0dc4454abfc",
+    "k33overk": false,
+    "name": "npf",
+    "perched": false,
+    "print_flows": false,
+    "save_flows": false,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false
+  },
+  "simulation/Biscayne/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        }
+      ],
+      "1": {
+        "__table__": "Print",
+        "n": 1,
+        "ocsetting": [
+          "ALL"
+        ],
+        "rtype": [
+          "BUDGET"
+        ]
+      },
+      "99": [
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        }
+      ]
+    },
+    "budget_file": "biscayne.cbb",
+    "dims": {
+      "ncelldim": 2,
+      "ncpl": 106257,
+      "nlay": 1,
+      "nodes": 106257,
+      "nvert": 121090
+    },
+    "filename": "biscayne.oc",
+    "head_file": "biscayne.hds",
+    "name": "oc"
+  },
+  "simulation/Biscayne/rch0": {
+    "__type__": "Rcha",
+    "dims": {
+      "ncelldim": 2,
+      "ncpl": 106257,
+      "nlay": 1,
+      "nodes": 106257,
+      "nvert": 121090
+    },
+    "export_array_netcdf": false,
+    "filename": "biscayne.rch",
+    "fixed_cell": true,
+    "name": "rch0",
+    "print_flows": false,
+    "print_input": false,
+    "readasarrays": true,
+    "recharge": "4190 chars e5311a80320a6a52",
+    "save_flows": true,
+    "tas": []
+  },
+  "simulation/Biscayne/riv0": {
+    "__type__": "Riv",
+    "_stress_period_data": "31890 chars fe8e43a9bcc14554",
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 2,
+      "ncpl": 106257,
+      "nlay": 1,
+      "nodes": 106257,
+      "nvert": 121090
+    },
+    "filename": "biscayne.riv",
+    "mover": false,
+    "name": "riv0",
+    "print_flows": false,
+    "print_input": false,
+    "save_flows": true,
+    "ts": []
+  },
+  "simulation/Biscayne/sto": {
+    "__type__": "Sto",
+    "dims": {
+      "ncelldim": 2,
+      "ncpl": 106257,
+      "nlay": 1,
+      "nodes": 106257,
+      "nvert": 121090
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "biscayne.sto",
+    "iconvert": "int64[106257] 693c536fc6d657c6",
+    "name": "sto",
+    "save_flows": false,
+    "ss": "float64[106257] 07011a1b4a535996",
+    "ss_confined_only": false,
+    "storagecoefficient": false,
+    "sy": "float64[106257] a9091ad3440c4245"
+  },
+  "simulation/Biscayne/wel0": {
+    "__type__": "Wel",
+    "_stress_period_data": "21890 chars 62de59c04de82b92",
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 2,
+      "ncpl": 106257,
+      "nlay": 1,
+      "nodes": 106257,
+      "nvert": 121090
+    },
+    "filename": "biscayne.wel",
+    "flow_reduction_length": false,
+    "mover": false,
+    "name": "wel0",
+    "print_flows": false,
+    "print_input": false,
+    "save_flows": true,
+    "ts": []
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "backtracking_number": 20,
+    "backtracking_reduction_factor": "0.2",
+    "backtracking_residual_limit": "0.0005",
+    "backtracking_tolerance": "2.0",
+    "dims": {},
+    "filename": "biscayne.ims",
+    "inner_dvclose": "1e-06",
+    "inner_maximum": 100,
+    "linear_acceleration": "bicgstab",
+    "models": [
+      "Biscayne"
+    ],
+    "name": "ims",
+    "no_ptc": {
+      "__type__": "NoPtc",
+      "no_ptc_option": null
+    },
+    "number_orthogonalizations": 7,
+    "outer_dvclose": "1e-06",
+    "outer_maximum": 500,
+    "preconditioner_drop_tolerance": "0.0001",
+    "preconditioner_levels": 5,
+    "print_option": "summary",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "0.0",
+      "rclose_option": "relative_rclose"
+    },
+    "reordering_method": "rcm",
+    "under_relaxation": "dbd",
+    "under_relaxation_gamma": "0.05",
+    "under_relaxation_kappa": "0.08",
+    "under_relaxation_momentum": "0.0",
+    "under_relaxation_theta": "0.7"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "biscayne.tdis",
+    "name": "tdis",
+    "nper": 100,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 100,
+      "nstp": "int64[100] 17ad917dd61502a1",
+      "perlen": "float64[100] fe0e420a6aff8c6f",
+      "tsmult": "float64[100] fe0e420a6aff8c6f"
+    },
+    "time_units": "DAYS"
+  }
+}

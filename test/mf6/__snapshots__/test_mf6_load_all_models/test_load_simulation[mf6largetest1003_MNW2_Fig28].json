@@ -1,0 +1,532 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": true,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf GWF_1>"
+    ],
+    "mxiter": 1,
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/GWF_1": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [
+      "<Chd chd0>"
+    ],
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [],
+    "evt": [],
+    "filename": "MNW2-Fig28.nam",
+    "ghb": [],
+    "ic": "<Ic ic>",
+    "lak": [],
+    "maw": [
+      "<Maw MAW-NT_Well>"
+    ],
+    "name": "GWF_1",
+    "npf": "<Npf npf>",
+    "obs": "<Obs obs>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [
+      "<Rcha rch0>"
+    ],
+    "riv": [],
+    "save_flows": false,
+    "sfr": [],
+    "sto": "<Sto sto>",
+    "uzf": [],
+    "wel": [
+      "<Wel wel0>"
+    ],
+    "workspace": "<workspace>"
+  },
+  "simulation/GWF_1/MAW-NT_Well": {
+    "__type__": "Maw",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "ifno": "int64[1] 05fe405753166f12",
+        "mawsetting": {
+          "__table__": "Rate",
+          "n": 1,
+          "rate": "float64[1] 05fe405753166f12"
+        },
+        "n": 1
+      },
+      "1": {
+        "__table__": "StressPeriodData",
+        "ifno": "int64[3] d3399b7262fb56cb",
+        "mawsetting": [
+          {
+            "__type__": "HeadLimit",
+            "head_limit": "-7.5"
+          },
+          {
+            "__type__": "Shutoff",
+            "maxrate": "1500.0",
+            "minrate": "1000.0"
+          },
+          {
+            "__type__": "Rate",
+            "rate": "-10000.0"
+          }
+        ],
+        "n": 3
+      }
+    },
+    "boundnames": false,
+    "connectiondata": {
+      "__table__": "Connectiondata",
+      "cellid": "int64[12, 3] 8e821ef5d002dbd9",
+      "hk_skin": "float64[12] 228011d63ed749b4",
+      "icon": "int64[12] dcd8a25b4216059c",
+      "ifno": "int64[12] c49a9785b2243f2f",
+      "n": 12,
+      "radius_skin": "float64[12] d9e21acca150bed9",
+      "scrn_bot": "float64[12] 9e8e09cb3df761aa",
+      "scrn_top": "float64[12] cd5f149e81bd8ece"
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 272,
+      "ncpl": 8160,
+      "nlay": 41,
+      "nodes": 334560,
+      "nrow": 30
+    },
+    "filename": "MNW2-Fig28.maw",
+    "flow_correction": false,
+    "flowing_wells": false,
+    "mover": false,
+    "name": "MAW-NT_Well",
+    "nmawwells": 1,
+    "no_well_storage": true,
+    "non_vertical_wells": false,
+    "obs": "<Obs obs>",
+    "packagedata": {
+      "__table__": "Packagedata",
+      "aux": "float64[1, 0] da39a3ee5e6b4b0d",
+      "bottom": "float64[1] 050cb02de4266f7d",
+      "boundname": [
+        null
+      ],
+      "condeqn": [
+        "MEAN"
+      ],
+      "ifno": "int64[1] 05fe405753166f12",
+      "n": 1,
+      "ngwfnodes": "int64[1] e75a80939d8129f1",
+      "radius": "float64[1] 43850ddbf9434c86",
+      "strt": "float64[1] 05fe405753166f12"
+    },
+    "print_flows": true,
+    "print_head": false,
+    "print_input": true,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/GWF_1/MAW-NT_Well/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null
+          ],
+          "id_": "int64[2] e129f27c5103bc5c",
+          "n": 2,
+          "obsname": [
+            "M1HEAD",
+            "M1RATE"
+          ],
+          "obstype": [
+            "HEAD",
+            "RATE"
+          ]
+        }
+      ],
+      "n": 1,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[1] 5ba93c9db0cff93f",
+        "n": 1,
+        "obs_output_file_name": [
+          "MNW2-Fig28-MAW.csv"
+        ]
+      }
+    },
+    "digits": 10,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 272,
+      "ncpl": 8160,
+      "nlay": 41,
+      "nodes": 334560,
+      "nrow": 30
+    },
+    "filename": "MNW2-Fig28.maw.obs",
+    "name": "obs",
+    "print_input": false
+  },
+  "simulation/GWF_1/chd0": {
+    "__type__": "Chd",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[30, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "cellid": "int64[30, 3] 266ba4d7890bf54b",
+        "head": "float64[30] de0e7c9e496fdd65",
+        "n": 30
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 272,
+      "ncpl": 8160,
+      "nlay": 41,
+      "nodes": 334560,
+      "nrow": 30
+    },
+    "filename": "MNW2-Fig28.chd",
+    "name": "chd0",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": true,
+    "ts": []
+  },
+  "simulation/GWF_1/dis": {
+    "__type__": "Dis",
+    "botm": "float64[334560] bb0c7b33e7781f19",
+    "delc": "float64[30] 55adde9fe7e69190",
+    "delr": "float64[272] 71ecaa2e62507931",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "MNW2-Fig28.dis",
+    "idomain": "int64[334560] 06c471357024a0bc",
+    "length_units": "METERS",
+    "name": "dis",
+    "ncol": 272,
+    "nlay": 41,
+    "nogrb": false,
+    "nrow": 30,
+    "top": "float64[8160] ae4081ce70ff5cf0"
+  },
+  "simulation/GWF_1/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 272,
+      "ncpl": 8160,
+      "nlay": 41,
+      "nodes": 334560,
+      "nrow": 30
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "MNW2-Fig28.ic",
+    "name": "ic",
+    "strt": "float64[334560] 2d1908e0e234c9d0"
+  },
+  "simulation/GWF_1/npf": {
+    "__type__": "Npf",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 272,
+      "ncpl": 8160,
+      "nlay": 41,
+      "nodes": 334560,
+      "nrow": 30
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "MNW2-Fig28.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[334560] 4223a020b9627404",
+    "k": "float64[334560] f37ea32f636e2c73",
+    "k22overk": false,
+    "k33": "float64[334560] 5e0a9388d066814a",
+    "k33overk": false,
+    "name": "npf",
+    "perched": false,
+    "print_flows": false,
+    "save_flows": false,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false
+  },
+  "simulation/GWF_1/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": "246 chars 9552b286b5bbcc79",
+          "id_": "int64[41, 3] f81f78de6d69af08",
+          "n": 41,
+          "obsname": "287 chars 0ca7adc551ac100a",
+          "obstype": "328 chars e636d116fedb3206"
+        }
+      ],
+      "n": 1,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[1] 5ba93c9db0cff93f",
+        "n": 1,
+        "obs_output_file_name": [
+          "MNW2-Fig28-GWF.csv"
+        ]
+      }
+    },
+    "digits": 10,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 272,
+      "ncpl": 8160,
+      "nlay": 41,
+      "nodes": 334560,
+      "nrow": 30
+    },
+    "filename": "MNW2-Fig28.obs",
+    "name": "obs",
+    "print_input": false
+  },
+  "simulation/GWF_1/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "Print",
+        "n": 1,
+        "ocsetting": [
+          "ALL"
+        ],
+        "rtype": [
+          "BUDGET"
+        ]
+      },
+      "2": [
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "LAST",
+          "rtype": "HEAD"
+        }
+      ]
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 272,
+      "ncpl": 8160,
+      "nlay": 41,
+      "nodes": 334560,
+      "nrow": 30
+    },
+    "filename": "MNW2-Fig28.oc",
+    "head_file": "MNW2-Fig28.hds",
+    "name": "oc"
+  },
+  "simulation/GWF_1/rch0": {
+    "__type__": "Rcha",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 272,
+      "ncpl": 8160,
+      "nlay": 41,
+      "nodes": 334560,
+      "nrow": 30
+    },
+    "export_array_netcdf": false,
+    "filename": "MNW2-Fig28.rch",
+    "fixed_cell": true,
+    "name": "rch0",
+    "print_flows": false,
+    "print_input": false,
+    "readasarrays": true,
+    "recharge": {
+      "0": "float64[8160] 5f2f1d866f141cc7"
+    },
+    "save_flows": false,
+    "tas": []
+  },
+  "simulation/GWF_1/sto": {
+    "__type__": "Sto",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "n": 1,
+        "storage": [
+          "steady-state"
+        ]
+      },
+      "1": {
+        "__table__": "StressPeriodData",
+        "n": 1,
+        "storage": [
+          "transient"
+        ]
+      }
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 272,
+      "ncpl": 8160,
+      "nlay": 41,
+      "nodes": 334560,
+      "nrow": 30
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "MNW2-Fig28.sto",
+    "iconvert": "int64[334560] 4223a020b9627404",
+    "name": "sto",
+    "save_flows": false,
+    "ss": "float64[334560] a3e95325fc719a79",
+    "ss_confined_only": false,
+    "storagecoefficient": false,
+    "sy": "float64[334560] ff9856b4091cd415"
+  },
+  "simulation/GWF_1/wel0": {
+    "__type__": "Wel",
+    "_stress_period_data": {
+      "1": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[3, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          null,
+          null,
+          null
+        ],
+        "cellid": "int64[3, 3] 39b9bb30b5c4a66a",
+        "n": 3,
+        "q": "float64[3] a8038e4c29722f09"
+      },
+      "2": {
+        "__table__": "StressPeriodData",
+        "aux": [],
+        "boundname": [],
+        "cellid": [],
+        "n": 0,
+        "q": []
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 272,
+      "ncpl": 8160,
+      "nlay": 41,
+      "nodes": 334560,
+      "nrow": 30
+    },
+    "filename": "MNW2-Fig28.wel",
+    "flow_reduction_length": false,
+    "mover": false,
+    "name": "wel0",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "backtracking_number": 0,
+    "backtracking_reduction_factor": "0.6",
+    "backtracking_residual_limit": "1.0",
+    "backtracking_tolerance": "2.0",
+    "dims": {},
+    "filename": "model.ims",
+    "inner_dvclose": "1e-06",
+    "inner_maximum": 100,
+    "linear_acceleration": "cg",
+    "models": [
+      "GWF_1"
+    ],
+    "name": "ims",
+    "outer_dvclose": "1e-06",
+    "outer_maximum": 30,
+    "print_option": "summary",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "1.0",
+      "rclose_option": null
+    },
+    "relaxation_factor": "1.0",
+    "reordering_method": "none",
+    "scaling_method": "none",
+    "under_relaxation": "none",
+    "under_relaxation_gamma": "0.0",
+    "under_relaxation_kappa": "0.0001",
+    "under_relaxation_momentum": "0.1",
+    "under_relaxation_theta": "0.9"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "simulation.tdis",
+    "name": "tdis",
+    "nper": 3,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 3,
+      "nstp": "int64[3] 9ad9aa9b80ef3b2e",
+      "perlen": "float64[3] aefdc207721e9de9",
+      "tsmult": "float64[3] eee8768cf737be90"
+    },
+    "time_units": "DAYS"
+  }
+}

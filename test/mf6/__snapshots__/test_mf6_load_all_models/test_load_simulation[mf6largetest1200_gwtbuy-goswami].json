@@ -1,0 +1,539 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": true,
+    "dims": {},
+    "exchanges": [
+      "<Gwfgwt gwfgwt>"
+    ],
+    "filename": "mfsim.nam",
+    "maxerrors": 1000,
+    "models": [
+      "<Gwf gwf_goswami>",
+      "<Gwt gwt_goswami>"
+    ],
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>",
+      "<Ims ims1>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/gwf_goswami": {
+    "__type__": "Gwf",
+    "api": [],
+    "buy": "<Buy buy>",
+    "chd": [
+      "<Chd chd-right>"
+    ],
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [],
+    "evt": [],
+    "filename": "gwf_goswami.nam",
+    "ghb": [
+      "<Ghb ghb-1>"
+    ],
+    "ic": "<Ic ic>",
+    "lak": [],
+    "maw": [],
+    "name": "gwf_goswami",
+    "npf": "<Npf npf>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [],
+    "riv": [],
+    "save_flows": false,
+    "sfr": [],
+    "uzf": [],
+    "wel": [],
+    "workspace": "<workspace>"
+  },
+  "simulation/gwf_goswami/buy": {
+    "__type__": "Buy",
+    "denseref": "1.0",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 106,
+      "ncpl": 106,
+      "nlay": 52,
+      "nodes": 5512,
+      "nrow": 1
+    },
+    "filename": "gwf_goswami.buy",
+    "hhformulation_rhs": false,
+    "name": "buy",
+    "nrhospecies": 1,
+    "packagedata": {
+      "__table__": "Packagedata",
+      "auxspeciesname": [
+        "CONCENTRATION"
+      ],
+      "crhoref": "float64[1] 05fe405753166f12",
+      "drhodc": "float64[1] a3841abfabbfd742",
+      "irhospec": "int64[1] 05fe405753166f12",
+      "modelname": [
+        "GWT_GOSWAMI"
+      ],
+      "n": 1
+    }
+  },
+  "simulation/gwf_goswami/chd-right": {
+    "__type__": "Chd",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[52, 1] 5bab75849b9d716b",
+        "boundname": "312 chars ea6563a339f4c05b",
+        "cellid": "int64[52, 3] 7afa8697c9a7b954",
+        "head": "float64[52] d80e7dff7cf67920",
+        "n": 52
+      },
+      "1": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[52, 1] 5bab75849b9d716b",
+        "boundname": "312 chars ea6563a339f4c05b",
+        "cellid": "int64[52, 3] 7afa8697c9a7b954",
+        "head": "float64[52] e6c6fd45441be279",
+        "n": 52
+      },
+      "2": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[52, 1] 5bab75849b9d716b",
+        "boundname": "312 chars ea6563a339f4c05b",
+        "cellid": "int64[52, 3] 7afa8697c9a7b954",
+        "head": "float64[52] 242289e3435dc4dd",
+        "n": 52
+      }
+    },
+    "auxiliary": [
+      "CONCENTRATION"
+    ],
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 106,
+      "ncpl": 106,
+      "nlay": 52,
+      "nodes": 5512,
+      "nrow": 1
+    },
+    "filename": "gwf_goswami-right.chd",
+    "name": "chd-right",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/gwf_goswami/dis": {
+    "__type__": "Dis",
+    "botm": "float64[5512] 08c386b885868045",
+    "delc": "float64[1] 3eafb06982d26cb8",
+    "delr": "float64[106] a1518b7f562e0e3b",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "gwf_goswami.dis",
+    "name": "dis",
+    "ncol": 106,
+    "nlay": 52,
+    "nogrb": false,
+    "nrow": 1,
+    "top": "float64[106] b40abf18ec824efb"
+  },
+  "simulation/gwf_goswami/ghb-1": {
+    "__type__": "Ghb",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[50, 2] 775fce7b484496ee",
+        "bhead": "float64[50] 2cf50ec037feadf7",
+        "boundname": "300 chars 8fc17e563e60ae10",
+        "cellid": "int64[50, 3] 619ca77be472cb37",
+        "cond": "float64[50] 2e6e6bfb2b85d443",
+        "n": 50
+      }
+    },
+    "auxiliary": [
+      "CONCENTRATION",
+      "DENSITY"
+    ],
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 106,
+      "ncpl": 106,
+      "nlay": 52,
+      "nodes": 5512,
+      "nrow": 1
+    },
+    "filename": "gwf_goswami.ghb",
+    "mover": false,
+    "name": "ghb-1",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/gwf_goswami/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 106,
+      "ncpl": 106,
+      "nlay": 52,
+      "nodes": 5512,
+      "nrow": 1
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "gwf_goswami.ic",
+    "name": "ic",
+    "strt": "float64[5512] bad130cdb6b0005c"
+  },
+  "simulation/gwf_goswami/npf": {
+    "__type__": "Npf",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 106,
+      "ncpl": 106,
+      "nlay": 52,
+      "nodes": 5512,
+      "nrow": 1
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "gwf_goswami.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[5512] 766460f4215ef7a9",
+    "k": "float64[5512] 9561101c0f35c552",
+    "k22overk": false,
+    "k33overk": false,
+    "name": "npf",
+    "perched": false,
+    "print_flows": false,
+    "save_flows": true,
+    "save_saturation": false,
+    "save_specific_discharge": true,
+    "thickstrt": false
+  },
+  "simulation/gwf_goswami/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Save",
+          "ocsetting": "LAST",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "LAST",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "LAST",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "LAST",
+          "rtype": "BUDGET"
+        }
+      ]
+    },
+    "budget_file": "gwf_goswami.cbc",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 106,
+      "ncpl": 106,
+      "nlay": 52,
+      "nodes": 5512,
+      "nrow": 1
+    },
+    "filename": "gwf_goswami.oc",
+    "head_file": "gwf_goswami.hds",
+    "headprint": {
+      "__type__": "Headprint",
+      "formatrecord": {
+        "__type__": "Format",
+        "columns": 10,
+        "digits": 6,
+        "format_": "GENERAL",
+        "width": 15
+      }
+    },
+    "name": "oc"
+  },
+  "simulation/gwfgwt": {
+    "__type__": "Gwfgwt",
+    "dims": {},
+    "exgmnamea": "gwf_goswami",
+    "exgmnameb": "gwt_goswami",
+    "filename": "goswami.gwfgwt",
+    "name": "gwfgwt"
+  },
+  "simulation/gwt_goswami": {
+    "__type__": "Gwt",
+    "adv": "<Adv adv>",
+    "api": [],
+    "cnc": [],
+    "dependent_variable_scaling": false,
+    "dims": {},
+    "dis": "<Dis dis>",
+    "filename": "gwt_goswami.nam",
+    "ic": "<Ic ic>",
+    "ist": [],
+    "lkt": [],
+    "mst": "<Mst mst>",
+    "mwt": [],
+    "name": "gwt_goswami",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "save_flows": false,
+    "sft": [],
+    "src": [],
+    "ssm": "<Ssm ssm>",
+    "uzt": [],
+    "workspace": "<workspace>"
+  },
+  "simulation/gwt_goswami/adv": {
+    "__type__": "Adv",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 106,
+      "ncpl": 106,
+      "nlay": 52,
+      "nodes": 5512,
+      "nrow": 1
+    },
+    "filename": "gwt_goswami.adv",
+    "name": "adv",
+    "scheme": "upstream"
+  },
+  "simulation/gwt_goswami/dis": {
+    "__type__": "Dis",
+    "botm": "float64[5512] 08c386b885868045",
+    "delc": "float64[1] 3eafb06982d26cb8",
+    "delr": "float64[106] a1518b7f562e0e3b",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "gwt_goswami.dis",
+    "name": "dis",
+    "ncol": 106,
+    "nlay": 52,
+    "nogrb": false,
+    "nrow": 1,
+    "top": "float64[106] b40abf18ec824efb"
+  },
+  "simulation/gwt_goswami/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 106,
+      "ncpl": 106,
+      "nlay": 52,
+      "nodes": 5512,
+      "nrow": 1
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "gwt_goswami.ic",
+    "name": "ic",
+    "strt": "float64[5512] 766460f4215ef7a9"
+  },
+  "simulation/gwt_goswami/mst": {
+    "__type__": "Mst",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 106,
+      "ncpl": 106,
+      "nlay": 52,
+      "nodes": 5512,
+      "nrow": 1
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "gwt_goswami.sto",
+    "first_order_decay": false,
+    "name": "mst",
+    "porosity": "float64[5512] 0e2695d243f21a88",
+    "save_flows": false,
+    "zero_order_decay": false
+  },
+  "simulation/gwt_goswami/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Save",
+          "ocsetting": "LAST",
+          "rtype": "CONCENTRATION"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "LAST",
+          "rtype": "CONCENTRATION"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "LAST",
+          "rtype": "BUDGET"
+        }
+      ],
+      "1": {
+        "__table__": "Save",
+        "n": 2,
+        "ocsetting": [
+          {
+            "__type__": "Steps",
+            "steps": "int64[3] 91fec4d523113a7e"
+          },
+          "LAST"
+        ],
+        "rtype": [
+          "CONCENTRATION",
+          "CONCENTRATION"
+        ]
+      },
+      "2": {
+        "__table__": "Save",
+        "n": 2,
+        "ocsetting": [
+          {
+            "__type__": "Steps",
+            "steps": "int64[3] 4b80dbdfa5152673"
+          },
+          "LAST"
+        ],
+        "rtype": [
+          "CONCENTRATION",
+          "CONCENTRATION"
+        ]
+      }
+    },
+    "budget_file": "gwt_goswami.cbc",
+    "concentration_file": "gwt_goswami.ucn",
+    "concentrationprint": {
+      "__type__": "Concentrationprint",
+      "formatrecord": {
+        "__type__": "Format",
+        "columns": 10,
+        "digits": 6,
+        "format_": "GENERAL",
+        "width": 15
+      }
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 106,
+      "ncpl": 106,
+      "nlay": 52,
+      "nodes": 5512,
+      "nrow": 1
+    },
+    "filename": "gwt_goswami.oc",
+    "name": "oc"
+  },
+  "simulation/gwt_goswami/ssm": {
+    "__type__": "Ssm",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 106,
+      "ncpl": 106,
+      "nlay": 52,
+      "nodes": 5512,
+      "nrow": 1
+    },
+    "filename": "gwt_goswami.ssm",
+    "name": "ssm",
+    "print_flows": false,
+    "save_flows": false,
+    "sources": {
+      "__table__": "Sources",
+      "auxname": [
+        "CONCENTRATION",
+        "CONCENTRATION"
+      ],
+      "n": 2,
+      "pname": [
+        "GHB-1",
+        "CHD-RIGHT"
+      ],
+      "srctype": [
+        "AUX",
+        "AUX"
+      ]
+    }
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "dims": {},
+    "filename": "gwf_goswami.ims",
+    "inner_dvclose": "1e-09",
+    "inner_maximum": 300,
+    "linear_acceleration": "bicgstab",
+    "models": [
+      "gwf_goswami"
+    ],
+    "name": "ims",
+    "outer_dvclose": "0.0001",
+    "outer_maximum": 100,
+    "print_option": "all",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "0.01",
+      "rclose_option": null
+    },
+    "relaxation_factor": "0.97",
+    "reordering_method": "none",
+    "scaling_method": "none",
+    "under_relaxation": "none"
+  },
+  "simulation/ims1": {
+    "__type__": "Ims",
+    "dims": {},
+    "filename": "gwt_goswami.ims",
+    "inner_dvclose": "1e-09",
+    "inner_maximum": 300,
+    "linear_acceleration": "bicgstab",
+    "models": [
+      "gwt_goswami"
+    ],
+    "name": "ims1",
+    "outer_dvclose": "1e-08",
+    "outer_maximum": 100,
+    "print_option": "all",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "0.01",
+      "rclose_option": null
+    },
+    "relaxation_factor": "0.97",
+    "reordering_method": "none",
+    "scaling_method": "none",
+    "under_relaxation": "none"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "goswami.tdis",
+    "name": "tdis",
+    "nper": 3,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 3,
+      "nstp": "int64[3] eb2142d48d0f7a4a",
+      "perlen": "float64[3] 70ea52629a83137f",
+      "tsmult": "float64[3] 12a72e95677fc01d"
+    },
+    "time_units": "days"
+  }
+}

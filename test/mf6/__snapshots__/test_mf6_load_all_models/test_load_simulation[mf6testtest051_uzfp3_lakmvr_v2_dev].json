@@ -1,0 +1,1030 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": false,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf uzfp3_lakmvr>"
+    ],
+    "mxiter": 1,
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "dims": {},
+    "filename": "uzfp3_lakmvr_v2.ims",
+    "inner_dvclose": "1e-05",
+    "inner_maximum": 200,
+    "linear_acceleration": "bicgstab",
+    "models": [
+      "uzfp3_lakmvr"
+    ],
+    "name": "ims",
+    "outer_dvclose": "0.001",
+    "outer_maximum": 200,
+    "print_option": "summary",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "0.1",
+      "rclose_option": null
+    },
+    "relaxation_factor": "0.99",
+    "under_relaxation": "dbd",
+    "under_relaxation_gamma": "0.0",
+    "under_relaxation_kappa": "1e-05",
+    "under_relaxation_momentum": "0.0",
+    "under_relaxation_theta": "0.97"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "uzfp3_lakmvr_v2.tdis",
+    "name": "tdis",
+    "nper": 24,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 24,
+      "nstp": "int64[24] 5050e96e9a4a3acc",
+      "perlen": "float64[24] b60f0e75dfb93e82",
+      "tsmult": "float64[24] ffcea5d6894bd6de"
+    },
+    "time_units": "SECONDS"
+  },
+  "simulation/uzfp3_lakmvr": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [],
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [],
+    "evt": [],
+    "filename": "uzfp3_lakmvr_v2.nam",
+    "ghb": [
+      "<Ghb ghb0>"
+    ],
+    "ic": "<Ic ic>",
+    "lak": [
+      "<Lak LAK_1>"
+    ],
+    "list_": "uzfp3_lakmvr_v2.lst",
+    "maw": [],
+    "mvr": "<Mvr mvr>",
+    "name": "uzfp3_lakmvr",
+    "newtonoptions": {
+      "__type__": "Newtonoptions",
+      "under_relaxation": true
+    },
+    "npf": "<Npf npf>",
+    "obs": "<Obs obs>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [],
+    "riv": [],
+    "save_flows": false,
+    "sfr": [
+      "<Sfr SFR_1>"
+    ],
+    "sto": "<Sto sto>",
+    "uzf": [
+      "<Uzf UZF_1>"
+    ],
+    "wel": [],
+    "workspace": "<workspace>"
+  },
+  "simulation/uzfp3_lakmvr/LAK_1": {
+    "__type__": "Lak",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Rainfall",
+          "lakeno": 0,
+          "rainfall": "5e-08"
+        },
+        {
+          "__type__": "Evaporation",
+          "evaporation": "1e-08",
+          "lakeno": 0
+        },
+        {
+          "__type__": "Runoff",
+          "lakeno": 0,
+          "runoff": "1.5"
+        },
+        {
+          "__type__": "Withdrawal",
+          "lakeno": 0,
+          "withdrawal": "0.0"
+        },
+        {
+          "__type__": "Rainfall",
+          "lakeno": 1,
+          "rainfall": "1.2e-08"
+        },
+        {
+          "__type__": "Evaporation",
+          "evaporation": "1.1e-08",
+          "lakeno": 1
+        },
+        {
+          "__type__": "Runoff",
+          "lakeno": 1,
+          "runoff": "3.0"
+        },
+        {
+          "__type__": "Withdrawal",
+          "lakeno": 1,
+          "withdrawal": "0.12"
+        }
+      ]
+    },
+    "boundnames": false,
+    "connectiondata": {
+      "__table__": "Connectiondata",
+      "bedleak": "float64[38] 246ab4e1bf2c44ab",
+      "belev": "float64[38] 5c21742e65af385b",
+      "cellid": "int64[38, 3] a2c7a865001451a1",
+      "claktype": "500 chars dab009af2df60ba3",
+      "connlen": "float64[38] b9099e181df98002",
+      "connwidth": "float64[38] ff9fa4fcf91c5100",
+      "iconn": "int64[38] ffc5ef4c1935e526",
+      "ifno": "int64[38] 47e1d583e74d6b3a",
+      "n": 38,
+      "telev": "float64[38] 5c21742e65af385b"
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 2,
+      "nodes": 300,
+      "nrow": 15
+    },
+    "filename": "uzfp3_lakmvr_v2.lak",
+    "implicit": false,
+    "length_conversion": "3.28081",
+    "mover": true,
+    "name": "LAK_1",
+    "nlakes": 2,
+    "noutlets": 2,
+    "obs": "<Obs obs>",
+    "outlets": {
+      "__table__": "Outlets",
+      "couttype": [
+        "MANNING",
+        "MANNING"
+      ],
+      "invert": "float64[2] 4c182ffa552ac172",
+      "lakein": "int64[2] 031ee8071545c35f",
+      "lakeout": "int64[2] 52e0e9d4f46c97ca",
+      "n": 2,
+      "outletno": "int64[2] 031ee8071545c35f",
+      "rough": "float64[2] fdd8b9a7ee0f5cc6",
+      "slope": "float64[2] 052058357fdc3bcd",
+      "width": "float64[2] 9c272e13fc62f886"
+    },
+    "packagedata": {
+      "__table__": "Packagedata",
+      "aux": "float64[2, 0] da39a3ee5e6b4b0d",
+      "boundname": [
+        null,
+        null
+      ],
+      "ifno": "int64[2] 031ee8071545c35f",
+      "n": 2,
+      "nlakeconn": "int64[2] d47b27a3f06f95c3",
+      "strt": "float64[2] ab6aa151281bf9a1"
+    },
+    "print_flows": true,
+    "print_input": true,
+    "print_stage": false,
+    "save_flows": true,
+    "ts": []
+  },
+  "simulation/uzfp3_lakmvr/LAK_1/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "id_": "int64[6] 09bbad0f697a2e15",
+          "n": 6,
+          "obsname": [
+            "LAK1_STAGE",
+            "LAK2_STAGE",
+            "LAK1_TO-MVR",
+            "LAK1_FROM-MVR",
+            "LAK2_TO-MVR",
+            "LAK2_FROM-MVR"
+          ],
+          "obstype": [
+            "STAGE",
+            "STAGE",
+            "TO-MVR",
+            "FROM-MVR",
+            "TO-MVR",
+            "FROM-MVR"
+          ]
+        }
+      ],
+      "n": 1,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[1] 5ba93c9db0cff93f",
+        "n": 1,
+        "obs_output_file_name": [
+          "obs_lak.csv"
+        ]
+      }
+    },
+    "digits": 10,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 2,
+      "nodes": 300,
+      "nrow": 15
+    },
+    "filename": "uzfp3_lakmvr_v2_lak.obs",
+    "name": "obs",
+    "print_input": false
+  },
+  "simulation/uzfp3_lakmvr/SFR_1": {
+    "__type__": "Sfr",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "ifno": "int64[125] 7fe61607eba9945c",
+        "n": 125,
+        "sfrsetting": "5578 chars 395dbece313511c3"
+      }
+    },
+    "boundnames": true,
+    "budget_file": "sfr.cbc",
+    "connectiondata": {
+      "__table__": "Connectiondata",
+      "ic": "992 chars 01c98be9805714a5",
+      "ifno": "int64[31] f602f7d097d69842",
+      "n": 31
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 2,
+      "nodes": 300,
+      "nrow": 15
+    },
+    "diversions": {
+      "__table__": "Diversions",
+      "cprior": [
+        "UPTO"
+      ],
+      "iconr": "int64[1] a5bbebbdf11c537a",
+      "idv": "int64[1] 05fe405753166f12",
+      "ifno": "int64[1] ef4862c8fb031cd5",
+      "n": 1
+    },
+    "filename": "uzfp3_lakmvr_v2.sfr",
+    "length_conversion": "3.28081",
+    "maximum_depth_change": "1e-06",
+    "mover": true,
+    "name": "SFR_1",
+    "nreaches": 31,
+    "obs": "<Obs obs>",
+    "packagedata": {
+      "__table__": "Packagedata",
+      "aux": "float64[31, 0] da39a3ee5e6b4b0d",
+      "boundname": "434 chars 40d5eade76a79471",
+      "cellid": "int64[31, 3] 8de491919f7795d7",
+      "ifno": "int64[31] f602f7d097d69842",
+      "man": "float64[31] 3c596b5daf4e3199",
+      "n": 31,
+      "ncon": "int64[31] 3f93da494be8b1c6",
+      "ndv": "int64[31] a0b691b93af398f6",
+      "rbth": "float64[31] 9e268e0b8213dbfb",
+      "rgrd": "float64[31] d964fb1f7dba8ea4",
+      "rhk": "float64[31] d304ec35387bfd27",
+      "rlen": "float64[31] d853bb8bd2befde7",
+      "rtp": "float64[31] 8c97d100a0f5cce6",
+      "rwid": "float64[31] 127790349765ada6",
+      "ustrf": "float64[31] aa94b52e7a9379b8"
+    },
+    "print_flows": true,
+    "print_input": false,
+    "print_stage": true,
+    "save_flows": true,
+    "storage": false,
+    "ts": []
+  },
+  "simulation/uzfp3_lakmvr/SFR_1/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "id_": "int64[7] 9438e360f578e12c",
+          "n": 7,
+          "obsname": [
+            "extin",
+            "inflow",
+            "frommvr",
+            "gwf",
+            "outflow",
+            "extout",
+            "tomvr"
+          ],
+          "obstype": [
+            "ext-inflow",
+            "inflow",
+            "from-mvr",
+            "sfr",
+            "outflow",
+            "ext-outflow",
+            "to-mvr"
+          ]
+        },
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "id_": "int64[7] 4f9c857a7497af59",
+          "n": 7,
+          "obsname": [
+            "extin",
+            "inflow",
+            "frommvr",
+            "gwf",
+            "outflow",
+            "extout",
+            "tomvr"
+          ],
+          "obstype": [
+            "ext-inflow",
+            "inflow",
+            "from-mvr",
+            "sfr",
+            "outflow",
+            "ext-outflow",
+            "to-mvr"
+          ]
+        },
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "id_": "int64[7] d853c0554d17464e",
+          "n": 7,
+          "obsname": [
+            "extin",
+            "inflow",
+            "frommvr",
+            "gwf",
+            "outflow",
+            "extout",
+            "tomvr"
+          ],
+          "obstype": [
+            "ext-inflow",
+            "inflow",
+            "from-mvr",
+            "sfr",
+            "outflow",
+            "ext-outflow",
+            "to-mvr"
+          ]
+        },
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "id_": "int64[7] 4067a88d8ae0fc4e",
+          "n": 7,
+          "obsname": [
+            "extin",
+            "inflow",
+            "frommvr",
+            "gwf",
+            "outflow",
+            "extout",
+            "tomvr"
+          ],
+          "obstype": [
+            "ext-inflow",
+            "inflow",
+            "from-mvr",
+            "sfr",
+            "outflow",
+            "ext-outflow",
+            "to-mvr"
+          ]
+        },
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "id_": [
+            "allreaches",
+            "allreaches",
+            "allreaches",
+            "allreaches",
+            "allreaches",
+            "allreaches",
+            "allreaches"
+          ],
+          "n": 7,
+          "obsname": [
+            "extin",
+            "inflow",
+            "frommvr",
+            "gwf",
+            "outflow",
+            "extout",
+            "tomvr"
+          ],
+          "obstype": [
+            "ext-inflow",
+            "inflow",
+            "from-mvr",
+            "sfr",
+            "outflow",
+            "ext-outflow",
+            "to-mvr"
+          ]
+        },
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            null,
+            null
+          ],
+          "id_": "int64[4] dbe9b1c75e261ee2",
+          "n": 4,
+          "obsname": [
+            "s01",
+            "s24",
+            "s29",
+            "s31"
+          ],
+          "obstype": [
+            "stage",
+            "stage",
+            "stage",
+            "stage"
+          ]
+        }
+      ],
+      "n": 6,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[6] 7722745105e9e02e",
+        "n": 6,
+        "obs_output_file_name": [
+          "sfr.reach01.csv",
+          "sfr.reach24.csv",
+          "sfr.reach29.csv",
+          "sfr.reach31.csv",
+          "sfr.allreaches.csv",
+          "sfr.stage.csv"
+        ]
+      }
+    },
+    "digits": 10,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 2,
+      "nodes": 300,
+      "nrow": 15
+    },
+    "filename": "sfr.obs",
+    "name": "obs",
+    "print_input": true
+  },
+  "simulation/uzfp3_lakmvr/UZF_1": {
+    "__type__": "Uzf",
+    "_stress_period_data": "10142 chars c1b65f59cfe75884",
+    "boundnames": true,
+    "budget_file": "uzf.cbc",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 2,
+      "nodes": 300,
+      "nrow": 15
+    },
+    "filename": "uzfp3_lakmvr_v2.uzf",
+    "linear_gwet": true,
+    "mover": true,
+    "name": "UZF_1",
+    "ntrailwaves": 10,
+    "nuzfcells": 200,
+    "nwavesets": 50,
+    "obs": "<Obs obs>",
+    "packagedata": {
+      "__table__": "Packagedata",
+      "boundname": "2400 chars fb5a08da8371ee0b",
+      "cellid": "int64[200, 3] 369213feec392cc6",
+      "eps": "float64[200] 1577be77b6842f8e",
+      "ifno": "int64[200] 3abe01fb3965aed8",
+      "ivertcon": "int64[200] 8c5dac73ee51ccb6",
+      "landflag": "int64[200] 865cee10957c12cb",
+      "n": 200,
+      "surfdep": "float64[200] 2e859dc10f65f4d4",
+      "thti": "float64[200] 70f7d8f58fdcea11",
+      "thtr": "float64[200] fbe6a521f1fc923e",
+      "thts": "float64[200] 76e164202ec363fd",
+      "vks": "float64[200] f48eed86629cb780"
+    },
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": true,
+    "simulate_et": true,
+    "simulate_gwseep": true,
+    "square_gwet": false,
+    "ts": [],
+    "unsat_etae": false,
+    "unsat_etwc": false
+  },
+  "simulation/uzfp3_lakmvr/UZF_1/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            "20.0",
+            "1.0",
+            null
+          ],
+          "id_": "int64[5] 09dedc66b004d965",
+          "n": 5,
+          "obsname": [
+            "ID26_INFIL",
+            "ID126_INFIL",
+            "ID26_DPTH=20",
+            "ID126_DPTH=51",
+            "ID126_RCH"
+          ],
+          "obstype": [
+            "INFILTRATION",
+            "INFILTRATION",
+            "WATER-CONTENT",
+            "WATER-CONTENT",
+            "UZF-GWRCH"
+          ]
+        },
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "id_": [
+            "uzfcells",
+            "uzfcells",
+            "uzfcells",
+            "uzfcells",
+            "uzfcells",
+            "uzfcells",
+            "uzfcells"
+          ],
+          "n": 7,
+          "obsname": [
+            "sinf",
+            "frommvr",
+            "rejinf",
+            "rejinftomvr",
+            "uzet",
+            "storage",
+            "net-inf"
+          ],
+          "obstype": [
+            "infiltration",
+            "from-mvr",
+            "rej-inf",
+            "rej-inf-to-mvr",
+            "uzet",
+            "storage",
+            "net-infiltration"
+          ]
+        },
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            null,
+            null
+          ],
+          "id_": [
+            "uzfcells",
+            "uzfcells",
+            "uzfcells",
+            "uzfcells"
+          ],
+          "n": 4,
+          "obsname": [
+            "gwrch",
+            "gwd",
+            "gwdtomvr",
+            "gwet"
+          ],
+          "obstype": [
+            "uzf-gwrch",
+            "uzf-gwd",
+            "uzf-gwd-to-mvr",
+            "uzf-gwet"
+          ]
+        }
+      ],
+      "n": 3,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[3] 29e2dcfbb16f63bb",
+        "n": 3,
+        "obs_output_file_name": [
+          "obs_uzf.csv",
+          "uzf.budget.uzf.csv",
+          "uzf.budget.gwf.csv"
+        ]
+      }
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 2,
+      "nodes": 300,
+      "nrow": 15
+    },
+    "filename": "uzfp3_lakmvr_v2_uzf.obs",
+    "name": "obs",
+    "print_input": false
+  },
+  "simulation/uzfp3_lakmvr/dis": {
+    "__type__": "Dis",
+    "botm": "float64[300] afbad91ddd491666",
+    "delc": "float64[15] 368dd641dfa92c82",
+    "delr": "float64[10] 027424ad624f326a",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "uzfp3_lakmvr_v2.dis",
+    "idomain": "int64[300] f2c570665277938d",
+    "length_units": "FEET",
+    "name": "dis",
+    "ncol": 10,
+    "nlay": 2,
+    "nogrb": false,
+    "nrow": 15,
+    "top": "float64[150] 556b3670a83b717f"
+  },
+  "simulation/uzfp3_lakmvr/ghb0": {
+    "__type__": "Ghb",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[2, 0] da39a3ee5e6b4b0d",
+        "bhead": "float64[2] 5c05b40737dca5f1",
+        "boundname": [
+          null,
+          null
+        ],
+        "cellid": "int64[2, 3] 14be008d94fb5fbc",
+        "cond": "float64[2] b9c8dcff41172651",
+        "n": 2
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 2,
+      "nodes": 300,
+      "nrow": 15
+    },
+    "filename": "uzfp3_lakmvr_v2.ghb",
+    "mover": false,
+    "name": "ghb0",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": true,
+    "ts": []
+  },
+  "simulation/uzfp3_lakmvr/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 2,
+      "nodes": 300,
+      "nrow": 15
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "uzfp3_lakmvr_v2.ic",
+    "name": "ic",
+    "strt": "float64[300] a15c87da070599d7"
+  },
+  "simulation/uzfp3_lakmvr/mvr": {
+    "__type__": "Mvr",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "id1": "int64[104] 294d02ba9aefb89a",
+        "id2": "int64[104] 93de698407eb6371",
+        "mname1": "624 chars c20d2bcef7082b5b",
+        "mname2": "624 chars c20d2bcef7082b5b",
+        "mvrtype": "1040 chars 993b9a8f2c877c72",
+        "n": 104,
+        "pname1": "936 chars 936d4e7ece33df3e",
+        "pname2": "936 chars e9b73a35277481fb",
+        "value": "float64[104] 187acdb4be4a0120"
+      }
+    },
+    "budget_file": "mvr.cbc",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 2,
+      "nodes": 300,
+      "nrow": 15
+    },
+    "filename": "uzfp3_lakmvr_v2.mvr",
+    "maxmvr": 104,
+    "maxpackages": 3,
+    "modelnames": false,
+    "name": "mvr",
+    "packages": {
+      "__table__": "Packages",
+      "mname": [
+        null,
+        null,
+        null
+      ],
+      "n": 3,
+      "pname": [
+        "SFR_1",
+        "LAK_1",
+        "UZF_1"
+      ]
+    },
+    "print_flows": true,
+    "print_input": true
+  },
+  "simulation/uzfp3_lakmvr/npf": {
+    "__type__": "Npf",
+    "alternative_cell_averaging": "AMT-HMK",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 2,
+      "nodes": 300,
+      "nrow": 15
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "uzfp3_lakmvr_v2.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[300] e3b8e2f69b3f458c",
+    "k": "float64[300] 928eda4a87ed7ee5",
+    "k22overk": false,
+    "k33": "float64[300] 8e2ca8c3ea5034ba",
+    "k33overk": false,
+    "name": "npf",
+    "perched": false,
+    "print_flows": false,
+    "save_flows": true,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false
+  },
+  "simulation/uzfp3_lakmvr/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null
+          ],
+          "id_": "int64[2, 3] 03af6eeb344e75e0",
+          "n": 2,
+          "obsname": [
+            "id1_5_2_gwhead",
+            "id2_5_2_gwhead"
+          ],
+          "obstype": [
+            "head",
+            "head"
+          ]
+        }
+      ],
+      "n": 1,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[1] 5ba93c9db0cff93f",
+        "n": 1,
+        "obs_output_file_name": [
+          "obs_head.csv"
+        ]
+      }
+    },
+    "digits": 10,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 2,
+      "nodes": 300,
+      "nrow": 15
+    },
+    "filename": "uzfp3_lakmvr_v2_head.obs",
+    "name": "obs",
+    "print_input": false
+  },
+  "simulation/uzfp3_lakmvr/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        }
+      ],
+      "1": [
+        {
+          "__type__": "Print",
+          "ocsetting": "LAST",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "LAST",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "LAST",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "LAST",
+          "rtype": "HEAD"
+        }
+      ]
+    },
+    "budget_file": "uzfp3_lakmvr.cbc",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 2,
+      "nodes": 300,
+      "nrow": 15
+    },
+    "filename": "uzfp3_lakmvr_v2.oc",
+    "head_file": "uzfp3_lakmvr.hds",
+    "headprint": {
+      "__type__": "Headprint",
+      "formatrecord": {
+        "__type__": "Format",
+        "columns": 10,
+        "digits": 4,
+        "format_": "GENERAL",
+        "width": 11
+      }
+    },
+    "name": "oc"
+  },
+  "simulation/uzfp3_lakmvr/sto": {
+    "__type__": "Sto",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "n": 1,
+        "storage": [
+          "STEADY-STATE"
+        ]
+      },
+      "1": {
+        "__table__": "StressPeriodData",
+        "n": 1,
+        "storage": [
+          "TRANSIENT"
+        ]
+      }
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 10,
+      "ncpl": 150,
+      "nlay": 2,
+      "nodes": 300,
+      "nrow": 15
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "uzfp3_lakmvr_v2.sto",
+    "iconvert": "int64[300] e3b8e2f69b3f458c",
+    "name": "sto",
+    "save_flows": true,
+    "ss": "float64[300] 19827a00e2b4e010",
+    "ss_confined_only": true,
+    "storagecoefficient": false,
+    "sy": "float64[300] 65156b101a71ecd0"
+  }
+}

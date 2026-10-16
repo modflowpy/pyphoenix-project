@@ -1,0 +1,270 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": false,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf model>"
+    ],
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "complexity": "complex",
+    "dims": {},
+    "filename": "mv.ims",
+    "inner_dvclose": "1e-10",
+    "models": [
+      "model"
+    ],
+    "name": "ims",
+    "outer_dvclose": "1e-09"
+  },
+  "simulation/model": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [
+      "<Chd chd_0>"
+    ],
+    "dims": {},
+    "dis": "<Disv dis>",
+    "drn": [],
+    "evt": [],
+    "filename": "model.nam",
+    "ghb": [],
+    "ic": "<Ic ic>",
+    "lak": [],
+    "maw": [],
+    "name": "model",
+    "npf": "<Npf npf>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [
+      "<Rcha rch0>"
+    ],
+    "riv": [
+      "<Riv riv_0>"
+    ],
+    "save_flows": true,
+    "sfr": [],
+    "uzf": [],
+    "wel": [],
+    "workspace": "<workspace>"
+  },
+  "simulation/model/chd_0": {
+    "__type__": "Chd",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[4212, 0] da39a3ee5e6b4b0d",
+        "boundname": "25272 chars 50dc3fe0f08dad7c",
+        "cellid": "int64[4212, 2] 7cf35b0512ca4da3",
+        "head": "float64[4212] 1a93c31812830b35",
+        "n": 4212
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 2,
+      "ncpl": 9463,
+      "nlay": 5,
+      "nodes": 47315,
+      "nvert": 10000
+    },
+    "filename": "model.chd",
+    "name": "chd_0",
+    "print_flows": false,
+    "print_input": false,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/model/dis": {
+    "__type__": "Disv",
+    "botm": "float64[47315] 7350def80be9f36c",
+    "cell2d": {
+      "__table__": "Cell2d",
+      "icell2d": "int64[9463] 21757500337dcd3c",
+      "icvert": "274427 chars e03e2125a74e63a2",
+      "n": 9463,
+      "ncvert": "int64[9463] c33e863a8b273e7f",
+      "xc": "float64[9463] 7c3c18cce11290c4",
+      "yc": "float64[9463] 1bf992f981123dd5"
+    },
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "model.disv",
+    "name": "dis",
+    "ncpl": 9463,
+    "nlay": 5,
+    "nogrb": false,
+    "nvert": 10000,
+    "top": "float64[9463] beb20437f6aae3be",
+    "vertices": {
+      "__table__": "Vertices",
+      "iv": "int64[10000] d22a917a5c58a80c",
+      "n": 10000,
+      "xv": "float64[10000] 45ee0343e4da819a",
+      "yv": "float64[10000] b84404ce20f310f1"
+    }
+  },
+  "simulation/model/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 2,
+      "ncpl": 9463,
+      "nlay": 5,
+      "nodes": 47315,
+      "nvert": 10000
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "model.ic",
+    "name": "ic",
+    "strt": "float64[47315] 199f28d5107337b7"
+  },
+  "simulation/model/npf": {
+    "__type__": "Npf",
+    "dims": {
+      "ncelldim": 2,
+      "ncpl": 9463,
+      "nlay": 5,
+      "nodes": 47315,
+      "nvert": 10000
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "model.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[47315] 518fdefd453654a6",
+    "k": "float64[47315] 8fe70053abc56afd",
+    "k22overk": false,
+    "k33": "float64[47315] a3a8b95d41584bfc",
+    "k33overk": false,
+    "name": "npf",
+    "perched": false,
+    "print_flows": false,
+    "save_flows": false,
+    "save_saturation": false,
+    "save_specific_discharge": true,
+    "thickstrt": false,
+    "xt3doptions": {
+      "__type__": "Xt3doptions",
+      "rhs": null
+    }
+  },
+  "simulation/model/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        }
+      ]
+    },
+    "budget_file": "mv.bud",
+    "dims": {
+      "ncelldim": 2,
+      "ncpl": 9463,
+      "nlay": 5,
+      "nodes": 47315,
+      "nvert": 10000
+    },
+    "filename": "model.oc",
+    "head_file": "mv.hds",
+    "name": "oc"
+  },
+  "simulation/model/rch0": {
+    "__type__": "Rcha",
+    "dims": {
+      "ncelldim": 2,
+      "ncpl": 9463,
+      "nlay": 5,
+      "nodes": 47315,
+      "nvert": 10000
+    },
+    "export_array_netcdf": false,
+    "filename": "model.rcha",
+    "fixed_cell": false,
+    "name": "rch0",
+    "print_flows": false,
+    "print_input": false,
+    "readasarrays": true,
+    "recharge": {
+      "0": "float64[9463] bf154940617a204d"
+    },
+    "save_flows": false,
+    "tas": []
+  },
+  "simulation/model/riv_0": {
+    "__type__": "Riv",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[288, 0] da39a3ee5e6b4b0d",
+        "boundname": "1728 chars 5adfdf746e461827",
+        "cellid": "int64[288, 2] 948779055e9e06b5",
+        "cond": "float64[288] f20cfdf465554900",
+        "n": 288,
+        "rbot": "float64[288] fa096fa3fb13c53e",
+        "stage": "float64[288] e6f10b24c290ddee"
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 2,
+      "ncpl": 9463,
+      "nlay": 5,
+      "nodes": 47315,
+      "nvert": 10000
+    },
+    "filename": "model.riv",
+    "mover": false,
+    "name": "riv_0",
+    "print_flows": false,
+    "print_input": false,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "mv.tdis",
+    "name": "tdis",
+    "nper": 1,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 1,
+      "nstp": "int64[1] 3da89ee273be1343",
+      "perlen": "float64[1] 3eafb06982d26cb8",
+      "tsmult": "float64[1] 3eafb06982d26cb8"
+    }
+  }
+}

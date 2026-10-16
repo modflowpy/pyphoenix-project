@@ -1,0 +1,469 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": false,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf welmvr>"
+    ],
+    "mxiter": 1,
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "complexity": "simple",
+    "dims": {},
+    "filename": "welmvr.ims",
+    "inner_dvclose": "1e-09",
+    "inner_maximum": 100,
+    "linear_acceleration": "cg",
+    "models": [
+      "welmvr"
+    ],
+    "name": "ims",
+    "number_orthogonalizations": 2,
+    "outer_dvclose": "1e-08",
+    "outer_maximum": 5000,
+    "print_option": "summary",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "0.1",
+      "rclose_option": null
+    },
+    "reordering_method": "none",
+    "under_relaxation": "none",
+    "under_relaxation_gamma": "0.0",
+    "under_relaxation_kappa": "0.0",
+    "under_relaxation_momentum": "0.0",
+    "under_relaxation_theta": "0.0"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "welmvr.tdis",
+    "name": "tdis",
+    "nper": 1,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 1,
+      "nstp": "int64[1] 3da89ee273be1343",
+      "perlen": "float64[1] 69d7849f2c39af0a",
+      "tsmult": "float64[1] 3eafb06982d26cb8"
+    },
+    "time_units": "DAYS"
+  },
+  "simulation/welmvr": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [
+      "<Chd CHD-FROM-IBOUND>"
+    ],
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [],
+    "evt": [],
+    "filename": "welmvr.nam",
+    "ghb": [],
+    "ic": "<Ic ic>",
+    "lak": [],
+    "list_": "welmvr.lst",
+    "maw": [
+      "<Maw maw0>"
+    ],
+    "mvr": "<Mvr mvr>",
+    "name": "welmvr",
+    "npf": "<Npf npf>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [],
+    "riv": [],
+    "save_flows": false,
+    "sfr": [],
+    "uzf": [],
+    "wel": [
+      "<Wel wel0>"
+    ],
+    "workspace": "<workspace>"
+  },
+  "simulation/welmvr/CHD-FROM-IBOUND": {
+    "__type__": "Chd",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[1, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          null
+        ],
+        "cellid": "int64[1, 3] d3399b7262fb56cb",
+        "head": "float64[1] 05fe405753166f12",
+        "n": 1
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 20,
+      "ncpl": 400,
+      "nlay": 1,
+      "nodes": 400,
+      "nrow": 20
+    },
+    "filename": "welmvr.ibound.chd",
+    "name": "CHD-FROM-IBOUND",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/welmvr/dis": {
+    "__type__": "Dis",
+    "botm": "float64[400] c624b5c1e9b76852",
+    "delc": "float64[20] 27c1ec5f611ca3f1",
+    "delr": "float64[20] 27c1ec5f611ca3f1",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "welmvr.dis",
+    "length_units": "FEET",
+    "name": "dis",
+    "ncol": 20,
+    "nlay": 1,
+    "nogrb": false,
+    "nrow": 20,
+    "top": "float64[400] 9079c8684054a67d"
+  },
+  "simulation/welmvr/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 20,
+      "ncpl": 400,
+      "nlay": 1,
+      "nodes": 400,
+      "nrow": 20
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "welmvr.ic",
+    "name": "ic",
+    "strt": "float64[400] ddccf4c92324d206"
+  },
+  "simulation/welmvr/maw0": {
+    "__type__": "Maw",
+    "_stress_period_data": {
+      "0": []
+    },
+    "boundnames": false,
+    "connectiondata": {
+      "__table__": "Connectiondata",
+      "cellid": "int64[4, 3] 0e18234594aa03b7",
+      "hk_skin": "float64[4] 4c26b435423089d4",
+      "icon": "int64[4] de8a847bff8c343d",
+      "ifno": "int64[4] f5c356611bc74f63",
+      "n": 4,
+      "radius_skin": "float64[4] 4c26b435423089d4",
+      "scrn_bot": "float64[4] 76e41ee845402ae5",
+      "scrn_top": "float64[4] d0b5c56ff04d01f0"
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 20,
+      "ncpl": 400,
+      "nlay": 1,
+      "nodes": 400,
+      "nrow": 20
+    },
+    "filename": "welmvr.maw",
+    "flow_correction": false,
+    "flowing_wells": false,
+    "mover": true,
+    "name": "maw0",
+    "nmawwells": 4,
+    "no_well_storage": true,
+    "non_vertical_wells": false,
+    "packagedata": {
+      "__table__": "Packagedata",
+      "aux": "float64[4, 0] da39a3ee5e6b4b0d",
+      "bottom": "float64[4] 76e41ee845402ae5",
+      "boundname": [
+        null,
+        null,
+        null,
+        null
+      ],
+      "condeqn": [
+        "THIEM",
+        "THIEM",
+        "THIEM",
+        "THIEM"
+      ],
+      "ifno": "int64[4] f5c356611bc74f63",
+      "n": 4,
+      "ngwfnodes": "int64[4] 06696db32a99e512",
+      "radius": "float64[4] a04026c2c13f74a2",
+      "strt": "float64[4] de8a847bff8c343d"
+    },
+    "print_flows": true,
+    "print_head": false,
+    "print_input": true,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/welmvr/mvr": {
+    "__type__": "Mvr",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "id1": "int64[1] b0aa4b549f325cca",
+        "id2": "int64[1] ef4862c8fb031cd5",
+        "mname1": [
+          null
+        ],
+        "mname2": [
+          null
+        ],
+        "mvrtype": [
+          "FACTOR"
+        ],
+        "n": 1,
+        "pname1": [
+          "WEL-1"
+        ],
+        "pname2": [
+          "MAW-1"
+        ],
+        "value": "float64[1] 3eafb06982d26cb8"
+      }
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 20,
+      "ncpl": 400,
+      "nlay": 1,
+      "nodes": 400,
+      "nrow": 20
+    },
+    "filename": "welmvr.mvr",
+    "maxmvr": 1,
+    "maxpackages": 2,
+    "modelnames": false,
+    "name": "mvr",
+    "packages": {
+      "__table__": "Packages",
+      "mname": [
+        null,
+        null
+      ],
+      "n": 2,
+      "pname": [
+        "WEL-1",
+        "MAW-1"
+      ]
+    },
+    "print_flows": true,
+    "print_input": true
+  },
+  "simulation/welmvr/npf": {
+    "__type__": "Npf",
+    "cvoptions": {
+      "__type__": "Cvoptions",
+      "dewatered": true
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 20,
+      "ncpl": 400,
+      "nlay": 1,
+      "nodes": 400,
+      "nrow": 20
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "welmvr.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[400] ddccf4c92324d206",
+    "k": "float64[400] 014e63f6c5620dc4",
+    "k22overk": false,
+    "k33": "float64[400] 014e63f6c5620dc4",
+    "k33overk": false,
+    "name": "npf",
+    "perched": true,
+    "print_flows": false,
+    "save_flows": false,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false
+  },
+  "simulation/welmvr/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        }
+      ]
+    },
+    "budget_file": "welmvr_a.cbc",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 20,
+      "ncpl": 400,
+      "nlay": 1,
+      "nodes": 400,
+      "nrow": 20
+    },
+    "filename": "welmvr.oc",
+    "head_file": "welmvr_a.hds",
+    "headprint": {
+      "__type__": "Headprint",
+      "formatrecord": {
+        "__type__": "Format",
+        "columns": 20,
+        "digits": 2,
+        "format_": "FIXED",
+        "width": 5
+      }
+    },
+    "name": "oc"
+  },
+  "simulation/welmvr/wel0": {
+    "__type__": "Wel",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[4, 0] da39a3ee5e6b4b0d",
+        "boundname": [
+          "W1",
+          "W2",
+          "W3",
+          "W4"
+        ],
+        "cellid": "int64[4, 3] c1dfde56d7de9eb1",
+        "n": 4,
+        "q": "float64[4] 77296eeefccfab53"
+      }
+    },
+    "boundnames": true,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 20,
+      "ncpl": 400,
+      "nlay": 1,
+      "nodes": 400,
+      "nrow": 20
+    },
+    "filename": "welmvr.wel",
+    "flow_reduction_length": false,
+    "mover": true,
+    "name": "wel0",
+    "obs": "<Obs obs>",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": true,
+    "ts": []
+  },
+  "simulation/welmvr/wel0/obs": {
+    "__type__": "Obs",
+    "continuous": {
+      "__table__": "ContinuousBlock",
+      "continuous": [
+        {
+          "__table__": "Continuous",
+          "id2": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "id_": [
+            "int64[3] e2c9088d290d4817",
+            "int64[3] 8b6888b95fd0da28",
+            "int64[3] ad4b8a28ede8b0ed",
+            "int64[3] 08b29ebe6c5ab407",
+            "W1",
+            "W2",
+            "W3",
+            "W4",
+            "int64[3] d3399b7262fb56cb"
+          ],
+          "n": 9,
+          "obsname": [
+            "WEL1",
+            "WEL2",
+            "WEL3",
+            "WEL4",
+            "MVR1",
+            "MVR2",
+            "MVR3",
+            "MVR4",
+            "WELX"
+          ],
+          "obstype": [
+            "WEL",
+            "WEL",
+            "WEL",
+            "WEL",
+            "TO-MVR",
+            "TO-MVR",
+            "TO-MVR",
+            "TO-MVR",
+            "WEL"
+          ]
+        }
+      ],
+      "n": 1,
+      "output": {
+        "__table__": "Output",
+        "binary": "bool[1] 5ba93c9db0cff93f",
+        "n": 1,
+        "obs_output_file_name": [
+          "wel.obs.csv"
+        ]
+      }
+    },
+    "digits": 10,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 20,
+      "ncpl": 400,
+      "nlay": 1,
+      "nodes": 400,
+      "nrow": 20
+    },
+    "filename": "wel.obs",
+    "name": "obs",
+    "print_input": true
+  }
+}

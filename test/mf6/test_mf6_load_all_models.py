@@ -79,15 +79,27 @@ Each known-passing model's package files are also parsed with their typed,
 per-component grammars, a parse-level parity check against the basic loader.
 They're read off the loaded simulation, so the check shares the one
 `Simulation.load()` call rather than loading the model again to list them.
+
+Each known-passing model's loaded values are also checked against a
+snapshot (`__snapshots__/test_mf6_load_all_models/`, a JSON file per
+model), so a change to what the loader makes of a file shows up as a
+failure and, once accepted with `--snapshot-update`, in the diff. See
+`_load_digest` for what's recorded.
 """
 
+import hashlib
+import json
 from pathlib import Path
 
+import attrs
+import numpy as np
 import pytest
 from modflow_devtools.models import copy_to, get_models
+from syrupy.extensions.json import JSONSnapshotExtension
 
 from flopy4.mf6.codec.reader import loads_typed
 from flopy4.mf6.component import Component
+from flopy4.mf6.item_table import ItemTable
 from flopy4.mf6.package import Package
 from flopy4.mf6.simulation import Simulation
 
@@ -444,6 +456,128 @@ def _check_typed_grammar(model_name: str, files: list[tuple[Path, str]]) -> None
     )
 
 
+# a digested value whose JSON is longer than this is replaced by its hash
+_DIGEST_INLINE = 200
+_DIGEST_NESTED = 4000
+
+
+def _sha1(data: bytes) -> str:
+    return hashlib.sha1(data).hexdigest()[:16]
+
+
+def _digest(value, workspace: str):
+    """``value``, a loaded field's, as JSON-able data that's equal for equal
+    values however they're stored: numbers as int64/float64 (or bool)
+    arrays, by hash; an ItemTable, or a list of one attrs class' instances,
+    by field, as its rows' values; an attrs instance by field. Long values
+    collapse to a hash, so the snapshot shows which field changed, not how."""
+    if isinstance(value, np.generic):
+        value = value.item()  # not numpy's repr, which changes with numpy 2
+    if isinstance(value, Component):
+        return f"<{type(value).__name__} {value.name}>"  # its own entry
+    if isinstance(value, ItemTable):
+        return _table(value.item_cls, len(value), value.values, workspace)
+    if (
+        isinstance(value, list)
+        and value
+        and attrs.has(cls := type(value[0]))
+        and not issubclass(cls, Component)
+        and all(type(v) is cls for v in value)
+    ):  # as if an ItemTable, so a list read as one digests the same
+        return _table(cls, len(value), lambda name: [getattr(v, name) for v in value], workspace)
+    if attrs.has(type(value)):
+        return {
+            "__type__": type(value).__name__,
+            **{
+                f.name: _digest(getattr(value, f.name), workspace)
+                for f in attrs.fields(type(value))
+                if not f.name.startswith("_")
+            },
+        }
+    if (
+        isinstance(value, (list, tuple))
+        and value
+        and all(isinstance(v, (int, float, tuple, np.number)) for v in value)
+    ):
+        try:
+            arr = np.asarray(value)
+        except ValueError:  # ragged
+            pass
+        else:
+            if arr.dtype.kind in "biuf":
+                return _digest(arr, workspace)
+    if isinstance(value, np.ndarray):
+        kind = value.dtype.kind
+        if kind in "iuf":
+            arr = np.ascontiguousarray(value, dtype="<f8" if kind == "f" else "<i8")
+            return f"{arr.dtype.name}{list(arr.shape)} {_sha1(arr.tobytes())}"
+        if kind == "b":
+            return f"bool{list(value.shape)} {_sha1(np.ascontiguousarray(value).tobytes())}"
+        return _collapse(_digest(value.tolist(), workspace))
+    if isinstance(value, dict):
+        return _collapse({str(k): _digest(v, workspace) for k, v in value.items()})
+    if isinstance(value, (list, tuple)):
+        return _collapse([_digest(v, workspace) for v in value])
+    if value is None or isinstance(value, (bool, int, str)):
+        return value
+    if isinstance(value, float):
+        return repr(value)  # exact, and JSON has no nan/inf
+    if isinstance(value, Path):
+        return value.as_posix().replace(workspace, "<workspace>")
+    text = repr(value)
+    assert " at 0x" not in text, f"no stable repr for {type(value).__name__}: {text}"
+    return text.replace(workspace, "<workspace>")
+
+
+def _table(cls: type, n: int, values, workspace: str) -> dict:
+    """Rows of the attrs class ``cls``, by field, ``values(name)`` each's."""
+    return {
+        "__table__": cls.__name__,
+        "n": n,
+        **{
+            f.name: _digest(values(f.name), workspace)
+            for f in attrs.fields(cls)
+            if not f.name.startswith("_")
+        },
+    }
+
+
+def _collapse(data):
+    """``data``, or its hash if its JSON is long: over `_DIGEST_INLINE`
+    for plain values, over `_DIGEST_NESTED` with tables or records in it,
+    so those show by field where they can."""
+    items = data.values() if isinstance(data, dict) else data
+    nested = any(isinstance(v, (dict, list)) for v in items)
+    text = json.dumps(data)
+    if len(text) <= (_DIGEST_NESTED if nested else _DIGEST_INLINE):
+        return data
+    return f"{len(text)} chars {_sha1(text.encode())}"
+
+
+def _load_digest(component: Component, workspace: Path) -> dict:
+    """Each component under ``component`` (itself included), by its path of
+    names, as its type and its fields' values (see `_digest`), private ones
+    like `_stress_period_data` too. Fields left None are omitted, to keep
+    the snapshots small."""
+    out: dict = {}
+    ws = workspace.as_posix()
+
+    def walk(c: Component, path: str) -> None:
+        fields = {}
+        for f in attrs.fields(type(c)):
+            if f.name in ("_parent", "write_context"):
+                continue
+            value = getattr(c, f.name, None)
+            if value is not None:
+                fields[f.name] = _digest(value, ws)
+        out[path] = {"__type__": type(c).__name__, **fields}
+        for name, child in c._children.items():
+            walk(child, f"{path}/{name}")
+
+    walk(component, component.name or "sim")
+    return out
+
+
 def _param(model_name: str):
     marks = []
     # the `large` corpus models take from ~10s to ~2min each to load --
@@ -462,11 +596,12 @@ def _param(model_name: str):
 
 @pytest.mark.skipif(not ALL_MODELS, reason="modflow-devtools model registry unavailable")
 @pytest.mark.parametrize("model_name", [_param(m) for m in ALL_MODELS])
-def test_load_simulation(tmp_path, model_name):
+def test_load_simulation(tmp_path, model_name, snapshot):
     """`Simulation.load()` should parse, structure, and resolve bindings for
     every package/model/exchange/solution referenced from `mfsim.nam`,
     without raising. For a known-passing model, its package files should
-    also parse under their typed grammars (see `_check_typed_grammar`)."""
+    also parse under their typed grammars (see `_check_typed_grammar`),
+    and its loaded values should match its snapshot (see `_load_digest`)."""
     workspace = copy_to(tmp_path, model_name, verbose=False)
     sim_path = workspace / "mfsim.nam"
     if not sim_path.exists():
@@ -481,3 +616,6 @@ def test_load_simulation(tmp_path, model_name):
 
     if model_name in KNOWN_PASSING:
         _check_typed_grammar(model_name, list(_package_files(sim, workspace)))
+        if hasattr(snapshot, "use_extension"):  # not with --snapshot-disable
+            snapshot = snapshot.use_extension(JSONSnapshotExtension)
+        assert _load_digest(sim, workspace) == snapshot

@@ -1,0 +1,896 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": false,
+    "dims": {},
+    "exchanges": [
+      "<Gwfgwf gwfgwf>"
+    ],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf PARENT>",
+      "<Gwf CHILD>"
+    ],
+    "mxiter": 1,
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/CHILD": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [],
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [],
+    "evt": [],
+    "filename": "ex3_child.nam",
+    "ghb": [],
+    "ic": "<Ic ic>",
+    "lak": [],
+    "maw": [],
+    "name": "CHILD",
+    "npf": "<Npf npf>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [],
+    "riv": [],
+    "save_flows": false,
+    "sfr": [
+      "<Sfr sfr0>"
+    ],
+    "uzf": [],
+    "wel": [],
+    "workspace": "<workspace>"
+  },
+  "simulation/CHILD/dis": {
+    "__type__": "Dis",
+    "botm": "float64[1620] ec8431e5fdd2b526",
+    "delc": "float64[15] 7e6f6e8ca2970546",
+    "delr": "float64[18] aeefdf77595b3721",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "ex3_child.dis",
+    "length_units": "UNKNOWN",
+    "name": "dis",
+    "ncol": 18,
+    "nlay": 6,
+    "nogrb": false,
+    "nrow": 15,
+    "top": "float64[270] cd649eaf1304dcf2"
+  },
+  "simulation/CHILD/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 18,
+      "ncpl": 270,
+      "nlay": 6,
+      "nodes": 1620,
+      "nrow": 15
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "ex3_child.ic",
+    "name": "ic",
+    "strt": "float64[1620] 081239cf206fd1c6"
+  },
+  "simulation/CHILD/npf": {
+    "__type__": "Npf",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 18,
+      "ncpl": 270,
+      "nlay": 6,
+      "nodes": 1620,
+      "nrow": 15
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "ex3_child.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[1620] aaaeb6fdb7b0561b",
+    "k": "float64[1620] 5437e6aad763e0fe",
+    "k22overk": false,
+    "k33": "float64[1620] 5437e6aad763e0fe",
+    "k33overk": false,
+    "name": "npf",
+    "perched": false,
+    "print_flows": true,
+    "save_flows": true,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false
+  },
+  "simulation/CHILD/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        }
+      ]
+    },
+    "budget_file": "ex3_child.cbb",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 18,
+      "ncpl": 270,
+      "nlay": 6,
+      "nodes": 1620,
+      "nrow": 15
+    },
+    "filename": "ex3_child.oc",
+    "head_file": "ex3_child.hds",
+    "name": "oc"
+  },
+  "simulation/CHILD/sfr0": {
+    "__type__": "Sfr",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "ifno": "int64[356] 4481f2a9b17c7e7b",
+        "n": 356,
+        "sfrsetting": "15842 chars 09dd39bbfa1d7e84"
+      }
+    },
+    "boundnames": false,
+    "connectiondata": {
+      "__table__": "Connectiondata",
+      "ic": "2848 chars d4be5195a594951e",
+      "ifno": "int64[89] b267dfa6675f8e5c",
+      "n": 89
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 18,
+      "ncpl": 270,
+      "nlay": 6,
+      "nodes": 1620,
+      "nrow": 15
+    },
+    "filename": "ex3_child.sfr",
+    "maximum_depth_change": "0.0001",
+    "mover": true,
+    "name": "sfr0",
+    "nreaches": 89,
+    "packagedata": {
+      "__table__": "Packagedata",
+      "aux": "float64[89, 0] da39a3ee5e6b4b0d",
+      "boundname": "534 chars fcb3d31bc76b1a7d",
+      "cellid": "int64[89, 3] 268fd0216b575b0e",
+      "ifno": "int64[89] b267dfa6675f8e5c",
+      "man": "float64[89] 6b7f00b6e75b8c21",
+      "n": 89,
+      "ncon": "int64[89] 99c14a9e46a7bf4b",
+      "ndv": "int64[89] 68f40431fb546a68",
+      "rbth": "float64[89] f3d2321c35ba2076",
+      "rgrd": "float64[89] c497d0ad4c02b337",
+      "rhk": "float64[89] 055bdec2321976c2",
+      "rlen": "float64[89] 7aba687c965001bb",
+      "rtp": "float64[89] 1ced03b34dd841d1",
+      "rwid": "float64[89] d3abfe9b013eab57",
+      "ustrf": "float64[89] 2136288a2ea02b67"
+    },
+    "print_flows": true,
+    "print_input": false,
+    "print_stage": true,
+    "save_flows": false,
+    "storage": false,
+    "ts": []
+  },
+  "simulation/PARENT": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [
+      "<Chd chd0>",
+      "<Chd chd1>"
+    ],
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [],
+    "evt": [],
+    "filename": "ex3_parent.nam",
+    "ghb": [],
+    "ic": "<Ic ic>",
+    "lak": [],
+    "maw": [],
+    "name": "PARENT",
+    "npf": "<Npf npf>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [],
+    "riv": [],
+    "save_flows": false,
+    "sfr": [
+      "<Sfr sfr0>"
+    ],
+    "uzf": [],
+    "wel": [],
+    "workspace": "<workspace>"
+  },
+  "simulation/PARENT/chd0": {
+    "__type__": "Chd",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[45, 0] da39a3ee5e6b4b0d",
+        "boundname": "270 chars 03a0378c149a4d8b",
+        "cellid": "int64[45, 3] 7ad911d6fdea24d5",
+        "head": "float64[45] 8f8a336b3468d0e7",
+        "n": 45
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 15,
+      "ncpl": 225,
+      "nlay": 3,
+      "nodes": 675,
+      "nrow": 15
+    },
+    "filename": "ex3_parent-left.chd",
+    "name": "chd0",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": true,
+    "ts": []
+  },
+  "simulation/PARENT/chd1": {
+    "__type__": "Chd",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[45, 0] da39a3ee5e6b4b0d",
+        "boundname": "270 chars 03a0378c149a4d8b",
+        "cellid": "int64[45, 3] 4f0b4b59304c3e0d",
+        "head": "float64[45] 8ee72d670de23582",
+        "n": 45
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 15,
+      "ncpl": 225,
+      "nlay": 3,
+      "nodes": 675,
+      "nrow": 15
+    },
+    "filename": "ex3_parent-right.chd",
+    "name": "chd1",
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": true,
+    "ts": []
+  },
+  "simulation/PARENT/dis": {
+    "__type__": "Dis",
+    "botm": "float64[675] c383f3cfa5d2402e",
+    "delc": "float64[15] 33418f7a1d291b06",
+    "delr": "float64[15] d077872c0744cf62",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "ex3_parent.dis",
+    "idomain": "int64[675] b701b4e7df0cdfff",
+    "length_units": "UNKNOWN",
+    "name": "dis",
+    "ncol": 15,
+    "nlay": 3,
+    "nogrb": false,
+    "nrow": 15,
+    "top": "float64[225] 7dcec0cd18b83fdf"
+  },
+  "simulation/PARENT/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 15,
+      "ncpl": 225,
+      "nlay": 3,
+      "nodes": 675,
+      "nrow": 15
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "ex3_parent.ic",
+    "name": "ic",
+    "strt": "float64[675] 35f91c8be80b7682"
+  },
+  "simulation/PARENT/npf": {
+    "__type__": "Npf",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 15,
+      "ncpl": 225,
+      "nlay": 3,
+      "nodes": 675,
+      "nrow": 15
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "ex3_parent.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[675] 2efd9334d628caa3",
+    "k": "float64[675] c58a2f37ee51ccec",
+    "k22overk": false,
+    "k33": "float64[675] c58a2f37ee51ccec",
+    "k33overk": false,
+    "name": "npf",
+    "perched": false,
+    "print_flows": false,
+    "save_flows": true,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false
+  },
+  "simulation/PARENT/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        }
+      ]
+    },
+    "budget_file": "ex3_parent.cbb",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 15,
+      "ncpl": 225,
+      "nlay": 3,
+      "nodes": 675,
+      "nrow": 15
+    },
+    "filename": "ex3_parent.oc",
+    "head_file": "ex3_parent.hds",
+    "name": "oc"
+  },
+  "simulation/PARENT/sfr0": {
+    "__type__": "Sfr",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "ifno": "int64[72] 7feb4a81a73fc62e",
+        "n": 72,
+        "sfrsetting": [
+          {
+            "__type__": "Inflow",
+            "inflow": "40.0"
+          },
+          {
+            "__type__": "Rainfall",
+            "rainfall": "0.0"
+          },
+          {
+            "__type__": "Evaporation",
+            "evaporation": "0.0"
+          },
+          {
+            "__type__": "Runoff",
+            "runoff": "0.0"
+          },
+          {
+            "__type__": "Inflow",
+            "inflow": "0.0"
+          },
+          {
+            "__type__": "Rainfall",
+            "rainfall": "0.0"
+          },
+          {
+            "__type__": "Evaporation",
+            "evaporation": "0.0"
+          },
+          {
+            "__type__": "Runoff",
+            "runoff": "0.0"
+          },
+          {
+            "__type__": "Inflow",
+            "inflow": "0.0"
+          },
+          {
+            "__type__": "Rainfall",
+            "rainfall": "0.0"
+          },
+          {
+            "__type__": "Evaporation",
+            "evaporation": "0.0"
+          },
+          {
+            "__type__": "Runoff",
+            "runoff": "0.0"
+          },
+          {
+            "__type__": "Inflow",
+            "inflow": "0.0"
+          },
+          {
+            "__type__": "Rainfall",
+            "rainfall": "0.0"
+          },
+          {
+            "__type__": "Evaporation",
+            "evaporation": "0.0"
+          },
+          {
+            "__type__": "Runoff",
+            "runoff": "0.0"
+          },
+          {
+            "__type__": "Inflow",
+            "inflow": "0.0"
+          },
+          {
+            "__type__": "Rainfall",
+            "rainfall": "0.0"
+          },
+          {
+            "__type__": "Evaporation",
+            "evaporation": "0.0"
+          },
+          {
+            "__type__": "Runoff",
+            "runoff": "0.0"
+          },
+          {
+            "__type__": "Inflow",
+            "inflow": "0.0"
+          },
+          {
+            "__type__": "Rainfall",
+            "rainfall": "0.0"
+          },
+          {
+            "__type__": "Evaporation",
+            "evaporation": "0.0"
+          },
+          {
+            "__type__": "Runoff",
+            "runoff": "0.0"
+          },
+          {
+            "__type__": "Inflow",
+            "inflow": "0.0"
+          },
+          {
+            "__type__": "Rainfall",
+            "rainfall": "0.0"
+          },
+          {
+            "__type__": "Evaporation",
+            "evaporation": "0.0"
+          },
+          {
+            "__type__": "Runoff",
+            "runoff": "0.0"
+          },
+          {
+            "__type__": "Inflow",
+            "inflow": "0.0"
+          },
+          {
+            "__type__": "Rainfall",
+            "rainfall": "0.0"
+          },
+          {
+            "__type__": "Evaporation",
+            "evaporation": "0.0"
+          },
+          {
+            "__type__": "Runoff",
+            "runoff": "0.0"
+          },
+          {
+            "__type__": "Inflow",
+            "inflow": "0.0"
+          },
+          {
+            "__type__": "Rainfall",
+            "rainfall": "0.0"
+          },
+          {
+            "__type__": "Evaporation",
+            "evaporation": "0.0"
+          },
+          {
+            "__type__": "Runoff",
+            "runoff": "0.0"
+          },
+          {
+            "__type__": "Inflow",
+            "inflow": "0.0"
+          },
+          {
+            "__type__": "Rainfall",
+            "rainfall": "0.0"
+          },
+          {
+            "__type__": "Evaporation",
+            "evaporation": "0.0"
+          },
+          {
+            "__type__": "Runoff",
+            "runoff": "0.0"
+          },
+          {
+            "__type__": "Inflow",
+            "inflow": "0.0"
+          },
+          {
+            "__type__": "Rainfall",
+            "rainfall": "0.0"
+          },
+          {
+            "__type__": "Evaporation",
+            "evaporation": "0.0"
+          },
+          {
+            "__type__": "Runoff",
+            "runoff": "0.0"
+          },
+          {
+            "__type__": "Inflow",
+            "inflow": "0.0"
+          },
+          {
+            "__type__": "Rainfall",
+            "rainfall": "0.0"
+          },
+          {
+            "__type__": "Evaporation",
+            "evaporation": "0.0"
+          },
+          {
+            "__type__": "Runoff",
+            "runoff": "0.0"
+          },
+          {
+            "__type__": "Inflow",
+            "inflow": "0.0"
+          },
+          {
+            "__type__": "Rainfall",
+            "rainfall": "0.0"
+          },
+          {
+            "__type__": "Evaporation",
+            "evaporation": "0.0"
+          },
+          {
+            "__type__": "Runoff",
+            "runoff": "0.0"
+          },
+          {
+            "__type__": "Inflow",
+            "inflow": "0.0"
+          },
+          {
+            "__type__": "Rainfall",
+            "rainfall": "0.0"
+          },
+          {
+            "__type__": "Evaporation",
+            "evaporation": "0.0"
+          },
+          {
+            "__type__": "Runoff",
+            "runoff": "0.0"
+          },
+          {
+            "__type__": "Inflow",
+            "inflow": "0.0"
+          },
+          {
+            "__type__": "Rainfall",
+            "rainfall": "0.0"
+          },
+          {
+            "__type__": "Evaporation",
+            "evaporation": "0.0"
+          },
+          {
+            "__type__": "Runoff",
+            "runoff": "0.0"
+          },
+          {
+            "__type__": "Inflow",
+            "inflow": "0.0"
+          },
+          {
+            "__type__": "Rainfall",
+            "rainfall": "0.0"
+          },
+          {
+            "__type__": "Evaporation",
+            "evaporation": "0.0"
+          },
+          {
+            "__type__": "Runoff",
+            "runoff": "0.0"
+          },
+          {
+            "__type__": "Inflow",
+            "inflow": "0.0"
+          },
+          {
+            "__type__": "Rainfall",
+            "rainfall": "0.0"
+          },
+          {
+            "__type__": "Evaporation",
+            "evaporation": "0.0"
+          },
+          {
+            "__type__": "Runoff",
+            "runoff": "0.0"
+          },
+          {
+            "__type__": "Inflow",
+            "inflow": "0.0"
+          },
+          {
+            "__type__": "Rainfall",
+            "rainfall": "0.0"
+          },
+          {
+            "__type__": "Evaporation",
+            "evaporation": "0.0"
+          },
+          {
+            "__type__": "Runoff",
+            "runoff": "0.0"
+          }
+        ]
+      }
+    },
+    "boundnames": false,
+    "connectiondata": {
+      "__table__": "Connectiondata",
+      "ic": "576 chars 56395201a45db78a",
+      "ifno": "int64[18] 57386cf66364261b",
+      "n": 18
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 15,
+      "ncpl": 225,
+      "nlay": 3,
+      "nodes": 675,
+      "nrow": 15
+    },
+    "filename": "ex3_parent.sfr",
+    "maximum_depth_change": "0.0001",
+    "mover": true,
+    "name": "sfr0",
+    "nreaches": 18,
+    "packagedata": {
+      "__table__": "Packagedata",
+      "aux": "float64[18, 0] da39a3ee5e6b4b0d",
+      "boundname": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "cellid": "int64[18, 3] 2b51847c8eaa7a87",
+      "ifno": "int64[18] 57386cf66364261b",
+      "man": "float64[18] 5ac4e94fca684469",
+      "n": 18,
+      "ncon": "int64[18] c049395d8364474d",
+      "ndv": "int64[18] d77ebb25c8471fdd",
+      "rbth": "float64[18] 4d190e0bd78bf3e1",
+      "rgrd": "float64[18] 924fd3688f83eafd",
+      "rhk": "float64[18] 0911b4d1f3e94773",
+      "rlen": "float64[18] c907021ed235ba55",
+      "rtp": "float64[18] 97d4421f433a7198",
+      "rwid": "float64[18] b5c115861e28d1fb",
+      "ustrf": "float64[18] 2e0284610229a419"
+    },
+    "print_flows": true,
+    "print_input": false,
+    "print_stage": true,
+    "save_flows": false,
+    "storage": false,
+    "ts": []
+  },
+  "simulation/gwfgwf": {
+    "__type__": "Gwfgwf",
+    "boundnames": false,
+    "dims": {},
+    "exchangedata": {
+      "__table__": "Exchangedata",
+      "aux": "float64[666, 0] da39a3ee5e6b4b0d",
+      "boundname": "3996 chars 6c570c21cf118fb6",
+      "cellidm1": "int64[666, 3] 5a25fab0de073446",
+      "cellidm2": "int64[666, 3] 8eb69d909654af19",
+      "cl1": "float64[666] 1b2853644818ccf2",
+      "cl2": "float64[666] ab5d34fdfe901f9e",
+      "hwva": "float64[666] 843ac825fdc2da6f",
+      "ihc": "int64[666] da889a83b00c5e2b",
+      "n": 666
+    },
+    "exgmnamea": "PARENT",
+    "exgmnameb": "CHILD",
+    "filename": "simulation.exg",
+    "gnc": "<Gnc gnc>",
+    "mvr": "<Mvr mvr>",
+    "name": "gwfgwf",
+    "newton": false,
+    "nexg": 666,
+    "print_flows": true,
+    "print_input": true,
+    "save_flows": false,
+    "xt3d": false
+  },
+  "simulation/gwfgwf/gnc": {
+    "__type__": "Gnc",
+    "dims": {},
+    "explicit": false,
+    "filename": "simulation.exg.gnc",
+    "gncdata": {
+      "__table__": "Gncdata",
+      "alphasj": "float64[666, 3] e853a8f7ca6f7c43",
+      "cellidm": "int64[666, 3] 8eb69d909654af19",
+      "cellidn": "int64[666, 3] 5a25fab0de073446",
+      "cellidsj": "22962 chars 0e0a3845f92255a8",
+      "n": 666
+    },
+    "name": "gnc",
+    "numalphaj": 3,
+    "numgnc": 666,
+    "print_flows": true,
+    "print_input": true
+  },
+  "simulation/gwfgwf/mvr": {
+    "__type__": "Mvr",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "id1": "int64[2] 1881cda810558dfe",
+        "id2": "int64[2] e88d9e1ac6adb38b",
+        "mname1": [
+          "PARENT",
+          "CHILD"
+        ],
+        "mname2": [
+          "CHILD",
+          "PARENT"
+        ],
+        "mvrtype": [
+          "FACTOR",
+          "FACTOR"
+        ],
+        "n": 2,
+        "pname1": [
+          "SFR-1",
+          "SFR-1"
+        ],
+        "pname2": [
+          "SFR-1",
+          "SFR-1"
+        ],
+        "value": "float64[2] cd01b3e39400da33"
+      }
+    },
+    "dims": {},
+    "filename": "simulation.exg.mvr",
+    "maxmvr": 2,
+    "maxpackages": 2,
+    "modelnames": true,
+    "name": "mvr",
+    "packages": {
+      "__table__": "Packages",
+      "mname": [
+        "CHILD",
+        "PARENT"
+      ],
+      "n": 2,
+      "pname": [
+        "SFR-1",
+        "SFR-1"
+      ]
+    },
+    "print_flows": true,
+    "print_input": true
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "dims": {},
+    "filename": "ex3_parent.ims",
+    "inner_dvclose": "0.0001",
+    "inner_maximum": 500,
+    "linear_acceleration": "bicgstab",
+    "models": [
+      "PARENT",
+      "CHILD"
+    ],
+    "name": "ims",
+    "outer_dvclose": "0.0001",
+    "outer_maximum": 25,
+    "print_option": "summary",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "0.0001",
+      "rclose_option": null
+    },
+    "relaxation_factor": "0.97",
+    "reordering_method": "none",
+    "scaling_method": "none",
+    "under_relaxation": "none"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "simulation.tdis",
+    "name": "tdis",
+    "nper": 1,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 1,
+      "nstp": "int64[1] 3da89ee273be1343",
+      "perlen": "float64[1] 3eafb06982d26cb8",
+      "tsmult": "float64[1] 3eafb06982d26cb8"
+    },
+    "time_units": "DAYS"
+  }
+}

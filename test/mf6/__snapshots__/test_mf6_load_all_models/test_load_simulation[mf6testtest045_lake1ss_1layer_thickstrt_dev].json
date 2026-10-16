@@ -1,0 +1,387 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": false,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf lakeex1b_1layerc>"
+    ],
+    "mxiter": 1,
+    "name": "simulation",
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/ims": {
+    "__type__": "Ims",
+    "complexity": "simple",
+    "dims": {},
+    "filename": "lakeex1b_1layerc.ims",
+    "inner_dvclose": "1e-07",
+    "inner_maximum": 100,
+    "linear_acceleration": "cg",
+    "models": [
+      "lakeex1b_1layerc"
+    ],
+    "name": "ims",
+    "number_orthogonalizations": 2,
+    "outer_dvclose": "1e-07",
+    "outer_maximum": 500,
+    "print_option": "summary",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "0.1",
+      "rclose_option": null
+    },
+    "relaxation_factor": "1.0",
+    "reordering_method": "none",
+    "under_relaxation": "none",
+    "under_relaxation_gamma": "0.0",
+    "under_relaxation_kappa": "0.0",
+    "under_relaxation_momentum": "0.0",
+    "under_relaxation_theta": "0.0"
+  },
+  "simulation/lakeex1b_1layerc": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [
+      "<Chd chd0>"
+    ],
+    "dims": {},
+    "dis": "<Dis dis>",
+    "drn": [],
+    "evt": [
+      "<Evta EVT>"
+    ],
+    "filename": "lakeex1b_1layerc.nam",
+    "ghb": [],
+    "ic": "<Ic ic>",
+    "lak": [
+      "<Lak LAK_1>"
+    ],
+    "list_": "lakeex1b_1layerc.lst",
+    "maw": [],
+    "name": "lakeex1b_1layerc",
+    "npf": "<Npf npf>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [
+      "<Rcha RCH>"
+    ],
+    "riv": [],
+    "save_flows": false,
+    "sfr": [],
+    "uzf": [],
+    "wel": [],
+    "workspace": "<workspace>"
+  },
+  "simulation/lakeex1b_1layerc/EVT": {
+    "__type__": "Evta",
+    "depth": {
+      "0": "float64[289] bf2a7bbd6409247c"
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 17,
+      "ncpl": 289,
+      "nlay": 1,
+      "nodes": 289,
+      "nrow": 17
+    },
+    "export_array_netcdf": false,
+    "filename": "lakeex1b_1layerc.evt",
+    "fixed_cell": false,
+    "name": "EVT",
+    "print_flows": false,
+    "print_input": true,
+    "rate": {
+      "0": "float64[289] c6aeee0617f0703d"
+    },
+    "readasarrays": true,
+    "save_flows": false,
+    "surface": {
+      "0": "float64[289] d12b14b12c498c24"
+    },
+    "tas": []
+  },
+  "simulation/lakeex1b_1layerc/LAK_1": {
+    "__type__": "Lak",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Rainfall",
+          "lakeno": 0,
+          "rainfall": "0.0116"
+        },
+        {
+          "__type__": "Evaporation",
+          "evaporation": "0.0103",
+          "lakeno": 0
+        },
+        {
+          "__type__": "Runoff",
+          "lakeno": 0,
+          "runoff": "0.0"
+        },
+        {
+          "__type__": "Withdrawal",
+          "lakeno": 0,
+          "withdrawal": "0.0"
+        }
+      ]
+    },
+    "boundnames": false,
+    "connectiondata": {
+      "__table__": "Connectiondata",
+      "bedleak": "float64[20] f15ee1c65d5476e5",
+      "belev": "float64[20] 9797edf8d0eed36b",
+      "cellid": "int64[20, 3] 1b02f5eca6b20fc1",
+      "claktype": "280 chars 4cc67a8baa7624fd",
+      "connlen": "float64[20] 80c13eb71345e3de",
+      "connwidth": "float64[20] 80c13eb71345e3de",
+      "iconn": "int64[20] f632a09fe28bfd45",
+      "ifno": "int64[20] 9797edf8d0eed36b",
+      "n": 20,
+      "telev": "float64[20] 9797edf8d0eed36b"
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 17,
+      "ncpl": 289,
+      "nlay": 1,
+      "nodes": 289,
+      "nrow": 17
+    },
+    "filename": "lakeex1b_1layerc.lak",
+    "implicit": false,
+    "mover": false,
+    "name": "LAK_1",
+    "nlakes": 1,
+    "ntables": 1,
+    "packagedata": {
+      "__table__": "Packagedata",
+      "aux": "float64[1, 0] da39a3ee5e6b4b0d",
+      "boundname": [
+        null
+      ],
+      "ifno": "int64[1] 05fe405753166f12",
+      "n": 1,
+      "nlakeconn": "int64[1] fb9e5000a8e6444d",
+      "strt": "float64[1] e9bf4aac5cccfc21"
+    },
+    "print_flows": true,
+    "print_input": true,
+    "print_stage": true,
+    "save_flows": false,
+    "tables": {
+      "__table__": "Tables",
+      "ifno": "int64[1] 05fe405753166f12",
+      "laktab": [
+        "<Laktab tables0>"
+      ],
+      "n": 1
+    },
+    "time_conversion": "86400.0",
+    "ts": []
+  },
+  "simulation/lakeex1b_1layerc/LAK_1/tables0": {
+    "__type__": "Laktab",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 17,
+      "ncpl": 289,
+      "nlay": 1,
+      "nodes": 289,
+      "nrow": 17
+    },
+    "filename": "lakeex1b_1layerc_table.ref",
+    "name": "tables0",
+    "ncol": 3,
+    "nrow": 151,
+    "table": {
+      "__table__": "Table",
+      "barea": "906 chars 62a0d3f48b4c9aaa",
+      "n": 151,
+      "sarea": "float64[151] 6d993791d854d87e",
+      "stage": "float64[151] 42e1550f11e0c0f4",
+      "volume": "float64[151] 6ac63cdfaf4dee8a"
+    }
+  },
+  "simulation/lakeex1b_1layerc/RCH": {
+    "__type__": "Rcha",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 17,
+      "ncpl": 289,
+      "nlay": 1,
+      "nodes": 289,
+      "nrow": 17
+    },
+    "export_array_netcdf": false,
+    "filename": "lakeex1b_1layerc.rch",
+    "fixed_cell": false,
+    "name": "RCH",
+    "print_flows": false,
+    "print_input": false,
+    "readasarrays": true,
+    "recharge": {
+      "0": "float64[289] 752e53a3d498faaf"
+    },
+    "save_flows": false,
+    "tas": []
+  },
+  "simulation/lakeex1b_1layerc/chd0": {
+    "__type__": "Chd",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[64, 0] da39a3ee5e6b4b0d",
+        "boundname": "384 chars 5f890a6e24f4ab19",
+        "cellid": "int64[64, 3] 38a9f81b60694a57",
+        "head": "float64[64] 290535ffe717494c",
+        "n": 64
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 17,
+      "ncpl": 289,
+      "nlay": 1,
+      "nodes": 289,
+      "nrow": 17
+    },
+    "filename": "lakeex1b_1layerc.chd",
+    "name": "chd0",
+    "print_flows": false,
+    "print_input": true,
+    "save_flows": false,
+    "ts": []
+  },
+  "simulation/lakeex1b_1layerc/dis": {
+    "__type__": "Dis",
+    "botm": "float64[289] 374181252c41c98f",
+    "delc": "float64[17] f4dedec0892403b3",
+    "delr": "float64[17] f4dedec0892403b3",
+    "dims": {},
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "lakeex1b_1layerc.dis",
+    "idomain": "int64[289] 0e2a18a7936c8ff1",
+    "length_units": "UNDEFINED",
+    "name": "dis",
+    "ncol": 17,
+    "nlay": 1,
+    "nogrb": false,
+    "nrow": 17,
+    "top": "float64[289] 59f448962fb067e1"
+  },
+  "simulation/lakeex1b_1layerc/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 17,
+      "ncpl": 289,
+      "nlay": 1,
+      "nodes": 289,
+      "nrow": 17
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "lakeex1b_1layerc.ic",
+    "name": "ic",
+    "strt": "float64[289] d12b14b12c498c24"
+  },
+  "simulation/lakeex1b_1layerc/npf": {
+    "__type__": "Npf",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 17,
+      "ncpl": 289,
+      "nlay": 1,
+      "nodes": 289,
+      "nrow": 17
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "lakeex1b_1layerc.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[289] 8721aaf1f3a3d91f",
+    "k": "float64[289] b41933b8b25e438e",
+    "k22overk": false,
+    "k33": "float64[289] b4532e7abf875dbf",
+    "k33overk": false,
+    "name": "npf",
+    "perched": true,
+    "print_flows": false,
+    "save_flows": false,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": true
+  },
+  "simulation/lakeex1b_1layerc/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        }
+      ]
+    },
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 17,
+      "ncpl": 289,
+      "nlay": 1,
+      "nodes": 289,
+      "nrow": 17
+    },
+    "filename": "lakeex1b_1layerc.oc",
+    "head_file": "lakeex1b_1layerc.hds",
+    "headprint": {
+      "__type__": "Headprint",
+      "formatrecord": {
+        "__type__": "Format",
+        "columns": 10,
+        "digits": 4,
+        "format_": "GENERAL",
+        "width": 11
+      }
+    },
+    "name": "oc"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "lakeex1b_1layerc.tdis",
+    "name": "tdis",
+    "nper": 1,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 1,
+      "nstp": "int64[1] 3da89ee273be1343",
+      "perlen": "float64[1] 3eafb06982d26cb8",
+      "tsmult": "float64[1] 3eafb06982d26cb8"
+    },
+    "time_units": "DAYS"
+  }
+}
