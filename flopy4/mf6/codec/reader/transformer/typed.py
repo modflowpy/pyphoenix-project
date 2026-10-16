@@ -353,7 +353,7 @@ class TypedTransformer(Transformer):
     def _fields(children: list[Any]) -> dict:
         """A block's contents, by field name. A list's elements are always a
         list, anything else one value."""
-        if children and not isinstance(children[0], tuple):
+        if children and not any(isinstance(c, tuple) for c in children):
             # list data (e.g. stress_period_data records), not named fields
             if all(_is_rows(c) for c in children):
                 return {"stress_period_data": _rows(children)}
@@ -361,11 +361,18 @@ class TypedTransformer(Transformer):
                 return {"stress_period_data": children[0]}
             return {"stress_period_data": children}
         fields: dict = {}
+        rows: list = []
         for item in children:
             if isinstance(item, _Element):
                 fields.setdefault(item[0].lower(), []).append(item[1])
             elif isinstance(item, tuple):
                 fields[item[0].lower()] = item[1]
+            elif _is_rows(item):
+                # a list sharing its block with other fields (sim-nam's
+                # SOLUTIONGROUP: MXITER, then its solutions' rows)
+                rows.append(item)
+        if rows:
+            fields["stress_period_data"] = _rows(rows)
         return fields
 
     def __default__(self, data, children, meta):

@@ -935,7 +935,18 @@ def test_typed_loads_record_lines():
 
     # a list beside another field (solutiongroup's MXITER) lexes by value
     nam = "BEGIN SOLUTIONGROUP 1\n  MXITER 2\n  IMS6 sim.ims gwf\nEND SOLUTIONGROUP\n"
-    assert loads_typed(nam, "sim-nam")["solutiongroup 1"]["mxiter"] == 2
+    assert loads_typed(nam, "sim-nam")["solutiongroup 1"] == {
+        "mxiter": 2,
+        "stress_period_data": [["IMS6", "sim.ims", "gwf"]],
+    }
+    # ...its rows kept on either side of the field
+    nam = (
+        "BEGIN SOLUTIONGROUP 1\n  IMS6 a.ims gwf\n  MXITER 3\n  EMS6 b.ems gwe\nEND SOLUTIONGROUP\n"
+    )
+    assert loads_typed(nam, "sim-nam")["solutiongroup 1"] == {
+        "mxiter": 3,
+        "stress_period_data": [["IMS6", "a.ims", "gwf"], ["EMS6", "b.ems", "gwe"]],
+    }
 
 
 def test_typed_loads_array_number_lines():
