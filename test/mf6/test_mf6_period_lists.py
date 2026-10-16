@@ -180,6 +180,20 @@ def test_columns_give_what_rows_do(kwargs):
     assert by_column.identical(wel.to_xarray(**kwargs))
 
 
+@pytest.mark.parametrize("sparse", [True, False], ids=["sparse", "dense"])
+def test_tabular_rows_come_back_as_tables(sparse):
+    wel = wells_by_column()
+    tables = wel.__dict__["_stress_period_data"]
+    wel.from_xarray(wel.to_xarray(sparse=sparse, duplicates="last"))
+    spd = wel.__dict__["_stress_period_data"]
+    assert all(isinstance(t, ItemTable) for t in spd.values())
+    assert spd[0] == tables[0]
+    assert spd[0].columns["q"].dtype == object  # a series
+    assert spd[2].columns["q"].dtype == np.float64
+    if sparse:
+        assert spd == tables
+
+
 def test_columns_raise_on_repeats_as_rows_do():
     with pytest.raises(ValueError, match=r"period 2 sets q at \(0, 0, 1\) twice"):
         wells_by_column().to_xarray()
