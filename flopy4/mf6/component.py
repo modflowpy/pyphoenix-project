@@ -139,42 +139,63 @@ def _resolve_child_name(
 
 
 @lru_cache(maxsize=None)
-def _may_hold_children(cls: type) -> bool:
-    """Whether a row of ``cls`` may hold a child: it has a child column
-    (LAK's laktab), or a record or union arm that may (SFR's
-    CrossSection). Cached, so a list's rows needn't each be walked."""
+def _child_fields(cls: type) -> "tuple[tuple[str, bool], ...]":
+    """The fields of ``cls`` a row's child may be in, each as (name,
+    whether it's a child column): a child column (LAK's laktab), or a
+    record or union arm that may hold one (SFR's CrossSection). Cached,
+    so a list's rows needn't each be walked by field."""
     from flopy4.mf6.item import _field_type_str, _union_field_arms
     from flopy4.mf6.record import _nested_class, record_type
 
     if not attrs.has(cls):
-        return False
+        return ()
+    found = []
     for f in fields(cls):
         if f.metadata.get("child"):
-            return True
+            found.append((f.name, True))
+            continue
         if (t := _field_type_str(f)) is None:
             nested = [c] if (c := record_type(f.type)) else []
         elif (arms := _union_field_arms(cls, f)) is not None:
             nested = list(arms[1])
         else:
             nested = [c] if (c := _nested_class(cls, t)) else []
-        if any(_may_hold_children(c) for c in nested):  # type: ignore[arg-type]  # lru_cache wants Hashable
-            return True
-    return False
+        if any(_may_hold_children(c) for c in nested):
+            found.append((f.name, False))
+    return tuple(found)
+
+
+def _may_hold_children(cls: type) -> bool:
+    """Whether a row of ``cls`` may hold a child (see `_child_fields`)."""
+    return bool(_child_fields(cls))  # type: ignore[arg-type]  # lru_cache wants Hashable
 
 
 def _row_children(row: Any) -> "list[Component]":
     """The children in a list's row (LAK's ``ifno TAB6 FILEIN <file>``),
     including in its union arm (SFR's ``CROSS_SECTION TAB6 FILEIN``)."""
-    if isinstance(row, Component) or not _may_hold_children(type(row)):  # type: ignore[arg-type]  # lru_cache wants Hashable
+    if isinstance(row, Component):
         return []
     children = []
-    for f in fields(type(row)):
-        value = getattr(row, f.name)
-        if f.metadata.get("child"):
+    for name, child in _child_fields(type(row)):  # type: ignore[arg-type]  # lru_cache wants Hashable
+        value = getattr(row, name)
+        if child:
             children += [value] if isinstance(value, Component) else []
         elif attrs.has(type(value)):
             children += _row_children(value)
     return children
+
+
+def _may_hold_any(rows: Any) -> bool:
+    """Whether a list's rows may be or hold a child, by their classes,
+    so a list of plain rows (DISV's 100k cell2d) isn't walked by row."""
+    from flopy4.mf6.item_table import ItemTable
+
+    if isinstance(rows, ItemTable):
+        return _may_hold_children(rows.item_cls)  # type: ignore[arg-type]  # lru_cache wants Hashable
+    return any(
+        issubclass(t, Component) or _may_hold_children(t)  # type: ignore[arg-type]  # lru_cache wants Hashable
+        for t in set(map(type, rows))
+    )
 
 
 def _period_row_children(value: Any) -> "list[Component]":
@@ -182,7 +203,12 @@ def _period_row_children(value: Any) -> "list[Component]":
     ``CROSS_SECTION TAB6 FILEIN <file>``)."""
     if not isinstance(value, dict):
         return []
-    rows = (row for period in value.values() if isinstance(period, list) for row in period)
+    rows = (
+        row
+        for period in value.values()
+        if isinstance(period, list) and _may_hold_any(period)
+        for row in period
+    )
     return [c for row in rows for c in _row_children(row)]
 
 
@@ -361,7 +387,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             if kind == "only":
                 if isinstance(value, Component):
                     result[value.name] = value
-            elif kind == "list":
+            elif kind == "list" and _may_hold_any(value):
                 for child in value:
                     if isinstance(child, Component):
                         result[child.name] = child
@@ -405,7 +431,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
                     value.__dict__["_parent"] = self
                     value.name = _resolve_child_name(used, kind, f.name, value)  # type: ignore[attr-defined]
                     used.add(value.name)  # type: ignore[attr-defined]
-            elif kind == "list":
+            elif kind == "list" and _may_hold_any(value):
                 by_class = _names_by_class(candidates)
                 for child in value:
                     for c in [child] if isinstance(child, Component) else _row_children(child):
