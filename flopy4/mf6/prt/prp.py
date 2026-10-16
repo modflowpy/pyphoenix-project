@@ -22,7 +22,9 @@ class Prp(Package):
         xrpt: float = double()
         yrpt: float = double()
         zrpt: float = double()
-        boundname: Optional[str] = string(default=None, empty_is_none=True, optional=True)
+        boundname: Optional[str] = string(
+            default=None, empty_is_none=True, optional=True, when="boundnames"
+        )
 
     @attrs.define
     class Releasetimes(Item):

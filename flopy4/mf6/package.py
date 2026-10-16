@@ -401,7 +401,6 @@ class Package(Component, ABC):
         return RowContext(
             ncelldim=ncelldim,
             sizes=sizes,
-            boundnames=bool(getattr(self, "boundnames", False)),
             enabled=enabled,
         )
 
@@ -426,7 +425,7 @@ class Package(Component, ABC):
         takes. Ambiguous columnar dict-of-lists input isn't supported (no
         single arm to build columns from).
 
-        A row with a boundname, or a field an option turns on, sets that
+        A row with a field an option turns on (a boundname) sets that
         option.
         """
         context = self._row_context(item_cls)
@@ -455,8 +454,6 @@ class Package(Component, ABC):
             for name, option in conditional_fields(item_cls).items()
             if any(getattr(item, name, None) is not None for item in items)
         }
-        if any(getattr(item, "boundname", None) for item in items):
-            on.add("boundnames")
         fields = attrs.fields_dict(type(self))  # type: ignore[arg-type]
         for option in on:
             if option in fields and not getattr(self, option):

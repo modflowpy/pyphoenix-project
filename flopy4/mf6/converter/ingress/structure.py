@@ -55,7 +55,6 @@ def _parse_rows(
     *,
     context: LoadContext,
     sizes: "dict[str, int] | None" = None,
-    boundnames: bool = False,
     enabled: frozenset[str] = frozenset(),
     union_arm: str = "cellid",
     union_forms: Callable[[Mapping[str, Any]], Any] | None = None,
@@ -71,9 +70,7 @@ def _parse_rows(
     ncelldim = context.ncelldim(classes[0]) if len(classes) == 1 else None
     if ncelldim is None:
         ncelldim = ncelldim_from_dims(dict(context.dims))
-    row_context = RowContext(
-        ncelldim=ncelldim, sizes=sizes or {}, boundnames=boundnames, enabled=enabled
-    )
+    row_context = RowContext(ncelldim=ncelldim, sizes=sizes or {}, enabled=enabled)
     if isinstance(item_cls, tuple):
         return parse_union_items(
             rows, item_cls, words=words, context=row_context, load_child=load_child
@@ -1064,7 +1061,6 @@ def structure_component(
         for shape in sized_by(ic):
             if (n := dim_value(shape, lookup=lambda name: dim_lookup(kwargs, name))) is not None:
                 sizes[shape] = n
-    boundnames = bool(kwargs.get("boundnames", False))
     enabled = frozenset(
         o for ic in item_types for o in conditional_fields(ic).values() if kwargs.get(o)
     )
@@ -1098,7 +1094,6 @@ def structure_component(
             rows,
             item_cls,
             sizes=sizes,
-            boundnames=boundnames,
             enabled=enabled,
             context=rows_context,
             union_arm=union_arm,
@@ -1124,7 +1119,6 @@ def structure_component(
                 rows,
                 item_cls,
                 sizes=sizes,
-                boundnames=boundnames,
                 enabled=enabled,
                 context=rows_context,
                 union_arm=union_arm,
@@ -1161,7 +1155,6 @@ def structure_component(
                     rows,
                     period_item_cls,
                     sizes=sizes,
-                    boundnames=boundnames,
                     enabled=enabled,
                     context=rows_context,
                     union_arm=union_arm,

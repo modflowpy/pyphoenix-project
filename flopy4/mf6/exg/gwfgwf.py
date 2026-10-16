@@ -39,7 +39,9 @@ class Gwfgwf(Exchange):
         cl2: float = double()
         hwva: float = double()
         aux: tuple[float, ...] = array(default=(), shape=("auxiliary",), optional=True)
-        boundname: Optional[str] = string(default=None, empty_is_none=True, optional=True)
+        boundname: Optional[str] = string(
+            default=None, empty_is_none=True, optional=True, when="boundnames"
+        )
 
     auxiliary: Optional[NDArray[np.str_]] = array(
         default=None,
