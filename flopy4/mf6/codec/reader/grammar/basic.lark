@@ -14,10 +14,6 @@ line: ((TOKEN | QUOTED_WORD) ((TOKEN | QUOTED_WORD) | BEGIN | END)*)? _NL+
 // `1997` and `-07-16T19:20:30`.
 TOKEN: /[a-zA-Z0-9'().\/:;<=>?@_~+\[\\-]+/
 COMMA: ","
-// Consecutive lines of only numbers (plus blank and comment-only lines after
-// them), as one token, so big files don't take a token per value. A line it
-// can't take whole lexes as a `line`.
-NUMBER_LINES.2: /(?:[ \t,]*+[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eEdD][+-]?\d+)?(?:[ \t,]++[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eEdD][+-]?\d+)?)*+[ \t,]*+\r?\n(?:[ \t,]*+(?:[#!][^\n]*+)?\r?\n)*+)++/
 BEGIN: "begin"i
 END: "end"i
 
@@ -28,6 +24,7 @@ END: "end"i
 %import common.SH_COMMENT
 %import common._STRING_INNER
 %import typed.QUOTED_WORD
+%import typed.NUMBER_LINES
 
 %ignore WS_INLINE
 %ignore SH_COMMENT

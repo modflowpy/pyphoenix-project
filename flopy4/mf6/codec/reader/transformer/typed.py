@@ -6,11 +6,41 @@ import xarray as xr
 from lark import Token, Transformer
 
 from flopy4.mf6.codec.reader.grammar.names import parse_rule_name
+from flopy4.mf6.codec.reader.transformer.rows import NumberRows, number_values
 from flopy4.utils import parse_number
 
 
 class _Element(tuple):
     """A (name, value) for one element of a list, which collects them."""
+
+
+def _is_number_lines(item: Any) -> bool:
+    return isinstance(item, Token) and item.type.endswith("NUMBER_LINES")
+
+
+def _is_rows(item: Any) -> bool:
+    """Whether a rule's result is a list's rows (`record`s)."""
+    return isinstance(item, NumberRows) or (
+        isinstance(item, list) and all(isinstance(r, (list, NumberRows)) for r in item)
+    )
+
+
+def _rows(parts: list[Any]) -> list | NumberRows:
+    """A list's rows, from `record`s and runs of number-only lines (a
+    NumberRows each), or from groups of these (a list's rule, split where
+    a comment-only line ends one). Rows that are all one run stay one, so
+    their text can be read by column."""
+    if len(parts) == 1 and isinstance(parts[0], NumberRows):
+        return parts[0]
+    rows: list = []
+    for part in parts:
+        if isinstance(part, NumberRows):
+            rows.extend(part.rows)
+        elif part and isinstance(part[0], (list, NumberRows)):
+            rows.extend(_rows(part))
+        else:
+            rows.append(part)
+    return rows
 
 
 def unquote(token: Token) -> str:
@@ -200,7 +230,21 @@ class TypedTransformer(Transformer):
         return parse_number(str(items[0]))
 
     def data(self, items: list[Any]) -> np.ndarray:
-        return np.array(items)
+        if not any(_is_number_lines(i) for i in items):
+            return np.array(items)
+        parts: list[np.ndarray] = []
+        values: list[float] = []
+        for item in items:
+            if _is_number_lines(item):
+                if values:
+                    parts.append(np.array(values, dtype=float))
+                    values = []
+                parts.append(number_values(str(item)))
+            else:
+                values.append(item)
+        if values:
+            parts.append(np.array(values, dtype=float))
+        return parts[0] if len(parts) == 1 else np.concatenate(parts)
 
     def netcdf(self, _) -> dict[str, bool]:
         return {"netcdf": True}
@@ -209,20 +253,18 @@ class TypedTransformer(Transformer):
         """Extract block index (e.g., period number, or utl-tas's time)."""
         return parse_number(str(items[0]))
 
-    def stress_period_data(self, items: list[Any]) -> list[Any]:
-        """Handle stress period data - now a list of stress_record trees.
+    def stress_period_data(self, items: list[Any]) -> list | NumberRows:
+        """A period block's list rows."""
+        return _rows(items)
 
-        Each item is a stress_record tree that has already been processed by stress_record method.
-        Return the list of processed records directly.
-        """
-        return items  # items are already processed stress records (lists of values)
-
-    def record(self, items: list[Any]) -> list[Any]:
-        """Handle a single stress period data record.
+    def record(self, items: list[Any]) -> list[Any] | NumberRows:
+        """A list row, or a run of number-only rows (a NumberRows).
 
         The parser gives us stress_token trees plus a NEWLINE token.
         Extract values from stress_token trees and filter out the NEWLINE token.
         """
+        if len(items) == 1 and _is_number_lines(items[0]):
+            return NumberRows(str(items[0]))
         values = []
         for item in items:
             if self._is_newline_token(item):
@@ -288,6 +330,8 @@ class TypedTransformer(Transformer):
         list, anything else one value."""
         if children and not isinstance(children[0], tuple):
             # list data (e.g. stress_period_data records), not named fields
+            if all(_is_rows(c) for c in children):
+                return {"stress_period_data": _rows(children)}
             if len(children) == 1 and isinstance(children[0], list):
                 return {"stress_period_data": children[0]}
             return {"stress_period_data": children}
@@ -328,6 +372,9 @@ class TypedTransformer(Transformer):
                 value = arm
         elif "val" in tags:
             value = children[0] if len(children) == 1 else children
+        elif not tags and children and all(isinstance(c, (list, NumberRows)) for c in children):
+            # a list's rows, e.g. `packagedatadata: record+`
+            return _rows(children)
         else:
             return super().__default__(data, children, meta)
         return _Element((name, value)) if "elem" in tags else (name, value)

@@ -2007,7 +2007,7 @@ def test_rows_as_each_row_reads():
 )
 def test_table_as_rows_read(text):
     """A block of only numbers reads by column as `from_rows` reads it."""
-    from flopy4.mf6.codec.reader.transformer.basic import NumberRows
+    from flopy4.mf6.codec.reader.transformer.rows import NumberRows
     from flopy4.mf6.gwf import Sfr
     from flopy4.mf6.item import RowContext
     from flopy4.mf6.item_table import read_table
@@ -4523,4 +4523,4 @@ END continuous
 """
     basic = loads(mf6_input)["continuous FILEOUT x.csv"]
     typed = loads(mf6_input, component="utl-obs")["continuous FILEOUT x.csv"]
-    assert basic == typed["stress_period_data"][0].children
+    assert basic == typed["stress_period_data"]

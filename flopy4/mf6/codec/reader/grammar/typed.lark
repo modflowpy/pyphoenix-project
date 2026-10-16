@@ -31,13 +31,13 @@ factor: "factor"i double
 iprn: "iprn"i integer
 binary: "(binary)"i
 filename: word
-data: _data_line+
+data: (_data_line | NUMBER_LINES)+
 _data_line: double+ [_remark] _NL
 // begin/end after a record's first token are words, as in basic.lark: MF6
 // only takes a line's first word as a block keyword, so later ones are data
 // (a boundname `end`, test106's `0.0 ... begin SP 1` remark). `!` keeps the
 // filtered-out keyword token so the transformer can return it as a word.
-record: token (token | block_kw_word)* _NL
+record: token (token | block_kw_word)* _NL | NUMBER_LINES
 !block_kw_word: _BEGIN | _END
 // Whole tokens only, like the number terminals below. As "begin"i/"end"i
 // literals they outrank BARE_WORD (-1) and matched a word's prefix, so a
@@ -64,6 +64,11 @@ BARE_WORD.-1: /[a-zA-Z0-9'().\/:;<=>?@_~+\[\\-]+/
 // basic.lark, which imports this terminal.
 QUOTED_WORD.1: /'[^'\n]*'|"[^"\n]*"/
 _token: word | number
+// Consecutive lines of only numbers (plus blank and comment-only lines after
+// them), as one token, so big files don't take a token per value. A line it
+// can't take whole lexes as a `record` or `_data_line` (basic.lark's `line`).
+// A `record` that's one of these is all its rows.
+NUMBER_LINES.2: /(?:[ \t,]*+[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eEdD][+-]?\d+)?(?:[ \t,]++[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eEdD][+-]?\d+)?)*+[ \t,]*+\r?\n(?:[ \t,]*+(?:[#!][^\n]*+)?\r?\n)*+)++/
 // Excludes "," (not just whitespace) so a remark can never out-length a
 // COMMA-separated data run with no surrounding spaces (confirmed against a
 // real fixture: TDIS's "1.00000000,1,1.00000000" -- maximal munch always

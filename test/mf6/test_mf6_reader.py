@@ -76,12 +76,14 @@ INTERNAL FACTOR 1.0 IPRN 3
     assert str(iprn.data) == "iprn"
     assert str(iprn.children[0].data) == "integer"
     assert int(iprn.children[0].children[0]) == 3
+    # the lines of only numbers are one token
     data = readarray.children[-1]
-    assert len(data.children) == 28
-    assert str(data.children[0].data) == "double"
-    assert str(data.children[-1].data) == "double"
-    assert float(data.children[0].children[0]) == 1.2
-    assert float(data.children[-1].children[0]) == 8.8
+    assert len(data.children) == 1
+    assert data.children[0].type == "NUMBER_LINES"
+    values = str(data.children[0]).split()
+    assert len(values) == 28
+    assert float(values[0]) == 1.2
+    assert float(values[-1]) == 8.8
 
 
 def test_parse_layered_array():
@@ -125,9 +127,11 @@ INTERNAL FACTOR 1.0 IPRN 3
     assert str(iprn.data) == "iprn"
     assert int(iprn.children[0].children[0]) == 3
     data = layer2.children[1]
-    assert len(data.children) == 28
-    assert float(data.children[0].children[0]) == 1.2
-    assert float(data.children[-1].children[0]) == 8.8
+    assert len(data.children) == 1
+    values = str(data.children[0]).split()
+    assert len(values) == 28
+    assert float(values[0]) == 1.2
+    assert float(values[-1]) == 8.8
 
 
 def test_parse_constant_array():
@@ -842,7 +846,7 @@ def test_typed_loads_words_starting_with_begin_or_end():
 
     obs = "BEGIN CONTINUOUS FILEOUT x.csv\n  endwell HEAD 1 1 1\nEND CONTINUOUS\n"
     typed = loads_typed(obs, "utl-obs")["continuous FILEOUT x.csv"]
-    assert typed["stress_period_data"][0].children == loads(obs)["CONTINUOUS FILEOUT x.csv"]
+    assert typed["stress_period_data"] == loads(obs)["CONTINUOUS FILEOUT x.csv"]
 
 
 def test_typed_loads_bare_begin_or_end_word():
@@ -865,7 +869,7 @@ def test_typed_loads_begin_or_end_after_row_start():
     assert rows == loads(ghb)["PERIOD 1"]
 
     ts = "BEGIN TIMESERIES\n  0.0 1.0 begin SP 1\n  1.0 2.0 end\nEND TIMESERIES\n"
-    typed = loads_typed(ts, "utl-ts")["timeseries"]["stress_period_data"][0].children
+    typed = loads_typed(ts, "utl-ts")["timeseries"]["stress_period_data"]
     assert typed == [[0.0, 1.0, "begin", "SP", 1], [1.0, 2.0, "end"]]
 
 
@@ -878,6 +882,48 @@ def test_typed_loads_bang_comment_after_number():
     rows = loads_typed(ghb, "gwf-ghb")["period 1"]["stress_period_data"]
     assert rows == [[1, 1, 1, 1.0, 10.0]]
     assert rows == loads(ghb)["PERIOD 1"]
+
+
+def test_typed_loads_number_lines_as_text():
+    """A list's rows that are only numbers come back as their text (a
+    NumberRows), as from the basic grammar, and a comment-only line
+    doesn't split a list. Rows with words among them are a list."""
+    from flopy4.mf6.codec.reader import loads, loads_typed
+    from flopy4.mf6.codec.reader.transformer.rows import NumberRows
+
+    ghb = (
+        "BEGIN PERIOD 1\n  1 1 1 1.0 10.0\n  # a comment\n  1 1 2 1.0D1, 10.0\nEND PERIOD\n"
+        "BEGIN PERIOD 2\n  1 1 1 1.0 10.0 a\n  # a comment\n  1 1 2 1.0 10.0\nEND PERIOD\n"
+    )
+    typed, basic = loads_typed(ghb, "gwf-ghb"), loads(ghb)
+    rows = typed["period 1"]["stress_period_data"]
+    assert isinstance(rows, NumberRows)
+    assert rows == [[1, 1, 1, 1.0, 10.0], [1, 1, 2, 10.0, 10.0]]
+    assert rows == basic["PERIOD 1"]
+    rows = typed["period 2"]["stress_period_data"]
+    assert rows == [[1, 1, 1, 1.0, 10.0, "a"], [1, 1, 2, 1.0, 10.0]]
+    assert rows == basic["PERIOD 2"]
+
+    # a block's list other than a period's
+    disv = "BEGIN VERTICES\n  1 0.0 0.0\n  2 1.0 0.0\nEND VERTICES\n"
+    assert loads_typed(disv, "gwf-disv")["vertices"]["stress_period_data"] == [
+        [1, 0.0, 0.0],
+        [2, 1.0, 0.0],
+    ]
+
+
+def test_typed_loads_array_number_lines():
+    """An array's lines of only numbers read as one, among lines that
+    aren't (a remark), comments and `D` exponents included."""
+    from flopy4.mf6.codec.reader import loads_typed
+
+    ic = (
+        "BEGIN GRIDDATA\n  STRT\n    INTERNAL\n      1 2.0\n      # a comment\n"
+        "      3.0D0 4\n      5 6 remark\n      7, 8\nEND GRIDDATA\n"
+    )
+    strt = loads_typed(ic, "gwf-ic")["griddata"]["strt"]["data"]
+    assert strt.dtype == np.float64
+    np.testing.assert_array_equal(strt, np.arange(1.0, 9.0))
 
 
 @pytest.mark.parametrize("component", ["gwf-maw", "gwf-wel"])

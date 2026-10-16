@@ -15,7 +15,7 @@ from typing import Any
 import attrs
 import numpy as np
 
-from flopy4.mf6.codec.reader.transformer.basic import _number
+from flopy4.mf6.codec.reader.transformer.rows import _number, without_comments
 from flopy4.mf6.constants import FILL_INT64
 from flopy4.mf6.item import (
     Item,
@@ -441,15 +441,6 @@ class ItemTable(MutableSequence):
         self.item_cls, self.columns, self._n = state
 
 
-def _rows_text(text: str) -> str:
-    """The text without its comment-only lines (NUMBER_LINES allows them)."""
-    if "#" not in text and "!" not in text:
-        return text
-    return "\n".join(
-        line for line in text.split("\n") if not (s := line.lstrip()) or s[0] not in "#!"
-    )
-
-
 _SPACE = np.zeros(256, bool)
 _SPACE[[9, 10, 13, 32]] = True
 
@@ -503,7 +494,7 @@ def read_table(item_cls: type[Item], text: str, context: RowContext) -> ItemTabl
     """A block's rows from its text (NUMBER_LINES', all numbers), if each
     has as many values, in the same layout (see `item._positions`), and
     every field converts by column; else None, for `Item.from_rows`."""
-    text = _rows_text(text)
+    text = without_comments(text)
     first = next((line.split() for line in text.split("\n") if line.strip()), None)
     if first is None:
         return None

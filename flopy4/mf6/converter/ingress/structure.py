@@ -14,7 +14,7 @@ from modflow_devtools.dfns import dim_value
 from flopy4.dimensions import DimensionProvider
 from flopy4.mf6._types import TimeArraySeriesRef
 from flopy4.mf6.block import block_list_type
-from flopy4.mf6.codec.reader.transformer.basic import NumberRows
+from flopy4.mf6.codec.reader.transformer.rows import NumberRows
 from flopy4.mf6.component import Component, get_ftype
 from flopy4.mf6.item import (
     Item,
