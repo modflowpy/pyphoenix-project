@@ -531,7 +531,7 @@ def read_ragged(item_cls: type[Item], text: str, context: RowContext) -> list[It
     column a width at a time, as `Item.from_rows` reads them, if each
     width's rows have one layout (see `item._plan`) and every field
     converts by column; else None, for `Item.from_rows`."""
-    if not _row_plannable(item_cls):
+    if not _row_plannable(item_cls):  # type: ignore[arg-type]  # lru_cache wants Hashable
         return None
     text = without_comments(text)
     try:

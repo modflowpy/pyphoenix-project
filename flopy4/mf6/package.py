@@ -334,12 +334,12 @@ class Package(Component, ABC):
                 # just a referenced row's (SFR's), check the rest by column
                 # rather than evaluate each's (SFR's 10k connectiondata rows)
                 names: list[str] = []
-                first = rows[0]
-                dim_value(
-                    shape,
-                    lookup=lambda name: names.append(name) or getattr(first, name, None),
-                    select=select,
-                )
+
+                def lookup(name: str, first=rows[0], names=names) -> Any:
+                    names.append(name)
+                    return getattr(first, name, None)
+
+                dim_value(shape, lookup=lookup, select=select)
                 if looked_up and len(set(names)) == 1:
                     by_key = counts[looked_up[-1]]
                     keys = _column_values(rows, names[0])
