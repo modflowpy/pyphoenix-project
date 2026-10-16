@@ -105,7 +105,7 @@ def test_loads_records():
     # a quote, a trailing comment) is read on its own.
     from lark import Token
 
-    from flopy4.mf6.codec.reader import BASIC_PARSER
+    from flopy4.mf6.codec.reader.parser import get_basic_parser
 
     mf6_input = """
 BEGIN period 1
@@ -137,7 +137,7 @@ END period
         ["1997-07-16T19:20:30", 7],
         [100000.0, "e", 2],
     ]
-    tree = BASIC_PARSER.parse(mf6_input)
+    tree = get_basic_parser().parse(mf6_input)
     tokens = [t for t in tree.scan_values(lambda v: isinstance(v, Token)) if t.type == "RECORDS"]
     assert [str(t).split("\n")[0].strip() for t in tokens] == ["1 inflow 0.0", "2 begin sp 1"]
 

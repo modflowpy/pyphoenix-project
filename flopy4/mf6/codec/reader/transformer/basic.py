@@ -72,9 +72,6 @@ class BasicTransformer(Transformer):
             return " ".join([str(name), *map(str, rest)])
         return str(name)
 
-    def _list(self, items: list[Any]) -> list[Any]:
-        return items[0] if items else []
-
     def line(self, items: list[Any]) -> list[Any]:
         return [str(i) if isinstance(i, Token) else i for i in items]
 
@@ -85,13 +82,14 @@ class BasicTransformer(Transformer):
         # Each line a row, as `line` reads it; blank and comment-only lines
         # aren't rows.
         rows = _RecordRows()
-        for line in str(token).replace(",", " ").split("\n"):
+        for line in token.value.replace(",", " ").split("\n"):
             if (values := line.split()) and values[0][0] not in "#!":
                 rows.append([_value(v) for v in values])
         return rows
 
     def NUMBERS(self, token: Token) -> NumberRows:
-        return NumberRows(str(token))
+        # `value`, the text the token holds: `str(token)` would copy it.
+        return NumberRows(token.value)
 
     def QUOTED_WORD(self, token: Token) -> str:
         # Quoting forces string interpretation even if content looks numeric.

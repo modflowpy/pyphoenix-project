@@ -6,8 +6,8 @@ from lark.exceptions import LarkError
 from flopy4.mf6.codec.reader.parser import get_basic_parser, get_typed_parser
 from flopy4.mf6.codec.reader.transformer import BasicTransformer, get_typed_transformer
 
-BASIC_PARSER = get_basic_parser()
-BASIC_TRANSFORMER = BasicTransformer()
+# Transforms as it parses (see `get_basic_parser`).
+BASIC_PARSER = get_basic_parser(BasicTransformer())
 
 # Some real-world fixtures (mf5to15-converted ones observed so far) carry
 # non-MF6 legacy content -- e.g. a classic MODFLOW-2005/NWT flat-format
@@ -75,13 +75,12 @@ def loads(data: str, *, component: str | None = None) -> Any:
 def loads_basic(data: str) -> Any:
     """Parse MF6 input file content with the generic, untyped grammar."""
     try:
-        tree = BASIC_PARSER.parse(data)
+        return BASIC_PARSER.parse(data)
     except LarkError:
         trimmed = _trim_trailing_garbage(data)
         if trimmed == data:
             raise
-        tree = BASIC_PARSER.parse(trimmed)
-    return BASIC_TRANSFORMER.transform(tree)
+        return BASIC_PARSER.parse(trimmed)
 
 
 def loads_typed(data: str, component: str) -> Any:
