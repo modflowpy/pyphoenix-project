@@ -3,7 +3,7 @@ from typing import Any
 
 from lark import Token, Transformer
 
-from flopy4.mf6.codec.reader.transformer.rows import NumberRows
+from flopy4.mf6.codec.reader.transformer.rows import BlockRows, NumberRows
 from flopy4.mf6.codec.reader.transformer.typed import unquote
 from flopy4.utils import parse_number
 
@@ -40,13 +40,9 @@ class BasicTransformer(Transformer):
         body = items[2:-2]
         if len(body) == 1 and isinstance(body[0], NumberRows):
             return {items[1]: body[0]}
-        lines: list[Any] = []
-        for item in body:
-            if isinstance(item, NumberRows):
-                lines.extend(item.rows)
-            else:
-                lines.append(item)
-        return {items[1]: lines}
+        if any(isinstance(item, NumberRows) for item in body):
+            return {items[1]: BlockRows(body)}
+        return {items[1]: body}
 
     def block_name(self, items: list[Any]) -> str:
         # name plus its index (period/solutiongroup number, utl-tas's time),

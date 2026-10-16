@@ -60,6 +60,60 @@ class NumberRows(Sequence):
         return repr(self.rows)
 
 
+class BlockRows(Sequence):
+    """A block's rows, some of them runs of NUMBER_LINES (each a
+    `NumberRows`, its own part), flattened when first used. An array
+    block reads its number runs' text instead (see `parts`)."""
+
+    __slots__ = ("parts", "_rows")
+
+    def __init__(self, parts: list) -> None:
+        self.parts = parts
+        self._rows: list | None = None
+
+    @property
+    def rows(self) -> list:
+        if self._rows is None:
+            rows: list = []
+            for part in self.parts:
+                if isinstance(part, NumberRows):
+                    rows.extend(part.rows)
+                else:
+                    rows.append(part)
+            self._rows = rows
+        return self._rows
+
+    def __len__(self) -> int:
+        return len(self.rows)
+
+    def __bool__(self) -> bool:
+        return bool(self.parts)
+
+    def __getitem__(self, i):  # type: ignore[override]
+        return self.rows[i]
+
+    def __iter__(self) -> Iterator:
+        return iter(self.rows)
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, (NumberRows, BlockRows)):
+            other = other.rows
+        return self.rows == other
+
+    def __repr__(self) -> str:
+        return repr(self.rows)
+
+
+def parts(rows: Sequence) -> list:
+    """A block's rows with its runs of number-only lines kept as such, each
+    a `NumberRows`, for reading them by text (an array's data)."""
+    if isinstance(rows, BlockRows):
+        return rows.parts
+    if isinstance(rows, NumberRows):
+        return [rows]
+    return list(rows)
+
+
 def _number(value: str) -> int | float:
     """`parse_number` for a value NUMBER_LINES took, `D`s already `E`."""
     if "." in value or "e" in value or "E" in value:
@@ -79,3 +133,9 @@ def without_comments(text: str) -> str:
 def number_values(text: str) -> np.ndarray:
     """NUMBER_LINES' values, in order, as floats (an array's data)."""
     return np.array(without_comments(NumberRows(text).text).split(), dtype=float)
+
+
+def run_values(run: NumberRows, dtype=float) -> np.ndarray:
+    """A run's values, in order, as `dtype` (an array's data)."""
+    values = np.array(without_comments(run.text).split(), dtype=float)
+    return values if dtype is float or dtype == np.float64 else values.astype(dtype)
