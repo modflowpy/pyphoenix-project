@@ -7,6 +7,7 @@ A table is a list of its Items as well: a row is a view of it (see
 `_view_class`), an instance of the Item class whose fields read and write
 the columns."""
 
+import io
 import operator
 from collections.abc import Iterable, Iterator, MutableSequence
 from functools import lru_cache
@@ -443,23 +444,6 @@ class ItemTable(MutableSequence):
         self.item_cls, self.columns, self._n = state
 
 
-_SPACE = np.zeros(256, bool)
-_SPACE[[9, 10, 13, 32]] = True
-
-
-def _widths(data: bytes) -> np.ndarray:
-    """How many values each non-blank line has."""
-    b = np.frombuffer(data, np.uint8)
-    space = _SPACE[b]
-    start = np.empty_like(space)  # a value's first character
-    start[0] = not space[0]
-    np.greater(space[:-1], space[1:], out=start[1:])
-    lines = np.flatnonzero(b == 10) + 1
-    lines = np.concatenate(([0], lines[lines < b.size]))
-    counts = np.add.reduceat(start, lines, dtype=np.int32)
-    return counts[counts > 0]
-
-
 def _column(f: attrs.Attribute, took: tuple, values: np.ndarray) -> np.ndarray | None:
     """A field's column from its values' floats, as `item._plan`'s readers
     convert each row's (and the field's converter after), or None if they
@@ -503,13 +487,12 @@ def read_table(item_cls: type[Item], text: str, context: RowContext) -> ItemTabl
     spans = _positions(item_cls, [_number(v) for v in first], context)
     if spans is None:
         return None
-    data = text.encode("ascii")
-    if not ((widths := _widths(data)) == len(first)).all():
+    try:  # raises on a row of another width (or not all numbers)
+        values = np.loadtxt(io.StringIO(text), ndmin=2, comments=None)
+    except ValueError:
         return None
-    flat = np.fromstring(data, sep=" ")  # type: ignore[call-overload]
-    if flat.size != widths.size * len(first):
+    if values.shape[1] != len(first):
         return None
-    values = flat.reshape(-1, len(first))
     columns: dict[str, Any] = {}
     for f, took, a, b in spans:
         if f is None:
