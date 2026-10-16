@@ -2,11 +2,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import xarray as xr
-import xugrid as xu
-
-from flopy4.mf6.utils import open_cbc, open_hds
 
 if TYPE_CHECKING:
+    import xugrid as xu
+
     from flopy4.mf6.gwf import Gwf
 
 
@@ -29,7 +28,9 @@ class GwfMethods:
             return Path(f"{dis.path}.grb")  # type: ignore[union-attr]
 
         @property
-        def head(self) -> xr.DataArray | xu.UgridDataArray:
+        def head(self) -> "xr.DataArray | xu.UgridDataArray":
+            from flopy4.mf6.utils import open_hds
+
             path = self.parent.workspace
 
             hds_fpth = None
@@ -56,7 +57,9 @@ class GwfMethods:
             )
 
         @property
-        def budget(self) -> xr.Dataset | xu.UgridDataset:
+        def budget(self) -> "xr.Dataset | xu.UgridDataset":
+            from flopy4.mf6.utils import open_cbc
+
             path = self.parent.workspace
 
             cbc_fpth = None

@@ -7,6 +7,7 @@ import attrs
 import numpy as np
 import xarray as xr
 
+from flopy4._imports import isinstance_of
 from flopy4.attrs_xarray import child_field_candidates
 from flopy4.mf6._types import TimeArraySeriesRef
 from flopy4.mf6.block import block_list_type
@@ -217,13 +218,8 @@ def _wrap_array(value: Any) -> xr.DataArray:
     if isinstance(value, np.ndarray):
         return xr.DataArray(value)
     # Preserve dask arrays — the writer streams them via array2chunks.
-    try:
-        import dask.array as _da
-
-        if isinstance(value, _da.Array):
-            return xr.DataArray(value)
-    except ImportError:
-        pass
+    if isinstance_of(value, "dask.array.core", "Array"):
+        return xr.DataArray(value)
     if isinstance(value, str):
         try:
             return xr.DataArray(float(value))

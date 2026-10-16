@@ -1,6 +1,6 @@
 import abc
 from os import PathLike
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import xarray as xr
@@ -19,9 +19,11 @@ from flopy4.mf6.package import _DTYPE_MAP as _PKG_DTYPE_MAP
 from flopy4.mf6.package import Package
 from flopy4.mf6.period_arrays import dense, split_tas
 from flopy4.mf6.spec import to_field_type
-from flopy4.mf6.utils.grid import StructuredGrid, VertexGrid
-from flopy4.mf6.utils.time import Time
 from flopy4.version import __version__
+
+if TYPE_CHECKING:
+    from flopy4.mf6.utils.grid import StructuredGrid, VertexGrid
+    from flopy4.mf6.utils.time import Time
 
 
 def _cf_var_attrs(dims: list[str], mesh: str | None, grid, layer: int | None = None) -> dict:
@@ -219,8 +221,8 @@ class NetCDFModel(BaseModel, NetCDFInput):
         cls,
         model: Model,
         netcdf_format: NetCDFFormat = NetCDFFormat.STRUCTURED,
-        grid: StructuredGrid | VertexGrid | None = None,
-        time: Time | None = None,
+        grid: "StructuredGrid | VertexGrid | None" = None,
+        time: "Time | None" = None,
     ):
         if not hasattr(model, "name"):
             raise ValueError("model must have a 'name' attribute")
@@ -439,6 +441,8 @@ class NetCDFModel(BaseModel, NetCDFInput):
 
     @time.setter
     def time(self, value):
+        from flopy4.mf6.utils.time import Time
+
         if not isinstance(value, Time):
             raise ValueError("invalid Time type")
         self._time = value

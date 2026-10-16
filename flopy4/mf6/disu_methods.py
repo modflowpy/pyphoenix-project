@@ -1,9 +1,10 @@
 from typing import TYPE_CHECKING
 
 import numpy as np
-from flopy.discretization.unstructuredgrid import UnstructuredGrid
 
 if TYPE_CHECKING:
+    from flopy.discretization.unstructuredgrid import UnstructuredGrid
+
     from flopy4.mf6.gwf.disu import Disu
 
 
@@ -11,8 +12,10 @@ class DisuMethods:
     """Methods for the generated unstructured discretizations (`Disu` in GWF,
     GWT and GWE); fields come from the DFN."""
 
-    def to_grid(self: "Disu") -> UnstructuredGrid:  # type: ignore[misc]
+    def to_grid(self: "Disu") -> "UnstructuredGrid":  # type: ignore[misc]
         """Convert the discretization to an `UnstructuredGrid`."""
+        from flopy.discretization.unstructuredgrid import UnstructuredGrid
+
         if self.nodes is None:
             raise ValueError("to_grid() needs nodes")
         cell2d = self.cell2d or []

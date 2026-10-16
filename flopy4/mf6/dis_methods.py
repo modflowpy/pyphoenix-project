@@ -1,12 +1,12 @@
 from typing import TYPE_CHECKING
 
 import numpy as np
-from flopy.discretization import StructuredGrid as LegacyStructuredGrid
 
-from flopy4.mf6.utils.grid import StructuredGrid
+from flopy4._imports import isinstance_of
 
 if TYPE_CHECKING:
     from flopy4.mf6.gwf.dis import Dis
+    from flopy4.mf6.utils.grid import StructuredGrid
 
 _LENGTH_UNITS = {1: "FEET", 2: "METERS", 3: "CENTIMETERS"}
 
@@ -15,8 +15,10 @@ class DisMethods:
     """Methods for the generated structured discretizations (`Dis` in GWF,
     GWT, GWE and PRT); fields come from the DFN."""
 
-    def to_grid(self: "Dis") -> StructuredGrid:  # type: ignore[misc]
+    def to_grid(self: "Dis") -> "StructuredGrid":  # type: ignore[misc]
         """Convert the discretization to a `StructuredGrid`."""
+        from flopy4.mf6.utils.grid import StructuredGrid
+
         nlay, nrow, ncol = self.nlay, self.nrow, self.ncol
         if nlay is None or nrow is None or ncol is None:
             raise ValueError("to_grid() needs nlay, nrow and ncol")
@@ -44,10 +46,12 @@ class DisMethods:
     @classmethod
     def coerce(cls: type["Dis"], value) -> "Dis | None":  # type: ignore[misc]
         """Convert a `StructuredGrid` to a discretization; `None` for anything else."""
-        return cls.from_grid(value) if isinstance(value, LegacyStructuredGrid) else None
+        if isinstance_of(value, "flopy.discretization.structuredgrid", "StructuredGrid"):
+            return cls.from_grid(value)
+        return None
 
     @classmethod
-    def from_grid(cls: type["Dis"], grid: StructuredGrid) -> "Dis":  # type: ignore[misc]
+    def from_grid(cls: type["Dis"], grid: "StructuredGrid") -> "Dis":  # type: ignore[misc]
         """Create a discretization from a `StructuredGrid`."""
         kwargs = {
             "xorigin": grid.xoffset,
