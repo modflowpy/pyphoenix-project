@@ -390,3 +390,27 @@ def test_aux_named_like_a_column_raises():
         wel.to_xarray()
     with pytest.raises(ValueError, match="name of a column"):
         wel.to_xarray(sparse=True)
+
+
+@pytest.mark.parametrize("how", ["setter", "item", "update"])
+def test_assigned_rows_taken_as_at_construction(how):
+    import copy
+    import pickle
+
+    chd = Chd(stress_period_data={0: [((0, 0, 0), 1.0)]}, dims=DIMS)
+    rows = [((0, 1, 2), 2.0, "b")]
+    if how == "setter":
+        chd.stress_period_data = {1: rows}
+    elif how == "item":
+        chd.stress_period_data[1] = rows
+    else:
+        chd.stress_period_data.update({1: rows})
+    assert isinstance(chd.stress_period_data[1], ItemTable)
+    assert chd.stress_period_data[1][0].boundname == "b"
+    assert chd.boundnames
+    assert chd.to_xarray()["head"].values[1, 0, 1, 2] == 2.0
+    for other in (copy.deepcopy(chd), pickle.loads(pickle.dumps(chd))):
+        assert other == chd
+        other.stress_period_data[2] = [((0, 0, 1), 3.0)]
+        assert isinstance(other.stress_period_data[2], ItemTable)
+        assert 2 not in chd.stress_period_data

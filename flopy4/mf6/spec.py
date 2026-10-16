@@ -53,6 +53,13 @@ def _recount(count: str):
     return hook
 
 
+def _coerce_rows(instance, attribute, value):
+    """An `on_setattr` hook taking a package's list as it does at
+    construction (see `Package._coerce_list_field`)."""
+    coerce = getattr(instance, "_coerce_list_field", None)
+    return value if value is None or coerce is None else coerce(attribute, value)
+
+
 def _check_dim(instance, attribute, value):
     """An `on_setattr` hook raising if a dimension assigned to a package
     disagrees with the rows of a list it counts."""
@@ -282,6 +289,11 @@ def list_(
     with no rows."""
     if len(shape) > 1:
         raise ValueError(f"a list has at most one dimension, got {shape!r}")
+    if kwargs.get("block"):
+        # a component's list takes reassigned rows as at construction
+        kwargs["on_setattr"] = _pipe(
+            attrs.setters.convert, attrs.setters.validate, _coerce_rows, kwargs.get("on_setattr")
+        )
     return _field(
         "list", kwargs, shape=shape, fill_forward=fill_forward, write_if_empty=write_if_empty
     )
