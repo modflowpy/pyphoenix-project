@@ -521,7 +521,8 @@ def read_table(item_cls: type[Item], text: str, context: RowContext) -> ItemTabl
             return None  # a boundname, all digits: read as a word, by row
         if (col := _column(f, took, values[:, a:b] if b else values[:, a])) is None:
             return None
-        columns[f.name] = col
+        # a column of `values` would keep all of it, cellids' floats too
+        columns[f.name] = col.copy() if np.may_share_memory(col, values) else col
     return ItemTable(item_cls, columns, len(values))
 
 
