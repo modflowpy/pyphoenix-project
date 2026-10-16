@@ -16,11 +16,14 @@ from pathlib import Path
 from typing import NamedTuple
 
 import pytest
-from _check import exclusion_reason
+from _check import exclusion_reason, round_trip, round_trip_reason
 from _models import known_passing
-from _ops import FLOPY3_OPTIONS
+from _ops import FLOPY3_OPTIONS, LIBRARIES
 
 BENCH_DIR = Path(__file__).parent
+
+# what each check left out, for the terminal summary: check -> model -> reason
+_EXCLUDED: dict[str, dict[str, str]] = {}
 
 
 def pytest_addoption(parser):
@@ -125,4 +128,68 @@ def models(request, tmp_path_factory) -> Models:
     assert models, "no benchmark models"
     if pinned is None and manifest is not None:
         manifest.write_text("\n".join(m.name for m in models) + "\n")
+    _EXCLUDED["equal work"] = excluded
     return Models(models, excluded)
+
+
+class Written(NamedTuple):
+    files: int
+    bytes: int
+
+
+class WriteModels(NamedTuple):
+    models: list[Model]
+    excluded: dict[str, str]  # model -> reason
+    written: dict[tuple[str, str], Written]  # (library, model) -> output size
+
+    def info(self, library: str, models: list[Model] | None = None) -> dict:
+        models = self.models if models is None else models
+        out = [self.written[library, m.name] for m in models]
+        return {
+            "n_models": len(models),
+            "n_bytes": sum(m.n_bytes for m in models),
+            "n_excluded": len(self.excluded),
+            "n_files_written": sum(w.files for w in out),
+            "n_bytes_written": sum(w.bytes for w in out),
+        }
+
+
+@pytest.fixture(scope="session")
+def write_models(models, tmp_path_factory) -> WriteModels:
+    """The benchmark models whose output, reloaded, holds what was loaded,
+    with both libraries. The others are excluded from write benchmarks, so
+    neither library is timed writing less than it should."""
+    kept, excluded, written = [], {}, {}
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        logging.disable(logging.CRITICAL)
+        try:
+            for m in models.models:
+                reasons = []
+                for library in LIBRARIES:
+                    out = tmp_path_factory.mktemp("round-trip")
+                    result = round_trip(library, m.ws, m.load_only, out)
+                    if result.get("equal"):
+                        written[library, m.name] = Written(
+                            result["n_files_written"], result["n_bytes_written"]
+                        )
+                    else:
+                        reasons.append(round_trip_reason(result))
+                if reasons:
+                    excluded[m.name] = "; ".join(reasons)
+                else:
+                    kept.append(m)
+        finally:
+            logging.disable(logging.NOTSET)
+    _EXCLUDED["round trip"] = excluded
+    assert kept, "no models round-trip with both libraries"
+    return WriteModels(kept, excluded, written)
+
+
+def pytest_terminal_summary(terminalreporter):
+    for check, excluded in _EXCLUDED.items():
+        if not excluded:
+            continue
+        terminalreporter.section(f"benchmark models excluded: {check}")
+        for name, reason in sorted(excluded.items()):
+            terminalreporter.line(f"{name}: {reason}")

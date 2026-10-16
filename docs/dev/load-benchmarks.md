@@ -7,6 +7,8 @@ measured against. Measured 2026-09-24 at commit `5bae03a` (on the unmerged
 numbers as history; the analysis of how each library reads data still holds.
 
 The benchmarks now live in `benchmarks/` and run with `pixi run -e dev bench`.
+They also time writing (`test_write.py`), on the models whose output both
+libraries reload intact (a round-trip check), recording bytes written.
 
 ## What's compared, and at which level
 
@@ -332,6 +334,7 @@ pixi run -e dev bench
 pixi run -e dev bench --benchmark-compare           # vs. the last saved run
 pixi run -e dev bench -k test_load                  # load only
 pixi run -e dev bench -k test_parse                 # parse only
+pixi run -e dev bench -k test_write                 # write only
 
 # re-derive the model set: point the manifest option at a new path.
 # Later options win, so this overrides the task's own --bench-manifest

@@ -1,4 +1,4 @@
-"""What the benchmarks time, per library: load and materialize.
+"""What the benchmarks time, per library: load, materialize and write.
 
 Every benchmark, check and subprocess goes through these functions, so
 the two libraries' setup (flopy3's load options above all) can't drift
@@ -89,41 +89,80 @@ def package_files(sim, ws: Path) -> list[tuple[Path, str]]:
     return list(walk(sim))
 
 
-def touch(x) -> int:
-    """Sum `x`'s numeric content, returning the number of values touched."""
+class Tally:
+    """What materializing touched: how many values, their sum, and the sum
+    of their magnitudes (the scale for comparing sums). NaNs are skipped."""
+
+    __slots__ = ("count", "total", "magnitude")
+
+    def __init__(self) -> None:
+        self.count = 0
+        self.total = 0.0
+        self.magnitude = 0.0
+
+    def add(self, values) -> None:
+        import numpy as np
+
+        if values.size:
+            self.count += values.size
+            total, magnitude = values.sum(), np.abs(values).sum()
+            if total != total:  # NaN
+                total, magnitude = np.nansum(values), np.nansum(np.abs(values))
+            self.total += float(total)
+            self.magnitude += float(magnitude)
+
+    def add_scalar(self, value) -> None:
+        self.count += 1
+        if value == value:  # not NaN
+            self.total += value
+            self.magnitude += abs(value)
+
+    def matches(self, other: Tally, rtol: float = 1e-6) -> bool:
+        return self.count == other.count and abs(self.total - other.total) <= rtol * max(
+            self.magnitude, other.magnitude, 1.0
+        )
+
+    def __repr__(self) -> str:
+        return f"Tally(count={self.count}, total={self.total:.6g})"
+
+
+def touch(x, tally: Tally) -> None:
+    """Sum `x`'s numeric content into `tally`."""
     import numbers
 
     import numpy as np
     import pandas as pd
 
     if x is None or isinstance(x, (str, bytes, bool)):
-        return 0
+        return
     if isinstance(x, numbers.Number):
-        return 1
-    if isinstance(x, np.ndarray):
+        tally.add_scalar(x)
+    elif isinstance(x, np.ndarray):
         if x.dtype.names:
-            return sum(touch(x[n]) for n in x.dtype.names)
-        if x.dtype.kind in "biuf":
-            x.sum()
-            return x.size
-        if x.dtype.kind == "O":
-            return sum(touch(v) for v in x.ravel())
-        return 0
-    if isinstance(x, pd.DataFrame):
-        num = x.select_dtypes("number")
-        num.to_numpy().sum()
-        objs = [c for c in x.columns if x[c].dtype == object]
-        return num.size + sum(touch(v) for c in objs for v in x[c])
-    if hasattr(x, "values") and hasattr(x, "dims"):  # xarray
-        return touch(x.values)
-    if isinstance(x, dict):
-        return sum(touch(v) for v in x.values())
-    if isinstance(x, (list, tuple)):
-        return sum(touch(v) for v in x)
-    return 0
+            for n in x.dtype.names:
+                touch(x[n], tally)
+        elif x.dtype.kind in "biuf":
+            tally.add(x)
+        elif x.dtype.kind == "O":
+            for v in x.ravel():
+                touch(v, tally)
+    elif isinstance(x, pd.DataFrame):
+        tally.add(x.select_dtypes("number").to_numpy())
+        for c in x.columns:
+            if x[c].dtype == object:
+                for v in x[c]:
+                    touch(v, tally)
+    elif hasattr(x, "values") and hasattr(x, "dims"):  # xarray
+        touch(x.values, tally)
+    elif isinstance(x, dict):
+        for v in x.values():
+            touch(v, tally)
+    elif isinstance(x, (list, tuple)):
+        for v in x:
+            touch(v, tally)
 
 
-def materialize_flopy3(sim) -> int:
+def materialize_flopy3(sim) -> Tally:
     """Fetch every array and list dataset of every loaded package, and sum it.
 
     `MFArray`/`MFTransientArray`/`MFList`/`MFTransientList` via `get_data()`;
@@ -138,18 +177,18 @@ def materialize_flopy3(sim) -> int:
     packages = list(sim.sim_package_list)
     for name in sim.model_names:
         packages.extend(sim.get_model(name).packagelist)
-    n = 0
+    tally = Tally()
     for package in packages:
         for block in package.blocks.values():
             for dataset in block.datasets.values():
                 if isinstance(dataset, MFPandasList):
-                    n += touch(dataset.get_dataframe())
+                    touch(dataset.get_dataframe(), tally)
                 elif isinstance(dataset, (MFArray, MFList)):
-                    n += touch(dataset.get_data())
-    return n
+                    touch(dataset.get_data(), tally)
+    return tally
 
 
-def materialize_flopy4(sim) -> int:
+def materialize_flopy4(sim) -> Tally:
     """Walk the component tree and sum every numeric value held.
 
     flopy4 holds everything in memory after load, so this reads no files;
@@ -158,33 +197,51 @@ def materialize_flopy4(sim) -> int:
 
     from flopy4.mf6.component import Component
 
+    tally = Tally()
     seen: set[int] = set()
-    skip = ("_parent", "parent", "workspace", "filename")
+    # write_context holds formatting (IPRN, FACTOR, ...), not data
+    skip = ("_parent", "parent", "workspace", "filename", "write_context")
 
-    def walk(obj) -> int:
+    def walk(obj) -> None:
         if id(obj) in seen:
-            return 0
+            return
         seen.add(id(obj))
         items = dict(vars(obj)) if hasattr(obj, "__dict__") else {}
         if attrs.has(type(obj)):  # slotted records have no __dict__
             for f in attrs.fields(type(obj)):
                 if f.name not in items and hasattr(obj, f.name):
                     items[f.name] = getattr(obj, f.name)
-        n = sum(value(v) for k, v in items.items() if k not in skip)
+        for k, v in items.items():
+            if k not in skip:
+                value(v)
         if isinstance(obj, Component):
-            n += sum(walk(child) for child in obj._children.values())
-        return n
+            for child in obj._children.values():
+                walk(child)
 
-    def value(v) -> int:
+    def value(v) -> None:
         if isinstance(v, Component) or (attrs.has(type(v)) and not isinstance(v, type)):
-            return walk(v)
-        if isinstance(v, dict):
-            return sum(value(x) for x in v.values())
-        if isinstance(v, (list, tuple)):
-            return sum(value(x) for x in v)
-        return touch(v)
+            walk(v)
+        elif isinstance(v, dict):
+            for x in v.values():
+                value(x)
+        elif isinstance(v, (list, tuple)):
+            for x in v:
+                value(x)
+        else:
+            touch(v, tally)
 
-    return walk(sim)
+    walk(sim)
+    return tally
+
+
+def write_flopy3(sim, out: Path) -> None:
+    sim.set_sim_path(str(out))
+    sim.write_simulation(silent=True)
+
+
+def write_flopy4(sim, out: Path) -> None:
+    sim.workspace = Path(out)
+    sim.write()
 
 
 def load(library: str, ws: Path, load_only: list[str] | None = None):
@@ -193,10 +250,18 @@ def load(library: str, ws: Path, load_only: list[str] | None = None):
     return load_flopy4(ws)
 
 
-def materialize(library: str, sim) -> int:
+def materialize(library: str, sim) -> Tally:
     if library == "flopy3":
         return materialize_flopy3(sim)
     return materialize_flopy4(sim)
+
+
+def write(library: str, sim, out: Path) -> None:
+    """Write `sim` into `out`, an empty directory."""
+    if library == "flopy3":
+        write_flopy3(sim, out)
+    else:
+        write_flopy4(sim, out)
 
 
 def import_library(library: str) -> None:
