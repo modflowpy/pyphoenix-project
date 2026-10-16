@@ -1,5 +1,4 @@
 import attrs
-import pytest
 
 
 def _maw_strt_takes_ts() -> bool:
@@ -20,10 +19,17 @@ SPEC_GAPS = {
 }
 
 
-def pytest_collection_modifyitems(items):
+def pytest_collection_modifyitems(config, items):
+    # deselect rather than skip: syrupy fails the session on snapshots
+    # unused by selected tests, and a skipped test's snapshot goes unused
     unmet = {model: reason for model, (check, reason) in SPEC_GAPS.items() if not check()}
+    if not unmet:
+        return
+    keep, drop = [], []
     for item in items:
         callspec = getattr(item, "callspec", None)
         model = callspec.params.get("model_name") if callspec else None
-        if model in unmet:
-            item.add_marker(pytest.mark.skip(reason=unmet[model]))
+        (drop if model in unmet else keep).append(item)
+    if drop:
+        config.hook.pytest_deselected(items=drop)
+        items[:] = keep
