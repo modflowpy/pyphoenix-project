@@ -94,9 +94,17 @@ RECORDS.1: /(?:[ \t,]*+(?!(?i:begin|end|open\/close)(?![^\s,#!]))[a-zA-Z0-9().\/
 // commas, and `_remark: _REMARK+` accepts any number of them.
 _REMARK.-1: /[^\s,]+/
 _remark: _REMARK+
-open_close_redirect: "open/close"i filename [_remark] _NL
+// Without its line ending, which each block's field list takes so the
+// state after it is that block's (see macros.jinja's field_list).
+open_close_redirect: "open/close"i filename [_remark]
 
-%import common.NEWLINE -> _NL
+// A line ending plus any blank and comment-only lines after it, like
+// NUMBERS' and RECORDS' tails, so two _NLs never come in a row: between
+// two line endings with no token, there's only what's %ignore'd (spaces,
+// tabs, commas, then a comment to the line's end), which this takes. The
+// grammars rely on that and have no `_NL*` (see macros.jinja's
+// field_list).
+_NL: /\r?\n(?:[ \t,]*+(?:[#!][^\n]*+)?\r?\n)*+/
 %import common.WS_INLINE
 %import common.CNAME
 %import common.SH_COMMENT

@@ -23,12 +23,12 @@
 %ignore BANG_COMMENT
 %ignore COMMA
 
-start: _NL* (block _NL*)*
+start: [_NL] (block [_NL])*
 block: options__block | packagedata__block
 
-options__block: _BEGIN "options"i [_remark] _NL _NL* options__fields _NL* _END "options"i
-packagedata__block: _BEGIN "packagedata"i [_remark] _NL _NL* packagedata__fields _NL* _END "packagedata"i
-options__fields: ((save_flows__kw | open_close_redirect) _NL*)*
-packagedata__fields: ((packagedatadata | open_close_redirect) _NL*)*
+options__block: _BEGIN "options"i [_remark] _NL options__fields _END "options"i
+packagedata__block: _BEGIN "packagedata"i [_remark] _NL packagedata__fields _END "packagedata"i
+options__fields: (save_flows__kw | open_close_redirect _NL)*
+packagedata__fields: (packagedatadata | open_close_redirect _NL)*
 save_flows__kw: "save_flows"i  [_remark] _NL
 packagedatadata: record+

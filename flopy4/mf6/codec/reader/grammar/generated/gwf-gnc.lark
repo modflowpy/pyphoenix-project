@@ -23,15 +23,15 @@
 %ignore BANG_COMMENT
 %ignore COMMA
 
-start: _NL* (block _NL*)*
+start: [_NL] (block [_NL])*
 block: options__block | dimensions__block | gncdata__block
 
-options__block: _BEGIN "options"i [_remark] _NL _NL* options__fields _NL* _END "options"i
-dimensions__block: _BEGIN "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* _END "dimensions"i
-gncdata__block: _BEGIN "gncdata"i [_remark] _NL _NL* gncdata__fields _NL* _END "gncdata"i
-options__fields: ((print_input__kw | print_flows__kw | explicit__kw | open_close_redirect) _NL*)*
-dimensions__fields: ((numgnc__val | numalphaj__val | open_close_redirect) _NL*)*
-gncdata__fields: ((gncdatadata | open_close_redirect) _NL*)*
+options__block: _BEGIN "options"i [_remark] _NL options__fields _END "options"i
+dimensions__block: _BEGIN "dimensions"i [_remark] _NL dimensions__fields _END "dimensions"i
+gncdata__block: _BEGIN "gncdata"i [_remark] _NL gncdata__fields _END "gncdata"i
+options__fields: (print_input__kw | print_flows__kw | explicit__kw | open_close_redirect _NL)*
+dimensions__fields: (numgnc__val | numalphaj__val | open_close_redirect _NL)*
+gncdata__fields: (gncdatadata | open_close_redirect _NL)*
 print_input__kw: "print_input"i  [_remark] _NL
 print_flows__kw: "print_flows"i  [_remark] _NL
 explicit__kw: "explicit"i  [_remark] _NL

@@ -23,15 +23,15 @@
 %ignore BANG_COMMENT
 %ignore COMMA
 
-start: _NL* (block _NL*)*
+start: [_NL] (block [_NL])*
 block: options__block | dimensions__block | packagedata__block
 
-options__block: _BEGIN "options"i [_remark] _NL _NL* options__fields _NL* _END "options"i
-dimensions__block: _BEGIN "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* _END "dimensions"i
-packagedata__block: _BEGIN "packagedata"i [_remark] _NL _NL* packagedata__fields _NL* _END "packagedata"i
-options__fields: ((viscref__val | temperature_species_name__val | thermal_formulation__union | thermal_a2__val | thermal_a3__val | thermal_a4__val | viscosity_filerecord__rec | open_close_redirect) _NL*)*
-dimensions__fields: ((nviscspecies__val | open_close_redirect) _NL*)*
-packagedata__fields: ((packagedatadata | open_close_redirect) _NL*)*
+options__block: _BEGIN "options"i [_remark] _NL options__fields _END "options"i
+dimensions__block: _BEGIN "dimensions"i [_remark] _NL dimensions__fields _END "dimensions"i
+packagedata__block: _BEGIN "packagedata"i [_remark] _NL packagedata__fields _END "packagedata"i
+options__fields: (viscref__val | temperature_species_name__val | thermal_formulation__union | thermal_a2__val | thermal_a3__val | thermal_a4__val | viscosity_filerecord__rec | open_close_redirect _NL)*
+dimensions__fields: (nviscspecies__val | open_close_redirect _NL)*
+packagedata__fields: (packagedatadata | open_close_redirect _NL)*
 viscref__val: "viscref"i double [_remark] _NL
 temperature_species_name__val: "temperature_species_name"i string
 thermal_formulation__union: "thermal_formulation"i (thermal_formulation__linear__kw | thermal_formulation__nonlinear__kw) [_remark] _NL

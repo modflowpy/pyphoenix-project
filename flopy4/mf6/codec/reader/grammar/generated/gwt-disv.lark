@@ -23,19 +23,19 @@
 %ignore BANG_COMMENT
 %ignore COMMA
 
-start: _NL* (block _NL*)*
+start: [_NL] (block [_NL])*
 block: options__block | dimensions__block | griddata__block | vertices__block | cell2d__block
 
-options__block: _BEGIN "options"i [_remark] _NL _NL* options__fields _NL* _END "options"i
-dimensions__block: _BEGIN "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* _END "dimensions"i
-griddata__block: _BEGIN "griddata"i [_remark] _NL _NL* griddata__fields _NL* _END "griddata"i
-vertices__block: _BEGIN "vertices"i [_remark] _NL _NL* vertices__fields _NL* _END "vertices"i
-cell2d__block: _BEGIN "cell2d"i [_remark] _NL _NL* cell2d__fields _NL* _END "cell2d"i
-options__fields: ((length_units__val | nogrb__kw | grb_filerecord__rec | xorigin__val | yorigin__val | angrot__val | export_array_ascii__kw | export_array_netcdf__kw | crs__val | ncf_filerecord__rec | open_close_redirect) _NL*)*
-dimensions__fields: ((nlay__val | ncpl__val | nvert__val | open_close_redirect) _NL*)*
-griddata__fields: ((top__val | botm__val | idomain__val | open_close_redirect) _NL*)*
-vertices__fields: ((verticesdata | open_close_redirect) _NL*)*
-cell2d__fields: ((cell2ddata | open_close_redirect) _NL*)*
+options__block: _BEGIN "options"i [_remark] _NL options__fields _END "options"i
+dimensions__block: _BEGIN "dimensions"i [_remark] _NL dimensions__fields _END "dimensions"i
+griddata__block: _BEGIN "griddata"i [_remark] _NL griddata__fields _END "griddata"i
+vertices__block: _BEGIN "vertices"i [_remark] _NL vertices__fields _END "vertices"i
+cell2d__block: _BEGIN "cell2d"i [_remark] _NL cell2d__fields _END "cell2d"i
+options__fields: (length_units__val | nogrb__kw | grb_filerecord__rec | xorigin__val | yorigin__val | angrot__val | export_array_ascii__kw | export_array_netcdf__kw | crs__val | ncf_filerecord__rec | open_close_redirect _NL)*
+dimensions__fields: (nlay__val | ncpl__val | nvert__val | open_close_redirect _NL)*
+griddata__fields: (top__val | botm__val | idomain__val | open_close_redirect _NL)*
+vertices__fields: (verticesdata | open_close_redirect _NL)*
+cell2d__fields: (cell2ddata | open_close_redirect _NL)*
 length_units__val: "length_units"i string
 nogrb__kw: "nogrb"i  [_remark] _NL
 grb_filerecord__rec: "grb6"i grb_filerecord__grb6_filename__val [_remark] _NL

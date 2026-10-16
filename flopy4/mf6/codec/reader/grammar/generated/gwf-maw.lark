@@ -23,22 +23,22 @@
 %ignore BANG_COMMENT
 %ignore COMMA
 
-start: _NL* (block _NL*)*
+start: [_NL] (block [_NL])*
 block: options__block | dimensions__block | packagedata__block | connectiondata__block | angledata__block | period__block
 
-options__block: _BEGIN "options"i [_remark] _NL _NL* options__fields _NL* _END "options"i
-dimensions__block: _BEGIN "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* _END "dimensions"i
-packagedata__block: _BEGIN "packagedata"i [_remark] _NL _NL* packagedata__fields _NL* _END "packagedata"i
-connectiondata__block: _BEGIN "connectiondata"i [_remark] _NL _NL* connectiondata__fields _NL* _END "connectiondata"i
-angledata__block: _BEGIN "angledata"i [_remark] _NL _NL* angledata__fields _NL* _END "angledata"i
-period__block: _BEGIN "period"i block_index [_remark] _NL _NL* period__fields _NL* _END "period"i [block_index]
+options__block: _BEGIN "options"i [_remark] _NL options__fields _END "options"i
+dimensions__block: _BEGIN "dimensions"i [_remark] _NL dimensions__fields _END "dimensions"i
+packagedata__block: _BEGIN "packagedata"i [_remark] _NL packagedata__fields _END "packagedata"i
+connectiondata__block: _BEGIN "connectiondata"i [_remark] _NL connectiondata__fields _END "connectiondata"i
+angledata__block: _BEGIN "angledata"i [_remark] _NL angledata__fields _END "angledata"i
+period__block: _BEGIN "period"i block_index [_remark] _NL period__fields _END "period"i [block_index]
 %import typed.block_index -> block_index
-options__fields: ((auxiliary__val | boundnames__kw | print_input__kw | print_head__kw | print_flows__kw | save_flows__kw | head_filerecord__rec | budget_filerecord__rec | budgetcsv_filerecord__rec | no_well_storage__kw | flow_correction__kw | non_vertical_wells__kw | flowing_wells__kw | shutdown_theta__val | shutdown_kappa__val | mfrcsv_filerecord__rec | ts_filerecord__rec__elem | obs_filerecord__rec | mover__kw | dev_peaceman_effective_radius__kw | open_close_redirect) _NL*)*
-dimensions__fields: ((nmawwells__val | open_close_redirect) _NL*)*
-packagedata__fields: ((packagedatadata | open_close_redirect) _NL*)*
-connectiondata__fields: ((connectiondatadata | open_close_redirect) _NL*)*
-angledata__fields: ((angledatadata | open_close_redirect) _NL*)*
-period__fields: ((stress_period_data | open_close_redirect) _NL*)*
+options__fields: (auxiliary__val | boundnames__kw | print_input__kw | print_head__kw | print_flows__kw | save_flows__kw | head_filerecord__rec | budget_filerecord__rec | budgetcsv_filerecord__rec | no_well_storage__kw | flow_correction__kw | non_vertical_wells__kw | flowing_wells__kw | shutdown_theta__val | shutdown_kappa__val | mfrcsv_filerecord__rec | ts_filerecord__rec__elem | obs_filerecord__rec | mover__kw | dev_peaceman_effective_radius__kw | open_close_redirect _NL)*
+dimensions__fields: (nmawwells__val | open_close_redirect _NL)*
+packagedata__fields: (packagedatadata | open_close_redirect _NL)*
+connectiondata__fields: (connectiondatadata | open_close_redirect _NL)*
+angledata__fields: (angledatadata | open_close_redirect _NL)*
+period__fields: (stress_period_data | open_close_redirect _NL)*
 auxiliary__val: "auxiliary"i word+ [_remark] _NL
 boundnames__kw: "boundnames"i  [_remark] _NL
 print_input__kw: "print_input"i  [_remark] _NL

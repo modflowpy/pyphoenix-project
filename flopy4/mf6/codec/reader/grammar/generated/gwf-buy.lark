@@ -23,15 +23,15 @@
 %ignore BANG_COMMENT
 %ignore COMMA
 
-start: _NL* (block _NL*)*
+start: [_NL] (block [_NL])*
 block: options__block | dimensions__block | packagedata__block
 
-options__block: _BEGIN "options"i [_remark] _NL _NL* options__fields _NL* _END "options"i
-dimensions__block: _BEGIN "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* _END "dimensions"i
-packagedata__block: _BEGIN "packagedata"i [_remark] _NL _NL* packagedata__fields _NL* _END "packagedata"i
-options__fields: ((hhformulation_rhs__kw | denseref__val | density_filerecord__rec | dev_efh_formulation__kw | open_close_redirect) _NL*)*
-dimensions__fields: ((nrhospecies__val | open_close_redirect) _NL*)*
-packagedata__fields: ((packagedatadata | open_close_redirect) _NL*)*
+options__block: _BEGIN "options"i [_remark] _NL options__fields _END "options"i
+dimensions__block: _BEGIN "dimensions"i [_remark] _NL dimensions__fields _END "dimensions"i
+packagedata__block: _BEGIN "packagedata"i [_remark] _NL packagedata__fields _END "packagedata"i
+options__fields: (hhformulation_rhs__kw | denseref__val | density_filerecord__rec | dev_efh_formulation__kw | open_close_redirect _NL)*
+dimensions__fields: (nrhospecies__val | open_close_redirect _NL)*
+packagedata__fields: (packagedatadata | open_close_redirect _NL)*
 hhformulation_rhs__kw: "hhformulation_rhs"i  [_remark] _NL
 denseref__val: "denseref"i double [_remark] _NL
 density_filerecord__rec: "density"i density_filerecord__densityfile__val [_remark] _NL

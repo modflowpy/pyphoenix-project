@@ -23,15 +23,15 @@
 %ignore BANG_COMMENT
 %ignore COMMA
 
-start: _NL* (block _NL*)*
+start: [_NL] (block [_NL])*
 block: options__block | nonlinear__block | linear__block
 
-options__block: _BEGIN "options"i [_remark] _NL _NL* options__fields _NL* _END "options"i
-nonlinear__block: _BEGIN "nonlinear"i [_remark] _NL _NL* nonlinear__fields _NL* _END "nonlinear"i
-linear__block: _BEGIN "linear"i [_remark] _NL _NL* linear__fields _NL* _END "linear"i
-options__fields: ((print_option__val | complexity__val | csv_outer_output_filerecord__rec | csv_inner_output_filerecord__rec | no_ptcrecord__rec | ats_outer_maximum_fraction__val | dev_ptc__kw | dev_ptc_output_filerecord__rec | dev_ptc_option__kw | dev_ptc_exponent__val | dev_ptc_del0__val | open_close_redirect) _NL*)*
-nonlinear__fields: ((outer_dvclose__val | outer_maximum__val | under_relaxation__val | under_relaxation_gamma__val | under_relaxation_theta__val | under_relaxation_kappa__val | under_relaxation_momentum__val | backtracking_number__val | backtracking_tolerance__val | backtracking_reduction_factor__val | backtracking_residual_limit__val | open_close_redirect) _NL*)*
-linear__fields: ((inner_maximum__val | inner_dvclose__val | rcloserecord__rec | linear_acceleration__val | relaxation_factor__val | preconditioner_levels__val | preconditioner_drop_tolerance__val | number_orthogonalizations__val | scaling_method__val | reordering_method__val | open_close_redirect) _NL*)*
+options__block: _BEGIN "options"i [_remark] _NL options__fields _END "options"i
+nonlinear__block: _BEGIN "nonlinear"i [_remark] _NL nonlinear__fields _END "nonlinear"i
+linear__block: _BEGIN "linear"i [_remark] _NL linear__fields _END "linear"i
+options__fields: (print_option__val | complexity__val | csv_outer_output_filerecord__rec | csv_inner_output_filerecord__rec | no_ptcrecord__rec | ats_outer_maximum_fraction__val | dev_ptc__kw | dev_ptc_output_filerecord__rec | dev_ptc_option__kw | dev_ptc_exponent__val | dev_ptc_del0__val | open_close_redirect _NL)*
+nonlinear__fields: (outer_dvclose__val | outer_maximum__val | under_relaxation__val | under_relaxation_gamma__val | under_relaxation_theta__val | under_relaxation_kappa__val | under_relaxation_momentum__val | backtracking_number__val | backtracking_tolerance__val | backtracking_reduction_factor__val | backtracking_residual_limit__val | open_close_redirect _NL)*
+linear__fields: (inner_maximum__val | inner_dvclose__val | rcloserecord__rec | linear_acceleration__val | relaxation_factor__val | preconditioner_levels__val | preconditioner_drop_tolerance__val | number_orthogonalizations__val | scaling_method__val | reordering_method__val | open_close_redirect _NL)*
 print_option__val: "print_option"i string
 complexity__val: "complexity"i string
 csv_outer_output_filerecord__rec: "csv_outer_output"i csv_outer_output_filerecord__outer_csvfile__val [_remark] _NL

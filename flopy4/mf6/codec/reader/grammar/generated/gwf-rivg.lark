@@ -23,16 +23,16 @@
 %ignore BANG_COMMENT
 %ignore COMMA
 
-start: _NL* (block _NL*)*
+start: [_NL] (block [_NL])*
 block: options__block | dimensions__block | period__block
 
-options__block: _BEGIN "options"i [_remark] _NL _NL* options__fields _NL* _END "options"i
-dimensions__block: _BEGIN "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* _END "dimensions"i
-period__block: _BEGIN "period"i block_index [_remark] _NL _NL* period__fields _NL* _END "period"i [block_index]
+options__block: _BEGIN "options"i [_remark] _NL options__fields _END "options"i
+dimensions__block: _BEGIN "dimensions"i [_remark] _NL dimensions__fields _END "dimensions"i
+period__block: _BEGIN "period"i block_index [_remark] _NL period__fields _END "period"i [block_index]
 %import typed.block_index -> block_index
-options__fields: ((readarraygrid__kw | auxiliary__val | auxmultname__val | print_input__kw | print_flows__kw | save_flows__kw | obs_filerecord__rec | mover__kw | export_array_netcdf__kw | open_close_redirect) _NL*)*
-dimensions__fields: ((maxbound__val | open_close_redirect) _NL*)*
-period__fields: ((stage__val | cond__val | rbot__val | aux__val__elem | open_close_redirect) _NL*)*
+options__fields: (readarraygrid__kw | auxiliary__val | auxmultname__val | print_input__kw | print_flows__kw | save_flows__kw | obs_filerecord__rec | mover__kw | export_array_netcdf__kw | open_close_redirect _NL)*
+dimensions__fields: (maxbound__val | open_close_redirect _NL)*
+period__fields: (stage__val | cond__val | rbot__val | aux__val__elem | open_close_redirect _NL)*
 readarraygrid__kw: "readarraygrid"i  [_remark] _NL
 auxiliary__val: "auxiliary"i word+ [_remark] _NL
 auxmultname__val: "auxmultname"i string

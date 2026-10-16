@@ -61,7 +61,7 @@ def test_make_grammar_creates_file(tmp_path, minimal_dfn):
     # Grammar imports typed rules from typed.lark
     assert "%import typed.integer -> integer" in content
     assert "%import typed.double -> double" in content
-    assert "start: _NL* (block _NL*)*" in content
+    assert "start: [_NL] (block [_NL])*" in content
     assert "options__block" in content
 
 
@@ -183,8 +183,8 @@ def test_make_grammar_with_tagged_list(tmp_path):
     make_grammar(dfn, tmp_path)
     content = (tmp_path / "gwf-test.lark").read_text()
     assert (
-        "options__fields: ((print_input__kw | ts_filerecord__rec__elem | open_close_redirect)"
-        " _NL*)*" in content
+        "options__fields: (print_input__kw | ts_filerecord__rec__elem | open_close_redirect _NL)*"
+        in content
     )
     assert 'ts_filerecord__rec__elem: "ts6"i "filein"i ts_filerecord__ts6_filename__val' in content
     assert "ts_filerecord__ts6_filename__val: word" in content
@@ -353,9 +353,9 @@ def test_make_grammar_with_untagged_array(tmp_path):
     make_grammar(dfn, tmp_path)
     content = (tmp_path / "test-bare-array.lark").read_text()
     assert "vals__val: array\n" in content
-    assert "time__fields: ((vals__val) _NL*)*" in content
+    assert "time__fields: (vals__val)*" in content
     assert 'strt__val: "strt"i' in content
-    assert "griddata__fields: ((strt__val | open_close_redirect) _NL*)*" in content
+    assert "griddata__fields: (strt__val | open_close_redirect _NL)*" in content
 
 
 def test_make_grammar_with_file_fields(tmp_path):
@@ -405,9 +405,7 @@ def test_make_grammar_with_dynamically_named_arrays(tmp_path):
     make_grammar(dfn, tmp_path)
     content = (tmp_path / "test-named-arrays.lark").read_text()
     assert "aux__val__elem: word [_remark] [_NL] array" in content
-    assert (
-        "period__fields: ((recharge__val | aux__val__elem | open_close_redirect) _NL*)*" in content
-    )
+    assert "period__fields: (recharge__val | aux__val__elem | open_close_redirect _NL)*" in content
 
 
 def test_make_grammar_with_record_header(tmp_path):
@@ -438,8 +436,8 @@ def test_make_grammar_with_record_header(tmp_path):
     make_grammar(dfn, tmp_path)
     content = (tmp_path / "test-header.lark").read_text()
     assert (
-        'continuous__block: _BEGIN "continuous"i output__hdr [_remark] _NL _NL* '
-        'continuous__fields _NL* _END "continuous"i [output__hdr]'
+        'continuous__block: _BEGIN "continuous"i output__hdr [_remark] _NL '
+        'continuous__fields _END "continuous"i [output__hdr]'
     ) in content
     assert '!output__hdr: "fileout"i word [output__binary__kw]' in content
     assert 'output__binary__kw: "binary"i' in content

@@ -23,15 +23,15 @@
 %ignore BANG_COMMENT
 %ignore COMMA
 
-start: _NL* (block _NL*)*
+start: [_NL] (block [_NL])*
 block: attributes__block | time__block
 
-attributes__block: _BEGIN "attributes"i [_remark] _NL _NL* attributes__fields _NL* _END "attributes"i
-time__block: _BEGIN "time"i double_index [_remark] _NL _NL* time__fields _NL* _END "time"i [double_index]
+attributes__block: _BEGIN "attributes"i [_remark] _NL attributes__fields _END "attributes"i
+time__block: _BEGIN "time"i double_index [_remark] _NL time__fields _END "time"i [double_index]
 %import typed.block_index -> block_index
 double_index: block_index
-attributes__fields: ((time_series_namerecord__rec | interpolation_methodrecord__rec | sfacrecord__rec | open_close_redirect) _NL*)*
-time__fields: ((tas_array__val) _NL*)*
+attributes__fields: (time_series_namerecord__rec | interpolation_methodrecord__rec | sfacrecord__rec | open_close_redirect _NL)*
+time__fields: (tas_array__val)*
 time_series_namerecord__rec: "name"i time_series_namerecord__time_series_name__arr [_remark] _NL
 time_series_namerecord__time_series_name__arr: word+
 interpolation_methodrecord__rec: "method"i interpolation_methodrecord__interpolation_method__val [_remark] _NL

@@ -949,6 +949,53 @@ def test_typed_loads_records():
     }
 
 
+def test_typed_loads_keyword_after_comment_line():
+    """A keyword line after a comment-only line reads as the keyword, not
+    as RECORDS (which a period block's rows take)."""
+    from flopy4.mf6.codec.reader import loads_typed
+
+    chd = (
+        "BEGIN OPTIONS\n  #PRINT_INPUT\n  PRINT_FLOWS\n  # c\n\n  ! d\n  SAVE_FLOWS\n"
+        "END OPTIONS\nBEGIN DIMENSIONS\n  MAXBOUND 1\nEND DIMENSIONS\n"
+    )
+    assert loads_typed(chd, "gwf-chd") == {
+        "options": {"print_flows": True, "save_flows": True},
+        "dimensions": {"maxbound": 1},
+    }
+    # ...or after an OPEN/CLOSE line, which any block may have
+    chd = "BEGIN OPTIONS\n  OPEN/CLOSE opts.txt\n  PRINT_FLOWS\nEND OPTIONS\n"
+    assert loads_typed(chd, "gwf-chd") == {"options": {"print_flows": True}}
+
+
+def test_typed_grammars_no_line_token_beside_keyword():
+    """No typed grammar has a parser state whose contextual lexer takes a
+    line-run terminal (RECORDS, NUMBERS) beside a keyword it would match.
+    The run outranks the keyword, so the keyword's line would lex as rows.
+    A rule several blocks share, and that ends a line, makes such a state:
+    LALR merges the states after it, so the next line lexes with every
+    block's terminals (`_NL*`, or open_close_redirect's own `_NL`)."""
+    import re
+
+    from lark.lexer import PatternStr
+
+    from flopy4.mf6.codec.reader.parser import get_typed_parser
+
+    leaks = []
+    for path in sorted((BASE_GRAMMAR_PATH.parent / "generated").glob("*.lark")):
+        parser = get_typed_parser(path.stem)
+        runs = [t for t in parser.terminals if t.name.endswith(("RECORDS", "NUMBERS"))]
+        keywords = [t for t in parser.terminals if isinstance(t.pattern, PatternStr)]
+        # Lark -> ParsingFrontend -> LALR_Parser -> _Parser
+        states = parser.parser.parser.parser.parse_table.states
+        for run in runs:
+            rx = re.compile(run.pattern.to_regexp())
+            shadowed = {k.name for k in keywords if rx.match(k.pattern.value + "\n")}
+            for actions in states.values():
+                if run.name in actions and (both := shadowed & actions.keys()):
+                    leaks.append((path.stem, run.name, sorted(both)[:3]))
+    assert not leaks
+
+
 def test_typed_loads_array_number_lines():
     """An array's lines of only numbers read as one, among lines that
     aren't (a remark), comments and `D` exponents included."""
