@@ -97,7 +97,7 @@ include = ["flopy4", "flopy4.*"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-include = ["pyproject.toml", "flopy4/**/*.py", "test/**/*.py", "docs/**/*.py"]
+include = ["pyproject.toml", "flopy4/**/*.py", "test/**/*.py", "benchmarks/**/*.py", "docs/**/*.py"]
 extend-include = ["docs/**/*.ipynb"]
 
 [tool.ruff.lint]
@@ -181,6 +181,7 @@ description = "Show flopy4.mf6 sync status vs. discovered MF6 binary"
 [tool.pixi.feature.test.tasks]
 test = { cmd = "pytest -v -n auto --dist worksteal", env = { MPLBACKEND = "Agg" } }
 smoke = { cmd = "pytest -v -n auto --dist worksteal --smoke", env = { MPLBACKEND = "Agg" } }
+bench = { cmd = "pytest benchmarks --benchmark-enable --benchmark-autosave --benchmark-columns=min,mean,stddev,rounds --bench-manifest benchmarks/models-full.txt", env = { MPLBACKEND = "Agg" }, description = "Run the benchmarks, saving results to .benchmarks/" }
 
 [tool.pixi.feature.lint.tasks]
 install = { cmd = "pre-commit install --install-hooks" }
