@@ -912,6 +912,32 @@ def test_typed_loads_number_lines_as_text():
     ]
 
 
+def test_typed_loads_record_lines():
+    """Rows of words and numbers lex as one run (RECORD_LINES) but read as
+    they would by value: a line with a quoted word or a trailing comment
+    still reads, and `end` after a row's first token is a word."""
+    from flopy4.mf6.codec.reader import loads_typed, parser
+
+    sfr = (
+        "BEGIN PERIOD 1\n  1 inflow 0.0\n  1 status active, 2 'a b' 3\n"
+        "  2 rainfall 1.0 # note\n  2 stage 1.5\n\n  # c\n  3 end 1\nEND PERIOD\n"
+    )
+    rows = loads_typed(sfr, "gwf-sfr")["period 1"]["stress_period_data"]
+    assert rows == [
+        [1, "inflow", 0.0],
+        [1, "status", "active", 2, "a b", 3],
+        [2, "rainfall", 1.0],
+        [2, "stage", 1.5],
+        [3, "end", 1],
+    ]
+    tokens = parser.get_typed_parser("gwf-sfr").lex("BEGIN PERIOD 1\n  1 inflow 0.0\nEND PERIOD\n")
+    assert "RECORD_LINES" in [t.type.rsplit("__", 1)[-1] for t in tokens]
+
+    # a list beside another field (solutiongroup's MXITER) lexes by value
+    nam = "BEGIN SOLUTIONGROUP 1\n  MXITER 2\n  IMS6 sim.ims gwf\nEND SOLUTIONGROUP\n"
+    assert loads_typed(nam, "sim-nam")["solutiongroup 1"]["mxiter"] == 2
+
+
 def test_typed_loads_array_number_lines():
     """An array's lines of only numbers read as one, among lines that
     aren't (a remark), comments and `D` exponents included."""

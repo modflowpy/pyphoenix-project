@@ -8,6 +8,7 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.token_record -> token_record
 %import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
@@ -99,6 +100,6 @@ double_index: block_index
 {% endfor -%}
 {% for block in blocks -%}
 {% for recarray in block.recarrays -%}
-{{ recarray.name }}: record+
+{{ recarray.name }}: {{ 'token_record' if block.standalone_fields else 'record' }}+
 {% endfor -%}
 {% endfor -%}

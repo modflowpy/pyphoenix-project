@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,24 @@ class _Element(tuple):
 
 def _is_number_lines(item: Any) -> bool:
     return isinstance(item, Token) and item.type.endswith("NUMBER_LINES")
+
+
+def _is_record_lines(item: Any) -> bool:
+    return isinstance(item, Token) and item.type.endswith("RECORD_LINES")
+
+
+# A whole token that's a number, as typed.lark's number terminals take one.
+_NUMBER = re.compile(r"[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?")
+
+
+def record_rows(text: str) -> list[list[Any]]:
+    """RECORD_LINES' rows, each a list of numbers and words as `record`
+    reads them. Blank and comment-only lines aren't rows."""
+    rows = []
+    for line in text.replace(",", " ").split("\n"):
+        if (tokens := line.split()) and tokens[0][0] not in "#!":
+            rows.append([parse_number(t) if _NUMBER.fullmatch(t) else t for t in tokens])
+    return rows
 
 
 def _is_rows(item: Any) -> bool:
@@ -265,6 +284,8 @@ class TypedTransformer(Transformer):
         """
         if len(items) == 1 and _is_number_lines(items[0]):
             return NumberRows(str(items[0]))
+        if len(items) == 1 and _is_record_lines(items[0]):
+            return record_rows(str(items[0]))
         values = []
         for item in items:
             if self._is_newline_token(item):
@@ -282,6 +303,10 @@ class TypedTransformer(Transformer):
             else:
                 values.append(item)
         return values
+
+    def token_record(self, items: list[Any]) -> list[Any] | NumberRows:
+        """A list's row lexed by value (see typed.lark)."""
+        return self.record(items)
 
     @staticmethod
     def _is_newline_token(item: Any) -> bool:
