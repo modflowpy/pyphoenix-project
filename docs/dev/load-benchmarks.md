@@ -347,6 +347,11 @@ pixi run -e dev bench -k test_load                  # load only
 pixi run -e dev bench -k test_parse                 # parse only
 pixi run -e dev bench -k test_write                 # write only
 
+# peak memory per library, model and operation, under pytest-memray (not on
+# Windows); a session of its own, since tracking slows everything down.
+# Takes --bench-tier and --bench-manifest like the timing benchmarks
+pixi run -e dev bench-memory
+
 # benchmark the models listed in a file instead of a tier. If the file
 # doesn't exist, discover the models from KNOWN_PASSING: the ones that pass
 # the equal-work check are written to it, and the others listed at the end
@@ -355,6 +360,7 @@ pixi run -e dev bench --bench-manifest /path/to/new-models.txt
 # the file-set check or the cold start by hand, for one or more workspaces
 pixi run -e dev python benchmarks/_check.py WS [WS ...]
 pixi run -e dev python benchmarks/_worker.py cold flopy4 WS
+pixi run -e dev python benchmarks/_worker.py import flopy4 [rss]
 ```
 
 Saved runs go to `.benchmarks/`, which is git-ignored. Benchmark names
@@ -368,6 +374,15 @@ get a fresh save. Each benchmark's
 - the model name and its `models.toml` tags, for the per-model and
   cold-start groups;
 - `n_files_written` and `n_bytes_written`, for the write groups.
+
+Memory runs go to `.benchmarks/memory/`, one JSON file per run with the
+commit, the models (tier or manifest) and, per test, the operation
+(`load`, `load-materialize`, `write` or `import`), library, model, tags,
+input bytes and `peak_memory` in bytes; `import` also has `rss`. A peak
+is what memray saw the operation allocate, Python objects included
+(``--trace-python-allocators``), after one untracked warm-up, so one-time
+caches and imports aren't in it. The import peak and RSS come from fresh
+interpreters (`_worker.py import`).
 
 The per-model distribution and the griddata coverage check came from scratch
 scripts. Both are easy to reconstruct from `benchmarks/_ops.py`:

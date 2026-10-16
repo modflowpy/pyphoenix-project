@@ -1,8 +1,9 @@
 """Benchmark options and fixtures.
 
 Benchmarks are opt-in: `pytest.ini` passes ``--benchmark-disable``, so
-every module here skips unless ``--benchmark-enable`` is given (the pixi
-``bench*`` tasks pass it).
+the timing benchmarks skip unless ``--benchmark-enable`` is given (the
+pixi ``bench*`` tasks pass it). The memory benchmarks (`test_memory.py`)
+run only under ``--memray`` (``bench-memory``), and then alone.
 
 The models come from ``--bench-tier`` (see `models.toml`), or from
 ``--bench-manifest``. Either way they're pinned: a model that's missing,
@@ -19,6 +20,7 @@ import logging
 import subprocess
 import sys
 import warnings
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import NamedTuple
 
@@ -59,10 +61,17 @@ def pytest_addoption(parser):
 
 def pytest_collection_modifyitems(config, items):
     # at collection, so no fixture (model copies, checks) runs for nothing
-    if config.getoption("benchmark_disable") and not config.getoption("benchmark_enable"):
-        skip = pytest.mark.skip(reason="benchmarks disabled; pass --benchmark-enable")
-        for item in items:
-            item.add_marker(skip)
+    memray = config.getoption("memray", False)  # not on Windows
+    timing = config.getoption("benchmark_enable") or not config.getoption("benchmark_disable")
+    for item in items:
+        if item.path.name == "test_memory.py":
+            reason = None if memray else "memory benchmarks need --memray"
+        elif memray:
+            reason = "timing benchmarks don't run under --memray"
+        else:
+            reason = None if timing else "benchmarks disabled; pass --benchmark-enable"
+        if reason:
+            item.add_marker(pytest.mark.skip(reason=reason))
 
 
 @pytest.fixture
@@ -209,6 +218,57 @@ def write_models(models, tmp_path_factory) -> WriteModels:
     return WriteModels(kept, excluded, written)
 
 
+# memory benchmarks' recorded properties, by test: nodeid -> properties
+_MEMORY: dict[str, dict] = {}
+_MEMORY_FILE: list[Path] = []
+
+
+def pytest_runtest_logreport(report):
+    if report.when == "call" and report.passed and Path(report.fspath).name == "test_memory.py":
+        _MEMORY[report.nodeid] = dict(report.user_properties)
+
+
+def _commit(root: Path) -> dict:
+    def git(*args):
+        proc = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True)
+        return proc.stdout.strip()
+
+    return {"id": git("rev-parse", "HEAD"), "dirty": bool(git("status", "--porcelain"))}
+
+
+def pytest_sessionfinish(session):
+    """Write the memory benchmarks' peaks, with what each measured, to
+    ``.benchmarks/memory/``."""
+    manager = session.config.pluginmanager.get_plugin("memray_manager")
+    if not _MEMORY or manager is None:
+        return
+    import flopy
+
+    benchmarks = []
+    for nodeid, props in _MEMORY.items():
+        if "peak_memory" not in props:  # the import test records its own
+            result = manager.results.get(nodeid)
+            if result is None:
+                continue
+            props["peak_memory"] = result.peak_memory
+        benchmarks.append({"name": nodeid.split("::")[-1], **props})
+    root = session.config.rootpath
+    now = datetime.now(timezone.utc)
+    commit = _commit(root)
+    out = root / ".benchmarks" / "memory" / f"{now:%Y%m%d_%H%M%S}_{commit['id'][:8]}.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    data = {
+        "datetime": now.isoformat(),
+        "commit_info": commit,
+        "machine_info": {"python": sys.version.split()[0], "platform": sys.platform},
+        "models": selection(session.config).source,
+        "flopy_version": flopy.__version__,
+        "benchmarks": benchmarks,
+    }
+    out.write_text(json.dumps(data, indent=2) + "\n")
+    _MEMORY_FILE.append(out)
+
+
 def pytest_terminal_summary(terminalreporter):
     for check, excluded in _EXCLUDED.items():
         if not excluded:
@@ -216,3 +276,11 @@ def pytest_terminal_summary(terminalreporter):
         terminalreporter.section(f"benchmark models excluded: {check}")
         for name, reason in sorted(excluded.items()):
             terminalreporter.line(f"{name}: {reason}")
+    for out in _MEMORY_FILE:
+        terminalreporter.section("memory benchmarks")
+        rows = json.loads(out.read_text())["benchmarks"]
+        for row in sorted(rows, key=lambda r: (r["op"], r.get("model", ""), r["library"])):
+            model = row.get("model", "").rsplit("/", 1)[-1]
+            mib = row["peak_memory"] / 2**20
+            terminalreporter.line(f"{row['op']:<17} {model:<32} {row['library']:<7} {mib:9.1f} MiB")
+        terminalreporter.line(f"saved: {out}")

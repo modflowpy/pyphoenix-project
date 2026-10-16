@@ -69,6 +69,7 @@ test = [
     "pytest-dotenv",
     "pytest-xdist",
     "pytest-benchmark",
+    "pytest-memray; sys_platform != 'win32'",
     "pytest-cov",
     "filelock",
 ]
@@ -184,6 +185,7 @@ smoke = { cmd = "pytest -v -n auto --dist worksteal --smoke", env = { MPLBACKEND
 bench = { cmd = "pytest benchmarks --benchmark-enable --benchmark-autosave --benchmark-columns=min,mean,stddev,rounds", env = { MPLBACKEND = "Agg" }, description = "Benchmark the standard tier, saving results to .benchmarks/" }
 bench-large = { cmd = "pytest benchmarks --benchmark-enable --benchmark-autosave --benchmark-columns=min,mean,stddev,rounds --bench-tier large", env = { MPLBACKEND = "Agg" }, description = "Benchmark the large tier (downloaded on first use)" }
 bench-full = { cmd = "pytest benchmarks --benchmark-enable --benchmark-autosave --benchmark-columns=min,mean,stddev,rounds --bench-tier full", env = { MPLBACKEND = "Agg" }, description = "Benchmark the full manifest, benchmarks/models-full.txt" }
+bench-memory = { cmd = "pytest benchmarks --memray --trace-python-allocators --hide-memray-summary", env = { MPLBACKEND = "Agg" }, description = "Peak memory per library, model and operation (pytest-memray; not on Windows), saving to .benchmarks/memory/" }
 
 [tool.pixi.feature.lint.tasks]
 install = { cmd = "pre-commit install --install-hooks" }
