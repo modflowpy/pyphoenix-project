@@ -576,10 +576,22 @@ def _apply_binding_terms(child: Any, terms: list) -> None:
 def _disambiguate_ga_variant(candidates: "list[type[Component]]", path: Path) -> "type[Component]":
     """
     Pick between a base package class and its G/A-variant sibling
-    when both share one namefile ftype by peeking at the namefile.
+    when both share one namefile ftype, by peeking at the package file's
+    options (READASARRAYS or READARRAYGRID), which come before any other
+    block; the rest of the file isn't read.
     """
-    text = path.read_text().upper()
-    is_variant = "READASARRAYS" in text or "READARRAYGRID" in text
+    is_variant = False
+    with path.open() as f:
+        for line in f:
+            text = line.upper()
+            words = text.split()
+            if words[:2] == ["END", "OPTIONS"] or (
+                words[:1] == ["BEGIN"] and words[1:2] != ["OPTIONS"]
+            ):
+                break
+            if "READASARRAYS" in text or "READARRAYGRID" in text:
+                is_variant = True
+                break
     for c in candidates:
         suffixed = len(c.__name__) == 4 and c.__name__[-1] in ("g", "a")
         if suffixed == is_variant:
