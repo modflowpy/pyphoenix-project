@@ -1732,9 +1732,10 @@ def test_to_dataarray_cell_centers_structured_unrotated_no_world():
 
 def test_sel_world_rotated():
     """sel_world finds each cell of a rotated, non-uniform grid from its
-    world centre, scalar or point-wise, exactly (despite rounding) or the
-    nearest, and on an unrotated grid it's sel."""
-    from flopy4.mf6.utils.grid import sel_world
+    world centre, scalar or point-wise, or the nearest; without a method,
+    the cell containing a point, even at the grid's corners despite
+    rounding; and on an unrotated grid it's sel."""
+    from flopy4.mf6.utils.grid import sel_world, to_world
 
     gwf = Gwf(
         dis=Dis(
@@ -1760,8 +1761,17 @@ def test_sel_world_rotated():
     p = xr.DataArray([0, 2], dims="p")
     xw, yw = da.x_world.isel(row=p, col=p), da.y_world.isel(row=p, col=p)
     assert sel_world(da, xw, yw).squeeze().values.tolist() == [0, 8]
+
+    def at(x, y, **kwargs):
+        wx, wy = to_world(x, y, 100.0, 200.0, 30.0)
+        return sel_world(da, float(wx), float(wy), **kwargs).item()
+
+    # just inside the wide column, nearer the narrow column's centre
+    assert at(2.2, 3.5) == 2
+    assert at(2.2, 3.5, method="nearest") == 1
+    assert [at(0, 0), at(6, 0), at(0, 4), at(6, 4)] == [6, 8, 0, 2]
     with pytest.raises(KeyError):
-        sel_world(da, float(da.x_world[0, 0]) + 0.1, float(da.y_world[0, 0]))
+        at(6.1, 1.0)
 
     flat = Gwf(dis=Dis(nlay=1, nrow=2, ncol=2, delr=1.0, delc=1.0, xorigin=10.0, botm=[0.0]))
     da = flat.dis.to_dataarray("botm")
@@ -1820,6 +1830,37 @@ def test_rotated_projection_survives_concat_and_netcdf(function_tmpdir):
     np.testing.assert_allclose(r.x_world, da.x_world)
     xw, yw = float(da.x_world[1, 2]), float(da.y_world[1, 2])
     assert sel_world(r, xw, yw).identical(sel_world(da, xw, yw))
+    # cell sizes are saved, so the edges are back too
+    assert r.xindexes["x"].equals(da.xindexes["x"])
+    assert t.xindexes["x"].equals(da.xindexes["x"])
+
+
+def test_sel_containing_cell():
+    """Selecting by x/y without a method gives the cell containing the
+    point, not the nearest centre, on package arrays, after isel, and on
+    a StructuredGrid's dataset; points outside the grid raise."""
+    from flopy4.mf6.utils.grid import CellIndex, StructuredGrid
+
+    kwargs = dict(nlay=1, nrow=2, ncol=3, delr=[1.0, 1.0, 4.0], delc=[2.0, 1.0])
+    gwf = Gwf(dis=Dis(xorigin=10.0, botm=[0.0], idomain=np.arange(6).reshape(1, 2, 3), **kwargs))
+    da = gwf.dis.to_dataarray("idomain").isel(layer=0)
+    assert isinstance(da.xindexes["x"], CellIndex)
+    assert da.sel(x=12.2, y=2.5).item() == 2
+    assert da.sel(x=12.2, y=2.5, method="nearest").item() == 1
+    assert da.sel(x=12.0, y=1.0).item() == 2
+    assert da.sel(x=xr.DataArray([10.0, 16.0], dims="p"), y=0.5).values.tolist() == [3, 5]
+    with pytest.raises(KeyError):
+        da.sel(x=16.5, y=0.5)
+    with pytest.raises(KeyError):
+        da.sel(x=12.0, y=3.5)
+
+    sub = da.isel(col=slice(1, 3))
+    assert sub.sel(x=15.0, y=0.5).item() == 5
+    with pytest.raises(KeyError):
+        sub.sel(x=10.5, y=0.5)
+
+    ds = StructuredGrid(xoff=10.0, top=1.0, botm=[0.0], **kwargs).dataset
+    assert ds.delr.sel(x=12.2).item() == 4.0
 
 
 def test_to_dataarray_cell_centers_vertex_rotated():

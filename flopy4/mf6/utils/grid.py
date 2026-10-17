@@ -6,6 +6,8 @@ import xugrid as xu
 from flopy.discretization import StructuredGrid as LegacyStructuredGrid
 from flopy.discretization import VertexGrid as LegacyVertexGrid
 from xarray.core.indexes import PandasIndex
+from xarray.core.indexing import IndexSelResult
+from xarray.core.variable import Variable
 
 from flopy4.mf6._types import Scalar
 from flopy4.mf6.constants import FILL_FLOAT64, FILL_INT64
@@ -230,19 +232,17 @@ class StructuredGrid(LegacyStructuredGrid):
 
         # If spatial data is not provided, use default coordinates (indices)
         # This handles grids created with only dimensions (nlay, nrow, ncol)
+        sizes: dict[str, Any] = {}
         if legacy_delr is None or legacy_delc is None:
             xy = {
                 "x": ("col", np.arange(self.ncol, dtype=float)),
                 "y": ("row", np.arange(self.nrow, dtype=float)),
             }
         else:
-            xy = structured_centers(
-                np.broadcast_to(np.asarray(legacy_delr, dtype=np.float64), (self.ncol,)),
-                np.broadcast_to(np.asarray(legacy_delc, dtype=np.float64), (self.nrow,)),
-                self._xoff,
-                self._yoff,
-                self.angrot,
-            )
+            delr = np.broadcast_to(np.asarray(legacy_delr, dtype=np.float64), (self.ncol,))
+            delc = np.broadcast_to(np.asarray(legacy_delc, dtype=np.float64), (self.nrow,))
+            xy = structured_centers(delr, delc, self._xoff, self._yoff, self.angrot)
+            sizes = cell_sizes(delr, delc)
 
         # Compute z coordinates (cell centers in 3D)
         if legacy_top is None or legacy_botm is None:
@@ -273,6 +273,7 @@ class StructuredGrid(LegacyStructuredGrid):
         return {
             "x": xr.DataArray(xy["x"][1], dims=xy["x"][0]),
             "y": xr.DataArray(xy["y"][1], dims=xy["y"][0]),
+            **sizes,
             "z": xr.DataArray(z, dims=("layer", "row", "col")),
             "projection": xr.Variable(*grid_mapping(self._xoff, self._yoff, self.angrot, self.crs)),
         }
@@ -1449,13 +1450,18 @@ def get_coords(grid: LegacyStructuredGrid) -> dict[str, Any]:
     coords["projection"] = grid_mapping(
         grid.xoffset, grid.yoffset, grid.angrot, getattr(grid, "crs", None)
     )
+    return coords | cell_sizes(dx, dy)
+
+
+def cell_sizes(delr, delc) -> dict[str, Any]:
+    """A structured grid's cell sizes, ``dx`` on ``col`` and ``dy`` on
+    ``row``, negative as y decreases along rows; scalars if uniform.
+    ``index_xy`` finds the cells' edges from them."""
+    dx = np.asarray(delr, dtype=np.float64)
+    dy = np.asarray(delc, dtype=np.float64)
     if np.allclose(dx, dx[0]) and np.allclose(dy, dy[0]):
-        coords["dx"] = np.array(float(dx[0]))
-        coords["dy"] = np.array(-float(dy[0]))
-    else:
-        coords["dx"] = ("col", dx.copy())
-        coords["dy"] = ("row", -dy)
-    return coords
+        return {"dx": np.array(float(dx[0])), "dy": np.array(-float(dy[0]))}
+    return {"dx": ("col", dx.copy()), "dy": ("row", -dy)}
 
 
 def cell_centers(dis) -> dict[str, Any]:
@@ -1482,10 +1488,117 @@ def cell_centers(dis) -> dict[str, Any]:
     return {"x": (dim, x), "y": (dim, y)}
 
 
+class CellIndex(PandasIndex):
+    """A structured grid's ``x`` (on ``col``) or ``y`` (on ``row``): the cell
+    centres, indexed as by ``PandasIndex``, with the cells' edges, so that
+    ``sel`` without a ``method`` gives the cell containing each point, not
+    just one centred on it. A point on the edge between two cells gets the
+    cell on its greater side (east, or north); a point outside the grid
+    raises ``KeyError``. Edges are widened by ``tolerance``, by default a
+    billionth of the axis's extent, so rounding (e.g. from rotating) doesn't
+    put a point on an edge outside. With a ``method``, or a slice, it's
+    selection by centre, as with ``PandasIndex``."""
+
+    __slots__ = ("bounds",)
+
+    def __init__(self, array, dim, coord_dtype=None, *, fastpath=False, bounds=None):
+        super().__init__(array, dim, coord_dtype, fastpath=fastpath)
+        # each cell's lower and upper edge, (n, 2), or None to select by centre
+        self.bounds = bounds
+
+    @classmethod
+    def from_variables(cls, variables, *, options):
+        obj = super().from_variables(variables, options=options)
+        bounds = options.get("bounds")
+        obj.bounds = None if bounds is None else np.asarray(bounds, dtype=np.float64)
+        return obj
+
+    def _replace(self, index, dim=None, coord_dtype=None, bounds=None):
+        new = super()._replace(index, dim, coord_dtype)
+        new.bounds = self.bounds if bounds is None else bounds
+        return new
+
+    def _bounds_at(self, indexer):
+        if self.bounds is None:
+            return None
+        if isinstance(indexer, Variable):
+            indexer = indexer.data
+        return self.bounds[indexer]
+
+    def isel(self, indexers):
+        new = super().isel(indexers)
+        if new is not None:
+            new.bounds = self._bounds_at(indexers[self.dim])
+        return new
+
+    def __getitem__(self, indexer):
+        return self._replace(self.index[indexer], bounds=self._bounds_at(indexer))
+
+    def roll(self, shifts):
+        new = super().roll(shifts)
+        if self.bounds is not None:
+            new.bounds = np.roll(self.bounds, shifts[self.dim] % len(self.bounds), axis=0)
+        return new
+
+    def equals(self, other, *, exclude=None):
+        if not isinstance(other, CellIndex) or not super().equals(other):
+            return False
+        if self.bounds is None or other.bounds is None:
+            return self.bounds is other.bounds
+        return np.array_equal(self.bounds, other.bounds)
+
+    def sel(self, labels, method=None, tolerance=None):
+        coord_name, label = next(iter(labels.items()))
+        if method is not None or self.bounds is None or isinstance(label, slice):
+            return super().sel(labels, method, tolerance)
+        values = label.data if isinstance(label, (xr.DataArray, Variable)) else label
+        values = np.asarray(values)
+        if values.dtype.kind not in "iuf":
+            return super().sel(labels, method, tolerance)
+        lo, hi = self.bounds.min(axis=1), self.bounds.max(axis=1)
+        order = np.argsort(lo, kind="stable")
+        lo, hi = lo[order], hi[order]
+        if tolerance is None:
+            tolerance = 1e-9 * (float(hi[-1] - lo[0]) or 1.0)
+        pos = np.searchsorted(lo, values, side="right") - 1
+        pos = np.where((pos < 0) & (values >= lo[0] - tolerance), 0, pos)
+        inside = (pos >= 0) & (values <= hi[np.maximum(pos, 0)] + tolerance)
+        if not np.all(inside):
+            raise KeyError(f"not all values found in index {coord_name!r}: outside the grid")
+        indexer = order[pos]
+        if isinstance(label, Variable):
+            indexer = Variable(label.dims, indexer)
+        elif isinstance(label, xr.DataArray):
+            indexer = xr.DataArray(indexer, coords=label._coords, dims=label.dims)
+        elif indexer.ndim == 0:
+            indexer = int(indexer)
+        return IndexSelResult({self.dim: indexer})
+
+    def __repr__(self):
+        return f"CellIndex({self.index!r})"
+
+
+def _cell_bounds(obj, name: str, size: str) -> np.ndarray | None:
+    """Edges for ``CellIndex``: the centres -/+ half the cells' sizes
+    (``dx``/``dy``), or, without those, midway between centres, the outer
+    edges as far out as the inner. None for a single cell of no size."""
+    c = obj[name].values.astype(np.float64)
+    if size in obj.coords and obj[size].dims in ((), obj[name].dims):
+        half = 0.5 * np.abs(np.broadcast_to(obj[size].values, c.shape))
+        return np.stack([c - half, c + half], axis=1)
+    if len(c) < 2:
+        return None
+    mid = 0.5 * (c[1:] + c[:-1])
+    edges = np.concatenate([[2 * c[0] - mid[0]], mid, [2 * c[-1] - mid[-1]]])
+    return np.stack([edges[:-1], edges[1:]], axis=1)
+
+
 def index_xy(obj):
     """Index a structured array's (or dataset's) x and y coordinates, so it
-    can be selected by them (``sel(x=..., method="nearest")``), and point
-    its gridded variables to its ``projection`` coordinate, if it has
+    can be selected by them: ``sel(x=..., y=...)`` gives the cell containing
+    the point, from the cells' edges, by their sizes ``dx``/``dy`` if it has
+    them (see ``CellIndex``), and ``method="nearest"`` the nearest centre.
+    Point its gridded variables to its ``projection`` coordinate, if it has
     one. If that says the grid's rotated, x/y are local, so give it the
     cells' world coordinates too, as ``x_world``/``y_world`` on
     ``(row, col)``; select by those with ``sel_world``.
@@ -1496,7 +1609,8 @@ def index_xy(obj):
     ``x_world``/``y_world`` differ."""
     if "x" not in obj.coords or "y" not in obj.coords:
         return obj
-    obj = obj.set_xindex("x", PandasIndex).set_xindex("y", PandasIndex)
+    for name, size in (("x", "dx"), ("y", "dy")):
+        obj = obj.set_xindex(name, CellIndex, bounds=_cell_bounds(obj, name, size))
     if "projection" not in obj.coords:
         return obj
     for da in [obj] if isinstance(obj, xr.DataArray) else obj.data_vars.values():
@@ -1516,19 +1630,12 @@ def sel_world(obj, x, y, **kwargs):
     ``projection`` coordinate first; otherwise, x/y are already world
     coordinates, so it's just ``sel``. ``kwargs`` go to ``sel``, e.g.
     ``method="nearest"``. For point-wise selection, pass x and y as
-    DataArrays sharing a dim.
-
-    Without a ``method``, as with ``sel``, a point must be a cell centre.
-    Rotating to local coordinates rounds, so on a rotated grid that's to
-    within a billionth of the grid's extent."""
+    DataArrays sharing a dim."""
     proj = obj.coords["projection"].attrs if "projection" in obj.coords else {}
     if proj.get("angrot"):
         x, y = to_local(x, y, proj["xorigin"], proj["yorigin"], proj["angrot"])
         if not isinstance(x, xr.DataArray) and np.ndim(x) == 0:
             x, y = float(x), float(y)
-        if kwargs.get("method") is None:
-            extent = float(np.ptp(obj.x.values) + np.ptp(obj.y.values)) or 1.0
-            kwargs = {**kwargs, "method": "nearest", "tolerance": 1e-9 * extent}
     return obj.sel(x=x, y=y, **kwargs)
 
 
