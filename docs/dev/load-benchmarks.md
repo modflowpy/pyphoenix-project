@@ -340,8 +340,8 @@ directly.
 # all benchmarks (opt-in), on the standard tier (benchmarks/models.toml)
 pixi run -e dev bench
 pixi run -e dev bench --bench-tier smoke            # under a minute
-pixi run -e dev bench-large                         # the large tier
-pixi run -e dev bench-full                          # benchmarks/models-full.txt
+pixi run -e dev bench --bench-tier large            # downloaded on first use
+pixi run -e dev bench --bench-tier full             # benchmarks/models-full.txt
 pixi run -e dev bench -k test_load                  # load only
 pixi run -e dev bench -k test_parse                 # parse only
 pixi run -e dev bench -k test_write                 # write only
@@ -363,12 +363,12 @@ pixi run -e dev bench-profile -k test_ff_write --benchmark-cprofile=cumtime
 pixi run -e dev python benchmarks/profile/list_scaling.py
 
 # Markdown from saved runs (benchmarks/report.py): a report of the newest
-# run of each tier at the newest commit, timing and memory, to
-# .benchmarks/report.md; or the newest run vs. the one before it on the same
-# tier. Either also takes run files: report.py RUN ..., --compare BASE NEW
-pixi run -e dev bench-report
-pixi run -e dev bench-compare                       # timing
-pixi run -e dev bench-compare --memory              # memory
+# run of each tier at the newest commit, timing and memory; or the newest
+# run vs. the one before it on the same tier. Either also takes run files:
+# bench-report RUN ..., --compare BASE NEW
+pixi run -e dev bench-report -o .benchmarks/report.md
+pixi run -e dev bench-report --compare              # timing
+pixi run -e dev bench-report --compare --memory     # memory
 
 # benchmark the models listed in a file instead of a tier. If the file
 # doesn't exist, discover the models from KNOWN_PASSING: the ones that pass

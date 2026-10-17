@@ -8,8 +8,8 @@ Report, from the timing runs pytest-benchmark saves (``bench*`` tasks,
 
 With no runs given, it takes the newest run of each tier (the profiling
 scenarios, ``bench-profile``, count as a tier of their own), of each kind,
-from the newest commit of that kind, so a ``bench`` and a ``bench-large``
-run at one commit (and their memory runs) make one report. Where runs
+from the newest commit of that kind, so ``bench`` runs of several tiers
+at one commit (and their memory runs) make one report. Where runs
 overlap on a model, the newer one wins.
 
 Compare two runs of one kind, timing or memory::

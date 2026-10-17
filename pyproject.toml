@@ -182,13 +182,10 @@ description = "Show flopy4.mf6 sync status vs. discovered MF6 binary"
 [tool.pixi.feature.test.tasks]
 test = { cmd = "pytest -v -n auto --dist worksteal", env = { MPLBACKEND = "Agg" } }
 smoke = { cmd = "pytest -v -n auto --dist worksteal --smoke", env = { MPLBACKEND = "Agg" } }
-bench = { cmd = "pytest benchmarks --benchmark-enable --benchmark-autosave --benchmark-columns=min,mean,stddev,rounds", env = { MPLBACKEND = "Agg" }, description = "Benchmark the standard tier, saving results to .benchmarks/" }
-bench-large = { cmd = "pytest benchmarks --benchmark-enable --benchmark-autosave --benchmark-columns=min,mean,stddev,rounds --bench-tier large", env = { MPLBACKEND = "Agg" }, description = "Benchmark the large tier (downloaded on first use)" }
-bench-full = { cmd = "pytest benchmarks --benchmark-enable --benchmark-autosave --benchmark-columns=min,mean,stddev,rounds --bench-tier full", env = { MPLBACKEND = "Agg" }, description = "Benchmark the full manifest, benchmarks/models-full.txt" }
+bench = { cmd = "pytest benchmarks --benchmark-enable --benchmark-autosave --benchmark-columns=min,mean,stddev,rounds", env = { MPLBACKEND = "Agg" }, description = "Benchmark a tier (--bench-tier smoke|standard|large|full; default standard), saving results to .benchmarks/" }
 bench-memory = { cmd = "pytest benchmarks --memray --trace-python-allocators --hide-memray-summary", env = { MPLBACKEND = "Agg" }, description = "Peak memory per library, model and operation (pytest-memray; not on Windows), saving to .benchmarks/memory/" }
 bench-profile = { cmd = "pytest benchmarks/profile --benchmark-enable --benchmark-autosave --benchmark-columns=min,mean,stddev,rounds", env = { MPLBACKEND = "Agg" }, description = "Benchmark the profiling scenarios (benchmarks/profile/; -m 'not slow' for the quick ones)" }
-bench-report = { cmd = "python benchmarks/report.py -o .benchmarks/report.md", description = "Write a Markdown report of the newest saved runs to .benchmarks/report.md" }
-bench-compare = { cmd = "python benchmarks/report.py --compare", description = "Compare the newest saved run with the one before it on the same tier (--memory: memory runs)" }
+bench-report = { cmd = "python benchmarks/report.py", description = "Markdown report of the newest saved runs (--compare: newest vs. the one before it; -o FILE)" }
 
 [tool.pixi.feature.lint.tasks]
 install = { cmd = "pre-commit install --install-hooks" }
