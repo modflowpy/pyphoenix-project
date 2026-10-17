@@ -16,6 +16,7 @@ from typing import Any
 import attrs
 import numpy as np
 
+from flopy4.mf6._types import to_ts_value, to_ts_values
 from flopy4.mf6.codec.reader.transformer.rows import _number, without_comments
 from flopy4.mf6.constants import FILL_INT64
 from flopy4.mf6.item import (
@@ -246,6 +247,60 @@ class ItemTable(MutableSequence):
             if col is not None:
                 columns[f.name] = col
         return cls(item_cls, columns, len(items))
+
+    @classmethod
+    def from_columns(
+        cls, item_cls: type[Item], n: int, given: dict[str, Any]
+    ) -> "ItemTable | None":
+        """``n`` rows of ``item_cls`` (tabular: see `item._plannable`),
+        from each field's values: a numeric array, a value per row, or a
+        list, None for a row without one (so the field's default); a field
+        not given has none. The values go through the field's converter and
+        validator as the class' would; None if any would fail (a required
+        field without a value, a value rejected), so that rows made one at
+        a time raise it. None for rows that aren't tabular, too."""
+        if not _plannable(item_cls):  # type: ignore[arg-type]  # lru_cache wants Hashable
+            return None
+        if not n:
+            return cls(item_cls, {}, 0)
+        columns: dict[str, np.ndarray] = {}
+        for f in item_cls.fields():
+            vals = given.get(f.name)
+            if vals is None:
+                if f.default is attrs.NOTHING:
+                    return None
+                continue
+            if isinstance(vals, np.ndarray):
+                dtype = _dtype(f)
+                if (
+                    dtype is not None
+                    and vals.dtype.kind in ("iu" if dtype is np.int64 else "iuf")
+                    and f.converter in (None, to_ts_value, to_ts_values)  # numbers as they are
+                    and f.validator is None
+                    and _default(f) in (None, ())
+                ):
+                    columns[f.name] = vals.astype(dtype)
+                    continue
+                vals = vals.tolist() if vals.ndim == 1 else [tuple(r) for r in vals.tolist()]
+            if any(v is None for v in vals):
+                if f.default is attrs.NOTHING:
+                    return None
+                default = _default(f)
+                vals = [default if v is None else v for v in vals]
+            convert: Any = f.converter  # attrs types it as a plain callable
+            try:
+                if convert is not None:
+                    if isinstance(convert, attrs.Converter):
+                        return None
+                    vals = [convert(v) for v in vals]
+                if (validate := f.validator) is not None:
+                    for v in vals:
+                        validate(None, f, v)
+            except (TypeError, ValueError):
+                return None
+            if (col := _column_of(f, vals)) is not None:
+                columns[f.name] = col
+        return cls(item_cls, columns, n)
 
     def __len__(self) -> int:
         return self._n

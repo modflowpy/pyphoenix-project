@@ -57,18 +57,16 @@ import pandas as pd
 import xarray as xr
 from modflow_devtools.dfns.schema import split_bound
 
-from flopy4.mf6._types import TimeSeriesRef, to_ts_value, to_ts_values
+from flopy4.mf6._types import TimeSeriesRef
 from flopy4.mf6.constants import FILL_DNODATA, FILL_INT64, GRID_DIMS
 from flopy4.mf6.item import (
     Item,
     _may_be_absent,
-    _plannable,
     _union_field_arms,
     item_list_type,
     item_list_words,
 )
-from flopy4.mf6.item_table import ItemTable, _default, _fit, _is_default
-from flopy4.mf6.item_table import _dtype as _column_dtype
+from flopy4.mf6.item_table import ItemTable, _column_of, _default
 from flopy4.spec import is_array
 
 Duplicates = Literal["raise", "sum", "first", "last"]
@@ -736,56 +734,6 @@ def _changed(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     return ~((a == b) | (np.isnan(a) & np.isnan(b)) if a.dtype.kind == "f" else a == b)
 
 
-def _as_table(item: Any, n: int, given: dict[str, Any]) -> Optional[ItemTable]:
-    """``n`` rows of ``item`` as an `ItemTable`, from each field's values:
-    a numeric array, a value per row, or a list, None for a row without
-    one (so the field's default); a field not given has none. The values
-    go through the field's converter and validator as the class' would;
-    None if any would fail (a required field without a value, a value
-    rejected), so the rows raise it as they do."""
-    if not _plannable(item):
-        return None
-    if not n:
-        return ItemTable(item, {}, 0)
-    columns: dict[str, np.ndarray] = {}
-    for f in item.fields():
-        vals = given.get(f.name)
-        if vals is None:
-            if n and f.default is attrs.NOTHING:
-                return None
-            continue
-        if isinstance(vals, np.ndarray):
-            dtype = _column_dtype(f)
-            if (
-                dtype is not None
-                and vals.dtype.kind in ("iu" if dtype is np.int64 else "iuf")
-                and f.converter in (None, to_ts_value, to_ts_values)  # numbers as they are
-                and f.validator is None
-                and _default(f) in (None, ())
-            ):
-                columns[f.name] = vals.astype(dtype)
-                continue
-            vals = vals.tolist() if vals.ndim == 1 else [tuple(r) for r in vals.tolist()]
-        default = _default(f)
-        if any(v is None for v in vals):
-            if f.default is attrs.NOTHING:
-                return None
-            vals = [default if v is None else v for v in vals]
-        try:
-            if (convert := f.converter) is not None:
-                if isinstance(convert, attrs.Converter):
-                    return None
-                vals = [convert(v) for v in vals]
-            if (validate := f.validator) is not None:
-                for v in vals:
-                    validate(None, f, v)
-        except (TypeError, ValueError):
-            return None
-        if not all(_is_default(v, default) for v in vals):
-            columns[f.name] = _fit(f, vals)
-    return ItemTable(item, columns, n)
-
-
 def from_dataset(pkg: Any, ds: xr.Dataset) -> dict[int, Any]:
     """Period rows from ``to_dataset``'s dense or sparse form: a period's
     an `ItemTable` if its rows are tabular (as loaded), else a list."""
@@ -931,21 +879,26 @@ def _whole(parts: list) -> Any:
     return out
 
 
-def _block_table(
-    layout: _Layout, dense: _Dense, now: dict, key: _Key, back: Optional[dict], mask: np.ndarray
-) -> Optional[ItemTable]:
-    """`_block_rows`' rows of a period as an `ItemTable`, by column; None
-    to leave them to it (a value missing where it raises, a cell with no
-    feature)."""
+def _period_rows(
+    layout: _Layout,
+    dense: _Dense,
+    now: dict,
+    key: _Key,
+    back: Optional[dict],
+    mask: np.ndarray,
+    p: int,
+) -> "ItemTable | list":
+    """A period's rows: a row at each position some variable has a value,
+    by column, as an `ItemTable`, or, if the columns don't make one (a
+    value the class' converter or validator rejects), Items, which raise
+    it."""
     setting = layout.settings[0]
     pos = np.argwhere(mask)
     at = tuple(pos.T)
     n = len(pos)
     given: dict[str, Any] = {}
     if back is not None:
-        if any(tuple(p) not in back for p in pos.tolist()):
-            return None
-        given[setting.key.name] = [back[tuple(p)] for p in pos.tolist()]
+        given[setting.key.name] = [key.value(tuple(q), back) for q in pos.tolist()]
     else:
         given[setting.key.name] = pos if key.cell else pos[:, 0]
     for c in setting.columns:
@@ -960,19 +913,35 @@ def _block_table(
         elif ns:
             got = _Dense.column(now, ns[0], c, at)
         if got is False:
-            return None
+            raise ValueError(f"{c.field.name} is missing some of its values in period {p}")
         if got is not None and not isinstance(got, np.ndarray) and all(v is None for v in got):
             got = None
-        if got is None or (isinstance(got, list) and None in got):
-            if not _may_be_absent(c.field):
-                return None
+        if (got is None or (isinstance(got, list) and None in got)) and not _may_be_absent(c.field):
+            q = pos[0] if got is None else pos[got.index(None)]
+            raise ValueError(
+                f"{c.field.name} has no value at {tuple(q.tolist())} in period {p}, "
+                "where other columns do"
+            )
         if got is not None:
             given[c.field.name] = got
     if "boundname" in now:
         names = [None if _none(b) else b for b in now["boundname"][at].tolist()]
         if any(b is not None for b in names):
             given["boundname"] = names
-    return _as_table(layout.item, n, given)
+    if (table := ItemTable.from_columns(layout.item, n, given)) is not None:
+        return table
+    columns = {k: _as_list(v) for k, v in given.items()}
+    return [
+        layout.item(**{k: vs[i] for k, vs in columns.items() if vs[i] is not None})
+        for i in range(n)
+    ]
+
+
+def _as_list(values: Any) -> list:
+    """A column's values (an array, a row each, or a list) as a list."""
+    if not isinstance(values, np.ndarray):
+        return values
+    return values.tolist() if values.ndim == 1 else [tuple(r) for r in values.tolist()]
 
 
 def _positions(mask: np.ndarray) -> list[tuple[int, ...]]:
@@ -984,10 +953,7 @@ def _block_rows(
 ) -> dict[int, Any]:
     """Plain rows: a period block where a period differs from the last,
     a row at each position some variable has a value."""
-    setting = layout.settings[0]
-    key, back = keys[setting.key.name]
-    names = {id(c): [n for n, _, cc in dense.found if cc is c] for c in setting.columns}
-    tabular = _plannable(layout.item)
+    key, back = keys[layout.settings[0].key.name]
     spd: dict[int, Any] = {}
     prev: Optional[dict] = None
     for p in range(dense.ds.sizes["per"]):
@@ -1000,35 +966,8 @@ def _block_rows(
             if (ref := now.get(f"{n}_ts")) is not None:
                 present |= ~_is_missing(ref, "object")
             mask |= present.reshape(-1, *mask.shape).any(axis=0)
-        if tabular and (table := _block_table(layout, dense, now, key, back, mask)) is not None:
-            if len(table) or prev is not None:
-                spd[p] = table
-            prev = now
-            continue
-        rows = []
-        for at in _positions(mask):
-            kwargs: dict[str, Any] = {setting.key.name: key.value(at, back)}
-            for c in setting.columns:
-                ns = names[id(c)]
-                if c.aux:
-                    vals = [dense.value(now, n, c, at) for n in ns]
-                    if any(v is not None for v in vals):
-                        if any(v is None for v in vals):
-                            raise ValueError(f"aux is missing values at {at} in period {p}")
-                        kwargs[c.field.name] = tuple(vals)
-                elif ns and c.size is not None:
-                    if (vs := dense.values(now, ns[0], c, at, 0)) is not None:
-                        kwargs[c.field.name] = vs
-                elif ns and (v := dense.value(now, ns[0], c, at)) is not None:
-                    kwargs[c.field.name] = v
-                if c.field.name not in kwargs and not _may_be_absent(c.field):
-                    raise ValueError(
-                        f"{c.field.name} has no value at {at} in period {p}, where other columns do"
-                    )
-            if "boundname" in now and not _none(now["boundname"][at]):
-                kwargs["boundname"] = now["boundname"][at]
-            rows.append(layout.item(**kwargs))
-        if rows or prev is not None:
+        rows = _period_rows(layout, dense, now, key, back, mask, p)
+        if len(rows) or prev is not None:
             spd[p] = rows
         prev = now
     return spd
@@ -1373,7 +1312,7 @@ def _sparse_tables(pkg: Any, ds: xr.Dataset, item: Any, names: dict) -> Optional
             got = _sparse_column(ds, names, f.name)
         if got is not None:
             given[f.name] = got
-    table = _as_table(item, n, given)
+    table = ItemTable.from_columns(item, n, given)
     if table is None:
         return None
     per = ds.coords["per"].values.astype(np.int64)
@@ -1391,9 +1330,8 @@ def _sparse_tables(pkg: Any, ds: xr.Dataset, item: Any, names: dict) -> Optional
                 continue
             # a period's own: numbers if it has no series, none if defaults
             f = fields[k]
-            vals = c[rows].tolist()
-            if not all(_is_default(v, _default(f)) for v in vals):
-                columns[k] = _fit(f, vals)
+            if (col := _column_of(f, c[rows].tolist())) is not None:
+                columns[k] = col
         spd[kper] = ItemTable(item, columns, len(rows))
     return dict(sorted(spd.items()))
 
