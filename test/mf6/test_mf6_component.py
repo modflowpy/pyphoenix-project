@@ -1839,6 +1839,8 @@ def test_sel_containing_cell():
     """Selecting by x/y without a method gives the cell containing the
     point, not the nearest centre, on package arrays, after isel, and on
     a StructuredGrid's dataset; points outside the grid raise."""
+    from flopy.discretization import StructuredGrid as LegacyStructuredGrid
+
     from flopy4.mf6.utils.grid import CellIndex, StructuredGrid
 
     kwargs = dict(nlay=1, nrow=2, ncol=3, delr=[1.0, 1.0, 4.0], delc=[2.0, 1.0])
@@ -1847,7 +1849,12 @@ def test_sel_containing_cell():
     assert isinstance(da.xindexes["x"], CellIndex)
     assert da.sel(x=12.2, y=2.5).item() == 2
     assert da.sel(x=12.2, y=2.5, method="nearest").item() == 1
-    assert da.sel(x=12.0, y=1.0).item() == 2
+    # on an edge, the lower row or column (west or north), as in flopy3
+    assert da.sel(x=12.0, y=1.0).item() == 1
+    assert da.sel(x=12.0 - 1e-12, y=1.0 - 1e-12).item() == 1
+    assert da.sel(x=12.0 + 1e-12, y=1.0 + 1e-12).item() == 1
+    legacy = LegacyStructuredGrid(delr=np.array(kwargs["delr"]), delc=np.array(kwargs["delc"]))
+    assert legacy.intersect(2.0, 1.0) == (0, 1)
     assert da.sel(x=xr.DataArray([10.0, 16.0], dims="p"), y=0.5).values.tolist() == [3, 5]
     with pytest.raises(KeyError):
         da.sel(x=16.5, y=0.5)

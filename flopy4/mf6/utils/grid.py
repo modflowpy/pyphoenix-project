@@ -1493,11 +1493,13 @@ class CellIndex(PandasIndex):
     centres, indexed as by ``PandasIndex``, with the cells' edges, so that
     ``sel`` without a ``method`` gives the cell containing each point, not
     just one centred on it. A point on the edge between two cells gets the
-    cell on its greater side (east, or north); a point outside the grid
+    one with the lower index (on a DIS grid, the west or north cell), as
+    with flopy's ``StructuredGrid.intersect``; a point outside the grid
     raises ``KeyError``. Edges are widened by ``tolerance``, by default a
     billionth of the axis's extent, so rounding (e.g. from rotating) doesn't
-    put a point on an edge outside. With a ``method``, or a slice, it's
-    selection by centre, as with ``PandasIndex``."""
+    put a point on an edge outside, or in the wrong cell. With a
+    ``method``, or a slice, it's selection by centre, as with
+    ``PandasIndex``."""
 
     __slots__ = ("bounds",)
 
@@ -1565,7 +1567,14 @@ class CellIndex(PandasIndex):
         inside = (pos >= 0) & (values <= hi[np.maximum(pos, 0)] + tolerance)
         if not np.all(inside):
             raise KeyError(f"not all values found in index {coord_name!r}: outside the grid")
+        # on an edge (within tolerance), the neighbouring cell with the lower index
+        n = len(order)
+        prev, nxt = np.maximum(pos - 1, 0), np.minimum(pos + 1, n - 1)
         indexer = order[pos]
+        in_prev = (pos > 0) & (values <= hi[prev] + tolerance)
+        indexer = np.where(in_prev, np.minimum(indexer, order[prev]), indexer)
+        in_next = (pos < n - 1) & (values >= lo[nxt] - tolerance)
+        indexer = np.where(in_next, np.minimum(indexer, order[nxt]), indexer)
         if isinstance(label, Variable):
             indexer = Variable(label.dims, indexer)
         elif isinstance(label, xr.DataArray):
