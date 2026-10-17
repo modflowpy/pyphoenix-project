@@ -1734,7 +1734,7 @@ def test_sel_world_rotated():
     """sel_world finds each cell of a rotated, non-uniform grid from its
     world centre, scalar or point-wise, or the nearest; without a method,
     the cell containing a point, even at the grid's corners despite
-    rounding; and on an unrotated grid it's sel. da.mf6.sel_world is
+    rounding; and on an unrotated grid it's sel. da.grid.sel_world is
     sel_world."""
     from flopy4.mf6.utils.grid import sel_world, to_world
 
@@ -1764,9 +1764,9 @@ def test_sel_world_rotated():
     assert sel_world(da, xw, yw).squeeze().values.tolist() == [0, 8]
 
     # the accessor, on arrays and datasets
-    assert da.mf6.sel_world(xw, yw).identical(sel_world(da, xw, yw))
+    assert da.grid.sel_world(xw, yw).identical(sel_world(da, xw, yw))
     ds = da.to_dataset(name="idomain")
-    assert ds.mf6.sel_world(xw, yw).identical(sel_world(ds, xw, yw))
+    assert ds.grid.sel_world(xw, yw).identical(sel_world(ds, xw, yw))
 
     def at(x, y, **kwargs):
         wx, wy = to_world(x, y, 100.0, 200.0, 30.0)

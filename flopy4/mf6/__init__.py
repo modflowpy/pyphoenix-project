@@ -16,7 +16,7 @@ except ImportError:
 # Nothing imported eagerly here may import a generated module, so
 # `flopy4 mf6 sync` still runs when the generated classes are broken
 # or out of date. Generated components load on first use (__getattr__).
-from flopy4.mf6 import accessor as accessor  # registers the mf6 xarray accessor
+from flopy4.mf6 import accessor as accessor  # registers the grid xarray accessor
 from flopy4.mf6 import solution, utils
 from flopy4.mf6._sync import SyncError, SyncResult, sync
 from flopy4.mf6._types import TimeArraySeriesRef, TimeSeriesRef

@@ -1639,7 +1639,7 @@ def sel_world(obj, x, y, **kwargs):
     ``projection`` coordinate first; otherwise, x/y are already world
     coordinates, so it's just ``sel``. ``kwargs`` go to ``sel``, e.g.
     ``method="nearest"``. For point-wise selection, pass x and y as
-    DataArrays sharing a dim. Also ``obj.mf6.sel_world(x, y)``."""
+    DataArrays sharing a dim. Also ``obj.grid.sel_world(x, y)``."""
     proj = obj.coords["projection"].attrs if "projection" in obj.coords else {}
     if proj.get("angrot"):
         x, y = to_local(x, y, proj["xorigin"], proj["yorigin"], proj["angrot"])
