@@ -1,11 +1,15 @@
 import re
+from contextvars import ContextVar
+from mmap import mmap
 from typing import Any
 
 from lark import Token, Transformer
 
-from flopy4.mf6.codec.reader.transformer.rows import BlockRows, NumberRows
-from flopy4.mf6.codec.reader.transformer.typed import unquote
+from flopy4.mf6.codec.reader.transformer.rows import BlockRows, NumberRows, Span
 from flopy4.utils import parse_number
+
+# The buffer being parsed and its encoding (see `BasicTransformer`).
+SOURCE: ContextVar[tuple[bytes | mmap, str]] = ContextVar("SOURCE")
 
 # A whole token that's a number, allowing Fortran `D` exponents (`1D-5`).
 _NUMBER = re.compile(r"[+-]?(\d+(\.\d*)?|\.\d+)([eEdD][+-]?\d+)?")
@@ -22,10 +26,16 @@ class _RecordRows(list):
     """RECORDS' rows, which `block` splices in among its other lines."""
 
 
+def _text(token: Token) -> str:
+    return token.value.decode(SOURCE.get()[1])
+
+
 class BasicTransformer(Transformer):
     """
     Basic transformer for MF6 input files. Works only with the basic
-    grammar. Yields blocks simply as collections of lines of tokens.
+    grammar, parsing bytes (`get_basic_parser(..., use_bytes=True)`) with
+    `SOURCE` set to them. Yields blocks simply as collections of lines of
+    tokens.
     """
 
     def start(self, items: list[Any]) -> dict[str, Any]:
@@ -73,30 +83,34 @@ class BasicTransformer(Transformer):
         return str(name)
 
     def line(self, items: list[Any]) -> list[Any]:
-        return [str(i) if isinstance(i, Token) else i for i in items]
+        return [_text(i) if isinstance(i, Token) else i for i in items]
 
     def TOKEN(self, token: Token) -> str | int | float:
-        return _value(str(token))
+        return _value(_text(token))
 
     def RECORDS(self, token: Token) -> _RecordRows:
         # Each line a row, as `line` reads it; blank and comment-only lines
         # aren't rows.
         rows = _RecordRows()
-        for line in token.value.replace(",", " ").split("\n"):
+        for line in _text(token).replace(",", " ").split("\n"):
             if (values := line.split()) and values[0][0] not in "#!":
                 rows.append([_value(v) for v in values])
         return rows
 
     def NUMBERS(self, token: Token) -> NumberRows:
-        # `value`, the text the token holds: `str(token)` would copy it.
-        return NumberRows(token.value)
+        # Where the text is, not the text: it's read from the buffer when
+        # it's structured.
+        buffer, encoding = SOURCE.get()
+        start, end = token.start_pos, token.end_pos
+        assert start is not None and end is not None  # the lexer sets both
+        return NumberRows(Span(buffer, start, end, encoding))
 
     def QUOTED_WORD(self, token: Token) -> str:
         # Quoting forces string interpretation even if content looks numeric.
-        return unquote(token)
+        return _text(token)[1:-1]
 
     def CNAME(self, token: Token) -> str:
-        return str(token)
+        return _text(token)
 
     def INT(self, token: Token) -> int:
-        return int(token)
+        return int(token.value)

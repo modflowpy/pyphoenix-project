@@ -1,8 +1,23 @@
 """Consecutive number-only lines (the grammars' NUMBERS tokens), kept as text."""
 
 from collections.abc import Iterator, Sequence
+from mmap import mmap
+from typing import NamedTuple
 
 import numpy as np
+
+
+class Span(NamedTuple):
+    """Where a token's text is in the buffer that was parsed (a file's
+    mapping), decoded only when read."""
+
+    buffer: bytes | mmap
+    start: int
+    end: int
+    encoding: str
+
+    def decode(self) -> str:
+        return str(memoryview(self.buffer)[self.start : self.end], self.encoding)
 
 
 class NumberRows(Sequence):
@@ -14,7 +29,8 @@ class NumberRows(Sequence):
 
     __slots__ = ("_text", "_rows")
 
-    def __init__(self, text: str) -> None:
+    def __init__(self, text: str | Span) -> None:
+        # A `Span` keeps the text out of memory until it's read.
         self._text = text
         self._rows: list[list[int | float]] | None = None
 
@@ -22,7 +38,8 @@ class NumberRows(Sequence):
     def text(self) -> str:
         """The lines' text, commas as spaces and `D` exponents as `E`;
         blank and comment-only lines included."""
-        text = self._text.replace(",", " ")
+        text = self._text if isinstance(self._text, str) else self._text.decode()
+        text = text.replace(",", " ")
         if "d" in text or "D" in text:
             text = text.replace("d", "e").replace("D", "E")
         return text

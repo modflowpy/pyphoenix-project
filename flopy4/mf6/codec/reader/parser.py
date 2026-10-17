@@ -2,16 +2,40 @@ from functools import lru_cache
 from pathlib import Path
 
 from lark import Lark, Transformer
+from lark.lexer import LexerState, LexerThread, LineCounter
 
 _LALR = "lalr"
 _GRAMMAR_MODULE = Path(__file__).parent / "grammar"
 
 
-def get_basic_parser(transformer: Transformer | None = None) -> Lark:
+class _Text:
+    """A buffer as lark's lexer reads its input (a `TextSlice`'s
+    attributes), which only matches regexes on it."""
+
+    __slots__ = ("text", "start", "end")
+
+    def __init__(self, buffer) -> None:
+        self.text = buffer
+        self.start = 0
+        self.end = len(buffer)
+
+
+class _BufferLexerThread(LexerThread):
+    """Lexes any buffer (a file's mmap), not just `str` or `bytes`. Lark
+    passes other input here as is."""
+
+    @classmethod
+    def from_custom_input(cls, lexer, text) -> LexerThread:
+        return cls(lexer, LexerState(_Text(text), LineCounter(b"\n")))  # type: ignore[arg-type]
+
+
+def get_basic_parser(transformer: Transformer | None = None, use_bytes: bool = False) -> Lark:
     """The basic grammar's parser. With a transformer, `parse` applies it
     as it goes and returns its result, never holding the whole tree (with
     its tokens, each the text it matched twice over: a big list block's
-    many times the file's size)."""
+    many times the file's size). With `use_bytes`, it parses bytes or a
+    buffer of them (a file's mmap), so the file's text needn't be read
+    into memory."""
     grammar_path = _GRAMMAR_MODULE / "basic.lark"
     with open(grammar_path, "r") as f:
         return Lark(
@@ -20,6 +44,8 @@ def get_basic_parser(transformer: Transformer | None = None) -> Lark:
             debug=True,
             import_paths=[str(_GRAMMAR_MODULE)],
             transformer=transformer,
+            use_bytes=use_bytes,
+            _plugins={"LexerThread": _BufferLexerThread} if use_bytes else {},
         )
 
 
