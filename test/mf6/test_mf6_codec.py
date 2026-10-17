@@ -4663,8 +4663,16 @@ END period
 """
 
 
+@pytest.fixture
+def map_any_file(monkeypatch):
+    """Map files of any size (`load` maps only big ones)."""
+    from flopy4.mf6.codec import reader
+
+    monkeypatch.setattr(reader, "_MAP_SIZE", 1)
+
+
 @pytest.mark.parametrize("newline", ["\n", "\r\n"])
-def test_load_file_matches_loads(tmp_path, newline):
+def test_load_file_matches_loads(tmp_path, map_any_file, newline):
     """`load` reads a file as `loads` reads its text: mapped (no `\\r`),
     or read as text, as for CRLF, whose newlines text mode translates."""
     from mmap import mmap
@@ -4684,7 +4692,7 @@ def test_load_file_matches_loads(tmp_path, newline):
     assert raw["period 1"].parts[2].text.split() == ["2", "1", "1", "3", "4.0"]
 
 
-def test_load_file_trailing_garbage(tmp_path):
+def test_load_file_trailing_garbage(tmp_path, map_any_file):
     """A mapped file with content after its last block parses up to it."""
     from flopy4.mf6.codec import load
 
@@ -4694,7 +4702,7 @@ def test_load_file_trailing_garbage(tmp_path):
         assert load(f) == loads(_MAPPED_INPUT)
 
 
-def test_load_empty_file(tmp_path):
+def test_load_empty_file(tmp_path, map_any_file):
     from flopy4.mf6.codec import load
 
     path = tmp_path / "x.wel"

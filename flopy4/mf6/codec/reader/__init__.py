@@ -55,15 +55,22 @@ def load(fp: IO[str], *, component: str | None = None) -> Any:
     return loads(fp.read(), component=component)
 
 
+# Files this big or bigger are mapped (see `_map`). A mapping costs about
+# 4 ms however small the file (macOS), as much as reading 18 MB of text,
+# and a small file's text is little memory.
+_MAP_SIZE = 16 * 2**20
+
+
 def _map(fp: IO[str]) -> tuple[mmap.mmap, str] | None:
-    """The file `fp` reads, mapped, and its encoding, if its bytes parse as its text would:
-    an ASCII-compatible encoding, and no `\r` (which text mode's
+    """The file `fp` reads, mapped, and its encoding, if it's big (see
+    `_MAP_SIZE`) and its bytes parse as its text would: an
+    ASCII-compatible encoding, and no carriage returns (which text mode's
     universal newlines would translate). A mapping is the OS's file
     cache, not the process's memory, and the parse reads values from it
     only as they're structured."""
     try:
         fileno = fp.fileno()
-        if fp.tell() != 0 or os.fstat(fileno).st_size == 0:
+        if fp.tell() != 0 or os.fstat(fileno).st_size < _MAP_SIZE:
             return None
     except (AttributeError, OSError, io.UnsupportedOperation):
         return None
