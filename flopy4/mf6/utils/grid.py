@@ -12,6 +12,7 @@ from xarray.core.variable import Variable
 from flopy4.mf6._types import Scalar
 from flopy4.mf6.constants import FILL_FLOAT64, FILL_INT64
 from flopy4.mf6.enums import NetCDFFormat
+from flopy4.mf6.utils.vertical import sel_z, z_coords
 
 
 def _coord_units(lenuni: int, crs) -> str | None:
@@ -244,39 +245,33 @@ class StructuredGrid(LegacyStructuredGrid):
             xy = structured_centers(delr, delc, self._xoff, self._yoff, self.angrot)
             sizes = cell_sizes(delr, delc)
 
-        # Compute z coordinates (cell centers in 3D)
+        # Cell elevations: centres z, and tops and bottoms z_top/z_bot for
+        # selecting by elevation (see flopy4.mf6.utils.vertical). Without
+        # top/botm, z is the layer index, and there are no bounds.
+        dims = ("layer", "row", "col")
         if legacy_top is None or legacy_botm is None:
-            # Use default z coordinates (layer indices)
             z = np.zeros((self.nlay, self.nrow, self.ncol))
             for k in range(self.nlay):
                 z[k, :, :] = float(k)
+            zs = {"z": xr.DataArray(z, dims=dims)}
         else:
-            # Ensure top and botm are proper arrays
-            top_2d = np.atleast_2d(legacy_top)
-            if top_2d.size == 1:
-                top_2d = np.full((self.nrow, self.ncol), top_2d[0, 0])
-            elif top_2d.shape != (self.nrow, self.ncol):
-                top_2d = top_2d.reshape(self.nrow, self.ncol)
-
-            botm_3d = np.atleast_3d(legacy_botm).reshape(self.nlay, self.nrow, self.ncol)
-
-            # Compute cell-centered z for each cell
-            z = np.zeros((self.nlay, self.nrow, self.ncol))
-            for k in range(self.nlay):
-                if k == 0:
-                    layer_top = top_2d
-                else:
-                    layer_top = botm_3d[k - 1]
-                layer_bot = botm_3d[k]
-                z[k] = (layer_top + layer_bot) / 2.0
+            botm = np.reshape(legacy_botm, (self.nlay, self.nrow, self.ncol))
+            zs = {
+                k: xr.DataArray(v, dims=d) for k, (d, v) in z_coords(legacy_top, botm, dims).items()
+            }
 
         return {
             "x": xr.DataArray(xy["x"][1], dims=xy["x"][0]),
             "y": xr.DataArray(xy["y"][1], dims=xy["y"][0]),
             **sizes,
-            "z": xr.DataArray(z, dims=("layer", "row", "col")),
+            **zs,
             "projection": xr.Variable(*grid_mapping(self._xoff, self._yoff, self.angrot, self.crs)),
         }
+
+    def _cell_coords(self) -> dict:
+        """The coordinates of an array on the grid's cells: x/y, and the
+        cells' elevations."""
+        return {k: v for k, v in self._coords.items() if k in ("x", "y", "z", "z_top", "z_bot")}
 
     @property
     def legacy(self) -> bool:
@@ -342,7 +337,7 @@ class StructuredGrid(LegacyStructuredGrid):
         if legacy_delz.shape != (self.nlay, self.nrow, self.ncol):
             return legacy_delz
 
-        coords = {"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]}
+        coords = self._cell_coords()
         return (
             xr.DataArray(legacy_delz, coords=coords, dims=dims)
             .set_xindex("x", PandasIndex)
@@ -386,7 +381,7 @@ class StructuredGrid(LegacyStructuredGrid):
         if legacy_botm.shape != (self.nlay, self.nrow, self.ncol):
             return legacy_botm
 
-        coords = {"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]}
+        coords = self._cell_coords()
         return (
             xr.DataArray(legacy_botm, coords=coords, dims=dims)
             .set_xindex("x", PandasIndex)
@@ -408,7 +403,7 @@ class StructuredGrid(LegacyStructuredGrid):
         if legacy_idomain.shape != (self.nlay, self.nrow, self.ncol):
             return legacy_idomain
 
-        coords = {"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]}
+        coords = self._cell_coords()
         return (
             xr.DataArray(legacy_idomain, coords=coords, dims=dims)
             .set_xindex("x", PandasIndex)
@@ -994,37 +989,29 @@ class VertexGrid(LegacyVertexGrid):
         else:
             y = ycellcenters
 
-        # Compute z coordinates (cell centers in 3D)
+        # Cell elevations, as for StructuredGrid.
+        dims = ("layer", "cell")
         if legacy_top is None or legacy_botm is None:
-            # Use default z coordinates (layer indices)
             z = np.zeros((self.nlay, self.ncpl))
             for k in range(self.nlay):
                 z[k, :] = float(k)
+            zs = {"z": xr.DataArray(z, dims=dims)}
         else:
-            # Ensure top and botm are proper arrays
-            top_1d = np.atleast_1d(legacy_top)
-            if top_1d.size == 1:
-                top_1d = np.full((self.ncpl,), top_1d[0])
-            elif top_1d.shape != (self.ncpl,):
-                top_1d = top_1d.reshape(self.ncpl)
-
-            botm_2d = np.atleast_2d(legacy_botm).reshape(self.nlay, self.ncpl)
-
-            # Compute cell-centered z for each cell
-            z = np.zeros((self.nlay, self.ncpl))
-            for k in range(self.nlay):
-                if k == 0:
-                    layer_top = top_1d
-                else:
-                    layer_top = botm_2d[k - 1]
-                layer_bot = botm_2d[k]
-                z[k] = (layer_top + layer_bot) / 2.0
+            botm = np.reshape(legacy_botm, (self.nlay, self.ncpl))
+            zs = {
+                k: xr.DataArray(v, dims=d) for k, (d, v) in z_coords(legacy_top, botm, dims).items()
+            }
 
         return {
             "x": xr.DataArray(x, dims=("cell",)),
             "y": xr.DataArray(y, dims=("cell",)),
-            "z": xr.DataArray(z, dims=("layer", "cell")),
+            **zs,
         }
+
+    def _cell_coords(self) -> dict:
+        """The coordinates of an array on the grid's cells: x/y, and the
+        cells' elevations."""
+        return {k: v for k, v in self._coords.items() if k in ("x", "y", "z", "z_top", "z_bot")}
 
     @property
     def legacy(self) -> bool:
@@ -1059,7 +1046,7 @@ class VertexGrid(LegacyVertexGrid):
         if legacy_delz.shape != (self.nlay, self.ncpl):
             return legacy_delz
 
-        coords = {"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]}
+        coords = self._cell_coords()
         return (
             xr.DataArray(legacy_delz, coords=coords, dims=dims)
             .set_xindex("x", PandasIndex)
@@ -1103,7 +1090,7 @@ class VertexGrid(LegacyVertexGrid):
         if legacy_botm.shape != (self.nlay, self.ncpl):
             return legacy_botm
 
-        coords = {"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]}
+        coords = self._cell_coords()
         return (
             xr.DataArray(legacy_botm, coords=coords, dims=dims)
             .set_xindex("x", PandasIndex)
@@ -1125,7 +1112,7 @@ class VertexGrid(LegacyVertexGrid):
         if legacy_idomain.shape != (self.nlay, self.ncpl):
             return legacy_idomain
 
-        coords = {"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]}
+        coords = self._cell_coords()
         return (
             xr.DataArray(legacy_idomain, coords=coords, dims=dims)
             .set_xindex("x", PandasIndex)
@@ -1442,14 +1429,18 @@ def grid_mapping(xorigin=None, yorigin=None, angrot=None, crs=None) -> tuple:
 
 def get_coords(grid: LegacyStructuredGrid) -> dict[str, Any]:
     """A structured grid's world coordinates, as for package arrays (see
-    ``cell_centers``), and its cell sizes as ``dx``/``dy``. No layer
-    coordinate: a position is the index."""
+    ``cell_centers``), its cell sizes as ``dx``/``dy``, and its cells'
+    elevations if it has them (see ``z_coords``). No layer coordinate: a
+    position is the index."""
     dx = np.broadcast_to(np.asarray(grid.delr, dtype=np.float64), (grid.ncol,))
     dy = np.broadcast_to(np.asarray(grid.delc, dtype=np.float64), (grid.nrow,))
     coords: dict[str, Any] = structured_centers(dx, dy, grid.xoffset, grid.yoffset, grid.angrot)
     coords["projection"] = grid_mapping(
         grid.xoffset, grid.yoffset, grid.angrot, getattr(grid, "crs", None)
     )
+    if grid.top is not None and grid.botm is not None:
+        botm = np.reshape(np.asarray(grid.botm), (grid.nlay, grid.nrow, grid.ncol))
+        coords |= z_coords(np.asarray(grid.top), botm, ("layer", "row", "col"))
     return coords | cell_sizes(dx, dy)
 
 
@@ -1666,19 +1657,25 @@ def index_xy(obj):
     return obj
 
 
-def sel_world(obj, x, y, **kwargs):
+def sel_world(obj, x, y, z=None, **kwargs):
     """Select from an array (or dataset) by world coordinates. On a rotated
     structured grid, x/y are local, so convert to them through the
     ``projection`` coordinate first; otherwise, x/y are already world
     coordinates, so it's just ``sel``. ``kwargs`` go to ``sel``, e.g.
-    ``method="nearest"``. For point-wise selection, pass x and y as
-    DataArrays sharing a dim. Also ``obj.grid.sel_world(x, y)``."""
+    ``method="nearest"``. For point-wise selection, pass x and y (and z)
+    as DataArrays sharing a dim. Also ``obj.grid.sel_world(x, y)``.
+
+    With ``z``, then select the cell containing that elevation from the
+    vertical column (see ``flopy4.mf6.utils.vertical.sel_z``), raising
+    ``KeyError`` if there's none. That's always containment: ``method``
+    only applies to x/y."""
     proj = obj.coords["projection"].attrs if "projection" in obj.coords else {}
     if proj.get("angrot"):
         x, y = to_local(x, y, proj["xorigin"], proj["yorigin"], proj["angrot"])
         if not isinstance(x, xr.DataArray) and np.ndim(x) == 0:
             x, y = float(x), float(y)
-    return obj.sel(x=x, y=y, **kwargs)
+    obj = obj.sel(x=x, y=y, **kwargs)
+    return obj if z is None else sel_z(obj, z, outside="raise")
 
 
 def dims_from_grb(grb_path) -> dict:

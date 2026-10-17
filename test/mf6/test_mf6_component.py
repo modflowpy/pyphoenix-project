@@ -1905,6 +1905,53 @@ def test_sel_containing_cell_after_align_and_concat():
         xr.align(da, index_xy(narrow), join="outer")
 
 
+def test_sel_by_elevation():
+    """Arrays on a grid's layers get their cells' elevations from the
+    discretization's top/botm, as do StructuredGrid's and VertexGrid's
+    datasets, and the grid accessor selects by them: a horizontal slice,
+    a cell at a world point, or a mask on an elevation range."""
+    kwargs = dict(nlay=2, nrow=1, ncol=2, delr=1.0, delc=1.0, xorigin=10.0, angrot=30.0)
+    top = np.array([10.0, 6.0])
+    botm = np.array([[5.0, 3.0], [0.0, 0.0]])
+    dis = Dis(top=top, botm=botm.ravel(), idomain=np.arange(4), **kwargs)
+    da = Gwf(dis=dis).dis.to_dataarray("idomain")
+    assert da.z_top.dims == ("layer", "row", "col")
+    assert da.z_top.values[:, 0].tolist() == [[10.0, 6.0], [5.0, 3.0]]
+    assert da.z_bot.values[:, 0].tolist() == botm.tolist()
+    assert da.z.values[:, 0].tolist() == [[7.5, 4.5], [2.5, 1.5]]
+    # top is one layer's worth, not on the grid's layers
+    assert "z_top" not in Gwf(dis=dis).dis.to_dataarray("top").coords
+
+    # z=4 is in layer 1 of column 0 and layer 0 of column 1
+    out = da.grid.sel_z(4.0)
+    assert out.values.tolist() == [[2, 1]]
+    assert out.layer.values.tolist() == [[1, 0]]
+    assert da.grid.mask_z(4.0, 8.0).values[:, 0].tolist() == [[True, True], [True, False]]
+
+    xw, yw = float(da.x_world[0, 1]), float(da.y_world[0, 1])
+    assert da.grid.sel_world(xw, yw, 2.0).item() == 3
+    assert da.grid.sel_world(xw, yw, 3.0).item() == 1  # on the interface: upper
+    with pytest.raises(KeyError):
+        da.grid.sel_world(xw, yw, 6.5)
+    xs, ys = (xr.DataArray(c.values[0], dims="point") for c in (da.x_world, da.y_world))
+    out = da.grid.sel_world(xs, ys, xr.DataArray([8.0, 1.0], dims="point"))
+    assert out.values.tolist() == [0, 3]
+
+    grid = StructuredGrid.from_dis(dis)
+    for name in ("z", "z_top", "z_bot"):
+        np.testing.assert_array_equal(grid.dataset[name], da[name])
+    np.testing.assert_array_equal(grid.botm.z_top, da.z_top)
+
+    vertices = [
+        [i, x, y] for i, (x, y) in enumerate([(0, 0), (0, 1), (1, 1), (1, 0), (2, 1), (2, 0)])
+    ]
+    cell2d = [[0, 0.5, 0.5, 4, 0, 1, 2, 3], [1, 1.5, 0.5, 4, 3, 2, 4, 5]]
+    vgrid = VertexGrid(nlay=2, ncpl=2, top=top, botm=botm, vertices=vertices, cell2d=cell2d)
+    assert vgrid.dataset.z_top.dims == ("layer", "cell")
+    assert vgrid.dataset.z_top.values.tolist() == [[10.0, 6.0], [5.0, 3.0]]
+    assert vgrid.dataset.grid.sel_z(4.0).layer.values.tolist() == [1, 0]
+
+
 def test_to_dataarray_cell_centers_vertex_rotated():
     """A rotated DISV grid's cell centres are rotated counter-clockwise by
     angrot degrees about its origin, as in MF6."""

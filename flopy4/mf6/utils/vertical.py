@@ -1,25 +1,33 @@
-"""Selection by elevation. A model's layers stack without overlapping, so
-in each column at most one cell contains a given elevation: z picks a
-layer per column, and with x/y, a cell. Cells' tops and bottoms come from
-``z_top``/``z_bot`` coordinates on the array's cell dims (see
-``layer_bounds``), or are passed in as DataArrays on those dims.
+"""Selection by elevation. A vertical column is the cells at one
+``(row, col)``, or one DISV ``cell``, through all layers. Layers in a
+vertical column don't overlap, so an elevation is in at most one of its
+cells: z picks a layer per vertical column, and with x/y, a cell. Cells'
+tops and bottoms come from ``z_top``/``z_bot`` coordinates on the array's
+cell dims (see ``z_coords``), or are passed in as DataArrays on those
+dims.
 
 Selection is geometric: inactive and pass-through cells are found like
 any other, and their values are whatever the array holds there."""
+
+from typing import Any
 
 import numpy as np
 import xarray as xr
 
 
-def layer_bounds(top, botm) -> tuple[np.ndarray, np.ndarray]:
-    """Each cell's top and bottom elevation from a discretization's
-    ``top`` and ``botm``, as ``(z_top, z_bot)`` shaped like ``botm``:
-    ``(nlay, nrow, ncol)`` for DIS, ``(nlay, ncpl)`` for DISV. A layer's
-    top is the bottom of the layer above, and the first's is ``top``."""
+def z_coords(top, botm, dims) -> dict[str, Any]:
+    """Each cell's elevations from a discretization's ``top`` and
+    ``botm``, as coordinates on ``dims``: ``z_top`` and ``z_bot``, its top
+    and bottom, and ``z``, its centre. ``botm`` is shaped by ``dims``,
+    ``(nlay, nrow, ncol)`` for DIS or ``(nlay, ncpl)`` for DISV, and
+    ``top`` by a layer's cells, or is a scalar. A layer's top is the bottom
+    of the layer above, and the first's is ``top``."""
     z_bot = np.asarray(botm, dtype=np.float64)
-    top = np.broadcast_to(np.asarray(top, dtype=np.float64), z_bot.shape[1:])
+    top = np.asarray(top, dtype=np.float64)
+    shape = z_bot.shape[1:]
+    top = top.reshape(shape) if top.size == np.prod(shape) else np.broadcast_to(top, shape)
     z_top = np.concatenate([top[None], z_bot[:-1]])
-    return z_top, z_bot
+    return {"z": (dims, (z_top + z_bot) / 2), "z_top": (dims, z_top), "z_bot": (dims, z_bot)}
 
 
 def _bounds(obj, z_top, z_bot, dim):
@@ -35,28 +43,28 @@ def _bounds(obj, z_top, z_bot, dim):
 
 
 def layer_at(z, z_top, z_bot, dim="layer") -> tuple[xr.DataArray, xr.DataArray]:
-    """The layer containing elevation ``z`` in each column, as a position
-    along ``dim``, and whether there is one; the position is 0 where there
-    isn't. ``z`` may be a scalar, or a DataArray on the columns' dims or a
-    points dim. A z on an interface goes to the upper (lower-numbered)
-    layer, and the model's top and bottom are inclusive, as in flopy3's
-    ``intersect``: layers are tested from the top, inclusive at both ends,
-    and the first wins."""
+    """The layer containing elevation ``z`` in each vertical column, as a
+    position along ``dim``, and whether there is one; the position is 0
+    where there isn't. ``z`` may be a scalar, or a DataArray on the
+    vertical columns' dims or a points dim. A z on an interface goes to the
+    upper (lower-numbered) layer, and the model's top and bottom are
+    inclusive, as in flopy3's ``intersect``: layers are tested from the
+    top, inclusive at both ends, and the first wins."""
     inside = (z_bot <= z) & (z <= z_top)
     return inside.argmax(dim), inside.any(dim)
 
 
 def sel_z(obj, z, *, z_top=None, z_bot=None, dim="layer", outside="nan"):
     """Select from an array (or dataset) the cell containing elevation
-    ``z`` in each column. On a whole grid, this is a horizontal slice:
-    ``dim`` is replaced by the containing layer per column, e.g.
-    ``(time, layer, row, col)`` to ``(time, row, col)``. On a column, as
-    from selecting by x/y, it's the cell at that elevation; for points,
-    pass ``z`` as a DataArray sharing their dim. Ties go to the upper
-    layer (see ``layer_at``).
+    ``z`` in each vertical column. On a whole grid, this is a horizontal
+    slice: ``dim`` is replaced by the containing layer per vertical
+    column, e.g. ``(time, layer, row, col)`` to ``(time, row, col)``. On
+    one vertical column, as from selecting by x/y, it's the cell at that
+    elevation; for points, pass ``z`` as a DataArray sharing their dim.
+    Ties go to the upper layer (see ``layer_at``).
 
-    The chosen positions are kept as a ``dim`` coordinate on the columns.
-    Columns where no cell contains z (above the top or below the bottom)
+    The chosen positions are kept as a ``dim`` coordinate. Vertical
+    columns where no cell contains z (above the top or below the bottom)
     are NaN, as are their positions and the other coordinates that were
     on ``dim``; with ``outside="raise"``, they raise ``KeyError``."""
     if outside not in ("nan", "raise"):

@@ -7,6 +7,7 @@ import xugrid as xu
 from flopy.discretization.structuredgrid import StructuredGrid
 
 from flopy4.mf6.utils.grid import to_world
+from flopy4.mf6.utils.vertical import z_coords
 
 __all__ = [
     "StructuredGridWrapper",
@@ -243,6 +244,9 @@ def _read_disv_grb(grb) -> dict[str, Any]:
     idomain = grb.idomain.reshape((nlay, ncpl))
 
     coords: dict[str, Any] = {}
+    if grb.top is not None and grb.bot is not None:
+        botm = np.reshape(grb.bot, (nlay, ncpl))
+        coords |= z_coords(grb.top, botm, ("layer", facedim))
     crs = grb._datadict["CRS"] if grb._version == "2" else None
 
     return {
