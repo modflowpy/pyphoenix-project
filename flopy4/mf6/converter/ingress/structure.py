@@ -63,10 +63,9 @@ def _parse_rows(
     load_child: Callable[[Any, str], Any] | None = None,
     words: tuple[str, ...] = (),
 ) -> "list | ItemTable | None":
-    """Parse lists of tokens (rows) into a list of Items (or, in a list of
-    unions, its ``words``), their cellids' widths per the context (see
-    `LoadContext.ncelldim`); a block of only numbers, into an `ItemTable`
-    if its rows allow."""
+    """Parse rows of tokens into Items (or, for a list of unions, its
+    ``words``); a block of only numbers into an `ItemTable` if it's
+    tabular."""
     if not rows:
         return None
     classes = item_cls if isinstance(item_cls, tuple) else (item_cls,)
@@ -192,9 +191,8 @@ _CONTROL_KINDS = frozenset({"CONSTANT", "INTERNAL", "OPEN/CLOSE"})
 
 
 def _leading_word(part) -> str:
-    """The part's first token, in upper case: a control record's kind
-    (one of `_CONTROL_KINDS`) or a field's name. Empty for number-only
-    lines (a NumberRows)."""
+    """The part's first token in upper case (a control record's kind, or a
+    field's name), or empty for numbers only."""
     if isinstance(part, NumberRows) or not part:
         return ""
     return str(part[0]).upper()

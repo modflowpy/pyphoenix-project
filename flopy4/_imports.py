@@ -6,8 +6,7 @@ from typing import Any
 
 
 def isinstance_of(value: Any, module: str, name: str) -> bool:
-    """Whether ``value`` is an instance of the class ``name`` in ``module``.
-    If the module hasn't been imported, nothing can be one, so this doesn't
-    import it."""
+    """Whether ``value`` is an instance of ``module.name``, without
+    importing the module (if it isn't imported, nothing can be one)."""
     cls = getattr(sys.modules.get(module), name, None)
     return cls is not None and isinstance(value, cls)

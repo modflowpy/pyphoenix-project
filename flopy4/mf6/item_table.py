@@ -1,11 +1,6 @@
-"""A tabular list's rows as columns: one numpy array per field of the Item
-class, the column layout of the record schema its DFN gives (flopy3's
-recarrays were the same). Read from a block's text in bulk, by the layout
-`item._spans` solves from its first row.
-
-A table is a list of its Items as well: a row is a view of it (see
-`_view_class`), an instance of the Item class whose fields read and write
-the columns."""
+"""A tabular list's rows as columns, a numpy array per field (like flopy3's
+recarrays), read from a block's text in bulk. A table is also a list of
+Items: each row is a view that reads and writes the columns."""
 
 import io
 import operator
@@ -52,18 +47,16 @@ _DTYPES = {"index": np.int64, "int": np.int64, "float": np.float64, "series": np
 
 @lru_cache(maxsize=None)
 def _dtype(f: attrs.Attribute) -> type | None:
-    """The dtype of a field's column, if its values are numbers (see
-    `item.number_kind`; a series' name makes it a column of objects), else
-    None: a column of objects, as a row of cellids' is."""
+    """A field's column dtype (see `item.number_kind`), or None for
+    objects."""
     if is_cellid(f) and not _is_one_cellid(f):
         return None
     return _DTYPES.get(number_kind(f))  # type: ignore[arg-type]
 
 
 def _typed(f: attrs.Attribute, values: list, width: int | None) -> np.ndarray | None:
-    """``values``, a field's, as its typed column (an array or cellid's
-    ``width`` wide, if given), or None if they aren't all numbers of its
-    type."""
+    """A field's values as a typed column (``width`` wide for an array or
+    cellid, if given), or None if they aren't all numbers of its type."""
     if (dtype := _dtype(f)) is None:
         return None
     kinds = "iu" if dtype is np.int64 else "iuf"
@@ -106,15 +99,13 @@ def _objects(values: list) -> np.ndarray:
 
 
 def _fit(f: attrs.Attribute, values: list, width: int | None = None) -> np.ndarray:
-    """``values``, a field's, as its column: typed if they allow (see
-    `_typed`), else objects."""
+    """A field's values as a typed column if they fit, else objects."""
     arr = _typed(f, values, width)
     return _objects(values) if arr is None else arr
 
 
 def _column_of(f: attrs.Attribute, values: list) -> np.ndarray | None:
-    """``values``, a field's, as its column (see `_fit`), or None if each
-    is the field's default: no column."""
+    """A field's values as a column, or None if all are the default."""
     default = _default(f)
     if all(_is_default(v, default) for v in values):
         return None
@@ -158,11 +149,9 @@ def _eq_key(row: Item) -> tuple:
 
 @lru_cache(maxsize=None)
 def _view_class(item_cls: type[Item]) -> type:
-    """The class of an `ItemTable`'s rows: a subclass of ``item_cls``, of
-    the same name, each field a property reading and writing its column
-    (after the class' own ``__setattr__``, its converters and validators).
-    It equals an ``item_cls`` instance with the same values, and copies (or
-    pickles) as one; so does calling it make one."""
+    """The class of an `ItemTable`'s rows: an ``item_cls`` subclass whose
+    fields are properties on the table's columns. It compares, copies and
+    pickles as an ``item_cls``, and calling it makes one."""
     ns: dict[str, Any] = {
         "__slots__": ("_table", "_i"),
         "__module__": item_cls.__module__,
@@ -212,19 +201,17 @@ def _plain(item_cls: type[Item], values: dict[str, Any]) -> Item:
 
 
 class ItemTable(MutableSequence):
-    """A tabular list's rows (see `item._plannable`), as a numpy array per
-    field, by name:
-    - a cellid: ``(n, ncelldim)`` ints, 0-based, a row of `FILL_INT64` for
-      NONE;
+    """A tabular list's rows (see `item._plannable`), a numpy array per
+    field:
+    - a cellid: ``(n, ncelldim)`` ints, 0-based, `FILL_INT64` for NONE;
     - an array field (aux): ``(n, size)``;
-    - any other: ``(n,)``, ints or floats as the field is;
-    - a field whose values aren't all numbers of its type (a time series'
-      name, a boundname): ``(n,)`` objects, each its row's value.
+    - any other: ``(n,)`` ints or floats;
+    - values not all numbers (a series' name, a boundname): ``(n,)``
+      objects.
     A field without a column has its default in every row.
 
-    It's a list of the Item class' instances as well: ``t[i]`` is a view of
-    row ``i`` (see `_view_class`), which writes back, a new one each time.
-    It may hold only instances of the class."""
+    It's also a list of Items: ``t[i]`` is a write-through view of row
+    ``i``."""
 
     __slots__ = ("item_cls", "columns", "_n")
 
@@ -252,13 +239,10 @@ class ItemTable(MutableSequence):
     def from_columns(
         cls, item_cls: type[Item], n: int, given: dict[str, Any]
     ) -> "ItemTable | None":
-        """``n`` rows of ``item_cls`` (tabular: see `item._plannable`),
-        from each field's values: a numeric array, a value per row, or a
-        list, None for a row without one (so the field's default); a field
-        not given has none. The values go through the field's converter and
-        validator as the class' would; None if any would fail (a required
-        field without a value, a value rejected), so that rows made one at
-        a time raise it. None for rows that aren't tabular, too."""
+        """``n`` rows of a tabular ``item_cls`` from each field's values (a
+        numeric array or a list, None for the default), converted and
+        validated as the class would. None if the rows aren't tabular or a
+        value fails, so rows made one at a time raise it."""
         if not _plannable(item_cls):  # type: ignore[arg-type]  # lru_cache wants Hashable
             return None
         if not n:
@@ -357,7 +341,7 @@ class ItemTable(MutableSequence):
 
     def tokens(self) -> list[tuple] | None:
         """Each row's tokens, as `Item.to_tokens` makes them, or None if a
-        column isn't numbers (left to it)."""
+        column isn't numbers."""
         cls = self.item_cls
         if cls.keyword() or cls._columns:
             return None
@@ -520,9 +504,8 @@ def _widths(data: bytes) -> np.ndarray:
 
 
 def _column(f: attrs.Attribute, took: tuple, values: np.ndarray) -> np.ndarray | None:
-    """A field's column from its values' floats, as `item._plan`'s readers
-    convert each row's (and the field's converter after), or None if they
-    convert it otherwise."""
+    """A field's column from its float values, as `item._plan` converts
+    each row's, or None if it converts otherwise."""
     if is_cellid(f):
         if took[0] != "cellid":
             return None  # a row of cellids
@@ -543,9 +526,8 @@ def _column(f: attrs.Attribute, took: tuple, values: np.ndarray) -> np.ndarray |
 def _columns(
     item_cls: type[Item], first: list[str], values: np.ndarray, context: RowContext
 ) -> dict[str, np.ndarray] | None:
-    """Rows' fields as columns, from their values (a row each), laid out
-    by the first row's (see `item._spans`), or None if a field doesn't
-    convert by column."""
+    """Rows' fields as columns, laid out by the first row (see
+    `item._spans`), or None if a field doesn't convert by column."""
     try:
         spans = _spans(item_cls, [_number(v) for v in first], context)
     except ValueError:  # no layout: `Item.from_rows` says so
@@ -558,8 +540,7 @@ def _columns(
         if f is None or (took[0] == "rest" and _union_field_arms(item_cls, f) is not None):
             return None  # an arm's keyword; arms
         if _sized_by_field(item_cls, f) and len(took) > 2:
-            # an array counted by another column, which each row's count
-            # must give (as `_plan` checks)
+            # an array counted by another column: each row's count must match
             if (count_at := at.get(inline_dim(f) or "")) is None:
                 return None
             if not (values[:, count_at] == (b - a) // took[2]).all():
@@ -571,16 +552,14 @@ def _columns(
 
 
 def read_rows(item_cls: type[Item], text: str, context: RowContext) -> "ItemTable | list | None":
-    """A block's rows from its text (NUMBERS', all numbers), read by
-    column, as `Item.from_rows` reads them: an `ItemTable` if each row has
-    as many values and the rows are tabular (see `item._plannable`), else
-    Items, read a number of values at a time (DISV's cell2d, by ncvert).
-    None if a field doesn't convert by column, for `Item.from_rows`."""
+    """A block's rows from its text (all numbers), read by column: an
+    `ItemTable` if they're tabular and of one width, else Items, grouped
+    by width (DISV's cell2d). None to leave them to `Item.from_rows`."""
     if not _row_plannable(item_cls):  # type: ignore[arg-type]  # lru_cache wants Hashable
         return None
     text = without_comments(text)
     if not _plannable(item_cls):  # type: ignore[arg-type]  # lru_cache wants Hashable
-        # Items anyway: by width, which holds less than loadtxt's table
+        # by width: holds less memory than loadtxt's table
         return _read_ragged(item_cls, text, context)
     if (first := _first_row(text)) is None:
         return None
@@ -593,7 +572,7 @@ def read_rows(item_cls: type[Item], text: str, context: RowContext) -> "ItemTabl
     if (columns := _columns(item_cls, first, values, context)) is None:
         return None
     for name, col in columns.items():
-        # a column of `values` would keep all of it, cellids' floats too
+        # a view would keep all of `values` alive
         if np.may_share_memory(col, values):
             columns[name] = col.copy()
     return ItemTable(item_cls, columns, len(values))
@@ -612,7 +591,7 @@ def _first_row(text: str) -> list[str] | None:
 
 
 def _read_ragged(item_cls: type[Item], text: str, context: RowContext) -> list | None:
-    """`read_rows`' Items, a number of values at a time."""
+    """`read_rows`' Items, grouped by width."""
     try:
         flat = np.array(text.split(), dtype=float)
     except ValueError:

@@ -1,50 +1,33 @@
 """Period list fields (CHD's, SFR's stress_period_data) as xarray.
 
-A list package's period block gives its rows: ``{kper: [row, ...]}``. Each
-row is at a position given by its key, and the key decides the dense form:
+Each period's rows are placed by their key, which sets the dense form's
+dims:
 
-- one ``cellid`` (CHD, WEL, TVK): the grid, ``(layer, row, col)``,
-  ``(layer, cell)`` or ``(node,)``;
+- one ``cellid`` (CHD, WEL): the grid;
 - a foreign key to another block's table (UZF's, SFR's ``ifno``): that
-  table's sizing dimension, ``(nuzfcells,)``, ``(nreaches,)``; with
-  ``grid=True``, the grid, through the table's cellid;
-- an index of the package's own (SPC's ``bndno``): a dim named for it.
+  table's dim (``nreaches``), or with ``grid=True`` the grid via its cellid;
+- the package's own index (SPC's ``bndno``): a dim named for it.
 
-``to_dataset`` gives each value column a ``(per, ...)`` variable: one per
-aux name, and, for a keystring package (SFR, LAK, MAW, ...), one per
-setting (``status``, ``inflow``, ...), with a named setting (AUXILIARY
-``conc 1.0``) a variable per name. An array column (EVT's pxdp) has an
-extra dim named for its size (``nseg-1``), and a setting's own index
-(SFR's diversion ``idv``) one named for the index. Positions a period
-doesn't set are missing: ``FILL_DNODATA`` (floats), ``FILL_INT64``
-(integers) or ``None`` (text and objects; xarray shows it as NaN).
+``to_dataset`` gives each value column a ``(per, ...)`` variable, plus one
+per aux name and, for keystring packages (SFR, LAK, MAW), per setting. An
+array column (EVT's pxdp) gets a dim for its size (``nseg-1``). Unset
+positions are ``FILL_DNODATA``, ``FILL_INT64`` or ``None``.
 
-Periods carry forward as in MF6. A plain period block replaces the one
-before it as a whole; a keystring package's settings each hold until set
-again. A period with no block holds the last one.
+Periods carry forward as in MF6: a plain block replaces the last, keystring
+settings hold until set again. A time-series value is NaN, its series named
+in a ``<variable>_ts`` coordinate; boundnames are a ``boundname``
+coordinate.
 
-A row with a time-series value has NaN there, the series named in the
-``<variable>_ts`` coordinate. Boundnames are a ``boundname`` coordinate.
+Two rows at one position raise unless ``duplicates`` ("sum", "first",
+"last") merges them. ``sparse=True`` keeps every row along an ``entry`` dim,
+with period, key and setting as coordinates; rows without a single key
+(HFB, MVR, OC) have only this form.
 
-Two rows at a position in a period raise; ``duplicates`` merges them
-("sum", "first" or "last"), which loses rows. ``sparse=True`` keeps every
-row, an ``entry`` dim over all the periods' rows with each row's period,
-key and setting as coordinates, a cellid's by the grid's dims
-(``cellid_layer``, ``cellid_row``, ``cellid_col``). An entry is one row,
-an ``Item``; the dim isn't ``row``, which is the grid's. A package whose
-rows have no single key (HFB's two cellids, MVR, OC) has only the sparse
-form.
+Use ``ds["head"]``, not ``ds.head``, which is ``Dataset.head()``.
 
-Get a variable with ``ds["head"]``, not ``ds.head``: a column named as a
-``Dataset`` method (CHD's ``head``) gives the method instead.
-
-``from_dataset`` is the inverse of either. From the dense form it writes a
-period block where a period differs from the one before it, so periods
-that only repeat the last load as carried, and a keystring row where a
-setting changes. That gives the same model, not the same rows: their
-order, and settings that repeat a value, aren't kept.
-
-The dense form is built eagerly, a full array per period.
+``from_dataset`` inverts either form. From the dense form it writes a
+period block only where a period changes, giving the same model but not
+necessarily the same rows.
 """
 
 import warnings
@@ -152,9 +135,9 @@ class _Column:
 
 @attrs.frozen
 class _Setting:
-    """What a kind of row sets: a plain row's columns, or a keystring
-    arm's. ``pivot`` names the field that names the variable (AUXILIARY's
-    auxname); ``extras`` the setting's own index fields (diversion idv)."""
+    """The columns a plain row or keystring arm sets. ``pivot`` is the
+    field naming the variable (AUXILIARY's auxname); ``extras`` are the
+    setting's own index fields (diversion idv)."""
 
     arm: Optional[type]
     key: attrs.Attribute
@@ -289,9 +272,8 @@ def _target(pkg: Any, key: attrs.Attribute) -> tuple[Optional[attrs.Attribute], 
 
 
 def _key(pkg: Any, key: attrs.Attribute, grid: bool, width: Optional[int]) -> _Key:
-    """A key's dims: the grid for a cellid, else the referenced table's
-    sizing dim (or, with ``grid``, the grid through its cellid), else a dim
-    named for the key."""
+    """A key's dims: the grid for a cellid, the referenced table's dim (or
+    with ``grid``, the grid via its cellid), or a dim named for the key."""
     if _is_cellid(key):
         if width is None:
             raise ValueError("no row gives a cellid, so the grid's shape is unknown")
@@ -523,9 +505,8 @@ def _dense_tables(
     duplicates: Duplicates,
     grid: bool,
 ) -> Optional[xr.Dataset]:
-    """`to_dataset`'s dense form of plain rows (not keystring) in tables,
-    by column, as the rows give it; None to leave it to them (a period
-    that isn't a table, a row missing a value, a position off the key)."""
+    """`to_dataset`'s dense form of plain (not keystring) rows, by column,
+    or None to build it row by row."""
     if layout.persistent or not all(
         isinstance(t, ItemTable) and t.item_cls is layout.item for t in periods.values()
     ):
@@ -827,9 +808,8 @@ class _Dense:
 
     @staticmethod
     def column(now: dict, n: str, c: _Column, at: tuple) -> Any:
-        """`value` at each of the positions ``at`` (index arrays, after any
-        extra dim's slice): a numeric array if each has one, and none is a
-        series', else a list."""
+        """`value` at the positions ``at``: a numeric array if all are set
+        numbers, else a list."""
         v = now[n][at]
         ref = now.get(f"{n}_ts")
         refs = None if ref is None else ref[at]
@@ -862,9 +842,9 @@ def _dense_value(v: Any, ref: Any, c: _Column) -> Any:
 
 
 def _whole(parts: list) -> Any:
-    """Columns of an array field's elements (``_Dense.column``'s) as its
-    values: a numeric array if each is one, else a tuple per row, None
-    where every element is missing; False if a row is missing some."""
+    """An array field's values from its elements' columns: a numeric array,
+    or a tuple per row (None if all missing); False if a row is missing
+    only some."""
     if all(isinstance(p, np.ndarray) for p in parts):
         return np.stack(parts, axis=1)
     rows = list(zip(*(p.tolist() if isinstance(p, np.ndarray) else p for p in parts)))
@@ -888,10 +868,8 @@ def _period_rows(
     mask: np.ndarray,
     p: int,
 ) -> "ItemTable | list":
-    """A period's rows: a row at each position some variable has a value,
-    by column, as an `ItemTable`, or, if the columns don't make one (a
-    value the class' converter or validator rejects), Items, which raise
-    it."""
+    """A period's rows, one per position with a value, as an `ItemTable`,
+    or as Items if the columns don't make one (so a bad value raises)."""
     setting = layout.settings[0]
     pos = np.argwhere(mask)
     at = tuple(pos.T)
@@ -1119,9 +1097,8 @@ def _put_value(put: Any, aux: list[str], f: attrs.Attribute, i: int, v: Any) -> 
 def _put_block(
     put_block: Any, aux: list[str], f: attrs.Attribute, start: int, col: np.ndarray
 ) -> bool:
-    """A table's numeric column into its sparse column(s), from entry
-    ``start``, as `_put_value` puts each row's value; False if it doesn't
-    take the column (objects), left to it."""
+    """Put a table's numeric column into its sparse column(s) from entry
+    ``start``, as `_put_value` would; False for objects."""
     if col.dtype == object:
         return False
     shape = f.metadata.get("shape") or ()

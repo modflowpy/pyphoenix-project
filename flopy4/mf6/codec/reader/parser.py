@@ -30,9 +30,9 @@ class _BufferLexerThread(LexerThread):
 
 
 class _Numbers(bytes):
-    """A NUMBERS match, whose `str` is empty: a token is a `str` too, of
-    its bytes' repr unless told otherwise, and the transformer reads only
-    where its text is (see `BasicTransformer.NUMBERS`)."""
+    """A NUMBERS match whose `str` is empty, so the token doesn't copy its
+    text; the transformer reads it by position (see
+    `BasicTransformer.NUMBERS`)."""
 
     __slots__ = ()
 
@@ -54,11 +54,8 @@ class _BytesContextualLexer(ContextualLexer):
 
 def get_basic_parser(transformer: Transformer | None = None, use_bytes: bool = False) -> Lark:
     """The basic grammar's parser. With a transformer, `parse` applies it
-    as it goes and returns its result, never holding the whole tree (with
-    its tokens, each the text it matched twice over: a big list block's
-    many times the file's size). With `use_bytes`, it parses bytes or a
-    buffer of them (a file's mmap), so the file's text needn't be read
-    into memory."""
+    as it goes, never holding the whole tree. With `use_bytes`, it parses
+    bytes or a buffer (a file's mmap), so the text needn't be in memory."""
     grammar_path = _GRAMMAR_MODULE / "basic.lark"
     with open(grammar_path, "r") as f:
         return Lark(
