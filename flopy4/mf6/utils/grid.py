@@ -1499,7 +1499,9 @@ class CellIndex(PandasIndex):
     billionth of the axis's extent, so rounding (e.g. from rotating) doesn't
     put a point on an edge outside, or in the wrong cell. With a
     ``method``, or a slice, it's selection by centre, as with
-    ``PandasIndex``."""
+    ``PandasIndex``. Aligning (e.g. ``a + b``) and concatenating keep each
+    cell's edges; aligning grids with a cell at the same centre but with
+    different edges raises ``ValueError``."""
 
     __slots__ = ("bounds",)
 
@@ -1540,6 +1542,36 @@ class CellIndex(PandasIndex):
         new = super().roll(shifts)
         if self.bounds is not None:
             new.bounds = np.roll(self.bounds, shifts[self.dim] % len(self.bounds), axis=0)
+        return new
+
+    @classmethod
+    def concat(cls, indexes, dim, positions=None):
+        new = super().concat(indexes, dim, positions)
+        if indexes and all(getattr(idx, "bounds", None) is not None for idx in indexes):
+            bounds = np.concatenate([idx.bounds for idx in indexes])
+            if positions is not None:
+                bounds = bounds[np.argsort(np.concatenate(positions))]
+            new.bounds = bounds
+        return new
+
+    def join(self, other, how="inner"):
+        # each centre keeps its cell's edges, from whichever side has it
+        new = super().join(other, how)
+        if self.bounds is None or getattr(other, "bounds", None) is None:
+            return new
+        common = self.index.intersection(other.index)
+        mine = self.bounds[self.index.get_indexer(common)]
+        theirs = other.bounds[other.index.get_indexer(common)]
+        extent = float(np.ptp(np.concatenate([self.bounds, other.bounds]))) or 1.0
+        if not np.allclose(mine, theirs, rtol=0.0, atol=1e-9 * extent):
+            raise ValueError(
+                f"can't align {self.dim!r}: the grids have cells with the same "
+                "centre but different edges"
+            )
+        pos = self.index.get_indexer(new.index)
+        bounds = self.bounds[np.maximum(pos, 0)]
+        theirs = other.bounds[other.index.get_indexer(new.index)]
+        new.bounds = np.where((pos < 0)[:, None], theirs, bounds)
         return new
 
     def equals(self, other, *, exclude=None):
@@ -1619,7 +1651,8 @@ def index_xy(obj):
     if "x" not in obj.coords or "y" not in obj.coords:
         return obj
     for name, size in (("x", "dx"), ("y", "dy")):
-        obj = obj.set_xindex(name, CellIndex, bounds=_cell_bounds(obj, name, size))
+        if obj[name].ndim == 1:  # not, e.g., a single row's y
+            obj = obj.set_xindex(name, CellIndex, bounds=_cell_bounds(obj, name, size))
     if "projection" not in obj.coords:
         return obj
     for da in [obj] if isinstance(obj, xr.DataArray) else obj.data_vars.values():

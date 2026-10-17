@@ -1870,6 +1870,35 @@ def test_sel_containing_cell():
     assert ds.delr.sel(x=12.2).item() == 4.0
 
 
+def test_sel_containing_cell_after_align_and_concat():
+    """Cell edges survive aligning arrays on overlapping grids (inner and
+    outer) and concatenating along col, so sel still gives the containing
+    cell; grids that disagree about a cell's edges can't be aligned."""
+    from flopy4.mf6.utils.grid import index_xy
+
+    kwargs = dict(nlay=1, nrow=1, ncol=3, delr=[1.0, 1.0, 4.0], delc=[1.0], botm=[0.0])
+    da = Gwf(dis=Dis(idomain=np.arange(3).reshape(1, 1, 3), **kwargs)).dis.to_dataarray("idomain")
+    da = da.isel(layer=0, row=0)
+    left, right = da.isel(col=slice(0, 2)), da.isel(col=slice(1, 3))
+
+    inner = (left + right).x
+    assert inner.sel(x=1.9).item() == 1.5
+    outer = xr.align(left, right, join="outer")[0]
+    assert outer.sel(x=5.5).isnull().item()  # in the wide cell, filled
+    assert outer.xindexes["x"].equals(da.xindexes["x"])
+
+    # concat along col, in either order
+    assert xr.concat([left.isel(col=[0]), right], "col").xindexes["x"].equals(da.xindexes["x"])
+    flipped = xr.concat([right, left.isel(col=[0])], "col")
+    assert flipped.sel(x=5.5).item() == 2
+    assert flipped.sel(x=0.2).item() == 0
+
+    # same centre, different edges
+    narrow = left.isel(col=[0]).drop_indexes("x").assign_coords(dx=0.5)
+    with pytest.raises(ValueError, match="edges"):
+        xr.align(da, index_xy(narrow), join="outer")
+
+
 def test_to_dataarray_cell_centers_vertex_rotated():
     """A rotated DISV grid's cell centres are rotated counter-clockwise by
     angrot degrees about its origin, as in MF6."""
