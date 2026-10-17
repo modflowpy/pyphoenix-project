@@ -11,6 +11,10 @@ doesn't do equal work, or doesn't round-trip fails the run, so a
 regression can't quietly shrink what's compared. Only discovery (a
 ``--bench-manifest`` path that doesn't exist yet) leaves failing models
 out, and writes the rest to that path.
+
+The profiling scenarios in `profile/` are collected only when asked for
+by path (``pytest benchmarks/profile``, the ``bench-profile`` task), so
+the ``bench*`` tasks leave them out.
 """
 
 from __future__ import annotations
@@ -30,6 +34,7 @@ from _models import TIERS, model_tags, selection
 from _ops import FLOPY3_OPTIONS, LIBRARIES
 
 BENCH_DIR = Path(__file__).parent
+PROFILE_DIR = BENCH_DIR / "profile"
 
 # what each check left out, for the terminal summary: check -> model -> reason
 _EXCLUDED: dict[str, dict[str, str]] = {}
@@ -57,6 +62,14 @@ def pytest_addoption(parser):
         help="Parse benchmarks: pin the corpus to this file list, writing "
         "it on first use -- for comparing grammar variants on identical input.",
     )
+
+
+def pytest_ignore_collect(collection_path, config):
+    if not collection_path.is_relative_to(PROFILE_DIR):
+        return None
+    root = config.invocation_params.dir
+    asked = (Path(root, arg.split("::")[0]).resolve() for arg in config.args)
+    return True if not any(a.is_relative_to(PROFILE_DIR) for a in asked) else None
 
 
 def pytest_collection_modifyitems(config, items):

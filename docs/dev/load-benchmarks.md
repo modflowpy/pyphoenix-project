@@ -351,6 +351,17 @@ pixi run -e dev bench -k test_write                 # write only
 # Takes --bench-tier and --bench-manifest like the timing benchmarks
 pixi run -e dev bench-memory
 
+# profiling scenarios (benchmarks/profile/): models built from scratch and
+# written in each of flopy4's input forms (lists, grids, arrays, NetCDF) and
+# with flopy3; binary output reads; numpy vs. dask arrays. Collected only
+# when asked for by path, so the tasks above leave them out. -m "not slow"
+# skips the slow ones (an mf6 run, 10M-node arrays, 1.7M-entry lists)
+pixi run -e dev bench-profile
+pixi run -e dev bench-profile -m "not slow"
+pixi run -e dev bench-profile -k test_ff_write --benchmark-cprofile=cumtime
+# list-write scaling on a synthetic grid (a script; not a benchmark)
+pixi run -e dev python benchmarks/profile/list_scaling.py
+
 # Markdown from saved runs (benchmarks/report.py): a report of the newest
 # run of each tier at the newest commit, timing and memory, to
 # .benchmarks/report.md; or the newest run vs. the one before it on the same

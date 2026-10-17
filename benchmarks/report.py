@@ -6,7 +6,8 @@ Report, from the timing runs pytest-benchmark saves (``bench*`` tasks,
 
     python benchmarks/report.py [RUN ...] [-o OUT]
 
-With no runs given, it takes the newest run of each tier, of each kind,
+With no runs given, it takes the newest run of each tier (the profiling
+scenarios, ``bench-profile``, count as a tier of their own), of each kind,
 from the newest commit of that kind, so a ``bench`` and a ``bench-large``
 run at one commit (and their memory runs) make one report. Where runs
 overlap on a model, the newer one wins.
@@ -36,6 +37,7 @@ from typing import NamedTuple
 STORAGE = Path(__file__).parents[1] / ".benchmarks"
 MEMORY = STORAGE / "memory"
 LIBRARIES = ("flopy3", "flopy4")
+PROFILE = "benchmarks/profile/"
 
 
 class Run(NamedTuple):
@@ -56,8 +58,12 @@ class Run(NamedTuple):
     def tier(self) -> str:
         if self.kind == "memory":
             return self.data["models"]
-        infos = (b["extra_info"] for b in self.data["benchmarks"])
-        return next((i["models"] for i in infos if "models" in i), "?")
+        benchmarks = self.data["benchmarks"]
+        infos = (b["extra_info"] for b in benchmarks)
+        tier = next((i["models"] for i in infos if "models" in i), None)
+        if tier is None and any(b["fullname"].startswith(PROFILE) for b in benchmarks):
+            return "profile"
+        return tier or "?"
 
     @property
     def machine(self) -> str:
@@ -158,10 +164,21 @@ class Results(NamedTuple):
     cold: dict[str, tuple[float, dict]]  # library -> (wall, extra_info)
     parse: dict[str, dict[str, float]]  # group -> parser -> minimum seconds
     imports: dict[str, dict]  # library -> {"peak_memory", "rss"}
+    scenarios: dict[str, dict[str, dict]]  # group -> variant -> stats
 
 
 def collect(runs: list[Run]) -> Results:
-    res = Results({}, {}, defaultdict(lambda: defaultdict(dict)), {}, {}, {}, defaultdict(dict), {})
+    res = Results(
+        {},
+        {},
+        defaultdict(lambda: defaultdict(dict)),
+        {},
+        {},
+        {},
+        defaultdict(dict),
+        {},
+        defaultdict(dict),
+    )
     for run in sorted(runs, key=lambda r: r.datetime):  # newer runs win
         for b in run.data["benchmarks"]:
             if run.kind == "memory":
@@ -173,6 +190,10 @@ def collect(runs: list[Run]) -> Results:
                 res.models[b["model"]] = {"tags": b["tags"], "n_bytes": b["n_bytes"]}
                 continue
             group, params, info = b["group"], b.get("params") or {}, b["extra_info"]
+            if b["fullname"].startswith(PROFILE):
+                variant = b["name"].partition("[")[2].rstrip("]") or b["name"]
+                res.scenarios[group][variant] = b["stats"]
+                continue
             t = b["stats"]["min"]
             if "parser" in params or group == "typed-grammar-build":
                 res.parse[group][params.get("parser", "typed")] = t
@@ -326,6 +347,16 @@ def report(runs: list[Run]) -> str:
             basic, typed = ts.get("basic"), ts.get("typed")
             rows.append([group, secs(basic), secs(typed), ratio(typed, basic)])
         out += table(["benchmark", "basic", "typed", "typed / basic"], rows)
+
+    if res.scenarios:
+        out += ["", "## Profiling scenarios", ""]
+        out += ["From `benchmarks/profile/`; times in seconds, fastest first.", ""]
+        for group in sorted(res.scenarios):
+            stats = sorted(res.scenarios[group].items(), key=lambda kv: kv[1]["min"])
+            rows = [[v, secs(st["min"]), secs(st["mean"]), str(st["rounds"])] for v, st in stats]
+            out += [f"### {group}", ""]
+            out += table(["variant", "min", "mean", "rounds"], rows) + [""]
+        out.pop()
 
     return "\n".join(out) + "\n"
 
