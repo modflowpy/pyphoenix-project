@@ -1,6 +1,14 @@
 """A tabular list's rows as columns, a numpy array per field (like flopy3's
 recarrays), read from a block's text in bulk. A table is also a list of
-Items: each row is a view that reads and writes the columns."""
+Items: each row is a view that reads and writes the columns.
+
+A list block loads by the fastest reader its rows allow, each falling back
+to the next (see `converter.ingress.structure._parse_rows`):
+1. `read_rows`: a block of only numbers, by column with numpy;
+2. `Item.from_rows`: a layout planned once per row length;
+3. `Item.from_tokens`: a row at a time, for anything else.
+Big blocks are almost always numbers only, so most rows never become
+Python objects until they're used."""
 
 import io
 import operator

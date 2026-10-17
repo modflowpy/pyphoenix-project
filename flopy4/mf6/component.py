@@ -142,7 +142,8 @@ def _resolve_child_name(
 def _child_fields(cls: type) -> "tuple[tuple[str, bool], ...]":
     """The fields of ``cls`` that may hold a child, as (name, whether it's
     a child column): a child column (LAK's laktab), or a record or union
-    arm that may hold one (SFR's CrossSection)."""
+    arm that may hold one (SFR's CrossSection). Cached, so rows needn't
+    each be walked field by field."""
     from flopy4.mf6.item import _field_type_str, _union_field_arms
     from flopy4.mf6.record import _nested_class, record_type
 

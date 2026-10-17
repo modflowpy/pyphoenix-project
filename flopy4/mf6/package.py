@@ -327,7 +327,8 @@ class Package(Component, ABC):
                     return by_key.get(key)
 
                 # if the count is just a referenced row's (SFR's), check
-                # all rows by column rather than evaluating each
+                # all rows by column rather than evaluating each (SFR's 10k
+                # connectiondata rows)
                 names: list[str] = []
 
                 def lookup(name: str, first=rows[0], names=names) -> Any:

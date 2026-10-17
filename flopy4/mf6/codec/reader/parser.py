@@ -54,8 +54,10 @@ class _BytesContextualLexer(ContextualLexer):
 
 def get_basic_parser(transformer: Transformer | None = None, use_bytes: bool = False) -> Lark:
     """The basic grammar's parser. With a transformer, `parse` applies it
-    as it goes, never holding the whole tree. With `use_bytes`, it parses
-    bytes or a buffer (a file's mmap), so the text needn't be in memory."""
+    as it goes, never holding the whole tree, whose tokens copy the text
+    they matched twice over (a big block's many times the file's size).
+    With `use_bytes`, it parses bytes or a buffer (a file's mmap), so the
+    text needn't be in memory."""
     grammar_path = _GRAMMAR_MODULE / "basic.lark"
     with open(grammar_path, "r") as f:
         return Lark(
