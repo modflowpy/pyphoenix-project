@@ -69,6 +69,7 @@ test = [
     "pytest-dotenv",
     "pytest-xdist",
     "pytest-benchmark",
+    "pytest-memray; sys_platform != 'win32'",
     "pytest-cov",
     "syrupy",
     "filelock",
@@ -98,7 +99,7 @@ include = ["flopy4", "flopy4.*"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-include = ["pyproject.toml", "flopy4/**/*.py", "test/**/*.py", "docs/**/*.py"]
+include = ["pyproject.toml", "flopy4/**/*.py", "test/**/*.py", "benchmarks/**/*.py", "docs/**/*.py"]
 extend-include = ["docs/**/*.ipynb"]
 
 [tool.ruff.lint]
@@ -182,6 +183,10 @@ description = "Show flopy4.mf6 sync status vs. discovered MF6 binary"
 [tool.pixi.feature.test.tasks]
 test = { cmd = "pytest -v -n auto --dist worksteal", env = { MPLBACKEND = "Agg" } }
 smoke = { cmd = "pytest -v -n auto --dist worksteal --smoke", env = { MPLBACKEND = "Agg" } }
+bench = { cmd = "pytest benchmarks --benchmark-enable --benchmark-autosave --benchmark-columns=min,mean,stddev,rounds", env = { MPLBACKEND = "Agg" }, description = "Benchmark a tier (--bench-tier smoke|standard|large|full; default standard), saving results to .benchmarks/" }
+bench-memory = { cmd = "pytest benchmarks --memray --trace-python-allocators --hide-memray-summary", env = { MPLBACKEND = "Agg" }, description = "Peak memory per library, model and operation (pytest-memray; not on Windows), saving to .benchmarks/memory/" }
+bench-profile = { cmd = "pytest benchmarks/profile --benchmark-enable --benchmark-autosave --benchmark-columns=min,mean,stddev,rounds", env = { MPLBACKEND = "Agg" }, description = "Benchmark the profiling scenarios (benchmarks/profile/; -m 'not slow' for the quick ones)" }
+bench-report = { cmd = "python benchmarks/report.py", description = "Markdown report of the newest saved runs (--compare: newest vs. the one before it; -o FILE)" }
 
 [tool.pixi.feature.lint.tasks]
 install = { cmd = "pre-commit install --install-hooks" }

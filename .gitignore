@@ -13,3 +13,4 @@ venv/
 temp/
 .coverage
 mf6examples.zip.lock
+.benchmarks/

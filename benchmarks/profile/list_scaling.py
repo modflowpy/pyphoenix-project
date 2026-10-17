@@ -1,3 +1,5 @@
+# flopy4's constructor annotations are narrower than its converters accept
+# mypy: disable-error-code="arg-type,list-item,misc"
 """
 Diagnostic: flopy4 list Rch write-time scaling.
 
@@ -8,10 +10,10 @@ where the bottleneck lives.
 When to use
 -----------
 Run this after any change to the list write path (filters.py, macros.jinja,
-dataset2list) to confirm scaling remains linear.  The main benchmark scripts
-(ff_write.py, test1000_write.py) measure absolute time on real models; this
-script measures *scaling behaviour* on a synthetic grid and catches regressions
-that only manifest at larger cell counts.
+dataset2list) to confirm scaling remains linear.  The write benchmarks
+(test_ff_write.py, test_large_write.py) measure absolute time on real models;
+this script measures *scaling behaviour* on a synthetic grid and catches
+regressions that only manifest at larger cell counts.
 
 Interpreting output
 -------------------
@@ -22,9 +24,9 @@ path is O(n).
 
 Usage
 -----
-    python diag_list_scaling.py               # scaling table only
-    python diag_list_scaling.py --profile     # + cProfile on 25K cells
-    python diag_list_scaling.py --profile --profile-n 100000
+    python benchmarks/profile/list_scaling.py            # scaling table only
+    python benchmarks/profile/list_scaling.py --profile  # + cProfile on 25K cells
+    python benchmarks/profile/list_scaling.py --profile --profile-n 100000
 
 Sizes tested: 1K, 5K, 25K, 100K, 250K cells (single stress period, 1 run each).
 If a run exceeds 60 s it is skipped so the script stays interactive.
@@ -59,7 +61,9 @@ def build_sim(n: int, ws: Path):
         idomain=np.ones((nlay, nrow, n), dtype=int),
     )
     dims = {"nper": nper, **grid.dims}
-    rch = flopy4.mf6.gwf.Rch(recharge={0: {(0, 0, c): 0.001 for c in range(n)}}, dims=dims)
+    rch = flopy4.mf6.gwf.Rch(
+        stress_period_data={0: [((0, 0, c), 0.001) for c in range(n)]}, dims=dims
+    )
     gwf = flopy4.mf6.gwf.Gwf(
         name="diag",
         dis=grid,
