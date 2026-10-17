@@ -105,7 +105,7 @@ def test_loads_records():
     # a quote, a trailing comment) is read on its own.
     from lark import Token
 
-    from flopy4.mf6.codec.reader import BASIC_PARSER
+    from flopy4.mf6.codec.reader.parser import get_basic_parser
 
     mf6_input = """
 BEGIN period 1
@@ -137,7 +137,7 @@ END period
         ["1997-07-16T19:20:30", 7],
         [100000.0, "e", 2],
     ]
-    tree = BASIC_PARSER.parse(mf6_input)
+    tree = get_basic_parser().parse(mf6_input)
     tokens = [t for t in tree.scan_values(lambda v: isinstance(v, Token)) if t.type == "RECORDS"]
     assert [str(t).split("\n")[0].strip() for t in tokens] == ["1 inflow 0.0", "2 begin sp 1"]
 
@@ -4649,3 +4649,72 @@ END continuous
     basic = loads(mf6_input)["continuous FILEOUT x.csv"]
     typed = loads(mf6_input, component="utl-obs")["continuous FILEOUT x.csv"]
     assert basic == typed["stress_period_data"]
+
+
+_MAPPED_INPUT = """BEGIN options
+  boundnames
+END options
+BEGIN period 1
+  1 1 1 -1.0D2 'well a'
+  1 2 3 2.5e-1 b
+# a comment
+  2 1 1 3 , 4.0
+END period
+"""
+
+
+@pytest.fixture
+def map_any_file(monkeypatch):
+    """Map files of any size (`load` maps only big ones)."""
+    from flopy4.mf6.codec import reader
+
+    monkeypatch.setattr(reader, "_MAP_SIZE", 1)
+
+
+@pytest.mark.parametrize("newline", ["\n", "\r\n"])
+def test_load_file_matches_loads(tmp_path, map_any_file, newline):
+    """`load` reads a file as `loads` reads its text: mapped (no `\\r`),
+    or read as text, as for CRLF, whose newlines text mode translates."""
+    from mmap import mmap
+
+    from flopy4.mf6.codec import load
+    from flopy4.mf6.codec.reader.transformer.rows import NumberRows
+
+    path = tmp_path / "x.wel"
+    path.write_bytes(_MAPPED_INPUT.replace("\n", newline).encode())
+    with open(path) as f:
+        raw = load(f)
+    # read after the file is closed: the parse keeps what it needs
+    assert raw == loads(_MAPPED_INPUT)
+    assert raw["period 1"][0] == [1, 1, 1, -100.0, "well a"]
+    assert isinstance(raw["period 1"].parts[2], NumberRows)
+    assert isinstance(raw["period 1"].parts[2]._text.buffer, mmap) == (newline == "\n")
+    assert raw["period 1"].parts[2].text.split() == ["2", "1", "1", "3", "4.0"]
+
+
+def test_load_file_trailing_garbage(tmp_path, map_any_file):
+    """A mapped file with content after its last block parses up to it."""
+    from flopy4.mf6.codec import load
+
+    path = tmp_path / "x.wel"
+    path.write_text(_MAPPED_INPUT + "  11  0  0\n   1   1   1  -1.0\n")
+    with open(path) as f:
+        assert load(f) == loads(_MAPPED_INPUT)
+
+
+def test_load_empty_file(tmp_path, map_any_file):
+    from flopy4.mf6.codec import load
+
+    path = tmp_path / "x.wel"
+    path.write_text("")
+    with open(path) as f:
+        assert load(f) == loads("")
+
+
+def test_load_stream():
+    """A stream without a file to map is read as text."""
+    from io import StringIO
+
+    from flopy4.mf6.codec import load
+
+    assert load(StringIO(_MAPPED_INPUT)) == loads(_MAPPED_INPUT)

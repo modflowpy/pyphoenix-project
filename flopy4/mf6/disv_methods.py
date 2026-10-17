@@ -2,12 +2,12 @@ from abc import ABCMeta
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from flopy.discretization import VertexGrid as LegacyVertexGrid
 
-from flopy4.mf6.utils.grid import VertexGrid
+from flopy4._imports import isinstance_of
 
 if TYPE_CHECKING:
     from flopy4.mf6.gwf.disv import Disv
+    from flopy4.mf6.utils.grid import VertexGrid
 
 _LENGTH_UNITS = {1: "FEET", 2: "METERS", 3: "CENTIMETERS"}
 
@@ -82,8 +82,10 @@ class DisvMethods(metaclass=_LegacyInputs):
         iv1, iv2, ...], ...]`."""
         return [[c.icell2d, c.xc, c.yc, len(c.icvert), *c.icvert] for c in self.cell2d or []]
 
-    def to_grid(self: "Disv") -> VertexGrid:  # type: ignore[misc]
+    def to_grid(self: "Disv") -> "VertexGrid":  # type: ignore[misc]
         """Convert the discretization to a `VertexGrid`."""
+        from flopy4.mf6.utils.grid import VertexGrid
+
         nlay, ncpl = self.nlay, self.ncpl
         if nlay is None or ncpl is None:
             raise ValueError("to_grid() needs nlay and ncpl")
@@ -107,10 +109,12 @@ class DisvMethods(metaclass=_LegacyInputs):
     @classmethod
     def coerce(cls: type["Disv"], value) -> "Disv | None":  # type: ignore[misc]
         """Convert a `VertexGrid` to a discretization; `None` for anything else."""
-        return cls.from_grid(value) if isinstance(value, LegacyVertexGrid) else None
+        if isinstance_of(value, "flopy.discretization.vertexgrid", "VertexGrid"):
+            return cls.from_grid(value)
+        return None
 
     @classmethod
-    def from_grid(cls: type["Disv"], grid: VertexGrid) -> "Disv":  # type: ignore[misc]
+    def from_grid(cls: type["Disv"], grid: "VertexGrid") -> "Disv":  # type: ignore[misc]
         """Create a discretization from a `VertexGrid`. Each cell's vertex
         ring is closed (its first vertex repeated last) if it isn't already."""
         cell2d = []

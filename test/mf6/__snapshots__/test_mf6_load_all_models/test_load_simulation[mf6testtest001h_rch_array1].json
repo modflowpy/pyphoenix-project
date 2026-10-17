@@ -181,7 +181,7 @@
     "__type__": "Rcha",
     "aux": {
       "0": {
-        "MYRCHMULT": "float64[10] 914861f62b20aea9"
+        "MYRCHMULT": "float64[1] 8f688ce4f0389109"
       }
     },
     "auxiliary": [
@@ -203,7 +203,7 @@
     "print_input": false,
     "readasarrays": true,
     "recharge": {
-      "0": "float64[10] c52c453032853779"
+      "0": "float64[1] f224355dfe6774f2"
     },
     "save_flows": false,
     "tas": []

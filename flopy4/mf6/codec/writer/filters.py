@@ -1,5 +1,5 @@
 import re
-from collections.abc import Hashable, Mapping
+from collections.abc import Hashable, Mapping, Sequence
 from io import StringIO
 from pathlib import PurePath
 from typing import Any, Literal
@@ -297,9 +297,8 @@ def data2list(value: list | tuple | dict | xr.Dataset | xr.DataArray):
     """
     Yield records (tuples) from data in a `list`, `dict`, `DataArray` or `Dataset`.
     """
-    if isinstance(value, (list, tuple)):
-        for rec in value:
-            yield rec
+    if isinstance(value, Sequence):  # a list, tuple or Rows
+        yield from value
         return
 
     if isinstance(value, dict):

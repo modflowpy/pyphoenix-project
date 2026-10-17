@@ -1,6 +1,6 @@
 import abc
 from os import PathLike
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import xarray as xr
@@ -16,12 +16,14 @@ from flopy4.mf6.constants import FILL_DNODATA, FILL_FLOAT64, FILL_INT64
 from flopy4.mf6.enums import NetCDFFormat
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import _DTYPE_MAP as _PKG_DTYPE_MAP
-from flopy4.mf6.package import Package
+from flopy4.mf6.package import Package, period_shape
 from flopy4.mf6.period_arrays import dense, split_tas
 from flopy4.mf6.spec import to_field_type
-from flopy4.mf6.utils.grid import StructuredGrid, VertexGrid
-from flopy4.mf6.utils.time import Time
 from flopy4.version import __version__
+
+if TYPE_CHECKING:
+    from flopy4.mf6.utils.grid import StructuredGrid, VertexGrid
+    from flopy4.mf6.utils.time import Time
 
 
 def _cf_var_attrs(dims: list[str], mesh: str | None, grid, layer: int | None = None) -> dict:
@@ -219,8 +221,8 @@ class NetCDFModel(BaseModel, NetCDFInput):
         cls,
         model: Model,
         netcdf_format: NetCDFFormat = NetCDFFormat.STRUCTURED,
-        grid: StructuredGrid | VertexGrid | None = None,
-        time: Time | None = None,
+        grid: "StructuredGrid | VertexGrid | None" = None,
+        time: "Time | None" = None,
     ):
         if not hasattr(model, "name"):
             raise ValueError("model must have a 'name' attribute")
@@ -310,7 +312,12 @@ class NetCDFModel(BaseModel, NetCDFInput):
                             {
                                 "name": f.name,
                                 "attrs": {"modflow_iaux": names.index(str(name).lower()) + 1},
-                                "data": dense(named_periods, _nper, carry_forward=False),
+                                "data": dense(
+                                    named_periods,
+                                    _nper,
+                                    carry_forward=False,
+                                    shape=period_shape(package, f),
+                                ),
                             }
                         )
                 elif (
@@ -334,7 +341,9 @@ class NetCDFModel(BaseModel, NetCDFInput):
                         periods = {
                             k: None if a is None else np.asarray(a) + 1 for k, a in periods.items()
                         }
-                    arr = dense(periods, _nper, carry_forward=False).astype(np.float64)
+                    arr = dense(
+                        periods, _nper, carry_forward=False, shape=period_shape(package, f)
+                    ).astype(np.float64)
                     p["params"].append({"name": f.name, "data": arr})
 
             if len(p["params"]) > 0:
@@ -439,6 +448,8 @@ class NetCDFModel(BaseModel, NetCDFInput):
 
     @time.setter
     def time(self, value):
+        from flopy4.mf6.utils.time import Time
+
         if not isinstance(value, Time):
             raise ValueError("invalid Time type")
         self._time = value

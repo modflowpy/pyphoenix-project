@@ -1,4 +1,4 @@
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -7,6 +7,7 @@ import attrs
 import numpy as np
 import xarray as xr
 
+from flopy4._imports import isinstance_of
 from flopy4.attrs_xarray import child_field_candidates
 from flopy4.mf6._types import TimeArraySeriesRef
 from flopy4.mf6.block import block_list_type
@@ -148,6 +149,56 @@ def _rows_to_tuples(row_list: "list | ItemTable", ncelldim: int | None = None) -
     return [[row] if isinstance(row, str) else row.to_tokens(ncelldim=widths) for row in row_list]
 
 
+class Rows(Sequence):
+    """A block's list rows, as `_rows_to_tuples` makes them from each list
+    given (a period's can come from more than one field), made each time
+    they're read. A write then holds one block's tuples at a time, not every
+    period's at once."""
+
+    def __init__(self, ncelldim: int | None = None) -> None:
+        self._parts: list[list | ItemTable] = []
+        self._ncelldim = ncelldim
+
+    def append(self, row_list: "list | ItemTable") -> None:
+        self._parts.append(row_list)
+
+    def __iter__(self) -> Iterator:
+        for part in self._parts:
+            yield from _rows_to_tuples(part, self._ncelldim)
+
+    def __len__(self) -> int:
+        return sum(len(part) for part in self._parts)
+
+    def __getitem__(self, i):  # type: ignore[override]
+        return list(self)[i]
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Rows):
+            other = list(other)
+        return list(self) == other
+
+    __hash__ = None  # type: ignore[assignment]
+
+    def __repr__(self) -> str:
+        return f"Rows({list(self)!r})"
+
+
+def materialize(data: Any) -> Any:
+    """``data`` with its `Rows` made lists, for a writer that walks the
+    containers itself (JSON, TOML)."""
+    if isinstance(data, Rows):
+        return list(data)
+    if isinstance(data, dict):
+        return {k: materialize(v) for k, v in data.items()}
+    return data
+
+
+def _rows(row_list: "list | ItemTable", ncelldim: int | None) -> Rows:
+    rows = Rows(ncelldim)
+    rows.append(row_list)
+    return rows
+
+
 def _ncelldim(value: Package) -> int | None:
     """The package's grid's ncelldim, or None if the grid isn't known."""
     try:
@@ -167,13 +218,8 @@ def _wrap_array(value: Any) -> xr.DataArray:
     if isinstance(value, np.ndarray):
         return xr.DataArray(value)
     # Preserve dask arrays — the writer streams them via array2chunks.
-    try:
-        import dask.array as _da
-
-        if isinstance(value, _da.Array):
-            return xr.DataArray(value)
-    except ImportError:
-        pass
+    if isinstance_of(value, "dask.array.core", "Array"):
+        return xr.DataArray(value)
     if isinstance(value, str):
         try:
             return xr.DataArray(float(value))
@@ -208,7 +254,7 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
     cls = type(value)
     blocks: dict[str, dict[str, Any]] = {}
     write_if_empty_set: set[str] = set()
-    spd_period: dict[int, list[tuple]] = {}
+    spd_period: dict[int, Rows] = {}
     readarray_period: dict[int, dict[str, Any]] = {}
     # per period, the (non-aux) array fields given, and those all DNODATA
     stress_period: dict[int, set[str]] = {}
@@ -265,12 +311,9 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
                 kper_int = _normalize_kper(kper)
                 if kper_int is None:
                     continue
-                rows = (
-                    _rows_to_tuples(row_list, ncelldim)
-                    if isinstance(row_list, (list, ItemTable))
-                    else []
-                )
-                spd_period.setdefault(kper_int, []).extend(rows)
+                rows = spd_period.setdefault(kper_int, Rows(ncelldim))
+                if isinstance(row_list, (list, ItemTable)):
+                    rows.append(row_list)
             continue
 
         # blocks repeating under a record header (OBS's CONTINUOUS), one per
@@ -279,7 +322,7 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
             _, list_name, _ = block_cls.parts()
             for block in field_value:
                 key = " ".join([block_name, *map(str, block.header_tokens())])
-                blocks[key] = {list_name: _rows_to_tuples(getattr(block, list_name), ncelldim)}
+                blocks[key] = {list_name: _rows(getattr(block, list_name), ncelldim)}
             continue
 
         if isinstance(field_value, dict):
@@ -312,7 +355,7 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
             and field_value
             and isinstance(field_value[0], Item)
         ):
-            blocks[block_name][f.name] = _rows_to_tuples(field_value, ncelldim)
+            blocks[block_name][f.name] = _rows(field_value, ncelldim)
 
         elif isinstance(field_value, list) and field_value and isinstance(field_value[0], tuple):
             blocks[block_name][f.name] = field_value

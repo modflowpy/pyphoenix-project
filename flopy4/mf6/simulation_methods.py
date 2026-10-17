@@ -5,11 +5,10 @@ from warnings import warn
 
 from modflow_devtools.misc import cd, get_ostag, is_in_ci, run_cmd
 
-from flopy4.mf6.utils.time import Time
-
 if TYPE_CHECKING:
     from flopy4.mf6.context import Context
     from flopy4.mf6.simulation import Simulation
+    from flopy4.mf6.utils.time import Time
 
 
 class SimulationMethods:
@@ -30,7 +29,7 @@ class SimulationMethods:
             sim.filename = Path("mfsim.nam")
 
     @property
-    def time(self: "Simulation") -> Time:  # type: ignore[misc]
+    def time(self: "Simulation") -> "Time":  # type: ignore[misc]
         """Return a `Time` object describing the simulation's time discretization."""
         return self.tdis.to_time()
 

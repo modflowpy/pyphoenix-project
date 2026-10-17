@@ -347,7 +347,7 @@
   "simulation/lakeex2a/evt0": {
     "__type__": "Evta",
     "depth": {
-      "0": "float64[459] 8084c389c29ef1d7"
+      "0": "float64[1] 6e834c27afb79741"
     },
     "dims": {
       "ncelldim": 3,
@@ -364,7 +364,7 @@
     "print_flows": false,
     "print_input": true,
     "rate": {
-      "0": "float64[459] ecacce933676e29d"
+      "0": "float64[1] 0cc3357cd27c4d69"
     },
     "readasarrays": true,
     "save_flows": false,
@@ -502,7 +502,7 @@
     "print_input": false,
     "readasarrays": true,
     "recharge": {
-      "0": "float64[459] 5deee65b261c7c07"
+      "0": "float64[1] a6798a329bcdf286"
     },
     "save_flows": false,
     "tas": []

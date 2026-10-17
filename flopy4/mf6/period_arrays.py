@@ -152,8 +152,13 @@ def dense(
     nper: int,
     carry_forward: bool = True,
     given: Optional[list[int]] = None,
+    shape: Optional[tuple[int, ...]] = None,
 ) -> np.ndarray:
     """Stack ``{kper: array}`` into a dense ``(nper, ...)`` array.
+
+    A 0-d array (a period given as one value, a CONSTANT) fills its periods.
+    Each period's shape is that of the periods given in full, else
+    ``shape``, which must then be given.
 
     A period missing from ``periods`` holds the last value at or before it
     (``carry_forward``), or a fill value: ``FILL_DNODATA`` for floats and
@@ -175,8 +180,13 @@ def dense(
     if not arrays:
         raise ValueError("every period is cleared, so no array gives the shape")
     first = _as_array(arrays[0])
+    full = next((a for a in arrays if np.ndim(a) > 0), None)
+    if full is not None:
+        shape = _as_array(full).shape
+    elif shape is None:
+        raise ValueError("every period is one value, so no array gives the shape")
     fill = _fill_value(first)
-    out = np.full((nper, *first.shape), fill, dtype=first.dtype)
+    out = np.full((nper, *shape), fill, dtype=first.dtype)
     starts = sorted(set(given or ()) | set(periods))
     for i, kper in enumerate(starts):
         if kper >= nper:

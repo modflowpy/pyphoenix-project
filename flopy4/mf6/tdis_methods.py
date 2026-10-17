@@ -3,17 +3,20 @@ from typing import TYPE_CHECKING, Optional
 import numpy as np
 from numpy.typing import ArrayLike
 
-from flopy4.mf6.utils.time import Time
+from flopy4._imports import isinstance_of
 
 if TYPE_CHECKING:
     from flopy4.mf6.tdis import Tdis
+    from flopy4.mf6.utils.time import Time
 
 
 class TdisMethods:
     """Methods for the generated `Tdis`; fields come from the DFN."""
 
-    def to_time(self: "Tdis") -> Time:  # type: ignore[misc]
+    def to_time(self: "Tdis") -> "Time":  # type: ignore[misc]
         """Convert to a `Time` object."""
+        from flopy4.mf6.utils.time import Time
+
         perlen, nstp, tsmult = zip(*((r.perlen, r.nstp, r.tsmult) for r in self.perioddata or []))
         return Time(
             time_units=self.time_units,
@@ -26,10 +29,12 @@ class TdisMethods:
     @classmethod
     def coerce(cls: type["Tdis"], value) -> Optional["Tdis"]:  # type: ignore[misc]
         """Convert a `Time` to a time discretization; `None` for anything else."""
-        return cls.from_time(value) if isinstance(value, Time) else None
+        if isinstance_of(value, "flopy4.mf6.utils.time", "Time"):
+            return cls.from_time(value)
+        return None
 
     @classmethod
-    def from_time(cls: type["Tdis"], time: Time) -> "Tdis":  # type: ignore[misc]
+    def from_time(cls: type["Tdis"], time: "Time") -> "Tdis":  # type: ignore[misc]
         """Create a time discretization from a `Time` object."""
         start = time.start_datetime
         return cls(
@@ -72,4 +77,6 @@ class TdisMethods:
         `nstp` and `tsmult` may be scalars (applied to all periods) and
         default to 1 and 1.0; see `Time.from_timestamps`.
         """
+        from flopy4.mf6.utils.time import Time
+
         return cls.from_time(Time.from_timestamps(timestamps, nstp=nstp, tsmult=tsmult))

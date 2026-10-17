@@ -282,7 +282,7 @@
     "__type__": "Rcha",
     "aux": {
       "0": {
-        "Auxarray1": "float64[2601] 58b0bff3110ac78f",
+        "Auxarray1": "float64[1] 3aa06b441d3c560f",
         "RchMult": "float64[2601] 6741dac9cac47027"
       }
     },

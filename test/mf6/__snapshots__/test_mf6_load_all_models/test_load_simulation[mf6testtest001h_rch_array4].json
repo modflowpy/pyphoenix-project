@@ -193,7 +193,7 @@
         }
       },
       "3": {
-        "MYRCHMULT": "float64[10] d1d742bd20720f18"
+        "MYRCHMULT": "float64[1] 78e7013ffb07fc54"
       }
     },
     "auxiliary": [
@@ -224,7 +224,7 @@
         "__type__": "TimeArraySeriesRef",
         "name": "recharge"
       },
-      "3": "float64[10] baa8d5d3d03d8400"
+      "3": "float64[1] fc3d653145097bbe"
     },
     "save_flows": false,
     "tas": [
