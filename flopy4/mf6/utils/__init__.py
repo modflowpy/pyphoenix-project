@@ -5,7 +5,7 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from flopy4.mf6.utils import grid, time
+    from flopy4.mf6.utils import grid, time, vertical
     from flopy4.mf6.utils.cbc_reader import open_cbc
     from flopy4.mf6.utils.heads_reader import open_hds
     from flopy4.mf6.utils.netcdf_postprocess import (
@@ -32,6 +32,7 @@ __all__ = [
     "postprocess_structured_nc",
     "grid",
     "time",
+    "vertical",
 ]
 
 
