@@ -1,7 +1,7 @@
 """A tabular list's rows as columns: one numpy array per field of the Item
 class, the column layout of the record schema its DFN gives (flopy3's
 recarrays were the same). Read from a block's text in bulk, by the layout
-`item._positions` solves from its first row.
+`item._spans` solves from its first row.
 
 A table is a list of its Items as well: a row is a view of it (see
 `_view_class`), an instance of the Item class whose fields read and write
@@ -21,19 +21,17 @@ from flopy4.mf6.constants import FILL_INT64
 from flopy4.mf6.item import (
     Item,
     RowContext,
-    _array_elem_type,
     _is_one_cellid,
-    _positions,
+    _plannable,
     _row_plannable,
-    _signed,
     _sized_by_field,
     _spans,
     _union_field_arms,
     inline_dim,
     is_cellid,
+    number_kind,
 )
 from flopy4.spec import is_array
-from flopy4.utils import unwrap_optional
 
 
 def _default(f: attrs.Attribute) -> Any:
@@ -48,24 +46,17 @@ def _is_default(value: Any, default: Any) -> bool:
     return value is default or (type(value) is type(default) and value == default)
 
 
+_DTYPES = {"index": np.int64, "int": np.int64, "float": np.float64, "series": np.float64}
+
+
 @lru_cache(maxsize=None)
 def _dtype(f: attrs.Attribute) -> type | None:
-    """The dtype of a field's column, if its values are numbers (a cellid's
-    or an array's, its elements), else None: a column of objects."""
-    if is_cellid(f):
-        return np.int64 if _is_one_cellid(f) else None
-    if is_array(f) and _signed(f):
-        return None  # (index, sign) pairs
-    if f.metadata.get("index"):
-        return np.int64
-    if f.metadata.get("time_series"):
-        return np.float64  # a series' name makes it a column of objects
-    t = _array_elem_type(f) if is_array(f) else unwrap_optional(f.type)
-    if t in (int, "int"):
-        return np.int64
-    if t in (float, "float") or (t is None and is_array(f)):
-        return np.float64
-    return None
+    """The dtype of a field's column, if its values are numbers (see
+    `item.number_kind`; a series' name makes it a column of objects), else
+    None: a column of objects, as a row of cellids' is."""
+    if is_cellid(f) and not _is_one_cellid(f):
+        return None
+    return _DTYPES.get(number_kind(f))  # type: ignore[arg-type]
 
 
 def _typed(f: attrs.Attribute, values: list, width: int | None) -> np.ndarray | None:
@@ -118,6 +109,15 @@ def _fit(f: attrs.Attribute, values: list, width: int | None = None) -> np.ndarr
     `_typed`), else objects."""
     arr = _typed(f, values, width)
     return _objects(values) if arr is None else arr
+
+
+def _column_of(f: attrs.Attribute, values: list) -> np.ndarray | None:
+    """``values``, a field's, as its column (see `_fit`), or None if each
+    is the field's default: no column."""
+    default = _default(f)
+    if all(_is_default(v, default) for v in values):
+        return None
+    return _fit(f, values)
 
 
 def _get(f: attrs.Attribute, col: np.ndarray, i: int) -> Any:
@@ -242,11 +242,9 @@ class ItemTable(MutableSequence):
         items = list(items)
         columns: dict[str, np.ndarray] = {}
         for f in attrs.fields(item_cls):  # type: ignore[arg-type]
-            values = [getattr(item, f.name) for item in items]
-            default = _default(f)
-            if all(_is_default(v, default) for v in values):
-                continue
-            columns[f.name] = _fit(f, values)
+            col = _column_of(f, [getattr(item, f.name) for item in items])
+            if col is not None:
+                columns[f.name] = col
         return cls(item_cls, columns, len(items))
 
     def __len__(self) -> int:
@@ -326,7 +324,7 @@ class ItemTable(MutableSequence):
                 return None
             if is_cellid(f):
                 col = np.where(col == FILL_INT64, 0, col + 1)
-            elif meta.get("index"):
+            elif number_kind(f) == "index":
                 col = col + 1
             if col.ndim == 1:
                 cols.append(col.tolist())
@@ -470,71 +468,96 @@ def _column(f: attrs.Attribute, took: tuple, values: np.ndarray) -> np.ndarray |
     """A field's column from its values' floats, as `item._plan`'s readers
     convert each row's (and the field's converter after), or None if they
     convert it otherwise."""
-    if took[0] == "cellid":
+    if is_cellid(f):
+        if took[0] != "cellid":
+            return None  # a row of cellids
         cell = values.astype(np.int64) - 1
         if f.metadata.get("allow_zero"):
             cell[(cell == -1).all(axis=1)] = FILL_INT64
         return cell
-    if took[0] == "value":
-        if f.metadata.get("index"):
-            return values.astype(np.int64) - 1
-        if f.metadata.get("time_series"):
-            return values  # all numbers here, no series names
-        t = unwrap_optional(f.type)
-        if t in (int, "int"):
-            return values.astype(np.int64)
-        if t in (float, "float"):
-            return values
-        return None
-    if is_cellid(f) or _signed(f):
-        return None  # a row of cellids; (index, sign) pairs
-    if f.metadata.get("index"):
+    kind = number_kind(f)
+    if kind == "index":
         return values.astype(np.int64) - 1
-    elem = _array_elem_type(f)
-    if elem is int:
+    if kind == "int":
         return values.astype(np.int64)
-    if elem in (float, None):
-        return values
+    if kind in ("float", "series"):
+        return values  # a series' values here are all numbers, no names
     return None
 
 
-def read_table(item_cls: type[Item], text: str, context: RowContext) -> ItemTable | None:
-    """A block's rows from its text (NUMBERS', all numbers), if each
-    has as many values, in the same layout (see `item._positions`), and
-    every field converts by column; else None, for `Item.from_rows`."""
-    text = without_comments(text)
-    first = next((line.split() for line in text.split("\n") if line.strip()), None)
-    if first is None:
+def _columns(
+    item_cls: type[Item], first: list[str], values: np.ndarray, context: RowContext
+) -> dict[str, np.ndarray] | None:
+    """Rows' fields as columns, from their values (a row each), laid out
+    by the first row's (see `item._spans`), or None if a field doesn't
+    convert by column."""
+    try:
+        spans = _spans(item_cls, [_number(v) for v in first], context)
+    except ValueError:  # no layout: `Item.from_rows` says so
         return None
-    spans = _positions(item_cls, [_number(v) for v in first], context)
     if spans is None:
         return None
-    try:  # raises on a row of another width (or not all numbers)
-        values = np.loadtxt(io.StringIO(text), ndmin=2, comments=None)
-    except ValueError:
-        return None
-    if values.shape[1] != len(first):
-        return None
-    columns: dict[str, Any] = {}
+    at = {f.name: a for f, took, a, _ in spans if f is not None and took[0] == "value"}
+    columns: dict[str, np.ndarray] = {}
     for f, took, a, b in spans:
-        if f is None:
-            return None  # a boundname, all digits: read as a word, by row
+        if f is None or (took[0] == "rest" and _union_field_arms(item_cls, f) is not None):
+            return None  # an arm's keyword; arms
+        if _sized_by_field(item_cls, f) and len(took) > 2:
+            # an array counted by another column, which each row's count
+            # must give (as `_plan` checks)
+            if (count_at := at.get(inline_dim(f) or "")) is None:
+                return None
+            if not (values[:, count_at] == (b - a) // took[2]).all():
+                return None
         if (col := _column(f, took, values[:, a:b] if b else values[:, a])) is None:
             return None
-        # a column of `values` would keep all of it, cellids' floats too
-        columns[f.name] = col.copy() if np.may_share_memory(col, values) else col
-    return ItemTable(item_cls, columns, len(values))
+        columns[f.name] = col
+    return columns
 
 
-def read_ragged(item_cls: type[Item], text: str, context: RowContext) -> list[Item] | None:
-    """A block's rows from its text (NUMBERS', all numbers) whose rows
-    have different numbers of values (DISV's cell2d, by ncvert), read by
-    column a width at a time, as `Item.from_rows` reads them, if each
-    width's rows have one layout (see `item._plan`) and every field
-    converts by column; else None, for `Item.from_rows`."""
+def read_rows(item_cls: type[Item], text: str, context: RowContext) -> "ItemTable | list | None":
+    """A block's rows from its text (NUMBERS', all numbers), read by
+    column, as `Item.from_rows` reads them: an `ItemTable` if each row has
+    as many values and the rows are tabular (see `item._plannable`), else
+    Items, read a number of values at a time (DISV's cell2d, by ncvert).
+    None if a field doesn't convert by column, for `Item.from_rows`."""
     if not _row_plannable(item_cls):  # type: ignore[arg-type]  # lru_cache wants Hashable
         return None
     text = without_comments(text)
+    if not _plannable(item_cls):  # type: ignore[arg-type]  # lru_cache wants Hashable
+        # Items anyway: by width, which holds less than loadtxt's table
+        return _read_ragged(item_cls, text, context)
+    if (first := _first_row(text)) is None:
+        return None
+    try:  # raises on rows of different widths
+        values = np.loadtxt(io.StringIO(text), ndmin=2, comments=None)
+    except ValueError:
+        return _read_ragged(item_cls, text, context)
+    if values.shape[1] != len(first):
+        return None
+    if (columns := _columns(item_cls, first, values, context)) is None:
+        return None
+    for name, col in columns.items():
+        # a column of `values` would keep all of it, cellids' floats too
+        if np.may_share_memory(col, values):
+            columns[name] = col.copy()
+    return ItemTable(item_cls, columns, len(values))
+
+
+def _first_row(text: str) -> list[str] | None:
+    """The first non-blank line's values, without splitting the rest."""
+    start = 0
+    while start < len(text):
+        end = text.find("\n", start)
+        end = len(text) if end == -1 else end
+        if values := text[start:end].split():
+            return values
+        start = end + 1
+    return None
+
+
+def _read_ragged(item_cls: type[Item], text: str, context: RowContext) -> list | None:
+    """`read_rows`' Items, a number of values at a time."""
     try:
         flat = np.array(text.split(), dtype=float)
     except ValueError:
@@ -549,28 +572,9 @@ def read_ragged(item_cls: type[Item], text: str, context: RowContext) -> list[It
         rows = np.flatnonzero(widths == w)
         if lines is None:
             lines = [line for line in text.split("\n") if line.split()]
-        first = [_number(v) for v in lines[rows[0]].split()]
-        try:
-            if (spans := _spans(item_cls, first, context)) is None:
-                return None
-        except ValueError:  # no layout: `Item.from_rows` says so
-            return None
         values = flat[starts[rows][:, None] + np.arange(w)]
-        at = {f.name: a for f, took, a, _ in spans if f is not None and took[0] == "value"}
-        columns: dict[str, Any] = {}
-        for f, took, a, b in spans:
-            if f is None or (took[0] == "rest" and _union_field_arms(item_cls, f) is not None):
-                return None  # a boundname, all digits; an arm's keyword; arms
-            if _sized_by_field(item_cls, f) and len(took) > 2:
-                # an array counted by another column, which each row's
-                # count must give (as `_plan` checks)
-                if (count_at := at.get(inline_dim(f) or "")) is None:
-                    return None
-                if not (values[:, count_at] == (b - a) // took[2]).all():
-                    return None
-            if (col := _column(f, took, values[:, a:b] if b else values[:, a])) is None:
-                return None
-            columns[f.name] = col
+        if (columns := _columns(item_cls, lines[rows[0]].split(), values, context)) is None:
+            return None
         for i, item in zip(rows.tolist(), ItemTable(item_cls, columns, len(rows)).to_items()):
             items[i] = item
     return items

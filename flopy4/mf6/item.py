@@ -692,38 +692,54 @@ def _ts_value(token: Any) -> Any:
         return str(token)
 
 
+NumberKind = Literal["index", "int", "float", "series"]
+
+
+@lru_cache(maxsize=None)
+def number_kind(f: attrs.Attribute) -> NumberKind | None:
+    """What a field's values are as numbers (a cellid's or an array's,
+    each element): an index (1-based in a file, 0-based here; a cellid's
+    elements too), an int, a float, or a time series' (a float, or else a
+    series' name). None if they aren't numbers, or not one per element
+    (signed indexes, see spec.to_signed_indexes). The readers and writers
+    of a row's values, and of a table's columns, convert by it."""
+    if is_array(f) and _signed(f):
+        return None
+    if is_cellid(f) or f.metadata.get("index"):
+        return "index"
+    if f.metadata.get("time_series"):
+        return "series"
+    t = _array_elem_type(f) if is_array(f) else unwrap_optional(f.type)
+    if t in (int, "int"):
+        return "int"
+    if t in (float, "float") or (t is None and is_array(f)):
+        return "float"
+    return None
+
+
 @lru_cache(maxsize=None)
 def _value_reader(f: attrs.Attribute) -> Callable[[Any], Any]:
     """A file token to a scalar field's value, as `_convert` reads it."""
-    if f.metadata.get("index"):
+    kind = number_kind(f)
+    if kind == "index":
         return lambda t: int(float(str(t))) - 1
-    if f.metadata.get("time_series"):
+    if kind == "series":
         return _ts_value
-    t = unwrap_optional(f.type)
-    if t in (int, "int"):
+    if kind == "int":
         return lambda v: int(float(str(v)))
-    if t in (float, "float"):
+    if kind == "float":
         return float
     return lambda v: _coerce(v, f)
-
-
-def _positions(
-    cls: type, values: list, context: RowContext
-) -> "list[tuple[attrs.Attribute | None, tuple, int, int]] | None":
-    """Where each field of a file row with as many values as ``values`` is,
-    which `_solve` lays out, if every such row's layout is the same (see
-    `_plannable`): the field, what it took, and its values' span (a scalar
-    at ``a``, with ``b`` 0). The boundname's field is None."""
-    if not _plannable(cls):
-        return None
-    return _spans(cls, values, context)
 
 
 def _spans(
     cls: type, values: list, context: RowContext
 ) -> "list[tuple[attrs.Attribute | None, tuple, int, int]] | None":
-    """`_positions`, for a class `_row_plannable` allows. An arm's keyword
-    has no field and takes ``("keyword",)``."""
+    """Where each field of a file row with as many values as ``values`` is,
+    which `_solve` lays out, for a class whose rows' layout depends only
+    on that (see `_row_plannable`): the field, what it took, and its
+    values' span (a scalar at ``a``, with ``b`` 0). An arm's keyword has
+    no field and takes ``("keyword",)``."""
     out = _solve(cls, values, context, file=True)
     if any(took[0] == "none" for took in out.values()):
         return None
@@ -744,8 +760,6 @@ def _spans(
             w = len(took[1])
             spans.append((f, took, pos, pos + w))
         pos += w
-    if "boundname" in out:
-        spans.append((None, out["boundname"], len(values) - 1, 0))
     return spans
 
 
@@ -788,10 +802,9 @@ def _plan(
     load_child: Callable[[attrs.Attribute, str], Any] | None = None,
 ) -> "Callable[[list], dict[str, Any] | None] | None":
     """How to read the fields of a file row with as many values as
-    ``values``, if every such row's layout is the same (see `_positions`
-    and `_row_plannable`). The reader returns None for a row it can't
-    convert (a cellid of NONE, another arm's keyword), which `_layout` then
-    reads."""
+    ``values``, if every such row's layout is the same (see `_spans`).
+    The reader returns None for a row it can't convert (a cellid of NONE,
+    another arm's keyword), which `_layout` then reads."""
     if not _row_plannable(cls) or (spans := _spans(cls, values, context)) is None:
         return None
     readers: list[tuple[str, int, int, Callable[[Any], Any]]] = []
@@ -809,9 +822,7 @@ def _plan(
                 ("", a, b, partial(_check_keyword, cast(type[Record], cls).keyword().upper()))
             )
             continue
-        if f is None:
-            readers.append(("boundname", a, b, str))
-            continue
+        assert f is not None  # only a keyword's span has none
         if took[0] == "rest" and _union_field_arms(cls, f) is not None:
             read = _union_reader(cls, f, context, load_child)
         elif took[0] == "value":

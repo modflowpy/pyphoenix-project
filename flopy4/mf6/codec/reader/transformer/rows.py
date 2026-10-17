@@ -24,7 +24,7 @@ class NumberRows(Sequence):
     """NUMBERS' rows, each a list of numbers as basic's `line` or
     typed's `record` reads it, read when first used. A list that's only
     these lines keeps them as such, so its text can be read by column
-    instead (see `item_table.read_table`); both transformers splice them in
+    instead (see `item_table.read_rows`); both transformers splice them in
     among any other rows."""
 
     __slots__ = ("_text", "_rows")

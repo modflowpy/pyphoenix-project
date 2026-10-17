@@ -27,7 +27,7 @@ from flopy4.mf6.item import (
     parse_union_items,
     sized_by,
 )
-from flopy4.mf6.item_table import ItemTable, read_ragged, read_table
+from flopy4.mf6.item_table import ItemTable, read_rows
 from flopy4.mf6.load_context import LoadContext
 from flopy4.mf6.package import Package
 from flopy4.mf6.period_arrays import is_grid_package
@@ -78,14 +78,11 @@ def _parse_rows(
         return parse_union_items(
             rows, item_cls, words=words, context=row_context, load_child=load_child
         )
-    # a block of only numeric lines, read by column if its rows allow, and
-    # kept so (see ItemTable); or, if they're of different widths, read by
-    # column a width at a time, as Items
+    # a block of only numeric lines, read by column if its rows allow (and,
+    # if tabular, kept so: see ItemTable)
     if isinstance(rows, NumberRows):
-        if (table := read_table(item_cls, rows.text, row_context)) is not None:
-            return table or None
-        if (items := read_ragged(item_cls, rows.text, row_context)) is not None:
-            return items or None
+        if (read := read_rows(item_cls, rows.text, row_context)) is not None:
+            return read or None
     result = item_cls.from_rows(
         [row for row in rows if row],
         row_context,
