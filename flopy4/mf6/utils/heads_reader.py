@@ -211,7 +211,7 @@ def _open_hds_netcdf(
         grid = grb_info["grid"]
         data = ds["head"].data  # (ntime, nlayer, nrow, ncol) dask array
         data = _dask_to_nan(data, dry_nan)
-        coords = get_coords(grid)
+        coords = _with_file_crs(get_coords(grid), ds)
         coords["time"] = time_values
         return index_xy(xr.DataArray(data, coords, ("time", "layer", "row", "col"), name="head"))
 
@@ -250,7 +250,7 @@ def _open_hds_netcdf(
         data = data.reshape(ntime, nlayer, nrow, ncol)
         data = _dask_to_nan(data, dry_nan)
 
-        coords = get_coords(grid)
+        coords = _with_file_crs(get_coords(grid), ds)
         coords["time"] = time_values
         return index_xy(xr.DataArray(data, coords, ("time", "layer", "row", "col"), name="head"))
 
@@ -259,6 +259,19 @@ def _open_hds_netcdf(
             f"Unsupported modflow_grid type {grid_type!r} in {path.name}. "
             "Expected 'VERTEX' or 'STRUCTURED'."
         )
+
+
+def _with_file_crs(coords: dict, ds: xr.Dataset) -> dict:
+    """Give the grb's ``projection`` coordinate the file's CRS (``crs_wkt``,
+    ``grid_mapping_name``, ...), which the grb doesn't have. The grb still
+    places the grid: the file's ``xorigin``/``yorigin``/``angrot``, if any,
+    aren't used."""
+    if "projection" in ds.variables:
+        dims, value, attrs = coords["projection"]
+        placement = ("xorigin", "yorigin", "angrot")
+        file_attrs = {k: v for k, v in ds["projection"].attrs.items() if k not in placement}
+        coords["projection"] = (dims, value, {**attrs, **file_attrs})
+    return coords
 
 
 def read_times(path: Path, ntime: int, nlayer: int, ncells_per_layer: int) -> np.ndarray:

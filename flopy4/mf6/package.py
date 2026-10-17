@@ -977,9 +977,10 @@ class Package(Component, ABC):
         """Give an array its cell centres as x/y coordinates when its
         model's discretization (or this package, if it's one) has them.
         On a structured grid they're indexed, for `sel(x=..., y=...)`, and
-        the array gets a `projection` coordinate placing them in the world
-        (see `grid_mapping`)."""
-        from flopy4.mf6.utils.grid import cell_centers, grid_mapping, index_xy
+        the array gets its cell sizes as `dx`/`dy` (see `cell_sizes`), and a
+        `projection` coordinate placing them in the world (see
+        `grid_mapping`)."""
+        from flopy4.mf6.utils.grid import cell_centers, cell_sizes, grid_mapping, index_xy
 
         dis = self if hasattr(self, "to_grid") else getattr(self._parent, "dis", None)
         coords = {
@@ -996,8 +997,13 @@ class Package(Component, ABC):
             getattr(dis, "xorigin", None),
             getattr(dis, "yorigin", None),
             getattr(dis, "angrot", None),
+            getattr(dis, "crs", None),
         )
-        return index_xy(da.assign_coords(projection=projection))
+        sizes = cell_sizes(
+            np.broadcast_to(np.asarray(getattr(dis, "delr"), dtype=np.float64), da.sizes["col"]),
+            np.broadcast_to(np.asarray(getattr(dis, "delc"), dtype=np.float64), da.sizes["row"]),
+        )
+        return index_xy(da.assign_coords(projection=projection, **sizes))
 
     def to_xarray(  # type: ignore[override]
         self,

@@ -7,7 +7,7 @@ from flopy4.mf6.gwf import Chd, Dis, Disv, Gwf, Ic, Npf, Oc
 from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.utils.cbc_reader import open_cbc
-from flopy4.mf6.utils.grid import VertexGrid
+from flopy4.mf6.utils.grid import VertexGrid, grid_mapping
 from flopy4.mf6.utils.heads_reader import open_hds
 from flopy4.mf6.utils.time import Time
 
@@ -267,8 +267,8 @@ def test_open_cbc_disv_flowja(disv_model_output):
 
 
 def test_open_hds_dis_rotated(function_tmpdir):
-    """A rotated grid's output has local x/y and the projection coordinate,
-    the same as its input arrays."""
+    """A rotated grid's output has local x/y, the projection coordinate and
+    world coordinates, the same as its input arrays."""
     paths = _dis_model_output(function_tmpdir, xorigin=100.0, yorigin=200.0, angrot=30.0)
     head = open_hds(paths["hds"], paths["grb"])
     botm = paths["gwf"].dis.to_dataarray("botm")
@@ -278,6 +278,8 @@ def test_open_hds_dis_rotated(function_tmpdir):
     assert head.attrs["grid_mapping"] == "projection"
     assert head.projection.attrs == botm.projection.attrs
     assert head.projection.attrs == {"xorigin": 100.0, "yorigin": 200.0, "angrot": 30.0}
+    assert np.allclose(head.x_world, botm.x_world)
+    assert np.allclose(head.y_world, botm.y_world)
 
 
 def test_open_hds_disv_rotated(function_tmpdir):
@@ -366,6 +368,32 @@ def test_open_hds_dis_netcdf_conventional(function_tmpdir, dis_model_output):
     assert head.dims == ("time", "layer", "row", "col")
     assert head.shape == (ntime, nlay, nrow, ncol)
     np.testing.assert_allclose(head.values, data)
+
+
+def test_open_hds_dis_netcdf_keeps_file_crs(function_tmpdir):
+    """The grb has no CRS, so a netCDF file's projection gives it: the
+    head's projection has the file's crs_wkt, with the grb's placement."""
+    from pathlib import Path
+
+    paths = _dis_model_output(function_tmpdir, xorigin=100.0, yorigin=200.0, angrot=30.0)
+    nlay, nrow, ncol = paths["nlay"], paths["nrow"], paths["ncol"]
+    expected = grid_mapping(100.0, 200.0, 30.0, "EPSG:26916")[2]
+    ds = xr.Dataset(
+        {
+            "head": xr.DataArray(np.zeros((1, nlay, nrow, ncol)), dims=("time", "z", "y", "x")),
+            "projection": ((), 1, {**expected, "xorigin": 0.0, "angrot": 0.0}),
+        },
+        coords={"time": np.array([1.0])},
+        attrs={"modflow_grid": "STRUCTURED"},
+    )
+    nc_path = Path(function_tmpdir) / "head_crs.nc"
+    ds.to_netcdf(nc_path)
+
+    head = open_hds(nc_path, paths["grb"])
+
+    assert head.projection.attrs == expected
+    assert head.attrs["grid_mapping"] == "projection"
+    assert "x_world" in head.coords
 
 
 def test_open_hds_disv_netcdf_ugrid_layered(function_tmpdir, disv_model_output):
