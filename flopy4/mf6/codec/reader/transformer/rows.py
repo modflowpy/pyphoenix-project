@@ -149,7 +149,7 @@ def without_comments(text: str) -> str:
 
 def number_values(text: str) -> np.ndarray:
     """NUMBERS' values, in order, as floats (an array's data)."""
-    return np.array(without_comments(NumberRows(text).text).split(), dtype=float)
+    return row_values(NumberRows(text))
 
 
 def row_values(rows: NumberRows, dtype=float) -> np.ndarray:
