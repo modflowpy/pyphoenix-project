@@ -2099,11 +2099,11 @@ def test_table_as_rows_read(text):
     from flopy4.mf6.codec.reader.transformer.rows import NumberRows
     from flopy4.mf6.gwf import Sfr
     from flopy4.mf6.item import RowContext
-    from flopy4.mf6.item_table import read_table
+    from flopy4.mf6.item_table import read_rows
 
     context = RowContext(ncelldim=1, sizes={"auxiliary": 1})
     rows = NumberRows(text)
-    table = read_table(Sfr.Packagedata, rows.text, context)
+    table = read_rows(Sfr.Packagedata, rows.text, context)
     assert table is not None and len(table) == 2
     items = table.to_items()
     assert items == Sfr.Packagedata.from_rows(list(rows), context)
@@ -2125,11 +2125,11 @@ def test_table_declines(item_cls, text):
     """Rows the columns can't hold are left to `from_rows`."""
     from flopy4.mf6.gwf import Gnc, Riv
     from flopy4.mf6.item import RowContext
-    from flopy4.mf6.item_table import read_table
+    from flopy4.mf6.item_table import read_rows
 
     cls = {"Riv": Riv.StressPeriodData, "Gnc": Gnc.Gncdata}[item_cls]
     context = RowContext(ncelldim=1, sizes={"auxiliary": 0, "numalphaj": 1})
-    assert read_table(cls, text, context) is None
+    assert read_rows(cls, text, context) is None
 
 
 def test_ragged_as_rows_read():
@@ -2138,16 +2138,32 @@ def test_ragged_as_rows_read():
     from flopy4.mf6.codec.reader.transformer.rows import NumberRows
     from flopy4.mf6.gwf import Disv
     from flopy4.mf6.item import RowContext
-    from flopy4.mf6.item_table import read_ragged
+    from flopy4.mf6.item_table import read_rows
 
     text = "1 0.5 0.5 5 1 2 3 4 1\n# a comment\n2 1.5 0.5 4 2 5 6 3\n\n3 2.5 0.5 5 5 7 8 6 5\n"
     context = RowContext(ncelldim=1)
     rows = NumberRows(text)
-    items = read_ragged(Disv.Cell2d, rows.text, context)
+    items = read_rows(Disv.Cell2d, rows.text, context)
     expected = Disv.Cell2d.from_rows(list(rows), context)
     assert items == expected
     assert [repr(item) for item in items] == [repr(item) for item in expected]
     assert [item.icell2d for item in items] == [0, 1, 2]
+
+
+def test_counted_rows_of_one_width_read():
+    """Rows that aren't tabular (an array counted by another column), all
+    of one width, read by column as `from_rows` reads them, as Items."""
+    from flopy4.mf6.codec.reader.transformer.rows import NumberRows
+    from flopy4.mf6.gwf import Disv
+    from flopy4.mf6.item import RowContext
+    from flopy4.mf6.item_table import read_rows
+
+    text = "1 0.5 0.5 4 1 2 3 4\n2 1.5 0.5 4 2 5 6 3\n"
+    context = RowContext(ncelldim=1)
+    rows = NumberRows(text)
+    items = read_rows(Disv.Cell2d, rows.text, context)
+    assert isinstance(items, list)
+    assert items == Disv.Cell2d.from_rows(list(rows), context)
 
 
 @pytest.mark.parametrize(
@@ -2163,9 +2179,9 @@ def test_ragged_declines(text):
     """Rows a width's columns can't hold are left to `from_rows`."""
     from flopy4.mf6.gwf import Disv
     from flopy4.mf6.item import RowContext
-    from flopy4.mf6.item_table import read_ragged
+    from flopy4.mf6.item_table import read_rows
 
-    assert read_ragged(Disv.Cell2d, text, RowContext(ncelldim=1)) is None
+    assert read_rows(Disv.Cell2d, text, RowContext(ncelldim=1)) is None
 
 
 def test_table_rows():
@@ -2176,12 +2192,12 @@ def test_table_rows():
     from flopy4.mf6._types import TimeSeriesRef
     from flopy4.mf6.gwf import Riv
     from flopy4.mf6.item import RowContext
-    from flopy4.mf6.item_table import read_table
+    from flopy4.mf6.item_table import read_rows
 
     cls = Riv.StressPeriodData
     text = "1 5 1.0 2.0 0.5\n2 7 3.0 4.0 0.25\n"
     context = RowContext(ncelldim=2, sizes={"auxiliary": 0})
-    table = read_table(cls, text, context)
+    table = read_rows(cls, text, context)
     items = cls.from_rows([line.split() for line in text.splitlines()], context)
     assert table == items and items == table
     assert isinstance(table[0], cls) and table[0] == items[0] and items[0] == table[0]

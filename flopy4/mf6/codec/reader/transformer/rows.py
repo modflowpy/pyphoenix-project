@@ -21,11 +21,9 @@ class Span(NamedTuple):
 
 
 class NumberRows(Sequence):
-    """NUMBERS' rows, each a list of numbers as basic's `line` or
-    typed's `record` reads it, read when first used. A list that's only
-    these lines keeps them as such, so its text can be read by column
-    instead (see `item_table.read_table`); both transformers splice them in
-    among any other rows."""
+    """A NUMBERS token's rows, each a list of numbers, split when first
+    used. A block of only these keeps its text, to read by column (see
+    `item_table.read_rows`)."""
 
     __slots__ = ("_text", "_rows")
 
@@ -78,9 +76,8 @@ class NumberRows(Sequence):
 
 
 class BlockRows(Sequence):
-    """A block's rows, some of them NUMBERS tokens (each a
-    `NumberRows`, its own part), flattened when first used. An array
-    block reads their text instead (see `parts`)."""
+    """A block's rows, some of them `NumberRows`, flattened when first
+    used. An array block reads their text instead (see `parts`)."""
 
     __slots__ = ("parts", "_rows")
 
@@ -149,7 +146,7 @@ def without_comments(text: str) -> str:
 
 def number_values(text: str) -> np.ndarray:
     """NUMBERS' values, in order, as floats (an array's data)."""
-    return np.array(without_comments(NumberRows(text).text).split(), dtype=float)
+    return row_values(NumberRows(text))
 
 
 def row_values(rows: NumberRows, dtype=float) -> np.ndarray:

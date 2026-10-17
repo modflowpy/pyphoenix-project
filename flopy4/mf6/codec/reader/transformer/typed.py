@@ -45,10 +45,8 @@ def _is_rows(item: Any) -> bool:
 
 
 def _rows(parts: list[Any]) -> list | NumberRows:
-    """A list's rows, from `record`s and NUMBERS tokens (a
-    NumberRows each), or from groups of these (a list's rule, split where
-    a comment-only line ends one). Rows that are all one NumberRows stay one, so
-    their text can be read by column."""
+    """A list's rows, from `record`s and NumberRows (or groups of them).
+    Rows that are all one NumberRows stay one, to read by column."""
     if len(parts) == 1 and isinstance(parts[0], NumberRows):
         return parts[0]
     rows: list = []

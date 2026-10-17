@@ -150,10 +150,8 @@ def _rows_to_tuples(row_list: "list | ItemTable", ncelldim: int | None = None) -
 
 
 class Rows(Sequence):
-    """A block's list rows, as `_rows_to_tuples` makes them from each list
-    given (a period's can come from more than one field), made each time
-    they're read. A write then holds one block's tuples at a time, not every
-    period's at once."""
+    """A block's list rows as tuples (see `_rows_to_tuples`), made when
+    read, so a write holds one block's tuples at a time."""
 
     def __init__(self, ncelldim: int | None = None) -> None:
         self._parts: list[list | ItemTable] = []

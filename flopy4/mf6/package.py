@@ -84,10 +84,8 @@ def _check_rows(dim: str, declared: int, nrows: int, bound: str | None) -> None:
 
 class PeriodRows(dict):
     """A fill-forward list field's ``{kper: rows}`` (CHD's
-    stress_period_data). Rows assigned to a period are taken as the package
-    takes them at construction (see `Package._coerce_item_list`): an
-    `ItemTable` for a tabular list, and an option a row needs (BOUNDNAMES)
-    turned on. Made with rows already taken."""
+    stress_period_data). Rows assigned to a period are coerced as at
+    construction (see `Package._coerce_item_list`)."""
 
     def __init__(self, package: "Package", name: str, periods: dict) -> None:
         super().__init__(periods)
@@ -215,12 +213,10 @@ class Package(Component, ABC):
                 self._set_dim_from_rows(dim, nrows, bound)
 
     def _coerce_list_field(self, f: attrs.Attribute, raw: Any) -> Any:
-        """An Item-list field's value from user data, each list as
-        `_coerce_item_list` takes it, a fill-forward field's periods as
-        `PeriodRows`. Sets the dimensions counting its rows' array columns
-        (see `_set_dims_from_counts`). The field's own reassignment comes
-        here too (see `spec.list_`), and dimensions counting its rows
-        follow on the next `_sync_dims`."""
+        """An Item-list field's value from user data (see
+        `_coerce_item_list`; a fill-forward field's periods as
+        `PeriodRows`), on construction or reassignment. Sets the dimensions
+        counting its rows' array columns."""
         item_cls = item_list_type(f.type)
         assert item_cls is not None
         words = item_list_words(f.type)
@@ -330,9 +326,9 @@ class Package(Component, ABC):
                             by_key.setdefault(k, n)
                     return by_key.get(key)
 
-                # the first row's, noting what it reads: if a row's count is
-                # just a referenced row's (SFR's), check the rest by column
-                # rather than evaluate each's (SFR's 10k connectiondata rows)
+                # if the count is just a referenced row's (SFR's), check
+                # all rows by column rather than evaluating each (SFR's 10k
+                # connectiondata rows)
                 names: list[str] = []
 
                 def lookup(name: str, first=rows[0], names=names) -> Any:
@@ -439,10 +435,8 @@ class Package(Component, ABC):
             _check_rows(dim, declared, nrows, bound)
 
     def _set_dims_from_counts(self, item_cls: "type[Item]", lists: list) -> None:
-        """Set the dimensions counting array columns (GNC's numalphaj counts
-        cellidsj and alphasj, EVT's nseg-1 counts pxdp) from the columns'
-        lengths in ``lists`` (a period's rows each, or the one list's), unless
-        given."""
+        """Set the dimensions counting array columns (GNC's numalphaj, EVT's
+        nseg-1) from their lengths in ``lists``, unless given."""
         values = {a.name: getattr(self, a.name) for a in attrs.fields(type(self))}
 
         def lookup(name: str) -> Any:
@@ -1014,17 +1008,10 @@ class Package(Component, ABC):
         """All set griddata (or period-array) fields as xr.Dataset.
 
         Stays lazy if dask-backed. A list package's stress period data is a
-        variable per column, dense along its rows' key: the grid for a
-        cellid, a feature dim (``nreaches``) for a feature number, or with
-        ``grid=True`` the grid through the feature's cell. ``sparse=True``
-        keeps every row, and is the only form of rows with no single key
-        (HFB, MVR). Two rows at one position in a period raise, unless
-        ``duplicates`` ("sum", "first", "last") merges them. Index a
-        variable, ``ds["head"]``: ``ds.head`` is ``Dataset.head()``. See
-        ``flopy4.mf6.period_lists``. For packages with neither this falls
-        through to ``Component.to_xarray()``, which returns whatever
-        ``attrs_to_dataset()`` finds -- empty for a package with no
-        griddata fields of its own.
+        variable per column, dense along its rows' key (``grid=True`` for
+        the grid through a feature's cell), or with ``sparse=True`` a row
+        per entry. ``duplicates`` ("sum", "first", "last") merges rows at
+        one position. See ``flopy4.mf6.period_lists``.
         """
         import attrs as _attrs
 
@@ -1047,8 +1034,7 @@ class Package(Component, ABC):
 
     def from_xarray(self, ds: xr.Dataset) -> None:
         """Set stress_period_data from ``to_xarray()``'s dense or sparse
-        form (see ``flopy4.mf6.period_lists``). From the dense form a period
-        block is made where a period differs from the one before."""
+        form (see ``flopy4.mf6.period_lists``)."""
         spd = period_lists.period_list_field(type(self))
         if spd is None:
             raise ValueError(f"{type(self).__name__} has no stress period data")

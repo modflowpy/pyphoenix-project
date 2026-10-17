@@ -654,9 +654,9 @@ def _file_array(f: attrs.Attribute, tokens: list) -> tuple:
 
 @lru_cache(maxsize=None)
 def _plannable(cls: type) -> bool:
-    """Whether a file row's layout depends only on how many values it has,
-    not what they are: it has no keyword, flag, count column or untagged
-    unions, and no column that reads a child or a union arm (see `_plan`)."""
+    """Whether rows are tabular: a row's layout depends only on how many
+    values it has. No keywords, flags, count columns, untagged unions or
+    columns reading a child or union arm."""
     for slot in _slots(cls, True):
         if slot.kind not in ("value", "cellid", "sized", "rest"):
             return False
@@ -669,12 +669,10 @@ def _plannable(cls: type) -> bool:
 
 @lru_cache(maxsize=None)
 def _row_plannable(cls: type) -> bool:
-    """Whether a file row's layout depends only on how many values it has,
-    as for `_plannable`, though it may also have an arm's keyword, an array
-    counted by another column (DISV's icvert, by ncvert: a row of the same
-    length has the same count), or end with a union of arms (SFR's
-    sfrsetting) read by the arm its values name. Not tabular, so only for
-    `Item.from_rows`."""
+    """Like `_plannable`, but also allowing an arm's keyword, an array
+    counted by another column (DISV's icvert), or a trailing union (SFR's
+    sfrsetting). Rows like these aren't tabular, but `Item.from_rows` can
+    still plan them by length."""
     for slot in _slots(cls, True):
         if slot.kind not in ("value", "cellid", "sized", "sibling", "rest", "keyword"):
             return False
@@ -692,38 +690,51 @@ def _ts_value(token: Any) -> Any:
         return str(token)
 
 
+NumberKind = Literal["index", "int", "float", "series"]
+
+
+@lru_cache(maxsize=None)
+def number_kind(f: attrs.Attribute) -> NumberKind | None:
+    """How a field's values (or elements) convert as numbers: an index
+    (1-based in files, 0-based here), an int, a float, or a time series'
+    (a float or a series' name). None if they aren't numbers, or not one
+    per element (signed indexes). Row and column readers and writers all
+    convert by it."""
+    if is_array(f) and _signed(f):
+        return None
+    if is_cellid(f) or f.metadata.get("index"):
+        return "index"
+    if f.metadata.get("time_series"):
+        return "series"
+    t = _array_elem_type(f) if is_array(f) else unwrap_optional(f.type)
+    if t in (int, "int"):
+        return "int"
+    if t in (float, "float") or (t is None and is_array(f)):
+        return "float"
+    return None
+
+
 @lru_cache(maxsize=None)
 def _value_reader(f: attrs.Attribute) -> Callable[[Any], Any]:
     """A file token to a scalar field's value, as `_convert` reads it."""
-    if f.metadata.get("index"):
+    kind = number_kind(f)
+    if kind == "index":
         return lambda t: int(float(str(t))) - 1
-    if f.metadata.get("time_series"):
+    if kind == "series":
         return _ts_value
-    t = unwrap_optional(f.type)
-    if t in (int, "int"):
+    if kind == "int":
         return lambda v: int(float(str(v)))
-    if t in (float, "float"):
+    if kind == "float":
         return float
     return lambda v: _coerce(v, f)
-
-
-def _positions(
-    cls: type, values: list, context: RowContext
-) -> "list[tuple[attrs.Attribute | None, tuple, int, int]] | None":
-    """Where each field of a file row with as many values as ``values`` is,
-    which `_solve` lays out, if every such row's layout is the same (see
-    `_plannable`): the field, what it took, and its values' span (a scalar
-    at ``a``, with ``b`` 0). The boundname's field is None."""
-    if not _plannable(cls):
-        return None
-    return _spans(cls, values, context)
 
 
 def _spans(
     cls: type, values: list, context: RowContext
 ) -> "list[tuple[attrs.Attribute | None, tuple, int, int]] | None":
-    """`_positions`, for a class `_row_plannable` allows. An arm's keyword
-    has no field and takes ``("keyword",)``."""
+    """Each field's span in a row as long as ``values`` (see
+    `_row_plannable`): the field, what it took, and ``(a, b)``, or a
+    scalar at ``a`` with ``b`` 0. An arm's keyword has no field."""
     out = _solve(cls, values, context, file=True)
     if any(took[0] == "none" for took in out.values()):
         return None
@@ -744,8 +755,6 @@ def _spans(
             w = len(took[1])
             spans.append((f, took, pos, pos + w))
         pos += w
-    if "boundname" in out:
-        spans.append((None, out["boundname"], len(values) - 1, 0))
     return spans
 
 
@@ -787,11 +796,9 @@ def _plan(
     context: RowContext,
     load_child: Callable[[attrs.Attribute, str], Any] | None = None,
 ) -> "Callable[[list], dict[str, Any] | None] | None":
-    """How to read the fields of a file row with as many values as
-    ``values``, if every such row's layout is the same (see `_positions`
-    and `_row_plannable`). The reader returns None for a row it can't
-    convert (a cellid of NONE, another arm's keyword), which `_layout` then
-    reads."""
+    """A reader of rows as long as ``values`` (see `_spans`). It returns
+    None for a row it can't convert (a NONE cellid, another arm's
+    keyword), which `_layout` then reads."""
     if not _row_plannable(cls) or (spans := _spans(cls, values, context)) is None:
         return None
     readers: list[tuple[str, int, int, Callable[[Any], Any]]] = []
@@ -809,9 +816,7 @@ def _plan(
                 ("", a, b, partial(_check_keyword, cast(type[Record], cls).keyword().upper()))
             )
             continue
-        if f is None:
-            readers.append(("boundname", a, b, str))
-            continue
+        assert f is not None  # only a keyword's span has none
         if took[0] == "rest" and _union_field_arms(cls, f) is not None:
             read = _union_reader(cls, f, context, load_child)
         elif took[0] == "value":
@@ -1082,9 +1087,8 @@ class Item(Record):
         union_forms: Callable[[Mapping[str, Any]], Any] | None = None,
         load_child: Callable[[attrs.Attribute, str], Any] | None = None,
     ) -> "list[Item]":
-        """Items from a file block's rows, as `from_tokens` reads each. Rows
-        of a tabular list (as most are: each the same number of values, in
-        the same columns) are laid out once, by the first (see `_plan`)."""
+        """Items from a block's rows, as `from_tokens` reads each. Rows of
+        one length are laid out once (see `_plan`)."""
         context = context or RowContext()
         plans: dict[int, Callable[[list], dict[str, Any] | None] | None] = {}
         items = []
