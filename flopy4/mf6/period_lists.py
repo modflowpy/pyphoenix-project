@@ -92,7 +92,10 @@ def _kind(f: attrs.Attribute) -> Kind:
 
 
 def _none(v: Any) -> bool:
-    """Whether an object value is missing: xarray makes None NaN."""
+    """Whether an object value is missing: xarray makes None NaN, and
+    NetCDF makes it ''."""
+    if isinstance(v, str):
+        return not v
     return v is None or (isinstance(v, float) and np.isnan(v))
 
 
@@ -702,7 +705,8 @@ def _stack(frames: dict[int, np.ndarray], nper: int) -> np.ndarray:
 
 def _is_missing(a: np.ndarray, kind: Kind) -> np.ndarray:
     if kind == "object":
-        return np.asarray(pd.isna(a), dtype=bool).reshape(a.shape)  # None or NaN, as `_none`
+        # None, NaN or '', as `_none`
+        return (np.asarray(pd.isna(a), dtype=bool) | (a == "")).reshape(a.shape)
     return a == _missing(kind)
 
 

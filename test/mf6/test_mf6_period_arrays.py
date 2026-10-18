@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import pytest
 
 from flopy4.mf6 import LoadContext, TimeArraySeriesRef
@@ -211,8 +212,8 @@ def test_rcha_tas_reference_round_trip():
 
 
 def test_tas_reference_xarray_coordinate(tmp_path):
-    """In xarray a reference period stays in the stack, as FILL_DNODATA,
-    naming its series in a coordinate along the period dim. The dataset
+    """In xarray a reference period stays in the stack, as NaN, naming its
+    series in a coordinate along the period dim (None for arrays). The dataset
     saves to NetCDF and comes back the same."""
     import xarray as xr
 
@@ -226,11 +227,13 @@ def test_tas_reference_xarray_coordinate(tmp_path):
     ds = attrs_to_dataset(rcha)
     recharge = ds["recharge"]
     assert list(recharge["recharge_period"].values) == [0, 2]
-    assert list(recharge["recharge_tas"].values) == ["rch", ""]
-    assert (recharge.sel(recharge_period=0) == FILL_DNODATA).all()
+    assert recharge["recharge_tas"].values[0] == "rch"
+    assert pd.isnull(recharge["recharge_tas"].values[1])
+    assert np.isnan(recharge.sel(recharge_period=0)).all()
     # the coordinate goes along with the data
     assert recharge.isel(recharge_period=0)["recharge_tas"].item() == "rch"
     assert ds["aux"]["aux_tas"].sel(aux_period=0, aux_name="conc").item() == "cs"
+    assert np.isnan(ds["aux"].sel(aux_period=0, aux_name="conc")).all()
 
     path = tmp_path / "rcha.nc"
     ds.drop_attrs().to_netcdf(path)

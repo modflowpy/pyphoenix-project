@@ -125,10 +125,10 @@ def _period_shape(arrays: list) -> tuple[int, ...]:
 
 def _period_dataarray(field: attrs.Attribute, name: str, value: dict) -> xr.DataArray:
     """Stack a period array field's given periods. A period from a time-array
-    series is FILL_DNODATA, naming the series in the "<name>_tas" coordinate
-    along the period dim ('' for arrays), so the stack has every period the
-    field gives. Aux names missing from a period are FILL_DNODATA there, as
-    is a cleared grid period (None), which loads back as cleared. A period
+    series is NaN, naming the series in the "<name>_tas" coordinate along the
+    period dim (None for arrays), so the stack has every period the field
+    gives. Aux names missing from a period are FILL_DNODATA there, as is a
+    cleared grid period (None), which loads back as cleared. A period
     given as one value (a 0-d array, a CONSTANT) fills its period, shaped
     like the periods given in full."""
     from flopy4.mf6._types import TimeArraySeriesRef
@@ -140,30 +140,34 @@ def _period_dataarray(field: attrs.Attribute, name: str, value: dict) -> xr.Data
         cells = [a for arrays in value.values() for a in arrays.values()]
         shape = _period_shape(cells)
         stacked = np.full((len(value), len(names), *shape), FILL_DNODATA)
-        refs = np.full((len(value), len(names)), "", dtype=object)
+        refs = np.full((len(value), len(names)), None, dtype=object)
         for i, arrays in enumerate(value.values()):
             for j, n in enumerate(names):
                 if isinstance(a := arrays.get(n), TimeArraySeriesRef):
-                    refs[i, j] = a.name
+                    stacked[i, j], refs[i, j] = np.nan, a.name
                 elif a is not None:
                     stacked[i, j] = np.asarray(a)
         coords: dict = {period: list(value), key: names}
-        if (refs != "").any():
-            coords[tas] = ((period, key), refs.astype(str))
+        if (refs != None).any():  # noqa: E711
+            coords[tas] = ((period, key), refs)
         dims = (period, key, *_array_dims(field, name, len(shape)))
         return xr.DataArray(stacked, dims=dims, coords=coords)
     shape = _period_shape(list(value.values()))
     stacked = np.stack(
         [
-            np.full(shape, FILL_DNODATA)
-            if a is None or isinstance(a, TimeArraySeriesRef)
+            np.full(shape, np.nan)
+            if isinstance(a, TimeArraySeriesRef)
+            else np.full(shape, FILL_DNODATA)
+            if a is None
             else np.broadcast_to(np.asarray(a), shape)
             for a in value.values()
         ]
     )
-    refs = np.array([a.name if isinstance(a, TimeArraySeriesRef) else "" for a in value.values()])
+    refs = np.array(
+        [a.name if isinstance(a, TimeArraySeriesRef) else None for a in value.values()], object
+    )
     coords = {period: list(value)}
-    if (refs != "").any():
+    if (refs != None).any():  # noqa: E711
         coords[tas] = (period, refs)
     dims = (period, *_array_dims(field, name, len(shape)))
     return xr.DataArray(stacked, dims=dims, coords=coords)
@@ -179,8 +183,9 @@ def _period_value(field: attrs.Attribute, da: xr.DataArray) -> dict:
     periods = [int(k) for k in da[period].values]
 
     def ref(**at) -> TimeArraySeriesRef | None:
-        name = str(tas.sel(at).item()) if tas is not None else ""
-        return TimeArraySeriesRef(name) if name else None
+        # None (NaN in xarray), or '' from NetCDF, for an array
+        name = tas.sel(at).item() if tas is not None else None
+        return TimeArraySeriesRef(name) if isinstance(name, str) and name else None
 
     if key := _named_dim(field):
         value: dict = {}
