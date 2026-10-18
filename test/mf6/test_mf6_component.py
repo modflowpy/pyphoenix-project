@@ -1779,6 +1779,14 @@ def test_sel_world_rotated():
     with pytest.raises(KeyError):
         at(6.1, 1.0)
 
+    # world ranges and lists aren't the grid's, so they say what to do
+    with pytest.raises(ValueError, match="x_world"):
+        sel_world(da, slice(100.0, 102.0), slice(200.0, 203.0))
+    with pytest.raises(ValueError, match="DataArrays"):
+        sel_world(da, xw.values.tolist(), yw.values.tolist())
+    with pytest.raises(ValueError, match="DataArrays"):
+        sel_world(da, xw.values, float(yw[0]))
+
     flat = Gwf(dis=Dis(nlay=1, nrow=2, ncol=2, delr=1.0, delc=1.0, xorigin=10.0, botm=[0.0]))
     da = flat.dis.to_dataarray("botm")
     assert sel_world(da, 10.6, 0.4, method="nearest").identical(

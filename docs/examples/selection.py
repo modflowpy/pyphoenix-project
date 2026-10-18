@@ -234,19 +234,28 @@ col = bot.grid.sel_world(xw, yw)
 assert (col.x.item(), col.y.item()) == (15.0, 35.0)
 
 # For several points on a rotated grid, use DataArrays on a shared dim.
-# Lists still give an outer product, but of the points' x and y in the
-# grid's own frame, which isn't the outer product of the world x's and
-# y's, nor just the points themselves.
+# Lists raise `ValueError`: every combination of world x's and y's isn't
+# a set of rows and columns, since the grid's rows and columns don't run
+# along world x and y.
 
-pxw = xr.DataArray([float(bot.x_world[0, 1]), float(bot.x_world[2, 3])], dims="point")
-pyw = xr.DataArray([float(bot.y_world[0, 1]), float(bot.y_world[2, 3])], dims="point")
-pts = bot.grid.sel_world(pxw, pyw)
+xws = [float(bot.x_world[0, 1]), float(bot.x_world[2, 3])]
+yws = [float(bot.y_world[0, 1]), float(bot.y_world[2, 3])]
+try:
+    bot.grid.sel_world(xws, yws)
+except ValueError as e:
+    print("ValueError:", e)
+pts = bot.grid.sel_world(xr.DataArray(xws, dims="point"), xr.DataArray(yws, dims="point"))
 assert pts.x.values.tolist() == [15.0, 35.0]
 assert pts.y.values.tolist() == [35.0, 15.0]
 
-# A range of world x or y isn't a range of rows or columns on a rotated
-# grid, so slices don't work. Mask on `x_world` and `y_world` instead.
+# For the same reason, a range of world x or y isn't a range of rows or
+# columns, so slices raise `ValueError` too. Mask on `x_world` and
+# `y_world` instead.
 
+try:
+    bot.grid.sel_world(slice(1020.0, None), slice(None, None))
+except ValueError as e:
+    print("ValueError:", e)
 in_east = bot.x_world >= 1020.0
 assert in_east.dims == ("row", "col")
 bot.where(in_east)

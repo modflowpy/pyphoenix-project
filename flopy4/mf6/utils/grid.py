@@ -1668,9 +1668,24 @@ def sel_world(obj, x, y, z=None, **kwargs):
     With ``z``, then select the cell containing that elevation from the
     vertical column (see ``flopy4.mf6.utils.vertical.sel_z``), raising
     ``KeyError`` if there's none. That's always containment: ``method``
-    only applies to x/y."""
+    only applies to x/y.
+
+    On a rotated grid, a range of world x or y isn't a range of rows or
+    columns, and lists' combinations in the grid's frame aren't those in
+    the world's, so slices and lists raise ``ValueError``: mask on
+    ``x_world``/``y_world``, or pass points as DataArrays, instead."""
     proj = obj.coords["projection"].attrs if "projection" in obj.coords else {}
     if proj.get("angrot"):
+        if isinstance(x, slice) or isinstance(y, slice):
+            raise ValueError(
+                "can't slice a rotated grid by world x/y: mask on x_world/y_world, "
+                "e.g. obj.where(obj.x_world >= x0)"
+            )
+        if any(not isinstance(c, xr.DataArray) and np.ndim(c) for c in (x, y)):
+            raise ValueError(
+                "lists of world x/y on a rotated grid: pass points as DataArrays "
+                'on a shared dim, e.g. xr.DataArray(xs, dims="point")'
+            )
         x, y = to_local(x, y, proj["xorigin"], proj["yorigin"], proj["angrot"])
         if not isinstance(x, xr.DataArray) and np.ndim(x) == 0:
             x, y = float(x), float(y)
