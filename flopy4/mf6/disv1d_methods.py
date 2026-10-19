@@ -12,8 +12,8 @@ _LENGTH_UNITS = {1: "FEET", 2: "METERS", 3: "CENTIMETERS"}
 
 
 class Disv1dMethods:
-    """Methods for the generated 1D vertex (channel-network) discretizations
-    (`Disv1d` in CHF, OLF); fields come from the DFN.
+    """Methods for the generated 1D vertex (channel-network) discretization
+    (`Disv1d` in CHF); fields come from the DFN.
 
     `to_grid()`/`from_grid()` map to/from `VertexGrid` via its `cell1d=`
     argument, the same mapping flopy3 itself uses for a `DISV1D` model's
@@ -24,7 +24,7 @@ class Disv1dMethods:
     x/y, not real spatial coordinates -- a channel network's cells have no
     polygon centroid the way a 2D vertex grid's do. That's an upstream
     flopy3 limitation, not something fixed here; real world x/y for a
-    channel network is a `follow-on` item alongside `Dis2d`/`Disv2d`."""
+    channel network is a follow-on item."""
 
     def grid_vertices(self: "Disv1d") -> list:  # type: ignore[misc]
         """`vertices` in flopy's grid format, `[[iv, xv, yv], ...]`."""

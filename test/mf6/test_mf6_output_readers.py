@@ -348,6 +348,35 @@ def test_disv_from_grid_round_trip():
     np.testing.assert_allclose([v.yv for v in disv_rt.vertices], [v.yv for v in disv_orig.vertices])
 
 
+def test_disv1d_from_grid_round_trip():
+    """Disv1d -> VertexGrid (its `cell1d` form) -> Disv1d should preserve
+    all geometry (`Disv1dMethods`)."""
+    from flopy4.mf6.chf.disv1d import Disv1d
+
+    disv1d_orig = Disv1d(
+        nodes=2,
+        nvert=3,
+        vertices=[(0, 0.0, 0.0), (1, 10.0, 0.0), (2, 20.0, 0.0)],
+        cell1d=[(0, 0.5, 2, (0, 1)), (1, 0.5, 2, (1, 2))],
+        bottom=[0.0, 0.0],
+        idomain=[1, 1],
+    )
+
+    grid = disv1d_orig.to_grid()
+    assert isinstance(grid, VertexGrid)
+    disv1d_rt = Disv1d.from_grid(grid)
+
+    assert disv1d_rt.nodes == 2
+    assert disv1d_rt.nvert == 3
+    assert disv1d_rt.idomain is not None
+    np.testing.assert_array_equal(disv1d_rt.idomain, disv1d_orig.idomain)
+    np.testing.assert_allclose(disv1d_rt.bottom, disv1d_orig.bottom)
+    assert [c.icvert for c in disv1d_rt.cell1d] == [c.icvert for c in disv1d_orig.cell1d]
+    np.testing.assert_allclose(
+        [v.xv for v in disv1d_rt.vertices], [v.xv for v in disv1d_orig.vertices]
+    )
+
+
 # NetCDF head-reader tests (_open_hds_netcdf paths)
 
 
