@@ -912,7 +912,8 @@ def disv_to_horizontal_lower_indices(
     )
     u, v = compute_flow_orientation(grid.edge_face_connectivity, grid.face_coordinates)
     return (
-        xr.DataArray(horizontal, grb_info["coords"], dims=["layer", grid.edge_dimension]),
+        # on edges, so not the cells' coordinates
+        xr.DataArray(horizontal, dims=["layer", grid.edge_dimension]),
         xr.DataArray(u, dims=[grid.edge_dimension]),
         xr.DataArray(v, dims=[grid.edge_dimension]),
         xr.DataArray(lower, grb_info["coords"], dims=["layer", grid.face_dimension]),

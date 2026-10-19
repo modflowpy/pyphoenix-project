@@ -979,8 +979,11 @@ class Package(Component, ABC):
         On a structured grid they're indexed, for `sel(x=..., y=...)`, and
         the array gets its cell sizes as `dx`/`dy` (see `cell_sizes`), and a
         `projection` coordinate placing them in the world (see
-        `grid_mapping`)."""
+        `grid_mapping`). An array on the grid's layers also gets its cells'
+        elevations, if the discretization has `top`/`botm` (see
+        `z_coords`)."""
         from flopy4.mf6.utils.grid import cell_centers, cell_sizes, grid_mapping, index_xy
+        from flopy4.mf6.utils.vertical import z_coords
 
         dis = self if hasattr(self, "to_grid") else getattr(self._parent, "dis", None)
         coords = {
@@ -991,6 +994,17 @@ class Package(Component, ABC):
         if len(coords) < 2:
             return da
         da = da.assign_coords(coords)
+        cells = tuple(d for d in da.dims if d != "per")
+        top, botm = getattr(dis, "top", None), getattr(dis, "botm", None)
+        shape = tuple(da.sizes[d] for d in cells)
+        if cells[0] == "layer" and top is not None and botm is not None:
+            if np.size(botm) == np.prod(shape):
+                da = da.assign_coords(z_coords(top, np.reshape(botm, shape), cells))
+            elif da.name == "top" and dis is self and shape[0] == 1:
+                # top is the top layer's cells' tops, so it's on layer 0
+                full = (np.size(botm) // np.prod(shape[1:]), *shape[1:])
+                zc = z_coords(top, np.reshape(botm, full), cells)
+                da = da.assign_coords({k: (d, v[:1], a) for k, (d, v, a) in zc.items()})
         if "col" not in da.dims:
             return da
         projection = grid_mapping(

@@ -1779,6 +1779,14 @@ def test_sel_world_rotated():
     with pytest.raises(KeyError):
         at(6.1, 1.0)
 
+    # world ranges and lists aren't the grid's, so they say what to do
+    with pytest.raises(ValueError, match="x_world"):
+        sel_world(da, slice(100.0, 102.0), slice(200.0, 203.0))
+    with pytest.raises(ValueError, match="DataArrays"):
+        sel_world(da, xw.values.tolist(), yw.values.tolist())
+    with pytest.raises(ValueError, match="DataArrays"):
+        sel_world(da, xw.values, float(yw[0]))
+
     flat = Gwf(dis=Dis(nlay=1, nrow=2, ncol=2, delr=1.0, delc=1.0, xorigin=10.0, botm=[0.0]))
     da = flat.dis.to_dataarray("botm")
     assert sel_world(da, 10.6, 0.4, method="nearest").identical(
@@ -1903,6 +1911,70 @@ def test_sel_containing_cell_after_align_and_concat():
     narrow = left.isel(col=[0]).drop_indexes("x").assign_coords(dx=0.5)
     with pytest.raises(ValueError, match="edges"):
         xr.align(da, index_xy(narrow), join="outer")
+
+
+def test_sel_by_elevation():
+    """Arrays on a grid's layers get their cells' elevations from the
+    discretization's top/botm, as do StructuredGrid's and VertexGrid's
+    datasets, and the grid accessor selects by them: a horizontal slice,
+    a cell at a world point, or a mask on an elevation range."""
+    kwargs = dict(nlay=2, nrow=1, ncol=2, delr=1.0, delc=1.0, xorigin=10.0, angrot=30.0)
+    top = np.array([10.0, 6.0])
+    botm = np.array([[5.0, 3.0], [0.0, 0.0]])
+    dis = Dis(top=top, botm=botm.ravel(), idomain=np.arange(4), **kwargs)
+    da = Gwf(dis=dis).dis.to_dataarray("idomain")
+    assert da.z_top.dims == ("layer", "row", "col")
+    assert da.z_top.values[:, 0].tolist() == [[10.0, 6.0], [5.0, 3.0]]
+    assert da.z_bot.values[:, 0].tolist() == botm.tolist()
+    assert da.z.values[:, 0].tolist() == [[7.5, 4.5], [2.5, 1.5]]
+    # top is the top layer's cells' tops, so it gets layer 0's elevations
+    tda = Gwf(dis=dis).dis.to_dataarray("top")
+    assert tda.z_top.dims == ("layer", "row", "col")
+    assert tda.z_top.values[:, 0].tolist() == [[10.0, 6.0]]
+    assert tda.z_bot.values[:, 0].tolist() == [[5.0, 3.0]]
+    assert tda.z_top.attrs["long_name"] == "cell top elevation"
+
+    # z=4 is in layer 1 of column 0 and layer 0 of column 1
+    out = da.grid.sel_z(4.0)
+    assert out.values.tolist() == [[2, 1]]
+    assert out.layer.values.tolist() == [[1, 0]]
+    assert da.grid.mask_z(4.0, 8.0).values[:, 0].tolist() == [[True, True], [True, False]]
+
+    xw, yw = float(da.x_world[0, 1]), float(da.y_world[0, 1])
+    assert da.grid.sel_world(xw, yw, 2.0).item() == 3
+    assert da.grid.sel_world(xw, yw, 3.0).item() == 1  # on the interface: upper
+    with pytest.raises(KeyError):
+        da.grid.sel_world(xw, yw, 6.5)
+    xs, ys = (xr.DataArray(c.values[0], dims="point") for c in (da.x_world, da.y_world))
+    out = da.grid.sel_world(xs, ys, xr.DataArray([8.0, 1.0], dims="point"))
+    assert out.values.tolist() == [0, 3]
+
+    # sel takes z with any other indexers, x/y in the grid's own frame
+    assert da.grid.sel(x=1.5, y=0.5, z=2.0).item() == 3
+    assert da.grid.sel({"x": 1.4, "y": 0.5}, method="nearest", z=2.0).item() == 3
+    assert da.grid.sel(z=4.0).identical(da.grid.sel_z(4.0))
+    assert da.grid.sel(col=1, z=4.0).item() == 1
+    assert da.grid.sel(x=0.5, y=0.5).identical(da.sel(x=0.5, y=0.5))
+    with pytest.raises(KeyError):
+        da.grid.sel(z=7.0)  # above column 1's top
+
+    grid = StructuredGrid.from_dis(dis)
+    for name in ("z", "z_top", "z_bot"):
+        np.testing.assert_array_equal(grid.dataset[name], da[name])
+    np.testing.assert_array_equal(grid.botm.z_top, da.z_top)
+    assert grid.top.z_top.dims == ("row", "col")
+    assert grid.top.z.attrs["long_name"] == "cell centre elevation"
+    np.testing.assert_array_equal(grid.top.z_bot, da.z_bot[0])
+
+    vertices = [
+        [i, x, y] for i, (x, y) in enumerate([(0, 0), (0, 1), (1, 1), (1, 0), (2, 1), (2, 0)])
+    ]
+    cell2d = [[0, 0.5, 0.5, 4, 0, 1, 2, 3], [1, 1.5, 0.5, 4, 3, 2, 4, 5]]
+    vgrid = VertexGrid(nlay=2, ncpl=2, top=top, botm=botm, vertices=vertices, cell2d=cell2d)
+    assert vgrid.dataset.z_top.dims == ("layer", "cell")
+    assert vgrid.dataset.z_top.values.tolist() == [[10.0, 6.0], [5.0, 3.0]]
+    assert vgrid.dataset.grid.sel_z(4.0).layer.values.tolist() == [1, 0]
+    assert vgrid.top.z_bot.values.tolist() == [5.0, 3.0]
 
 
 def test_to_dataarray_cell_centers_vertex_rotated():

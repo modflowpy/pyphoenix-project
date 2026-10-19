@@ -207,6 +207,14 @@ def test_open_hds_dis(dis_model_output):
     x, y = float(head.x[1]), float(head.y[2])
     picked = head.sel(x=x, y=y)
     np.testing.assert_array_equal(picked.values, head.isel(col=1, row=2).values)
+    # cells' elevations from the grb, for selecting by z
+    for name in ("z", "z_top", "z_bot"):
+        assert head.coords[name].dims == ("layer", "row", "col")
+    np.testing.assert_array_equal(head.z_top[1:], head.z_bot[:-1])
+    z = float(head.z[1, 2, 1])
+    picked = head.grid.sel_world(x, y, z)
+    np.testing.assert_array_equal(picked.values, head.isel(layer=1, row=2, col=1).values)
+    assert picked.layer.item() == 1
 
 
 def test_open_cbc_dis(dis_model_output):
@@ -240,6 +248,12 @@ def test_open_hds_disv(disv_model_output):
     assert head.shape[1] == nlayer
     assert head.shape[2] == paths["ncpl"]
     assert not np.all(np.isnan(head.values))
+    for name in ("z", "z_top", "z_bot"):
+        assert head.coords[name].dims == ("layer", "cell")
+    z = float(head.z[-1, 0])
+    out = head.obj.grid.sel_z(z)
+    assert out.dims == ("time", "cell")
+    np.testing.assert_array_equal(out.isel(cell=0).values, head.obj.isel(layer=-1, cell=0).values)
 
 
 def test_open_cbc_disv(disv_model_output):

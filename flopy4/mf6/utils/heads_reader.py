@@ -235,7 +235,7 @@ def _open_hds_netcdf(
         data = dask.array.stack(arrays, axis=1)  # (ntime, nlayer, ncpl)
         data = _dask_to_nan(data, dry_nan)
 
-        coords = {"time": time_values}
+        coords = grb_info["coords"] | {"time": time_values}
         da = xr.DataArray(data, coords, ("time", "layer", facedim), name="head")
         return xu.UgridDataArray(da, grid)
 

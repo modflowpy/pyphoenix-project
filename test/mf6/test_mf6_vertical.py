@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from flopy4.mf6.utils.vertical import layer_at, layer_bounds, mask_z, sel_z
+from flopy4.mf6.utils.vertical import layer_at, mask_z, sel_z, z_coords
 
 # Three layers on a 1x3 grid, sloping: each column is 10 lower than the last.
 TOP = np.array([[30.0, 20.0, 10.0]])
@@ -12,8 +12,7 @@ BOTM = np.array([TOP - 10, TOP - 20, TOP - 30])
 
 def _grid(data=None, chunk=False):
     """A (time, layer, row, col) array whose values are 100 * time + the
-    cell's 0-based node number, with z bounds from TOP/BOTM."""
-    z_top, z_bot = layer_bounds(TOP, BOTM)
+    cell's 0-based node number, with z coordinates from TOP/BOTM."""
     if data is None:
         data = np.arange(2 * 9, dtype=np.float64).reshape(2, 3, 1, 3)
         data[1] += 100 - 9
@@ -21,23 +20,30 @@ def _grid(data=None, chunk=False):
     da = xr.DataArray(
         data,
         dims=("time",) + dims,
-        coords={"z_top": (dims, z_top), "z_bot": (dims, z_bot), "x": ("col", [0.5, 1.5, 2.5])},
+        coords={**z_coords(TOP, BOTM, dims), "x": ("col", [0.5, 1.5, 2.5])},
     )
     return da.chunk() if chunk else da
 
 
-def test_layer_bounds():
-    """A layer's top is the bottom of the one above; a scalar top fills the
-    first layer, for DIS and DISV shapes alike."""
-    z_top, z_bot = layer_bounds(TOP, BOTM)
-    assert z_top.shape == z_bot.shape == (3, 1, 3)
+def test_z_coords():
+    """A layer's top is the bottom of the one above, and a cell's centre is
+    midway; top may be flat, or a scalar, for DIS and DISV shapes alike."""
+    dims = ("layer", "row", "col")
+    zc = z_coords(TOP, BOTM, dims)
+    assert all(zc[k][0] == dims for k in ("z", "z_top", "z_bot"))
+    z, z_top, z_bot = (zc[k][1] for k in ("z", "z_top", "z_bot"))
+    assert z_top.shape == z_bot.shape == z.shape == (3, 1, 3)
     np.testing.assert_array_equal(z_top[0], TOP)
     np.testing.assert_array_equal(z_top[1:], BOTM[:-1])
     np.testing.assert_array_equal(z_bot, BOTM)
+    np.testing.assert_array_equal(z, (z_top + z_bot) / 2)
+    # labelled, so they aren't mistaken for the array's values
+    assert zc["z_bot"][2] == {"long_name": "cell bottom elevation"}
+    np.testing.assert_array_equal(z_coords(TOP.ravel(), BOTM, dims)["z_top"][1], z_top)
 
-    z_top, z_bot = layer_bounds(5.0, [[0.0, 1.0], [-5.0, -4.0]])
-    assert z_top.tolist() == [[5.0, 5.0], [0.0, 1.0]]
-    assert z_bot.tolist() == [[0.0, 1.0], [-5.0, -4.0]]
+    zc = z_coords(5.0, [[0.0, 1.0], [-5.0, -4.0]], ("layer", "cell"))
+    assert zc["z_top"][1].tolist() == [[5.0, 5.0], [0.0, 1.0]]
+    assert zc["z_bot"][1].tolist() == [[0.0, 1.0], [-5.0, -4.0]]
 
 
 def test_sel_z_slice():
@@ -128,11 +134,10 @@ def test_sel_z_explicit_bounds():
 
 def test_sel_z_disv():
     """DISV arrays, on (layer, cell), work the same way."""
-    z_top, z_bot = layer_bounds([10.0, 0.0], [[5.0, -5.0], [0.0, -10.0]])
     da = xr.DataArray(
         np.arange(4.0).reshape(2, 2),
         dims=("layer", "cell"),
-        coords={"z_top": (("layer", "cell"), z_top), "z_bot": (("layer", "cell"), z_bot)},
+        coords=z_coords([10.0, 0.0], [[5.0, -5.0], [0.0, -10.0]], ("layer", "cell")),
     )
     out = sel_z(da, -2.0)
     assert out.dims == ("cell",)

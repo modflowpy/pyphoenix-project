@@ -17,6 +17,8 @@ parts:
     chapters:
       - file: mf6-versions
         title: MF6 versions
+      - file: examples/selection
+        title: Selecting cells
 
   - caption: Developer Notes
     chapters:
