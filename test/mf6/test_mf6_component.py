@@ -785,15 +785,57 @@ def test_solution_models_repr_eq():
     assert ims != Ims(models=["flow"])
 
 
-def test_solution_models_deepcopy():
-    """A copied simulation's solution refers to the copied models."""
+def test_deepcopy_simulation():
+    """A copied simulation is a copy throughout: its children's parents
+    and its solutions' models are the copies, none the originals."""
+    import copy
+
+    gwf = Gwf(name="flow", dis=Dis(nlay=1, nrow=2, ncol=2))
+    ic = Ic(parent=gwf)
+    sim = Simulation(models=[gwf], solutiongroup=[Ims(models=[gwf])])
+    clone = copy.deepcopy(sim)
+
+    assert clone["flow"] is not gwf
+    assert clone["flow"].parent is clone
+    assert clone["flow"].ic is not ic
+    assert clone["flow"].ic.parent is clone["flow"]
+    assert clone.solutiongroup[0].models[0] is clone["flow"]
+    assert clone["flow"].solution is clone.solutiongroup[0]
+    # the original is untouched
+    assert gwf.parent is sim
+    assert sim.solutiongroup[0].models[0] is gwf
+
+
+def test_deepcopy_child_detached():
+    """A copied child doesn't copy its parent: it comes out detached, with
+    its own children copied and parented to it."""
+    import copy
+
+    sim = Simulation()
+    gwf = Gwf(parent=sim, name="flow", dis=Dis(nlay=1, nrow=2, ncol=2))
+    clone = copy.deepcopy(gwf)
+
+    assert clone.parent is None
+    assert clone.name == "flow"
+    assert clone.dis is not gwf.dis
+    assert clone.dis.parent is clone
+    assert sim.models == [gwf]
+
+
+def test_deepcopy_solution_shares_models():
+    """A copied solution refers to the same models: they're the
+    simulation's, not the solution's, to copy."""
     import copy
 
     gwf = Gwf(name="flow")
-    sim = Simulation(models=[gwf], solutiongroup=[Ims(models=[gwf])])
-    clone = copy.deepcopy(sim)
-    assert clone.solutiongroup[0].models[0] is clone["flow"]
-    assert clone["flow"] is not gwf
+    ims = Ims(models=[gwf], outer_maximum=5)
+    sim = Simulation(models=[gwf], solutiongroup=[ims])
+    clone = copy.deepcopy(ims)
+
+    assert clone.parent is None
+    assert clone.models[0] is gwf
+    assert clone.outer_maximum == 5
+    assert sim.solutiongroup == [ims]
 
 
 def test_solution_models_to_xarray():

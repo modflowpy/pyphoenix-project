@@ -1,3 +1,4 @@
+import copy
 from abc import ABC
 from collections.abc import MutableMapping
 from functools import lru_cache
@@ -13,6 +14,7 @@ from flopy4.mf6.constants import MF6
 from flopy4.mf6.external import in_write_session, write_session
 from flopy4.mf6.spec import fields_dict
 from flopy4.mf6.write_context import WriteContext
+from flopy4.spec import is_reference
 from flopy4.uio import IO, Loader, Writer
 from flopy4.utils import empty_if_none
 
@@ -544,6 +546,27 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
 
     def __getitem__(self, key):
         return self._children[key]
+
+    def __deepcopy__(self, memo):
+        """Copy what this component owns (its children and values), not
+        what it only refers to: its parent and any reference field (e.g. a
+        solution's models). Each of those becomes its copy if it's being
+        copied too, as when copying a whole simulation; otherwise the
+        parent is dropped, so a lone copy comes out detached, and
+        references stay on the originals."""
+        cls = type(self)
+        new = cls.__new__(cls)
+        memo[id(self)] = new
+        references = {f.name for f in attrs.fields(cls) if is_reference(f)}  # type: ignore[arg-type]
+        for key, value in self.__dict__.items():
+            if key == "_parent":
+                value = memo.get(id(value))
+            elif key in references:
+                value = [memo.get(id(v), v) for v in value]
+            else:
+                value = copy.deepcopy(value, memo)
+            new.__dict__[key] = value
+        return new
 
     def __setitem__(self, key, value):
         """Attach `value` under `key`.
