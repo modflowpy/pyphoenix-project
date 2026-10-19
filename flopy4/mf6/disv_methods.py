@@ -108,8 +108,12 @@ class DisvMethods(metaclass=_LegacyInputs):
 
     @classmethod
     def coerce(cls: type["Disv"], value) -> "Disv | None":  # type: ignore[misc]
-        """Convert a `VertexGrid` to a discretization; `None` for anything else."""
-        if isinstance_of(value, "flopy.discretization.vertexgrid", "VertexGrid"):
+        """Convert a `VertexGrid` to a discretization; `None` for anything
+        else, including a `cell1d`-form `VertexGrid` (`Disv1d`'s, never
+        `Disv`'s -- `Disv` always uses `cell2d`)."""
+        if isinstance_of(value, "flopy.discretization.vertexgrid", "VertexGrid") and not getattr(
+            value, "cell1d", None
+        ):
             return cls.from_grid(value)
         return None
 

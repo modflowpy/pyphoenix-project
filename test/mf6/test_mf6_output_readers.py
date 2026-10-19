@@ -375,6 +375,25 @@ def test_disv1d_from_grid_round_trip():
     np.testing.assert_allclose(
         [v.xv for v in disv1d_rt.vertices], [v.xv for v in disv1d_orig.vertices]
     )
+
+
+def test_disv_coerce_rejects_cell1d_grid():
+    """DisvMethods.coerce() returns None (not a crash) for a `cell1d`-form
+    VertexGrid -- Disv1d's shape, never Disv's (Disv always uses
+    `cell2d`). Without this guard, coerce() would accept it on a bare
+    isinstance check and from_grid() would then raise an unhandled
+    AttributeError trying to read a nonexistent `grid.cell2d`."""
+    grid = VertexGrid(
+        top=None,
+        botm=None,
+        idomain=None,
+        vertices=[[0, 0.0, 0.0], [1, 10.0, 0.0], [2, 20.0, 0.0]],
+        cell1d=[[0, 0.5, 2, 0, 1], [1, 0.5, 2, 1, 2]],
+    )
+
+    assert Disv.coerce(grid) is None
+
+
 def test_dis2d_from_grid_round_trip():
     """Dis2d -> StructuredGrid (1 implicit layer) -> Dis2d should preserve
     all geometry."""
@@ -401,6 +420,21 @@ def test_dis2d_from_grid_round_trip():
     np.testing.assert_allclose(dis2d_rt.bottom, dis2d_orig.bottom)
     np.testing.assert_allclose(dis2d_rt.delr, dis2d_orig.delr)
     np.testing.assert_allclose(dis2d_rt.delc, dis2d_orig.delc)
+
+
+def test_dis2d_from_grid_handles_no_botm():
+    """Dis2dMethods.from_grid() propagates a `None` `botm` (a real,
+    reachable state for an abstract/index-based `StructuredGrid`, see its
+    own docstring) as `bottom=None`, not a malformed 1-element array."""
+    from flopy4.mf6.olf.dis2d import Dis2d
+    from flopy4.mf6.utils.grid import StructuredGrid
+
+    grid = StructuredGrid(nlay=1, nrow=2, ncol=2)
+    assert grid.botm is None
+
+    dis2d = Dis2d.from_grid(grid)
+
+    assert dis2d.bottom is None
 
 
 def test_disv2d_from_grid_round_trip():
@@ -439,6 +473,28 @@ def test_disv2d_from_grid_round_trip():
     np.testing.assert_allclose(disv2d_rt.bottom, disv2d_orig.bottom)
     np.testing.assert_allclose([c.xc for c in disv2d_rt.cell2d], [c.xc for c in disv2d_orig.cell2d])
     np.testing.assert_allclose([c.yc for c in disv2d_rt.cell2d], [c.yc for c in disv2d_orig.cell2d])
+
+
+def test_disv2d_from_grid_handles_no_botm():
+    """Disv2dMethods.from_grid() propagates a `None` `botm` as
+    `bottom=None`, not a malformed 1-element array (same fix as
+    Dis2dMethods, see test_dis2d_from_grid_handles_no_botm)."""
+    from flopy4.mf6.olf.disv2d import Disv2d
+
+    grid = VertexGrid(
+        nlay=1,
+        ncpl=1,
+        top=None,
+        botm=None,
+        idomain=None,
+        vertices=[[0, 0.0, 0.0], [1, 1.0, 0.0], [2, 1.0, 1.0], [3, 0.0, 1.0]],
+        cell2d=[[0, 0.5, 0.5, 4, 0, 1, 2, 3]],
+    )
+    assert grid.botm is None
+
+    disv2d = Disv2d.from_grid(grid)
+
+    assert disv2d.bottom is None
 
 
 # NetCDF head-reader tests (_open_hds_netcdf paths)

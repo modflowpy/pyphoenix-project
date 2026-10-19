@@ -70,7 +70,7 @@ class Dis2dMethods:
             "ncol": grid.ncol,
             "delr": grid.delr,
             "delc": grid.delc,
-            "bottom": np.asarray(grid.botm).reshape(-1),
+            "bottom": (np.asarray(grid.botm).reshape(-1) if grid.botm is not None else None),
             "idomain": (np.asarray(grid.idomain).reshape(-1) if grid.idomain is not None else None),
         }
         if grid.lenuni in _LENGTH_UNITS:

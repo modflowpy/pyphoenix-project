@@ -1066,7 +1066,13 @@ MIXINS: dict[str, list[str]] = {
     # No "olf-disv1d" entry: the dfn exists but isn't a real MF6 capability
     # (excluded from dfns.txt/olf-nam.dfn; absent from doc/mf6io/olf/olf.tex,
     # which lists only DIS2D/DISV2D) -- likely a leftover from the SWF ->
-    # CHF/OLF model split (CHF kept DISV1D for channel routing).
+    # CHF/OLF model split (CHF kept DISV1D for channel routing). This only
+    # withholds the grid-conversion mixin: Olf.disv1d is still a live,
+    # writable field (olf-disv1d.dfn still exists, so codegen still
+    # includes it), so flopy4 won't stop a user from writing an invalid
+    # DISV16 entry into an OLF model. Deleting olf-disv1d.dfn upstream
+    # would remove both the class and this field; no flopy4-side fix for
+    # the field alone is planned.
 }
 
 
