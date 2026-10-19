@@ -71,7 +71,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rch0>"
+      "<Rcha rcha0>"
     ],
     "riv": [],
     "save_flows": false,
@@ -214,11 +214,34 @@
       "__table__": "Tables",
       "ifno": "int64[1] b0aa4b549f325cca",
       "laktab": [
-        "<Laktab tables0>"
+        "<Laktab laktab0>"
       ],
       "n": 1
     },
     "ts": []
+  },
+  "simulation/lakeex4/lak0/laktab0": {
+    "__type__": "Laktab",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 23,
+      "ncpl": 828,
+      "nlay": 8,
+      "nodes": 6624,
+      "nrow": 36
+    },
+    "filename": "l3_table.ref",
+    "name": "laktab0",
+    "ncol": 4,
+    "nrow": 41,
+    "table": {
+      "__table__": "Table",
+      "barea": "float64[41] 606c023b3d4fa740",
+      "n": 41,
+      "sarea": "float64[41] ba64a7221f83aa78",
+      "stage": "float64[41] 03f9556d9bfd1614",
+      "volume": "float64[41] dea65869cd6fb7bb"
+    }
   },
   "simulation/lakeex4/lak0/obs": {
     "__type__": "Obs",
@@ -304,29 +327,6 @@
     "filename": "lakeex4.lak.obs",
     "name": "obs",
     "print_input": true
-  },
-  "simulation/lakeex4/lak0/tables0": {
-    "__type__": "Laktab",
-    "dims": {
-      "ncelldim": 3,
-      "ncol": 23,
-      "ncpl": 828,
-      "nlay": 8,
-      "nodes": 6624,
-      "nrow": 36
-    },
-    "filename": "l3_table.ref",
-    "name": "tables0",
-    "ncol": 4,
-    "nrow": 41,
-    "table": {
-      "__table__": "Table",
-      "barea": "float64[41] 606c023b3d4fa740",
-      "n": 41,
-      "sarea": "float64[41] ba64a7221f83aa78",
-      "stage": "float64[41] 03f9556d9bfd1614",
-      "volume": "float64[41] dea65869cd6fb7bb"
-    }
   },
   "simulation/lakeex4/npf": {
     "__type__": "Npf",
@@ -441,7 +441,7 @@
     },
     "name": "oc"
   },
-  "simulation/lakeex4/rch0": {
+  "simulation/lakeex4/rcha0": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -454,7 +454,7 @@
     "export_array_netcdf": false,
     "filename": "lakeex4.rch",
     "fixed_cell": true,
-    "name": "rch0",
+    "name": "rcha0",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,

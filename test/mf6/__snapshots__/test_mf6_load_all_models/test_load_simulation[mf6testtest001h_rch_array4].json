@@ -39,7 +39,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rch0>"
+      "<Rcha rcha0>"
     ],
     "riv": [],
     "save_flows": false,
@@ -177,7 +177,7 @@
     "head_file": "flow15_flow.hds",
     "name": "oc"
   },
-  "simulation/flow15/rch0": {
+  "simulation/flow15/rcha0": {
     "__type__": "Rcha",
     "aux": {
       "0": {
@@ -211,7 +211,7 @@
     "export_array_netcdf": false,
     "filename": "flow15.rch",
     "fixed_cell": true,
-    "name": "rch0",
+    "name": "rcha0",
     "print_flows": true,
     "print_input": true,
     "readasarrays": true,
@@ -232,7 +232,7 @@
       "<Tas tas1>"
     ]
   },
-  "simulation/flow15/rch0/tas0": {
+  "simulation/flow15/rcha0/tas0": {
     "__type__": "Tas",
     "dims": {
       "ncelldim": 3,
@@ -263,7 +263,7 @@
       ]
     }
   },
-  "simulation/flow15/rch0/tas1": {
+  "simulation/flow15/rcha0/tas1": {
     "__type__": "Tas",
     "dims": {
       "ncelldim": 3,

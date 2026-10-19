@@ -21,7 +21,7 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd>"
     ],
     "csub": "<Csub csub>",
     "dims": {},
@@ -52,7 +52,7 @@
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/holly/chd0": {
+  "simulation/holly/chd": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -88,7 +88,7 @@
       "nrow": 1
     },
     "filename": "holly.chd",
-    "name": "chd0",
+    "name": "chd",
     "print_flows": false,
     "print_input": false,
     "save_flows": true,
@@ -96,7 +96,7 @@
       "<Ts ts0>"
     ]
   },
-  "simulation/holly/chd0/ts0": {
+  "simulation/holly/chd/ts0": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,

@@ -26,7 +26,7 @@
     "dis": "<Dis dis>",
     "drn": [],
     "evt": [
-      "<Evta evt0>"
+      "<Evta evta0>"
     ],
     "filename": "test1tr.nam",
     "ghb": [
@@ -42,7 +42,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rch0>"
+      "<Rcha rcha0>"
     ],
     "riv": [],
     "save_flows": false,
@@ -157,7 +157,7 @@
     "nrow": 15,
     "top": "float64[150] 556b3670a83b717f"
   },
-  "simulation/GWF_1/evt0": {
+  "simulation/GWF_1/evta0": {
     "__type__": "Evta",
     "depth": {
       "0": "float64[1] 6e834c27afb79741"
@@ -173,7 +173,7 @@
     "export_array_netcdf": false,
     "filename": "test1tr.evt",
     "fixed_cell": false,
-    "name": "evt0",
+    "name": "evta0",
     "print_flows": false,
     "print_input": false,
     "rate": {
@@ -356,7 +356,7 @@
     "head_file": "test1tr.hds",
     "name": "oc"
   },
-  "simulation/GWF_1/rch0": {
+  "simulation/GWF_1/rcha0": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -369,7 +369,7 @@
     "export_array_netcdf": false,
     "filename": "test1tr.rch",
     "fixed_cell": false,
-    "name": "rch0",
+    "name": "rcha0",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,

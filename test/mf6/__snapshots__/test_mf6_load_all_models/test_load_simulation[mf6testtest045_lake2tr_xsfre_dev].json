@@ -57,7 +57,7 @@
     "dis": "<Dis dis>",
     "drn": [],
     "evt": [
-      "<Evta evt0>"
+      "<Evta evta0>"
     ],
     "filename": "lakeex2a.nam",
     "ghb": [],
@@ -73,7 +73,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rch0>"
+      "<Rcha rcha0>"
     ],
     "riv": [],
     "save_flows": false,
@@ -345,7 +345,7 @@
     "nrow": 27,
     "top": "float64[459] 9592d91ccef2e4b8"
   },
-  "simulation/lakeex2a/evt0": {
+  "simulation/lakeex2a/evta0": {
     "__type__": "Evta",
     "depth": {
       "0": "float64[1] 6e834c27afb79741"
@@ -361,7 +361,7 @@
     "export_array_netcdf": false,
     "filename": "lakeex2a.evt",
     "fixed_cell": true,
-    "name": "evt0",
+    "name": "evta0",
     "print_flows": false,
     "print_input": true,
     "rate": {
@@ -538,7 +538,7 @@
     },
     "name": "oc"
   },
-  "simulation/lakeex2a/rch0": {
+  "simulation/lakeex2a/rcha0": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -551,7 +551,7 @@
     "export_array_netcdf": false,
     "filename": "lakeex2a.rch",
     "fixed_cell": false,
-    "name": "rch0",
+    "name": "rcha0",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,

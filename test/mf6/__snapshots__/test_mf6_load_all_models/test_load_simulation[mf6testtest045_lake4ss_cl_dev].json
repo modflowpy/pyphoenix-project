@@ -66,7 +66,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rch0>"
+      "<Rcha rcha0>"
     ],
     "riv": [],
     "save_flows": false,
@@ -319,7 +319,7 @@
     },
     "name": "oc"
   },
-  "simulation/lakeex4/rch0": {
+  "simulation/lakeex4/rcha0": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -332,7 +332,7 @@
     "export_array_netcdf": false,
     "filename": "lakeex4.rch",
     "fixed_cell": true,
-    "name": "rch0",
+    "name": "rcha0",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,

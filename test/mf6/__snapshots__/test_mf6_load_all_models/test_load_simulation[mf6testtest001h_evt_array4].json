@@ -28,7 +28,7 @@
     "dis": "<Dis dis>",
     "drn": [],
     "evt": [
-      "<Evta evt0>"
+      "<Evta evta0>"
     ],
     "filename": "flow15.nam",
     "ghb": [],
@@ -96,7 +96,7 @@
     "nrow": 1,
     "top": "float64[10] 7880455745addd07"
   },
-  "simulation/flow15/evt0": {
+  "simulation/flow15/evta0": {
     "__type__": "Evta",
     "aux": {
       "0": {
@@ -133,7 +133,7 @@
     "export_array_netcdf": false,
     "filename": "flow15.evt",
     "fixed_cell": true,
-    "name": "evt0",
+    "name": "evta0",
     "print_flows": true,
     "print_input": false,
     "rate": {
@@ -157,7 +157,7 @@
       "<Tas tas1>"
     ]
   },
-  "simulation/flow15/evt0/tas0": {
+  "simulation/flow15/evta0/tas0": {
     "__type__": "Tas",
     "dims": {
       "ncelldim": 3,
@@ -181,7 +181,7 @@
       ]
     }
   },
-  "simulation/flow15/evt0/tas1": {
+  "simulation/flow15/evta0/tas1": {
     "__type__": "Tas",
     "dims": {
       "ncelldim": 3,

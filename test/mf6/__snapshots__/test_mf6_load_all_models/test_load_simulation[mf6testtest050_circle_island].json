@@ -39,7 +39,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rch0>"
+      "<Rcha rcha0>"
     ],
     "riv": [],
     "save_flows": false,
@@ -187,7 +187,7 @@
     "head_file": "ci.output.hds",
     "name": "oc"
   },
-  "simulation/CI/rch0": {
+  "simulation/CI/rcha0": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 2,
@@ -199,7 +199,7 @@
     "export_array_netcdf": false,
     "filename": "ci.rch",
     "fixed_cell": false,
-    "name": "rch0",
+    "name": "rcha0",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,

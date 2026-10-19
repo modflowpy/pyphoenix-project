@@ -60,7 +60,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rch0>"
+      "<Rcha rcha0>"
     ],
     "riv": [
       "<Riv riv0>"
@@ -181,11 +181,34 @@
       "__table__": "Tables",
       "ifno": "int64[1] 05fe405753166f12",
       "laktab": [
-        "<Laktab tables0>"
+        "<Laktab laktab0>"
       ],
       "n": 1
     },
     "ts": []
+  },
+  "simulation/mv/lak0/laktab0": {
+    "__type__": "Laktab",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 25,
+      "ncpl": 1000,
+      "nlay": 5,
+      "nodes": 5000,
+      "nrow": 40
+    },
+    "filename": "lak.table.ref",
+    "name": "laktab0",
+    "ncol": 3,
+    "nrow": 151,
+    "table": {
+      "__table__": "Table",
+      "barea": "906 chars 62a0d3f48b4c9aaa",
+      "n": 151,
+      "sarea": "float64[151] 7aeca25fa5cfd3c8",
+      "stage": "float64[151] bc8d288a41f7e26d",
+      "volume": "float64[151] 38a4295117eaaf32"
+    }
   },
   "simulation/mv/lak0/obs": {
     "__type__": "Obs",
@@ -229,29 +252,6 @@
     "filename": "mv.lak.obs",
     "name": "obs",
     "print_input": true
-  },
-  "simulation/mv/lak0/tables0": {
-    "__type__": "Laktab",
-    "dims": {
-      "ncelldim": 3,
-      "ncol": 25,
-      "ncpl": 1000,
-      "nlay": 5,
-      "nodes": 5000,
-      "nrow": 40
-    },
-    "filename": "lak.table.ref",
-    "name": "tables0",
-    "ncol": 3,
-    "nrow": 151,
-    "table": {
-      "__table__": "Table",
-      "barea": "906 chars 62a0d3f48b4c9aaa",
-      "n": 151,
-      "sarea": "float64[151] 7aeca25fa5cfd3c8",
-      "stage": "float64[151] bc8d288a41f7e26d",
-      "volume": "float64[151] 38a4295117eaaf32"
-    }
   },
   "simulation/mv/npf": {
     "__type__": "Npf",
@@ -329,7 +329,7 @@
     },
     "name": "oc"
   },
-  "simulation/mv/rch0": {
+  "simulation/mv/rcha0": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -342,7 +342,7 @@
     "export_array_netcdf": false,
     "filename": "mv.rch",
     "fixed_cell": false,
-    "name": "rch0",
+    "name": "rcha0",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,

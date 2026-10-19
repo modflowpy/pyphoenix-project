@@ -36,7 +36,7 @@
       "<Chd chd_0>"
     ],
     "dims": {},
-    "dis": "<Disv dis>",
+    "dis": "<Disv disv>",
     "drn": [],
     "evt": [],
     "filename": "model.nam",
@@ -50,7 +50,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rch0>"
+      "<Rcha rcha>"
     ],
     "riv": [
       "<Riv riv_0>"
@@ -88,7 +88,7 @@
     "save_flows": false,
     "ts": []
   },
-  "simulation/model/dis": {
+  "simulation/model/disv": {
     "__type__": "Disv",
     "botm": "float64[47315] 7350def80be9f36c",
     "cell2d": {
@@ -104,7 +104,7 @@
     "export_array_ascii": false,
     "export_array_netcdf": false,
     "filename": "model.disv",
-    "name": "dis",
+    "name": "disv",
     "ncpl": 9463,
     "nlay": 5,
     "nogrb": false,
@@ -201,7 +201,7 @@
     "head_file": "mv.hds",
     "name": "oc"
   },
-  "simulation/model/rch0": {
+  "simulation/model/rcha": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 2,
@@ -213,7 +213,7 @@
     "export_array_netcdf": false,
     "filename": "model.rcha",
     "fixed_cell": false,
-    "name": "rch0",
+    "name": "rcha",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,

@@ -98,7 +98,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rch0>"
+      "<Rcha rcha0>"
     ],
     "riv": [],
     "save_flows": false,
@@ -325,7 +325,7 @@
     },
     "name": "oc"
   },
-  "simulation/test034_nwtp2/rch0": {
+  "simulation/test034_nwtp2/rcha0": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -338,7 +338,7 @@
     "export_array_netcdf": false,
     "filename": "test034_nwtp2.rch",
     "fixed_cell": false,
-    "name": "rch0",
+    "name": "rcha0",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,

@@ -19,6 +19,11 @@ from flopy4.utils import empty_if_none
 if TYPE_CHECKING:
     from flopy4.mf6.load_context import LoadContext
 
+_NAME_UNSET = object()
+"""Sentinel default for `Component.name`, so `__attrs_post_init__()` can
+tell "no name given" apart from an explicit name matching the class-name
+default -- see `Component._name_given`."""
+
 FNAMES: "dict[str, type[Component]]" = {}
 """MF6 component name (e.g. 'gwf-dis') -> component class."""
 
@@ -76,10 +81,11 @@ def get_ftype(token: str, prefix: "str | None" = None) -> "type[Component] | Non
 
 
 def _is_default_child_name(child: "Component") -> bool:
-    """Whether `child`'s current `.name` is still at its class-name
-    default (see `Component.name`'s own field docstring), i.e. no
-    explicit name was ever given."""
-    return child.name == type(child).__name__.lower()  # type: ignore[attr-defined]
+    """Whether `child` was given no explicit name, based on `_name_given`
+    rather than the name string itself, since an explicit name can
+    coincide with the class-name default (e.g. a lone WEL package named
+    "wel")."""
+    return not child._name_given  # type: ignore[attr-defined]
 
 
 def _names_by_class(candidates: "tuple[type, ...]") -> bool:
@@ -103,15 +109,15 @@ def _resolve_child_name(
 
     An explicitly-given name sticks as-is, raising on a collision. An
     unnamed "only"-kind child gets the field's own name; an unnamed
-    "list"-kind child gets `f"{field_name}{i}"`, grouped by field, not
-    the child's own concrete class -- including for a base/grid-array
-    field pair like
-    `chd: list[Union[Chd, Chdg]]` sharing one sequence, since both arms
-    share one real MF6 namefile ftype (see `converter/binding.py`'s
+    "list"-kind child gets `f"{name}{i}"` from 0, by its own concrete
+    class (e.g. "rch0" for `Rch`, "rcha0" for `Rcha`), even for a
+    base/grid-array arm pair sharing one field (e.g. `rch: list[Union[Rch,
+    Rcha]]`) and one real MF6 namefile ftype (see `converter/binding.py`'s
     `component_ftype()`). With `by_class` (see `_names_by_class()`), an
     unnamed child keeps its class-name default if it's free, else gets
-    `f"{name}{i}"` from 1, e.g. "gwf", "gwf1". The default can't be told
-    apart from the same name given explicitly, so it never collides.
+    `f"{name}{i}"` from 1, e.g. "gwf", "gwf1"; `_is_default_child_name()`
+    (via `_name_given`) lets this coexist with an explicitly-named
+    sibling that happens to equal the default.
     """
     if kind not in ("only", "list"):
         raise TypeError(f"Bad child collection kind '{kind}'")
@@ -132,10 +138,11 @@ def _resolve_child_name(
         while f"{name}{i}" in used:
             i += 1
         return f"{name}{i}"
+    name = type(child).__name__.lower()
     i = 0
-    while f"{field_name}{i}" in used:
+    while f"{name}{i}" in used:
         i += 1
-    return f"{field_name}{i}"
+    return f"{name}{i}"
 
 
 @lru_cache(maxsize=None)
@@ -264,16 +271,23 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     """The component's input file, relative to the workspace (a `str` is
     accepted and converted). Written to name files with POSIX separators."""
 
-    name: str = attrs.field(
-        default=attrs.Factory(lambda self: type(self).__name__.lower(), takes_self=True)
-    )
-    """The component's own identity/tag name. Computed per-instance from
-    the *actual* runtime class (`takes_self=True`), not whichever class in
-    the hierarchy happens to declare this field -- so a `Package` leaf
-    (e.g. `Ic`, never separately subclassed for this field) still gets
-    "ic", not "package". Overridden explicitly by `_resolve_child_name()`/
-    `_attach_to_parent_field()` when a component is attached as a named
-    child; otherwise this default stands."""
+    name: str = attrs.field(default=_NAME_UNSET)  # type: ignore[assignment]
+    """The component's own identity/tag name. Resolved in
+    `__attrs_post_init__()`, not here, so an explicit name can be told
+    apart from the default even when they coincide (see `_name_given`):
+    if still `_NAME_UNSET`, it's computed from the *actual* runtime
+    class, so a `Package` leaf like `Ic` gets "ic", not "package".
+    Overridden by `_resolve_child_name()`/`_attach_to_parent_field()`
+    when attached as a named child."""
+
+    _name_given: bool = attrs.field(default=False, repr=False, eq=False, init=False)
+    """Whether `name` was actually given (by a caller, or a namefile
+    pname via `structure_component`), vs. left to default. Resolved in
+    `__attrs_post_init__()` alongside `name`, not a constructor
+    parameter since a passed value could drift from the real `name=`
+    outcome. Needed because the default can coincide exactly with an
+    explicit name -- e.g. a lone WEL package named "wel" -- so the name
+    string alone can't distinguish the two."""
 
     _parent: Any = attrs.field(default=None, repr=False, eq=False)
     """Parent back-reference -- source of truth for "who is this
@@ -485,6 +499,10 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         Post-initialization hook for all components. Chains to parent
         class post-init hooks (including DimensionRegistryMixin).
 
+        First resolves `name`/`_name_given` (see their docstrings),
+        before anything below reads either (`_attach_to_parent_field()`,
+        `_set_child_parents()`).
+
         Also runs the two `_parent`-tracking hooks (see `_parent`'s
         docstring): stamps `_parent` on this component's own already-
         populated children (top-down construction), and -- if this
@@ -493,6 +511,10 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         on it and resolves its `.name` -- see `_attach_to_parent_field()`'s
         docstring.
         """
+        if self.name is _NAME_UNSET:
+            self.name = type(self).__name__.lower()
+        else:
+            self._name_given = True
         # Chain to parent classes (including DimensionRegistryMixin)
         if hasattr(super(), "__attrs_post_init__"):
             super().__attrs_post_init__()  # type: ignore[misc]
@@ -700,10 +722,13 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         # Exclude any field literally named "parent" or "_parent" at every
         # recursion level, not just this component's own: a back-reference
         # to the owner would loop forever (child -> parent -> child -> ...).
+        # "_name_given" is excluded too: bookkeeping for "name", not data.
         data = attrs.asdict(
             self,
             recurse=True,
-            filter=lambda attr, value: attr.name not in ("parent", "_parent", "write_context"),
+            filter=lambda attr, value: (
+                attr.name not in ("parent", "_parent", "write_context", "_name_given")
+            ),
         )
         spec = fields_dict(self.__class__)
 

@@ -184,14 +184,14 @@
       "__table__": "Tables",
       "ifno": "int64[1] 05fe405753166f12",
       "laktab": [
-        "<Laktab tables0>"
+        "<Laktab laktab0>"
       ],
       "n": 1
     },
     "time_conversion": "86400.0",
     "ts": []
   },
-  "simulation/lakeex1b_1layer/LAK_1/tables0": {
+  "simulation/lakeex1b_1layer/LAK_1/laktab0": {
     "__type__": "Laktab",
     "dims": {
       "ncelldim": 3,
@@ -202,7 +202,7 @@
       "nrow": 17
     },
     "filename": "lakeex1b_table.ref",
-    "name": "tables0",
+    "name": "laktab0",
     "ncol": 3,
     "nrow": 151,
     "table": {

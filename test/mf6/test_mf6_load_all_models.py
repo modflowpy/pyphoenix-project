@@ -565,7 +565,7 @@ def _load_digest(component: Component, workspace: Path) -> dict:
     def walk(c: Component, path: str) -> None:
         fields = {}
         for f in attrs.fields(type(c)):
-            if f.name in ("_parent", "write_context"):
+            if f.name in ("_parent", "write_context", "_name_given"):
                 continue
             value = getattr(c, f.name, None)
             if value is not None:

@@ -2907,7 +2907,7 @@ def test_ssm_fileinput_children(tmp_path):
     assert isinstance(rch.spc, Spca)
     assert wel.spc.filename == Path("wel.spc")
     assert [r.spcsetting.concentration for r in wel.spc.stress_period_data[0]] == [100.0]
-    assert sorted(ssm._children) == ["fileinput0", "fileinput1"]
+    assert sorted(ssm._children) == ["spc0", "spca0"]
     assert wel.spc.parent is ssm
 
     text = dumps(COMPONENT_CONVERTER.unstructure(ssm))
@@ -2943,7 +2943,7 @@ def test_sfr_period_cross_section_children(tmp_path, monkeypatch):
     assert b_row.sfrtab.filename == Path("b.tab")
     assert b_row.sfrtab.table[0].height == 2.0
     assert a_row.sfrtab is a
-    assert sorted(sfr._children) == ["crosssections0", "stress_period_data0"]
+    assert sorted(sfr._children) == ["sfrtab0", "sfrtab1"]
     assert b_row.sfrtab.parent is sfr
 
     text = dumps(COMPONENT_CONVERTER.unstructure(sfr))

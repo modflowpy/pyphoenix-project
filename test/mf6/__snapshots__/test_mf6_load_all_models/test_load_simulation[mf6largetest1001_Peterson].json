@@ -76,7 +76,7 @@
       "<Drn drn0>"
     ],
     "evt": [
-      "<Evta evt0>"
+      "<Evta evta0>"
     ],
     "filename": "v6.nam",
     "ghb": [],
@@ -94,7 +94,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rch0>"
+      "<Rcha rcha0>"
     ],
     "riv": [],
     "save_flows": false,
@@ -182,7 +182,7 @@
     "save_flows": true,
     "ts": []
   },
-  "simulation/v6/evt0": {
+  "simulation/v6/evta0": {
     "__type__": "Evta",
     "depth": {
       "0": "float64[449175] b6e5462ae9ad5345"
@@ -198,7 +198,7 @@
     "export_array_netcdf": false,
     "filename": "v6.evt",
     "fixed_cell": true,
-    "name": "evt0",
+    "name": "evta0",
     "print_flows": false,
     "print_input": false,
     "rate": {
@@ -332,7 +332,7 @@
     },
     "name": "oc"
   },
-  "simulation/v6/rch0": {
+  "simulation/v6/rcha0": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -345,7 +345,7 @@
     "export_array_netcdf": false,
     "filename": "v6.rch",
     "fixed_cell": false,
-    "name": "rch0",
+    "name": "rcha0",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,

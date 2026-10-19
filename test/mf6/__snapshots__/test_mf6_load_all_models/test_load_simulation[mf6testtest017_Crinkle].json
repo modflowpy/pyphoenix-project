@@ -45,7 +45,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rch0>"
+      "<Rcha rcha0>"
     ],
     "riv": [],
     "save_flows": false,
@@ -230,7 +230,7 @@
     "head_file": "crinkle.hds",
     "name": "oc"
   },
-  "simulation/GWF_1/rch0": {
+  "simulation/GWF_1/rcha0": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -243,7 +243,7 @@
     "export_array_netcdf": false,
     "filename": "crinkle.rch",
     "fixed_cell": false,
-    "name": "rch0",
+    "name": "rcha0",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,

@@ -40,7 +40,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rch0>"
+      "<Rcha rcha0>"
     ],
     "riv": [],
     "save_flows": false,
@@ -278,7 +278,7 @@
     "head_file": "timeseriestest.hds",
     "name": "oc"
   },
-  "simulation/GWF_1/rch0": {
+  "simulation/GWF_1/rcha0": {
     "__type__": "Rcha",
     "aux": {
       "0": {
@@ -302,7 +302,7 @@
     "export_array_netcdf": false,
     "filename": "timeseriestest.rch",
     "fixed_cell": true,
-    "name": "rch0",
+    "name": "rcha0",
     "print_flows": true,
     "print_input": true,
     "readasarrays": true,
@@ -317,7 +317,7 @@
       "<Tas tas0>"
     ]
   },
-  "simulation/GWF_1/rch0/tas0": {
+  "simulation/GWF_1/rcha0/tas0": {
     "__type__": "Tas",
     "dims": {
       "ncelldim": 3,

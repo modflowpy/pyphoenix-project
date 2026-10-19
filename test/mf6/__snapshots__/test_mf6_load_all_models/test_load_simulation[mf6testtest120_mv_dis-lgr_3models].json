@@ -42,7 +42,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rch0>"
+      "<Rcha rcha>"
     ],
     "riv": [
       "<Riv riv_0>"
@@ -164,7 +164,7 @@
     },
     "name": "oc"
   },
-  "simulation/child1/rch0": {
+  "simulation/child1/rcha": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -177,7 +177,7 @@
     "export_array_netcdf": false,
     "filename": "child1.rcha",
     "fixed_cell": false,
-    "name": "rch0",
+    "name": "rcha",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,
@@ -253,7 +253,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rch0>"
+      "<Rcha rcha>"
     ],
     "riv": [
       "<Riv riv_0>"
@@ -375,7 +375,7 @@
     },
     "name": "oc"
   },
-  "simulation/child2/rch0": {
+  "simulation/child2/rcha": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -388,7 +388,7 @@
     "export_array_netcdf": false,
     "filename": "child2.rcha",
     "fixed_cell": false,
-    "name": "rch0",
+    "name": "rcha",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,
@@ -573,7 +573,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rch0>"
+      "<Rcha rcha>"
     ],
     "riv": [
       "<Riv riv_0>"
@@ -701,7 +701,7 @@
     "head_file": "mv.hds",
     "name": "oc"
   },
-  "simulation/mv/rch0": {
+  "simulation/mv/rcha": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -714,7 +714,7 @@
     "export_array_netcdf": false,
     "filename": "mv.rcha",
     "fixed_cell": false,
-    "name": "rch0",
+    "name": "rcha",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,
