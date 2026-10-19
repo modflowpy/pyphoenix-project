@@ -6,18 +6,6 @@
 #   per boundary feature, naming its cell and giving its values;
 # * **arrays** (CHDG, WELG, RCHA, EVTA, ...): a period block has a value per
 #   cell of the grid.
-#
-# flopy4 keeps each package in its MODFLOW 6 form. A list package holds rows,
-# and `to_xarray()` gives the same data as grid-shaped arrays, to look at, plot
-# or edit; `from_xarray()` turns the arrays back into rows.
-#
-# This page covers:
-# * giving list data as rows, and how periods carry forward
-# * auxiliary variables, boundnames and time series
-# * the array view, and writing an edited array back
-# * two features in one cell
-# * columns with several values per row (EVT's segments)
-# * when to use a list package and when an array package
 
 # ### Imports
 
@@ -31,9 +19,8 @@ from flopy4.mf6.utils.time import Time
 
 # ### A small model
 #
-# One layer of 3 rows and 4 columns, run for 3 stress periods. A package
-# attached to the model gets the grid's and the time discretization's
-# dimensions from it, which `to_xarray()` needs to place the rows.
+# One layer of 3 rows and 4 columns, run for 3 stress periods. Packages
+# attached to the model get their dimensions from it.
 
 grid = StructuredGrid(
     nlay=1,
@@ -49,16 +36,14 @@ gwf = Gwf(parent=sim, name="model", dis=grid)
 
 # ### Rows
 #
-# Period data is a dict from the (0-based) period to that period's rows. A
-# row is a tuple of the package's columns, in the order the MF6 input guide
-# lists them. For WEL with an auxiliary variable and boundnames, that is the
-# cell, the rate `q`, a tuple with one value per auxiliary variable, and the
-# name. A text value where a number goes names a time series (`"pumping"`
-# below), which would be defined in the package's time series file.
+# Period data maps each (0-based) period to its rows. A row is a tuple of the
+# package's columns, in MF6 input guide order: for WEL, the cell, `q`, the
+# auxiliary values and the boundname. A string in place of a number names a
+# time series.
 #
-# As in MF6, a period without a block repeats the last one, and an empty list
-# turns every feature off. Here period 1 repeats period 0, and period 2
-# replaces it with two wells in the same cell.
+# Periods fill forward: a period without a block repeats the last one, and an
+# empty list turns every feature off. Here period 1 fills forward from period
+# 0, and period 2 has two wells in one cell.
 
 wel = Wel(
     parent=gwf,
@@ -76,9 +61,8 @@ wel = Wel(
     },
 )
 
-# Each row comes back as an object with a field per column. Its class,
-# `Wel.StressPeriodData`, can also be used to build rows by name instead of
-# by position.
+# Rows come back as `Wel.StressPeriodData` objects, which can also be built
+# by name.
 
 row = wel.stress_period_data[0][0]
 print(row)
@@ -89,18 +73,14 @@ assert list(wel.stress_period_data) == [0, 2]
 
 # ### The array view
 #
-# `to_xarray()` gives a dataset with a variable per value column, on dims
-# `(per, layer, row, col)`. All periods are there, with the carried-forward
-# ones filled in. Cells without a feature hold `FILL_DNODATA` (3e30).
+# `to_xarray()` gives a variable per value column on `(per, layer, row, col)`,
+# with every period filled forward. Empty cells hold `FILL_DNODATA` (3e30).
 #
-# * Each auxiliary variable is its own variable, named for it (`conc`).
+# * Each auxiliary variable is its own variable (`conc`).
 # * Boundnames are a `boundname` coordinate.
-# * A time series value is NaN, and the series' name is in a coordinate named
-#   for the variable plus `_ts` (`q_ts`).
+# * A time series value is NaN, with its name in a `<var>_ts` coordinate.
 #
-# Two rows in one cell can't share a grid position, so by default
-# `to_xarray()` raises when it meets them. Here period 2's wells are summed;
-# the next sections cover the other choices.
+# Two rows in one cell raise by default; here they're summed.
 
 ds = wel.to_xarray(duplicates="sum")
 ds
@@ -108,7 +88,7 @@ ds
 # +
 q = ds["q"]
 assert q.dims == ("per", "layer", "row", "col")
-assert q[1, 0, 0, 0] == -1.0  # period 1 repeats period 0
+assert q[1, 0, 0, 0] == -1.0  # period 1 filled forward from period 0
 assert q[0, 0, 1, 1] == FILL_DNODATA  # no well here until period 2
 assert q[2, 0, 1, 1] == -2.5  # two wells, summed
 assert ds["conc"][0, 0, 0, 0] == 5.0
@@ -118,23 +98,18 @@ assert np.isnan(q[0, 0, 2, 3])  # a time series value...
 assert ds["q_ts"][0, 0, 2, 3] == "pumping"  # ...and its name
 # -
 
-# Use `ds["head"]`, not `ds.head`, for a variable called `head`: `ds.head` is
-# xarray's `Dataset.head()` method.
+# Use `ds["head"]`, not `ds.head`, which is xarray's `Dataset.head()`.
 #
 # ### Editing and writing back
 #
-# Edit the arrays with any xarray or numpy operation, then give the dataset
-# to `from_xarray()`. Here the north well pumps twice as hard in period 1.
+# Edit the arrays, then pass the dataset to `from_xarray()`.
 
 edited = ds.copy(deep=True)
 edited["q"][1, 0, 0, 0] = -2.0
 wel.from_xarray(edited)
 
-# `from_xarray()` writes a period block only where a period differs from the
-# one before it, so the rows describe the same model as the arrays, but
-# not necessarily with the same rows as before. Period 1 now has its own
-# block, and period 2's two wells come back as the one summed well the
-# arrays show.
+# `from_xarray()` writes a block only where a period changes, so period 1
+# now has its own block, and period 2's wells come back as one summed well.
 
 for kper, rows in wel.stress_period_data.items():
     print(kper, rows)
@@ -142,16 +117,13 @@ assert list(wel.stress_period_data) == [0, 1, 2]
 assert wel.stress_period_data[1][0].q == -2.0
 assert len(wel.stress_period_data[2]) == 1
 
-# Summing adds every value column, auxiliary variables too: the merged
-# well's `conc` is 1.0 + 2.0. A merged cell can only keep one boundname, and
-# it keeps the last row's (`"east-2"`, not `"east"`).
+# Summing adds auxiliary values too, and keeps the last row's boundname.
 
 assert wel.stress_period_data[2][0].aux == (3.0,)
 assert wel.stress_period_data[2][0].boundname == "east-2"
 
-# A row needs every column. To add a feature in the array view, set all of
-# its variables at the cell: `q` and `conc` here. Setting only some of them
-# raises an error naming the missing column.
+# To add a feature, set all of its variables at the cell. Setting only some
+# raises an error naming the missing one.
 
 edited = wel.to_xarray()
 edited["q"][0, 0, 2, 0] = -4.0
@@ -165,16 +137,12 @@ assert len(wel.stress_period_data[0]) == 3
 
 # ### Two features in one cell
 #
-# MF6 allows more than one row in a cell. When that happens, `to_xarray()`
-# needs to be told what to do:
-#
-# * `duplicates="sum"`, `"first"` or `"last"` merges them into one value per
-#   cell. `"sum"` adds every value column, auxiliary variables included, and
-#   a time series can't be summed. The merged cell keeps the boundname of the
-#   first row with `"first"`, and of the last row with `"sum"` or `"last"`.
-# * `sparse=True` gives a row per entry instead of a grid: an `entry` dim, with
-#   the period and the cell as coordinates. Every row is kept, and this form
-#   also suits packages whose rows have no single cell (HFB, MVR, OC).
+# * `duplicates="sum"`, `"first"` or `"last"` merges them. `"sum"` can't sum
+#   a time series. The boundname kept is the first row's for `"first"`, the
+#   last row's otherwise.
+# * `sparse=True` keeps every row, on an `entry` dim with the period and cell
+#   as coordinates. This also suits packages without a single cell per row
+#   (HFB, MVR, OC).
 
 wel = Wel(
     parent=gwf,
@@ -201,10 +169,8 @@ assert wel.stress_period_data == expected
 
 # ### Several values in one column
 #
-# A few columns hold more than one value per row: the auxiliary variables,
-# and EVT's evapotranspiration segments. With `nseg` segments, each EVT row
-# gives `nseg - 1` depth proportions (`pxdp`) and rate proportions (`petm`)
-# as tuples.
+# With `nseg` segments, each EVT row gives `nseg - 1` depth (`pxdp`) and rate
+# (`petm`) proportions as tuples.
 
 evt = Evt(
     parent=gwf,
@@ -219,9 +185,8 @@ evt = Evt(
 )
 assert evt.stress_period_data[0][0].pxdp == (0.3, 0.6)
 
-# In the array view, such a column gets one more dim, named for its size,
-# so each segment boundary is a grid of its own. Auxiliary variables instead
-# get a variable per name, as above.
+# In the array view these get an extra `nseg-1` dim. A cell needs all of its
+# segment values.
 
 ds = evt.to_xarray()
 pxdp = ds["pxdp"]
@@ -236,19 +201,10 @@ evt.from_xarray(ds)
 assert evt.stress_period_data == expected
 # -
 
-# A cell needs all of its segment values, as it needs all of its other
-# columns.
-
 # ### Lists or arrays?
 #
-# The array view is for working with the data; the rows stay the package's
-# data and what is written to its input file. For a stress that covers most
-# of the grid, like recharge or evapotranspiration over a whole model, the
-# array packages (RCHA, EVTA, and the CHDG, WELG, ... family) hold a grid per
-# period directly and write it as an array, which is smaller and faster than
-# a row per cell. In those packages each auxiliary variable is likewise its
-# own array, and EVTA has no segments.
-#
-# For features in a few cells, like wells, drains or a river, the list
-# packages are the natural fit. They also support what the array packages
-# don't: more than one feature per cell, boundnames, and EVT's segments.
+# The rows remain the package's data; the array view is for working with it.
+# For a stress over most of the grid, like recharge, an array package (RCHA,
+# EVTA, CHDG, WELG, ...) is smaller and faster to write. For features in a
+# few cells, use a list package. Only list packages support several features
+# per cell, boundnames and EVT segments.
