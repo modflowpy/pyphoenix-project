@@ -21,13 +21,19 @@ def z_coords(top, botm, dims) -> dict[str, Any]:
     and bottom, and ``z``, its centre. ``botm`` is shaped by ``dims``,
     ``(nlay, nrow, ncol)`` for DIS or ``(nlay, ncpl)`` for DISV, and
     ``top`` by a layer's cells, or is a scalar. A layer's top is the bottom
-    of the layer above, and the first's is ``top``."""
+    of the layer above, and the first's is ``top``. Each has a
+    ``long_name``, so an array's repr says they're its cells' elevations,
+    not its values."""
     z_bot = np.asarray(botm, dtype=np.float64)
     top = np.asarray(top, dtype=np.float64)
     shape = z_bot.shape[1:]
     top = top.reshape(shape) if top.size == np.prod(shape) else np.broadcast_to(top, shape)
     z_top = np.concatenate([top[None], z_bot[:-1]])
-    return {"z": (dims, (z_top + z_bot) / 2), "z_top": (dims, z_top), "z_bot": (dims, z_bot)}
+    return {
+        "z": (dims, (z_top + z_bot) / 2, {"long_name": "cell centre elevation"}),
+        "z_top": (dims, z_top, {"long_name": "cell top elevation"}),
+        "z_bot": (dims, z_bot, {"long_name": "cell bottom elevation"}),
+    }
 
 
 def _bounds(obj, z_top, z_bot, dim):

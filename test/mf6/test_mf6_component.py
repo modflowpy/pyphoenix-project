@@ -1932,6 +1932,7 @@ def test_sel_by_elevation():
     assert tda.z_top.dims == ("layer", "row", "col")
     assert tda.z_top.values[:, 0].tolist() == [[10.0, 6.0]]
     assert tda.z_bot.values[:, 0].tolist() == [[5.0, 3.0]]
+    assert tda.z_top.attrs["long_name"] == "cell top elevation"
 
     # z=4 is in layer 1 of column 0 and layer 0 of column 1
     out = da.grid.sel_z(4.0)
@@ -1953,6 +1954,7 @@ def test_sel_by_elevation():
         np.testing.assert_array_equal(grid.dataset[name], da[name])
     np.testing.assert_array_equal(grid.botm.z_top, da.z_top)
     assert grid.top.z_top.dims == ("row", "col")
+    assert grid.top.z.attrs["long_name"] == "cell centre elevation"
     np.testing.assert_array_equal(grid.top.z_bot, da.z_bot[0])
 
     vertices = [

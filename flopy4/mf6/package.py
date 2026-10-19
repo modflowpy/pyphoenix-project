@@ -1004,7 +1004,7 @@ class Package(Component, ABC):
                 # top is the top layer's cells' tops, so it's on layer 0
                 full = (np.size(botm) // np.prod(shape[1:]), *shape[1:])
                 zc = z_coords(top, np.reshape(botm, full), cells)
-                da = da.assign_coords({k: (d, v[:1]) for k, (d, v) in zc.items()})
+                da = da.assign_coords({k: (d, v[:1], a) for k, (d, v, a) in zc.items()})
         if "col" not in da.dims:
             return da
         projection = grid_mapping(

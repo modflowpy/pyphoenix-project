@@ -257,7 +257,8 @@ class StructuredGrid(LegacyStructuredGrid):
         else:
             botm = np.reshape(legacy_botm, (self.nlay, self.nrow, self.ncol))
             zs = {
-                k: xr.DataArray(v, dims=d) for k, (d, v) in z_coords(legacy_top, botm, dims).items()
+                k: xr.DataArray(v, dims=d, attrs=a)
+                for k, (d, v, a) in z_coords(legacy_top, botm, dims).items()
             }
 
         return {
@@ -1002,7 +1003,8 @@ class VertexGrid(LegacyVertexGrid):
         else:
             botm = np.reshape(legacy_botm, (self.nlay, self.ncpl))
             zs = {
-                k: xr.DataArray(v, dims=d) for k, (d, v) in z_coords(legacy_top, botm, dims).items()
+                k: xr.DataArray(v, dims=d, attrs=a)
+                for k, (d, v, a) in z_coords(legacy_top, botm, dims).items()
             }
 
         return {

@@ -37,6 +37,8 @@ def test_z_coords():
     np.testing.assert_array_equal(z_top[1:], BOTM[:-1])
     np.testing.assert_array_equal(z_bot, BOTM)
     np.testing.assert_array_equal(z, (z_top + z_bot) / 2)
+    # labelled, so they aren't mistaken for the array's values
+    assert zc["z_bot"][2] == {"long_name": "cell bottom elevation"}
     np.testing.assert_array_equal(z_coords(TOP.ravel(), BOTM, dims)["z_top"][1], z_top)
 
     zc = z_coords(5.0, [[0.0, 1.0], [-5.0, -4.0]], ("layer", "cell"))
