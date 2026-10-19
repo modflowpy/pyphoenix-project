@@ -52,9 +52,8 @@ def _is_attrs_instance(value: Any) -> bool:
 # back-reference fields whose runtime values would otherwise look
 # structurally like real leaf/child data and cause infinite recursion
 # (parent -> child -> same parent) if walked, so they're excluded by
-# name rather than by (unreliable) type-checking. `_name_given` is
-# excluded too: bookkeeping for `name`, not data.
-_RESERVED_FIELD_NAMES = frozenset({"dims", "parent", "_parent", "_name_given"})
+# name rather than by (unreliable) type-checking.
+_RESERVED_FIELD_NAMES = frozenset({"dims", "parent", "_parent"})
 
 
 def _leaf_fields_and_children(
@@ -77,6 +76,8 @@ def _leaf_fields_and_children(
         if _period_dim(field):
             # period arrays, even all from time-array series (attrs instances)
             leaves[field.name] = (field, value)
+        elif field.name == "_filename":
+            leaves["filename"] = (field, value)
         elif _is_attrs_instance(value):
             single_children[field.name] = value
         elif (

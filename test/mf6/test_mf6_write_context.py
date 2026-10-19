@@ -137,7 +137,7 @@ def test_component_write_with_context(function_tmpdir):
 
     # Check that files were written
     assert (function_tmpdir / "mfsim.nam").exists()
-    assert (function_tmpdir / "gwf.dis").exists()
+    assert (function_tmpdir / "gwf.dis.dis").exists()
 
 
 def test_write_context_manager_with_component(function_tmpdir):
@@ -170,7 +170,7 @@ def test_write_context_manager_with_component(function_tmpdir):
 
     # Check that files were written
     assert (function_tmpdir / "mfsim.nam").exists()
-    assert (function_tmpdir / "gwf.dis").exists()
+    assert (function_tmpdir / "gwf.dis.dis").exists()
 
 
 def test_nested_write_context_precision(function_tmpdir):

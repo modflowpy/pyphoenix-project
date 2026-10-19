@@ -42,7 +42,7 @@ def _path_to_tuple(field: attrs.Attribute, value: Path) -> tuple[str, ...]:
 def _child_path(child: Component) -> Path:
     """A child's file as its parent's file record names it: relative to the
     simulation workspace, or just the name if it's absolute."""
-    path = Path(child.filename or child.default_filename())
+    path = child.filename
     return Path(path.name) if path.is_absolute() else path
 
 

@@ -13,6 +13,3 @@ class Exchange(Package, ABC):
     exgfile: Optional[Path] = attrs.field(default=None)  # type: ignore
     exgmnamea: Optional[str] = attrs.field(default=None)
     exgmnameb: Optional[str] = attrs.field(default=None)
-
-    def default_filename(self) -> str:
-        return f"{self.name}.exg"  # type: ignore

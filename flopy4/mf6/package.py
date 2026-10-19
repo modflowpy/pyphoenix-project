@@ -635,7 +635,6 @@ class Package(Component, ABC):
         self._check_tas_refs()
         self._check_ts_refs()
         self._check_obs_ids()
-        self._name_file_children()
         super().write(format=format, context=context)
 
     def _check_tas_refs(self) -> None:
@@ -717,17 +716,6 @@ class Package(Component, ABC):
                     found.append(child)
         return found
 
-    def _name_file_children(self) -> None:
-        """Give each child named by a file record (DIS's ``NCF6 FILEIN
-        <file>``) a filename, so the record can name it before it's written."""
-        for f in attrs.fields(type(self)):  # type: ignore[arg-type]
-            if not (f.metadata.get("child") and f.metadata.get("_keyword")):
-                continue
-            value = getattr(self, f.name)
-            for child in value if isinstance(value, list) else [value]:
-                if child is not None:
-                    child.filename = child.filename or Path(child.default_filename())
-
     @classmethod
     def load(  # type: ignore[override]
         cls,
@@ -776,16 +764,30 @@ class Package(Component, ABC):
         return _pkg
 
     def default_filename(self) -> str:
+        """``{stem}.{name}.{ext}``: ``model.wel0.wel``, ``sim.ims0.ims``.
+
+        The stem is the parent's name, or for a package named by a file
+        record (TS, OBS, ...) the parent's filename without its suffix
+        (``model.wel0.ts0.ts``). The extension is the name-file ftype,
+        lowercase, without the ``6`` (a CHDG file is ``.chd``). Names are
+        unique among siblings, so default filenames can't collide.
+        """
         parent = self._parent  # type: ignore
-        if isinstance(parent, Package):  # named by a file record: gwf.chd.ts0
-            stem = Path(parent.filename or parent.default_filename()).name
-            return f"{stem}.{self.name}"
-        name = parent.name if parent else self.name
-        siblings = getattr(parent, "_children", {}).values()
-        if any(c is not self and type(c) is type(self) for c in siblings):
-            return f"{name}.{self.name}"  # one of several: gwf.wel0, gwf.wel1
-        cls_name = self.__class__.__name__.lower()
-        return f"{name}.{cls_name}"
+        if isinstance(parent, Package):
+            stem = parent.filename.stem
+        elif parent is not None:
+            stem = parent._name_or_class()
+        else:
+            stem = self._name_or_class()
+        return f"{stem}.{self._name_or_class()}.{self._file_ext()}"
+
+    def _file_ext(self) -> str:
+        """The default filename's extension: the name-file ftype,
+        lowercase, without the ``6``s or an exchange's hyphen
+        (``CHD6`` -> ``chd``, ``GWF6-GWF6`` -> ``gwfgwf``)."""
+        from flopy4.mf6.converter.binding import component_ftype
+
+        return component_ftype(type(self)).lower().replace("6", "").replace("-", "")
 
     def to_dict(self, blocks: bool = False, strict: bool = False) -> dict:
         """Convert to a dictionary of field values.
@@ -809,7 +811,7 @@ class Package(Component, ABC):
         if not any(f.metadata.get("block") for f in all_fields):
             return super().to_dict(blocks=blocks, strict=strict)
 
-        _exclude = {"name", "parent", "_parent", "dims", "filename", "workspace", "strict"}
+        _exclude = {"name", "parent", "_parent", "dims", "_filename", "workspace", "strict"}
         result: dict = {}
         for f in all_fields:
             if f.name in _exclude or f.init is False:

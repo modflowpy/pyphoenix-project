@@ -64,7 +64,7 @@ def _dis_model_output(function_tmpdir, **dis_kwargs):
     base_path = function_tmpdir
     hds_path = function_tmpdir / f"{gwf_name}.hds"
     cbc_path = function_tmpdir / f"{gwf_name}.cbc"
-    grb_path = function_tmpdir / f"{gwf_name}.dis.grb"
+    grb_path = function_tmpdir / f"{gwf_name}.dis.dis.grb"
 
     assert hds_path.is_file(), f"HDS file not found: {hds_path}"
     assert cbc_path.is_file(), f"CBC file not found: {cbc_path}"
@@ -169,7 +169,7 @@ def _disv_model_output(function_tmpdir, **dis_kwargs):
     base_path = function_tmpdir
     hds_path = function_tmpdir / f"{gwf_name}.hds"
     cbc_path = function_tmpdir / f"{gwf_name}.cbc"
-    grb_path = function_tmpdir / f"{gwf_name}.disv.grb"
+    grb_path = function_tmpdir / f"{gwf_name}.disv.disv.grb"
 
     assert hds_path.is_file(), f"HDS file not found: {hds_path}"
     assert cbc_path.is_file(), f"CBC file not found: {cbc_path}"

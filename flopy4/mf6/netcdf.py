@@ -234,10 +234,11 @@ class NetCDFModel(BaseModel, NetCDFInput):
         # support for NetCDF export (anything but GWF/GWT/GWE) fall back to
         # a generic title.
         _title_fragment = {"gwf": "hydraulic head", "gwt": "concentration", "gwe": "temperature"}
+        modelname = model._name_or_class()
         if modeltype in _title_fragment:
-            title = f"{model.name.upper()} {_title_fragment[modeltype]} array input"
+            title = f"{modelname.upper()} {_title_fragment[modeltype]} array input"
         else:
-            title = f"{model.name.upper()} model input"
+            title = f"{modelname.upper()} model input"
         attrs = {"title": title}
         packages = []
         distype = None
@@ -370,7 +371,7 @@ class NetCDFModel(BaseModel, NetCDFInput):
         nc_model = NetCDFModel.from_dict(
             meta={
                 "modeltype": modeltype,
-                "modelname": model.name,
+                "modelname": modelname,
                 "gridtype": gridtype,
                 "attrs": attrs,
                 "packages": packages,

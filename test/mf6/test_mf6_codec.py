@@ -1669,7 +1669,7 @@ def test_load_tas_inner_classes_name_collision():
     )
     dumped = dumps(COMPONENT_CONVERTER.unstructure(tas))
     structured = structure_component(loads(dumped), Tas)
-    assert structured.name == "tas"  # not clobbered by the "NAME ts1 ts2" row
+    assert structured.name is None  # not clobbered by the "NAME ts1 ts2" row
     assert structured.time_series_name.time_series_name == ("ts1", "ts2")
     assert structured.sfac.sfacval == (1.5, 2.0)
 
@@ -4310,8 +4310,8 @@ def test_bang_comment_and_block_keyword_remarks():
     "line,single,multi", [("SFAC 1.5", 1.5, None), ("SFACS 2.0 3.0", None, (2.0, 3.0))]
 )
 def test_ts_sfac_load(tmp_path, line, single, multi):
-    """SFAC and SFACS load into their own records, and a loaded Ts keeps
-    its default name."""
+    """SFAC and SFACS load into their own records, and a loaded Ts has
+    no name, not one from its NAMES row."""
     from flopy4.mf6.utl.ts import Ts
 
     path = tmp_path / "a.ts"
@@ -4320,7 +4320,7 @@ def test_ts_sfac_load(tmp_path, line, single, multi):
         "BEGIN TIMESERIES\n  0.0 1.0 2.0\nEND TIMESERIES\n"
     )
     ts = Ts.load(path)
-    assert ts.name == "ts"
+    assert ts.name is None
     assert (ts.sfacrecord_single.sfacval if ts.sfacrecord_single else None) == single
     assert (ts.sfac.sfacval if ts.sfac else None) == multi
 

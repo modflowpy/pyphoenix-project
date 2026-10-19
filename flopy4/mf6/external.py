@@ -25,6 +25,11 @@ class ExternalFileError(ValueError):
     `WriteContext.strict` on. See `write_external_arrays`."""
 
 
+def in_write_session() -> bool:
+    """Whether a `write_session` is open, i.e. this is a nested `write()`."""
+    return getattr(_session, "files", None) is not None
+
+
 @contextmanager
 def write_session() -> Iterator[None]:
     """Track the files written for OPEN/CLOSE arrays across one `write()`

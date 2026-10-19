@@ -10,6 +10,3 @@ from flopy4.mf6.package import Package
 class Solution(Package, ABC):
     slntype: ClassVar[str] = "sln"
     models: list[str] = attrs.field(default=attrs.Factory(list))
-
-    def default_filename(self) -> str:
-        return f"solution.{self.slntype.lower()}"
