@@ -132,12 +132,12 @@ def test_gwf_chd01(function_tmpdir):
     sim.write()
     sim.run()
 
-    assert Path(function_tmpdir, f"{sim_name}.tdis.tdis").is_file()
+    assert Path(function_tmpdir, f"{sim_name}.tdis").is_file()
     assert Path(function_tmpdir, f"{gwf_name}.nam").is_file()
-    assert Path(function_tmpdir, f"{gwf_name}.dis.dis").is_file()
-    assert Path(function_tmpdir, f"{gwf_name}.ic.ic").is_file()
-    assert Path(function_tmpdir, f"{gwf_name}.oc.oc").is_file()
-    assert Path(function_tmpdir, f"{gwf_name}.npf.npf").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.dis").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.ic").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.oc").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.npf").is_file()
     assert Path(function_tmpdir, f"{gwf_name}.chd-1.chd").is_file()
     assert Path(function_tmpdir, "sln1.ims").is_file()
 
@@ -523,13 +523,13 @@ def test_gwf_disv_uzf(function_tmpdir):
     sim.write()
     sim.run()
 
-    assert Path(function_tmpdir, f"{sim_name}.tdis.tdis").is_file()
+    assert Path(function_tmpdir, f"{sim_name}.tdis").is_file()
     assert Path(function_tmpdir, f"{gwf_name}.nam").is_file()
-    assert Path(function_tmpdir, f"{gwf_name}.disv.disv").is_file()
-    assert Path(function_tmpdir, f"{gwf_name}.ic.ic").is_file()
-    assert Path(function_tmpdir, f"{gwf_name}.oc.oc").is_file()
-    assert Path(function_tmpdir, f"{gwf_name}.npf.npf").is_file()
-    assert Path(function_tmpdir, f"{gwf_name}.sto.sto").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.disv").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.ic").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.oc").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.npf").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.sto").is_file()
     assert Path(function_tmpdir, f"{gwf_name}.ghb-1.ghb").is_file()
     assert Path(function_tmpdir, "sln1.ims").is_file()
 
@@ -808,18 +808,18 @@ def test_quickstart_netcdf(function_tmpdir):
         lines = fh.readlines()
         nc_fpth = function_tmpdir / f"{gwf_name}.input.nc"
         assert f" NETCDF FILEIN {nc_fpth.as_posix()}\n" in lines
-    with open(function_tmpdir / f"{gwf_name}.dis.dis", "r") as fh:
+    with open(function_tmpdir / f"{gwf_name}.dis", "r") as fh:
         lines = fh.readlines()
         assert " DELR NETCDF\n" in lines
         assert " DELC NETCDF\n" in lines
         assert " TOP NETCDF\n" in lines
         assert " BOTM NETCDF\n" in lines
         assert " IDOMAIN NETCDF\n" in lines
-    with open(function_tmpdir / f"{gwf_name}.npf.npf", "r") as fh:
+    with open(function_tmpdir / f"{gwf_name}.npf", "r") as fh:
         lines = fh.readlines()
         assert " ICELLTYPE NETCDF\n" in lines
         assert " K NETCDF\n" in lines
-    with open(function_tmpdir / f"{gwf_name}.ic.ic", "r") as fh:
+    with open(function_tmpdir / f"{gwf_name}.ic", "r") as fh:
         lines = fh.readlines()
         assert " STRT NETCDF\n" in lines
     with open(function_tmpdir / f"{gwf_name}.chdg0.chd", "r") as fh:
@@ -921,18 +921,18 @@ def test_quickstart_netcdf_mesh(function_tmpdir):
         lines = fh.readlines()
         nc_fpth = function_tmpdir / f"{gwf_name}.input.nc"
         assert f" NETCDF FILEIN {nc_fpth.as_posix()}\n" in lines
-    with open(function_tmpdir / f"{gwf_name}.dis.dis", "r") as fh:
+    with open(function_tmpdir / f"{gwf_name}.dis", "r") as fh:
         lines = fh.readlines()
         assert " DELR NETCDF\n" in lines
         assert " DELC NETCDF\n" in lines
         assert " TOP NETCDF\n" in lines
         assert " BOTM NETCDF\n" in lines
         assert " IDOMAIN NETCDF\n" in lines
-    with open(function_tmpdir / f"{gwf_name}.npf.npf", "r") as fh:
+    with open(function_tmpdir / f"{gwf_name}.npf", "r") as fh:
         lines = fh.readlines()
         assert " ICELLTYPE NETCDF\n" in lines
         assert " K NETCDF\n" in lines
-    with open(function_tmpdir / f"{gwf_name}.ic.ic", "r") as fh:
+    with open(function_tmpdir / f"{gwf_name}.ic", "r") as fh:
         lines = fh.readlines()
         assert " STRT NETCDF\n" in lines
     with open(function_tmpdir / f"{gwf_name}.chdg0.chd", "r") as fh:
@@ -1420,7 +1420,7 @@ def test_gwf_mvr(function_tmpdir):
 
     sim.write()
 
-    mvr_path = Path(function_tmpdir, f"{gwf_name}.mvr.mvr")
+    mvr_path = Path(function_tmpdir, f"{gwf_name}.mvr")
     assert mvr_path.is_file()
     content = mvr_path.read_text()
 
@@ -1512,13 +1512,13 @@ def test_gwt_basic(function_tmpdir):
     sim.write()
     sim.run()
 
-    assert Path(function_tmpdir, f"{gwt_name}.ic.ic").is_file()
+    assert Path(function_tmpdir, f"{gwt_name}.ic").is_file()
     assert Path(function_tmpdir, f"{gwt_name}.cnc-1.cnc").is_file()
     assert Path(function_tmpdir, f"{gwt_name}.src-1.src").is_file()
 
     # exgfile=None triggers default_filename() → "{sim}.{exchange_name}.{ext}"
     mfsim = Path(function_tmpdir, "mfsim.nam").read_text()
-    assert f"{sim_name}.gwfgwt.gwfgwt" in mfsim
+    assert f"{sim_name}.gwfgwt" in mfsim
 
 
 def test_gwe_basic(function_tmpdir):
@@ -1597,13 +1597,13 @@ def test_gwe_basic(function_tmpdir):
     sim.write()
     sim.run()
 
-    assert Path(function_tmpdir, f"{gwe_name}.ic.ic").is_file()
+    assert Path(function_tmpdir, f"{gwe_name}.ic").is_file()
     assert Path(function_tmpdir, f"{gwe_name}.ctp-1.ctp").is_file()
     assert Path(function_tmpdir, f"{gwe_name}.esl-1.esl").is_file()
 
     # exgfile=None triggers default_filename() → "{sim}.{exchange_name}.{ext}"
     mfsim = Path(function_tmpdir, "mfsim.nam").read_text()
-    assert f"{sim_name}.gwfgwe.gwfgwe" in mfsim
+    assert f"{sim_name}.gwfgwe" in mfsim
 
 
 def test_gwf_buy(function_tmpdir):
@@ -1684,7 +1684,7 @@ def test_gwf_buy(function_tmpdir):
 
     sim.write()
 
-    buy_input = Path(function_tmpdir, f"{gwf_name}.buy.buy")
+    buy_input = Path(function_tmpdir, f"{gwf_name}.buy")
     assert buy_input.is_file()
     content = buy_input.read_text()
     assert "BEGIN PACKAGEDATA" in content
@@ -1778,7 +1778,7 @@ def test_gwf_vsc(function_tmpdir):
 
     sim.write()
 
-    vsc_input = Path(function_tmpdir, f"{gwf_name}.vsc.vsc")
+    vsc_input = Path(function_tmpdir, f"{gwf_name}.vsc")
     assert vsc_input.is_file()
     content = vsc_input.read_text()
     assert "BEGIN PACKAGEDATA" in content
@@ -1875,8 +1875,8 @@ def test_prt_basic(function_tmpdir):
     prt_sim.run()
 
     # Verify PRT files written and FMI format correct
-    fmi_path = Path(function_tmpdir, f"{prt_name}.fmi.fmi")
-    oc_path = Path(function_tmpdir, f"{prt_name}.oc.oc")
+    fmi_path = Path(function_tmpdir, f"{prt_name}.fmi")
+    oc_path = Path(function_tmpdir, f"{prt_name}.oc")
     assert fmi_path.is_file()
     assert oc_path.is_file()
 
@@ -1952,11 +1952,11 @@ def test_gwf_oc_period_variations(function_tmpdir):
 
     cbc = open_cbc(
         Path(function_tmpdir, f"{gwf_name}.cbc"),
-        Path(function_tmpdir, f"{gwf_name}.dis.dis.grb"),
+        Path(function_tmpdir, f"{gwf_name}.dis.grb"),
     )
     hds = open_hds(
         Path(function_tmpdir, f"{gwf_name}.hds"),
-        Path(function_tmpdir, f"{gwf_name}.dis.dis.grb"),
+        Path(function_tmpdir, f"{gwf_name}.dis.grb"),
     )
 
     # Stop sentinel: budget saved only at step 1 of period 1 → 1 flow record
@@ -2050,7 +2050,7 @@ def test_gwt_ssm_sources(function_tmpdir):
     sim.write()
 
     # Verify the written .ssm file has correct SOURCES block content
-    ssm_file = Path(function_tmpdir, f"{gwt_name}.ssm.ssm")
+    ssm_file = Path(function_tmpdir, f"{gwt_name}.ssm")
     assert ssm_file.is_file(), ".ssm file must be written"
     ssm_text = ssm_file.read_text()
     assert "BEGIN SOURCES" in ssm_text
@@ -2956,7 +2956,7 @@ def test_structured_grid_arrays_written_by_row(function_tmpdir):
     Oc(parent=gwf, head_file="gwf.hds", stress_period_data={0: [("SAVE", "HEAD", "LAST")]})
     sim.write()
 
-    lines = (function_tmpdir / "gwf.dis.dis").read_text().splitlines()
+    lines = (function_tmpdir / "gwf.dis").read_text().splitlines()
     top = lines.index(" TOP")
     assert lines[top + 1] == " INTERNAL"
     assert all(len(ln.split()) == 4 for ln in lines[top + 2 : top + 5])

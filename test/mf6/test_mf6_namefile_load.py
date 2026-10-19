@@ -372,7 +372,7 @@ def test_standalone_model_keeps_own_workspace(tmp_path):
     gwf.workspace = tmp_path / "elsewhere"
 
     assert gwf.workspace == tmp_path / "elsewhere"
-    assert gwf.dis.path == tmp_path / "elsewhere" / "m.dis.dis"
+    assert gwf.dis.path == tmp_path / "elsewhere" / "m.dis"
 
 
 def test_write_does_not_depend_on_cwd(tmp_path, monkeypatch):

@@ -467,23 +467,44 @@ def test_default_filenames():
     list(sim)
     list(gwf)
 
-    assert gwf.dis.filename == Path("model.disv.disv")
-    assert gwf.npf.filename == Path("model.npf.npf")
+    assert gwf.dis.filename == Path("model.disv")
+    assert gwf.npf.filename == Path("model.npf")
     assert [c.filename for c in gwf.chd] == [Path("model.chd0.chd"), Path("model.chdg0.chd")]
     assert gwf.rch[0].filename == Path("model.rcha0.rch")
     assert gwf.wel[0].filename == Path("model.wel0.wel")
     list(gwf.wel[0])
     assert ts.filename == Path("model.wel0.ts0.ts")
     assert gwf.filename == Path("model.nam")
-    assert sim.tdis.filename == Path("sim.tdis.tdis")
+    assert sim.tdis.filename == Path("sim.tdis")
     assert sim.solutiongroup[0].filename == Path("sim.ims0.ims")
     assert exg.filename == Path("sim.gwfgwf0.gwfgwf")
+
+
+def test_subpackage_filename_under_shortened_filename():
+    # model.dis drops the name, but its NCF keeps it: model.dis.ncf, not
+    # model.ncf, which could be a model-level package's file
+    ncf = Ncf(ncpl=2, latitude=[35.0, 36.0], longitude=[-120.0, -121.0])
+    dis = Dis(nlay=1, nrow=1, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    dis.ncf = ncf
+    gwf = Gwf(name="model", dis=dis)
+    list(gwf)
+    list(dis)
+
+    assert dis.filename == Path("model.dis")
+    assert ncf.filename == Path("model.dis.ncf")
+
+
+def test_named_like_extension():
+    gwf = Gwf(name="model", wel=[_wel(name="wel"), _wel()])
+    list(gwf)
+
+    assert [w.filename for w in gwf.wel] == [Path("model.wel"), Path("model.wel0.wel")]
 
 
 def test_default_filename_detached():
     w = _wel()
 
-    assert w.filename == Path("wel.wel.wel")
+    assert w.filename == Path("wel.wel")
     assert Gwf().filename == Path("gwf.nam")
 
 
@@ -653,12 +674,12 @@ def test_write_ascii(function_tmpdir):
     files = list(Path(function_tmpdir).glob("*"))
     file_names = [f.name for f in files]
     assert "mfsim.nam" in file_names
-    assert f"{sim_name}.tdis.tdis" in file_names
+    assert f"{sim_name}.tdis" in file_names
     assert f"{gwf_name}.nam" in file_names
-    assert f"{gwf_name}.dis.dis" in file_names
-    assert f"{gwf_name}.ic.ic" in file_names
-    assert f"{gwf_name}.oc.oc" in file_names
-    assert f"{gwf_name}.npf.npf" in file_names
+    assert f"{gwf_name}.dis" in file_names
+    assert f"{gwf_name}.ic" in file_names
+    assert f"{gwf_name}.oc" in file_names
+    assert f"{gwf_name}.npf" in file_names
     assert f"{gwf_name}.chd0.chd" in file_names
 
 
@@ -1606,12 +1627,12 @@ def test_ncf_subpackage_default_filename(function_tmpdir):
     dis = Dis(nlay=1, nrow=1, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=0.0)
     dis.filename = str(function_tmpdir / "gwf.dis")
     dis.ncf = ncf
-    assert ncf.filename == Path("ncf.ncf.ncf")  # not attached until dis is read
+    assert ncf.filename == Path("ncf.ncf")  # not attached until dis is read
 
     with set_dir(function_tmpdir):
         dis.write()
 
-    assert ncf.filename == Path("gwf.ncf.ncf")
+    assert ncf.filename == Path("gwf.ncf")
     assert f"NCF6 FILEIN {ncf.filename.name}" in (function_tmpdir / "gwf.dis").read_text()
 
 

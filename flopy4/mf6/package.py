@@ -764,22 +764,42 @@ class Package(Component, ABC):
         return _pkg
 
     def default_filename(self) -> str:
-        """``{stem}.{name}.{ext}``: ``model.wel0.wel``, ``sim.ims0.ims``.
+        """``{stem}.{name}.{ext}``: ``model.wel0.wel``, ``sim.ims0.ims``,
+        or ``{stem}.{ext}`` when the name is the extension (``model.dis``).
 
         The stem is the parent's name, or for a package named by a file
-        record (TS, OBS, ...) the parent's filename without its suffix
-        (``model.wel0.ts0.ts``). The extension is the name-file ftype,
-        lowercase, without the ``6`` (a CHDG file is ``.chd``). Names are
-        unique among siblings, so default filenames can't collide.
+        record (TS, OBS, ...) the parent's ``{stem}.{name}``
+        (``model.wel0.ts0.ts``, ``model.csub.obs``). The extension is the
+        name-file ftype, lowercase, without the ``6`` (a CHDG file is
+        ``.chd``). Names are unique among siblings, so default filenames
+        can't collide.
         """
+        name, ext = self._name_or_class(), self._file_ext()
         parent = self._parent  # type: ignore
         if isinstance(parent, Package):
-            stem = parent.filename.stem
+            stem = parent._child_stem()
         elif parent is not None:
             stem = parent._name_or_class()
         else:
-            stem = self._name_or_class()
-        return f"{stem}.{self._name_or_class()}.{self._file_ext()}"
+            return f"{name}.{ext}"
+        return f"{stem}.{ext}" if name == ext else f"{stem}.{name}.{ext}"
+
+    def _child_stem(self) -> str:
+        """The stem of a subpackage's default filename: this package's
+        filename without its suffix if one was set, else its default
+        filename's ``{stem}.{name}``, kept whole even when the name was
+        left out, so ``model.csub``'s OBS file is ``model.csub.obs``, not
+        the model-level ``model.obs``."""
+        if self._filename is not None:  # type: ignore
+            return Path(self._filename).stem  # type: ignore
+        parent = self._parent  # type: ignore
+        if isinstance(parent, Package):
+            stem = parent._child_stem()
+        elif parent is not None:
+            stem = parent._name_or_class()
+        else:
+            return self._name_or_class()
+        return f"{stem}.{self._name_or_class()}"
 
     def _file_ext(self) -> str:
         """The default filename's extension: the name-file ftype,
