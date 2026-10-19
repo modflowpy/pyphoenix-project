@@ -412,7 +412,7 @@ def test_from_model_aux_variable_per_name():
     with pytest.warns(UserWarning, match="past NPER"):
         ds = NetCDFModel.from_model(gwf).to_xarray()
     for n, name in enumerate(["a1", "a2"]):
-        var = ds[f"wel0_{name}"]
+        var = ds[f"welg0_{name}"]
         assert var.attrs["modflow_iaux"] == n + 1
         assert var.values[0].ravel()[0] == n + 1.0
         assert (var.values[1] == NODATA).all()
@@ -421,7 +421,7 @@ def test_from_model_aux_variable_per_name():
         ds = NetCDFModel.from_model(gwf, netcdf_format=NetCDFFormat.LAYERED_MESH).to_xarray()
     for n, name in enumerate(["a1", "a2"]):
         for k in range(2):
-            assert ds[f"wel0_{name}_l{k + 1}"].attrs["modflow_iaux"] == n + 1
+            assert ds[f"welg0_{name}_l{k + 1}"].attrs["modflow_iaux"] == n + 1
 
 
 def test_from_model_periods_past_nper_dropped():
@@ -432,4 +432,4 @@ def test_from_model_periods_past_nper_dropped():
     with pytest.warns(UserWarning, match=r"periods \[3\] are past NPER \(2\)"):
         ds = NetCDFModel.from_model(gwf).to_xarray()
     assert ds.sizes["time"] == 2
-    assert np.allclose(ds["chd0_head"].values[0].ravel()[:2], [1.0, 2.0])
+    assert np.allclose(ds["chdg0_head"].values[0].ravel()[:2], [1.0, 2.0])

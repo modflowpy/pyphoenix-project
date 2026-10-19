@@ -835,7 +835,7 @@ def test_quickstart_netcdf(function_tmpdir):
     assert ("ic_strt") in ds
     assert ("npf_icelltype") in ds
     assert ("npf_k") in ds
-    assert ("chd0_head") in ds
+    assert ("chdg0_head") in ds
 
     assert np.allclose(ds["dis_delr"].values.ravel(), np.asarray(dis.delr).ravel())
     assert np.allclose(ds["dis_delc"].values.ravel(), np.asarray(dis.delc).ravel())
@@ -845,7 +845,7 @@ def test_quickstart_netcdf(function_tmpdir):
     assert np.allclose(ds["ic_strt"].values.ravel(), ic.strt)
     assert np.allclose(ds["npf_icelltype"].values.ravel(), npf.icelltype)
     assert np.allclose(ds["npf_k"].values.ravel(), npf.k)
-    assert np.allclose(ds["chd0_head"].values.ravel(), chd.period_array("head").ravel())
+    assert np.allclose(ds["chdg0_head"].values.ravel(), chd.period_array("head").ravel())
 
     # requires mf6 extended to run
     # sim.run()
@@ -948,7 +948,7 @@ def test_quickstart_netcdf_mesh(function_tmpdir):
     assert ("ic_strt_l1") in ds
     assert ("npf_icelltype_l1") in ds
     assert ("npf_k_l1") in ds
-    assert ("chd0_head_l1") in ds
+    assert ("chdg0_head_l1") in ds
 
     assert np.allclose(ds["dis_delr"].values, dis.delr)
     assert np.allclose(ds["dis_delc"].values, dis.delc)
@@ -958,7 +958,7 @@ def test_quickstart_netcdf_mesh(function_tmpdir):
     assert np.allclose(ds["ic_strt_l1"].values.ravel(), np.asarray(ic.strt).ravel())
     assert np.allclose(ds["npf_icelltype_l1"].values.ravel(), np.asarray(npf.icelltype).ravel())
     assert np.allclose(ds["npf_k_l1"].values.ravel(), np.asarray(npf.k).ravel())
-    assert np.allclose(ds["chd0_head_l1"].values.ravel(), chd.period_array("head").ravel())
+    assert np.allclose(ds["chdg0_head_l1"].values.ravel(), chd.period_array("head").ravel())
 
     # requires mf6 extended to run
     # sim.run()
@@ -2912,7 +2912,7 @@ def test_rcha_tas_reference_netcdf(function_tmpdir):
     assert "RECHARGE NETCDF" in period1
     assert (function_tmpdir / tas.filename).exists()
 
-    recharge = xr.load_dataset(nc_fpth, mask_and_scale=False)["rch0_recharge"].values
+    recharge = xr.load_dataset(nc_fpth, mask_and_scale=False)["rcha0_recharge"].values
     assert (recharge[0] == FILL_DNODATA).all()
     assert np.allclose(recharge[1], 2e-3)
 
