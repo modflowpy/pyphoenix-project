@@ -375,6 +375,70 @@ def test_disv1d_from_grid_round_trip():
     np.testing.assert_allclose(
         [v.xv for v in disv1d_rt.vertices], [v.xv for v in disv1d_orig.vertices]
     )
+def test_dis2d_from_grid_round_trip():
+    """Dis2d -> StructuredGrid (1 implicit layer) -> Dis2d should preserve
+    all geometry."""
+    from flopy4.mf6.olf.dis2d import Dis2d
+    from flopy4.mf6.utils.grid import StructuredGrid
+
+    dis2d_orig = Dis2d(
+        nrow=2,
+        ncol=2,
+        delr=[1.0, 1.0],
+        delc=[1.0, 1.0],
+        bottom=[0.0, 0.0, 0.0, 0.0],
+        idomain=[1, 1, 1, 1],
+    )
+
+    grid = dis2d_orig.to_grid()
+    assert isinstance(grid, StructuredGrid)
+    assert grid.nlay == 1
+    dis2d_rt = Dis2d.from_grid(grid)
+
+    assert (dis2d_rt.nrow, dis2d_rt.ncol) == (2, 2)
+    assert dis2d_rt.idomain is not None
+    np.testing.assert_array_equal(dis2d_rt.idomain, dis2d_orig.idomain)
+    np.testing.assert_allclose(dis2d_rt.bottom, dis2d_orig.bottom)
+    np.testing.assert_allclose(dis2d_rt.delr, dis2d_orig.delr)
+    np.testing.assert_allclose(dis2d_rt.delc, dis2d_orig.delc)
+
+
+def test_disv2d_from_grid_round_trip():
+    """Disv2d -> VertexGrid (its `cell2d` form, 1 implicit layer) ->
+    Disv2d should preserve all geometry, including real x/y cell
+    centers (unlike Disv1d's `cell1d` form, `cell2d` carries them)."""
+    from flopy4.mf6.olf.disv2d import Disv2d
+
+    nodes, nvert = 4, 6
+    cells = [[0, 1, 4, 3], [1, 2, 5, 4]]
+    cells_full = cells + cells
+    cell2d = [
+        Disv2d.Cell2d(n, float(n % 2) + 0.5, 0.5, 4, tuple(cells_full[n])) for n in range(nodes)
+    ]
+    xv = np.array([0.0, 1.0, 2.0, 0.0, 1.0, 2.0])
+    yv = np.array([1.0, 1.0, 1.0, 0.0, 0.0, 0.0])
+
+    disv2d_orig = Disv2d(
+        nodes=nodes,
+        nvert=nvert,
+        bottom=np.zeros(nodes),
+        idomain=np.ones(nodes, dtype=int),
+        vertices=dict(iv=np.arange(nvert, dtype=int), xv=xv, yv=yv),
+        cell2d=cell2d,
+    )
+
+    grid = disv2d_orig.to_grid()
+    assert isinstance(grid, VertexGrid)
+    assert grid.nlay == 1
+    disv2d_rt = Disv2d.from_grid(grid)
+
+    assert disv2d_rt.nodes == nodes
+    assert disv2d_rt.nvert == nvert
+    assert disv2d_rt.idomain is not None
+    np.testing.assert_array_equal(disv2d_rt.idomain, disv2d_orig.idomain)
+    np.testing.assert_allclose(disv2d_rt.bottom, disv2d_orig.bottom)
+    np.testing.assert_allclose([c.xc for c in disv2d_rt.cell2d], [c.xc for c in disv2d_orig.cell2d])
+    np.testing.assert_allclose([c.yc for c in disv2d_rt.cell2d], [c.yc for c in disv2d_orig.cell2d])
 
 
 # NetCDF head-reader tests (_open_hds_netcdf paths)

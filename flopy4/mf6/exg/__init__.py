@@ -6,6 +6,7 @@ from flopy4.mf6.exg.gwfgwf import Gwfgwf
 from flopy4.mf6.exg.gwfgwt import Gwfgwt
 from flopy4.mf6.exg.gwfprt import Gwfprt
 from flopy4.mf6.exg.gwtgwt import Gwtgwt
+from flopy4.mf6.exg.olfgwf import Olfgwf
 
 __all__ = [
     "Chfgwf",
@@ -15,4 +16,5 @@ __all__ = [
     "Gwfgwt",
     "Gwfprt",
     "Gwtgwt",
+    "Olfgwf",
 ]

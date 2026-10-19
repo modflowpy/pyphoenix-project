@@ -230,13 +230,15 @@ def _field_type_str(f: attrs.Attribute) -> "str | None":
 
 def ncelldim_from_dims(dims: "dict | None") -> "int | None":
     """Cellid element count implied by grid dimensions -- 3 for a
-    structured (DIS) grid, 2 for vertex (DISV), 1 for unstructured (DISU).
+    structured (DIS) grid, 2 for vertex (DISV) or a layerless structured
+    grid (DIS2D), 1 for unstructured (DISU) or layerless vertex (DISV2D).
     `None` if `dims` doesn't clearly say (or wasn't supplied), meaning the
     caller should fall back to inferring it from row width instead."""
     if not dims:
         return None
     if "nrow" in dims and "ncol" in dims:
-        return 3
+        # DIS2D has nrow/ncol but no nlay: a 2D cellid, not 3D.
+        return 3 if "nlay" in dims else 2
     if "ncpl" in dims:
         return 2
     if "nodes" in dims:

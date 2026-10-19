@@ -1035,6 +1035,8 @@ _DIS = ["flopy4.mf6.dis_methods:DisMethods"]
 _DISV = ["flopy4.mf6.disv_methods:DisvMethods"]
 _DISU = ["flopy4.mf6.disu_methods:DisuMethods"]
 _DISV1D = ["flopy4.mf6.disv1d_methods:Disv1dMethods"]
+_DIS2D = ["flopy4.mf6.dis2d_methods:Dis2dMethods"]
+_DISV2D = ["flopy4.mf6.disv2d_methods:Disv2dMethods"]
 _MODEL = ["flopy4.mf6.model_methods:ModelMethods"]
 MIXINS: dict[str, list[str]] = {
     "sim-nam": ["flopy4.mf6.simulation_methods:SimulationMethods"],
@@ -1058,6 +1060,13 @@ MIXINS: dict[str, list[str]] = {
     "prt-dis": _DIS,
     "prt-disv": _DISV,
     "chf-disv1d": _DISV1D,
+    "olf-nam": _MODEL,
+    "olf-dis2d": _DIS2D,
+    "olf-disv2d": _DISV2D,
+    # No "olf-disv1d" entry: the dfn exists but isn't a real MF6 capability
+    # (excluded from dfns.txt/olf-nam.dfn; absent from doc/mf6io/olf/olf.tex,
+    # which lists only DIS2D/DISV2D) -- likely a leftover from the SWF ->
+    # CHF/OLF model split (CHF kept DISV1D for channel routing).
 }
 
 
