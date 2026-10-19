@@ -221,6 +221,7 @@ plt.close()
 
 # Flow model: assemble GWF model from all packages defined above.
 gwf = flopy4.mf6.gwf.Gwf(
+    name="gwf",
     # save_flows=True,
     dis=disv,
     ic=ic,
@@ -361,7 +362,7 @@ if os.getenv("MF6_EXTENDED"):
     # Load head results — `UgridDataArray` backed by the NetCDF mesh2d output file.
     head = flopy4.mf6.utils.open_hds(
         workspace / gwf.netcdf_mesh2d_file,
-        workspace / f"{gwf.name}.disv.grb",
+        workspace / f"{gwf.dis.filename}.grb",
     )
 
     # budget object — `UgridDataset` with one variable per face-flow term.
