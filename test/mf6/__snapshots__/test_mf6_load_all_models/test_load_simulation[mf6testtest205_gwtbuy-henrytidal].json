@@ -4,7 +4,7 @@
     "continue_": false,
     "dims": {},
     "exchanges": [
-      "<Gwfgwt gwfgwt>"
+      "<Gwfgwt gwfgwt0>"
     ],
     "filename": "mfsim.nam",
     "maxerrors": 1000,
@@ -12,11 +12,10 @@
       "<Gwf gwf_henry>",
       "<Gwt gwt_henry>"
     ],
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>",
+      "<Ims ims0>",
       "<Ims ims1>"
     ],
     "tdis": "<Tdis tdis>",
@@ -307,13 +306,13 @@
     "save_flows": false,
     "ts": []
   },
-  "simulation/gwfgwt": {
+  "simulation/gwfgwt0": {
     "__type__": "Gwfgwt",
     "dims": {},
     "exgmnamea": "gwf_henry",
     "exgmnameb": "gwt_henry",
     "filename": "henry.gwfgwt",
-    "name": "gwfgwt"
+    "name": "gwfgwt0"
   },
   "simulation/gwt_henry": {
     "__type__": "Gwt",
@@ -516,7 +515,7 @@
       ]
     }
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "complexity": "complex",
     "csv_outer_output_file": "gwf_henry.ims.csv",
@@ -528,7 +527,7 @@
     "models": [
       "gwf_henry"
     ],
-    "name": "ims",
+    "name": "ims0",
     "no_ptc": {
       "__type__": "NoPtc",
       "no_ptc_option": "true"

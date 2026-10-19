@@ -9,11 +9,10 @@
       "<Gwf Biscayne>"
     ],
     "mxiter": 1,
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>"
+      "<Ims ims0>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -25,7 +24,7 @@
       "<Chd chd0>"
     ],
     "dims": {},
-    "dis": "<Disv dis>",
+    "dis": "<Disv disv>",
     "drn": [],
     "evt": [
       "<Evta evta0>"
@@ -83,7 +82,7 @@
     "save_flows": true,
     "ts": []
   },
-  "simulation/Biscayne/dis": {
+  "simulation/Biscayne/disv": {
     "__type__": "Disv",
     "botm": "float64[106257] aa69699d813051c8",
     "cell2d": {
@@ -100,7 +99,7 @@
     "export_array_netcdf": false,
     "filename": "biscayne.disv",
     "idomain": "int64[106257] 03e090345b70f817",
-    "name": "dis",
+    "name": "disv",
     "ncpl": 106257,
     "nlay": 1,
     "nogrb": false,
@@ -345,7 +344,7 @@
     "save_flows": true,
     "ts": []
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "dims": {},
     "filename": "biscayne.ims",
@@ -355,7 +354,7 @@
     "models": [
       "Biscayne"
     ],
-    "name": "ims",
+    "name": "ims0",
     "number_orthogonalizations": 2,
     "outer_dvclose": "1e-06",
     "outer_maximum": 500,

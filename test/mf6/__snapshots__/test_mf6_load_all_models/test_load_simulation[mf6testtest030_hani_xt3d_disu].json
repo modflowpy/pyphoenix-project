@@ -9,11 +9,10 @@
       "<Gwf GWF>"
     ],
     "mxiter": 1,
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>"
+      "<Ims ims0>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -25,7 +24,7 @@
       "<Chd chd0>"
     ],
     "dims": {},
-    "dis": "<Disu dis>",
+    "dis": "<Disu disu>",
     "drn": [],
     "evt": [],
     "filename": "model.nam",
@@ -74,7 +73,7 @@
     "save_flows": true,
     "ts": []
   },
-  "simulation/GWF/dis": {
+  "simulation/GWF/disu": {
     "__type__": "Disu",
     "angldegx": "float64[12801] b04311a4bcdd9c40",
     "area": "float64[2601] d510279fd6b28d72",
@@ -96,7 +95,7 @@
     "iac": "int64[2601] 00e554f1b579cc25",
     "ihc": "int64[12801] a98989b44d30872d",
     "ja": "int64[12801] de1e401eedd35cba",
-    "name": "dis",
+    "name": "disu",
     "nja": 12801,
     "nodes": 2601,
     "nogrb": false,
@@ -223,7 +222,7 @@
     "save_flows": true,
     "ts": []
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -234,7 +233,7 @@
     "models": [
       "GWF"
     ],
-    "name": "ims",
+    "name": "ims0",
     "outer_dvclose": "1e-08",
     "outer_maximum": 200,
     "print_option": "summary",

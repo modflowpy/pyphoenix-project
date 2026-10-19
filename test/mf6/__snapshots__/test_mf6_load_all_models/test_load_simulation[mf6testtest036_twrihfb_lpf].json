@@ -9,16 +9,15 @@
       "<Gwf test036_twrihfb>"
     ],
     "mxiter": 1,
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>"
+      "<Ims ims0>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -29,7 +28,7 @@
     "models": [
       "test036_twrihfb"
     ],
-    "name": "ims",
+    "name": "ims0",
     "outer_dvclose": "1e-06",
     "outer_maximum": 100,
     "print_option": "summary",

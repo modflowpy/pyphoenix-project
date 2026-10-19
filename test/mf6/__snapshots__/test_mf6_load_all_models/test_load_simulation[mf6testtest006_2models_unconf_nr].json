@@ -4,7 +4,7 @@
     "continue_": false,
     "dims": {},
     "exchanges": [
-      "<Gwfgwf gwfgwf>"
+      "<Gwfgwf gwfgwf0>"
     ],
     "filename": "mfsim.nam",
     "models": [
@@ -12,11 +12,10 @@
       "<Gwf GWF_Model_2>"
     ],
     "mxiter": 1,
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>"
+      "<Ims ims0>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -325,7 +324,7 @@
     "head_file": "model2.hds",
     "name": "oc"
   },
-  "simulation/gwfgwf": {
+  "simulation/gwfgwf0": {
     "__type__": "Gwfgwf",
     "boundnames": false,
     "dims": {},
@@ -344,7 +343,7 @@
     "exgmnamea": "GWF_Model_1",
     "exgmnameb": "GWF_Model_2",
     "filename": "simulation.exg",
-    "name": "gwfgwf",
+    "name": "gwfgwf0",
     "newton": true,
     "nexg": 36,
     "print_flows": false,
@@ -352,7 +351,7 @@
     "save_flows": false,
     "xt3d": false
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "dims": {},
     "filename": "simulation.ims",
@@ -363,7 +362,7 @@
       "GWF_Model_1",
       "GWF_Model_2"
     ],
-    "name": "ims",
+    "name": "ims0",
     "outer_dvclose": "1e-08",
     "outer_maximum": 1000,
     "print_option": "summary",

@@ -4,23 +4,22 @@
     "continue_": false,
     "dims": {},
     "exchanges": [
-      "<Gwfgwf gwfgwf>"
+      "<Gwfgwf gwfgwf0>"
     ],
     "filename": "mfsim.nam",
     "models": [
       "<Gwf pbc>"
     ],
     "mxiter": 1,
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>"
+      "<Ims ims0>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
   },
-  "simulation/gwfgwf": {
+  "simulation/gwfgwf0": {
     "__type__": "Gwfgwf",
     "boundnames": false,
     "dims": {},
@@ -39,7 +38,7 @@
     "exgmnamea": "pbc",
     "exgmnameb": "pbc",
     "filename": "pbc.exg",
-    "name": "gwfgwf",
+    "name": "gwfgwf0",
     "newton": false,
     "nexg": 190,
     "print_flows": true,
@@ -47,7 +46,7 @@
     "save_flows": true,
     "xt3d": false
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -58,7 +57,7 @@
     "models": [
       "pbc"
     ],
-    "name": "ims",
+    "name": "ims0",
     "outer_dvclose": "9.9999997e-06",
     "outer_maximum": 50,
     "print_option": "all",

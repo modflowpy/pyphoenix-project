@@ -9,16 +9,15 @@
       "<Gwf t4_disv>"
     ],
     "mxiter": 1,
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>"
+      "<Ims ims0>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -29,7 +28,7 @@
     "models": [
       "t4_disv"
     ],
-    "name": "ims",
+    "name": "ims0",
     "number_orthogonalizations": 2,
     "outer_dvclose": "1e-06",
     "outer_maximum": 100,
@@ -52,7 +51,7 @@
     "api": [],
     "chd": [],
     "dims": {},
-    "dis": "<Disv dis>",
+    "dis": "<Disv disv>",
     "drn": [],
     "evt": [],
     "filename": "t4.nam",
@@ -80,7 +79,7 @@
     ],
     "workspace": "<workspace>"
   },
-  "simulation/t4_disv/dis": {
+  "simulation/t4_disv/disv": {
     "__type__": "Disv",
     "botm": "float64[450] f4964393ff29bf24",
     "cell2d": {
@@ -97,7 +96,7 @@
     "export_array_netcdf": false,
     "filename": "t4.disv",
     "idomain": "int64[450] b6ef05254bc9f1bc",
-    "name": "dis",
+    "name": "disv",
     "ncpl": 150,
     "nlay": 3,
     "nogrb": false,

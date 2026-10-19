@@ -9,11 +9,10 @@
       "<Gwf GWF>"
     ],
     "mxiter": 1,
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>"
+      "<Ims ims0>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -207,7 +206,7 @@
     "save_flows": false,
     "ts": []
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -218,7 +217,7 @@
     "models": [
       "GWF"
     ],
-    "name": "ims",
+    "name": "ims0",
     "outer_dvclose": "1e-08",
     "outer_maximum": 20,
     "print_option": "summary",

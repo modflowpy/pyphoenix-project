@@ -3,7 +3,7 @@
     "__type__": "Simulation",
     "continue_": false,
     "dims": {},
-    "exchanges": "241 chars ebea4076cff522f4",
+    "exchanges": "242 chars 50596e93587f0596",
     "filename": "mfsim.nam",
     "memory_print_option": "SUMMARY",
     "models": [
@@ -17,11 +17,10 @@
       "<Gwf GWF3_2>",
       "<Gwf GWF3_3>"
     ],
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>"
+      "<Ims ims0>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -1268,7 +1267,7 @@
     "head_file": "m3_3.hds",
     "name": "oc"
   },
-  "simulation/gwfgwf": {
+  "simulation/gwfgwf0": {
     "__type__": "Gwfgwf",
     "boundnames": false,
     "dims": {},
@@ -1287,7 +1286,7 @@
     "exgmnamea": "GWF1_1",
     "exgmnameb": "GWF1_2",
     "filename": "gwf1_1-gwf1_2.right.exg",
-    "name": "gwfgwf",
+    "name": "gwfgwf0",
     "newton": false,
     "nexg": 100,
     "print_flows": false,
@@ -1592,7 +1591,7 @@
     "save_flows": false,
     "xt3d": false
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "dims": {},
     "filename": "simulation.ims",
@@ -1610,7 +1609,7 @@
       "GWF3_2",
       "GWF3_3"
     ],
-    "name": "ims",
+    "name": "ims0",
     "outer_dvclose": "1e-08",
     "outer_maximum": 1000,
     "print_option": "all",

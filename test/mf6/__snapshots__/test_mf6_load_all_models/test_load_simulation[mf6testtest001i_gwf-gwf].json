@@ -4,7 +4,7 @@
     "continue_": false,
     "dims": {},
     "exchanges": [
-      "<Gwfgwf gwfgwf>",
+      "<Gwfgwf gwfgwf0>",
       "<Gwfgwf gwfgwf1>",
       "<Gwfgwf gwfgwf2>",
       "<Gwfgwf gwfgwf3>",
@@ -28,11 +28,10 @@
       "<Gwf flow-l9>",
       "<Gwf flow-l10>"
     ],
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>"
+      "<Ims ims0>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -1310,7 +1309,7 @@
     "head_file": "flow-l9.hds",
     "name": "oc"
   },
-  "simulation/gwfgwf": {
+  "simulation/gwfgwf0": {
     "__type__": "Gwfgwf",
     "auxiliary": [
       "ANGLDEGX",
@@ -1344,7 +1343,7 @@
     "exgmnamea": "flow-l1",
     "exgmnameb": "flow-l2",
     "filename": "flow-1.exg",
-    "name": "gwfgwf",
+    "name": "gwfgwf0",
     "newton": false,
     "nexg": 10,
     "print_flows": false,
@@ -1688,7 +1687,7 @@
     "save_flows": false,
     "xt3d": false
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -1708,7 +1707,7 @@
       "flow-l9",
       "flow-l10"
     ],
-    "name": "ims",
+    "name": "ims0",
     "outer_dvclose": "9.9999997e-06",
     "outer_maximum": 50,
     "print_option": "all",

@@ -9,11 +9,10 @@
       "<Gwf GWF_1>"
     ],
     "mxiter": 1,
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>"
+      "<Ims ims0>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -408,7 +407,7 @@
     "storagecoefficient": false,
     "sy": "float64[20402] fdb06f808f2801f0"
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "backtracking_number": 10,
     "backtracking_reduction_factor": "0.6",
@@ -422,7 +421,7 @@
     "models": [
       "GWF_1"
     ],
-    "name": "ims",
+    "name": "ims0",
     "outer_dvclose": "1e-06",
     "outer_maximum": 500,
     "print_option": "all",

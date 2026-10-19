@@ -9,11 +9,10 @@
     "models": [
       "<Gwf flow15>"
     ],
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>"
+      "<Ims ims0>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -293,7 +292,7 @@
     "head_file": "flow15_flow.hds",
     "name": "oc"
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -304,7 +303,7 @@
     "models": [
       "flow15"
     ],
-    "name": "ims",
+    "name": "ims0",
     "outer_dvclose": "9.9999997e-06",
     "outer_maximum": 50,
     "print_option": "all",

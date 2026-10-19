@@ -4,7 +4,7 @@
     "continue_": true,
     "dims": {},
     "exchanges": [
-      "<Gwfgwt gwfgwt>"
+      "<Gwfgwt gwfgwt0>"
     ],
     "filename": "mfsim.nam",
     "maxerrors": 1000,
@@ -12,11 +12,10 @@
       "<Gwf gwf_goswami>",
       "<Gwt gwt_goswami>"
     ],
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>",
+      "<Ims ims0>",
       "<Ims ims1>"
     ],
     "tdis": "<Tdis tdis>",
@@ -270,13 +269,13 @@
     },
     "name": "oc"
   },
-  "simulation/gwfgwt": {
+  "simulation/gwfgwt0": {
     "__type__": "Gwfgwt",
     "dims": {},
     "exgmnamea": "gwf_goswami",
     "exgmnameb": "gwt_goswami",
     "filename": "goswami.gwfgwt",
-    "name": "gwfgwt"
+    "name": "gwfgwt0"
   },
   "simulation/gwt_goswami": {
     "__type__": "Gwt",
@@ -473,7 +472,7 @@
       ]
     }
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "dims": {},
     "filename": "gwf_goswami.ims",
@@ -483,7 +482,7 @@
     "models": [
       "gwf_goswami"
     ],
-    "name": "ims",
+    "name": "ims0",
     "outer_dvclose": "0.0001",
     "outer_maximum": 100,
     "print_option": "all",

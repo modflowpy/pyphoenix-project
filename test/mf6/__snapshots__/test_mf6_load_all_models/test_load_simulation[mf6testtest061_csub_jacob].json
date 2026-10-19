@@ -8,11 +8,10 @@
     "models": [
       "<Gwf fig4_base>"
     ],
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>"
+      "<Ims ims0>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -390,7 +389,7 @@
     "storagecoefficient": false,
     "sy": "float64[105] 107c57480f9b04d7"
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "dims": {},
     "filename": "fig4_base.ims",
@@ -400,7 +399,7 @@
     "models": [
       "fig4_base"
     ],
-    "name": "ims",
+    "name": "ims0",
     "outer_dvclose": "1e-09",
     "outer_maximum": 500,
     "print_option": "summary",

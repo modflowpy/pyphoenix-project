@@ -4,18 +4,17 @@
     "continue_": false,
     "dims": {},
     "exchanges": [
-      "<Gwfgwf gwfgwf>"
+      "<Gwfgwf gwfgwf0>"
     ],
     "filename": "mfsim.nam",
     "models": [
       "<Gwf mv>",
       "<Gwf child>"
     ],
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>"
+      "<Ims ims0>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -246,7 +245,7 @@
     "save_flows": false,
     "ts": []
   },
-  "simulation/gwfgwf": {
+  "simulation/gwfgwf0": {
     "__type__": "Gwfgwf",
     "auxiliary": [
       "angldegx",
@@ -269,7 +268,7 @@
     "exgmnamea": "mv",
     "exgmnameb": "child",
     "filename": "mv.gwfgwf",
-    "name": "gwfgwf",
+    "name": "gwfgwf0",
     "newton": false,
     "nexg": 720,
     "print_flows": false,
@@ -277,7 +276,7 @@
     "save_flows": false,
     "xt3d": false
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "complexity": "complex",
     "dims": {},
@@ -287,7 +286,7 @@
       "mv",
       "child"
     ],
-    "name": "ims",
+    "name": "ims0",
     "outer_dvclose": "1e-09"
   },
   "simulation/mv": {

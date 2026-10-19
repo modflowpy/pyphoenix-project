@@ -9,11 +9,10 @@
       "<Gwf GWF_1>"
     ],
     "mxiter": 1,
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>"
+      "<Ims ims0>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -23,7 +22,7 @@
     "api": [],
     "chd": [],
     "dims": {},
-    "dis": "<Disu dis>",
+    "dis": "<Disu disu>",
     "drn": [],
     "evt": [],
     "filename": "keating.nam",
@@ -53,7 +52,7 @@
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/GWF_1/dis": {
+  "simulation/GWF_1/disu": {
     "__type__": "Disu",
     "area": "float64[32040] 5529daf2c07009f0",
     "bot": "float64[32040] 1c4c4a4cf5afddbe",
@@ -74,7 +73,7 @@
     "iac": "int64[32040] 568a770d1c1e22ac",
     "ihc": "int64[222360] eee1a08849911893",
     "ja": "int64[222360] e7894cbde1972f47",
-    "name": "dis",
+    "name": "disu",
     "nja": 222360,
     "nodes": 32040,
     "nogrb": false,
@@ -269,7 +268,7 @@
     "save_flows": false,
     "ts": []
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "backtracking_number": 20,
     "backtracking_reduction_factor": "0.2",
@@ -283,7 +282,7 @@
     "models": [
       "GWF_1"
     ],
-    "name": "ims",
+    "name": "ims0",
     "no_ptc": {
       "__type__": "NoPtc",
       "no_ptc_option": null

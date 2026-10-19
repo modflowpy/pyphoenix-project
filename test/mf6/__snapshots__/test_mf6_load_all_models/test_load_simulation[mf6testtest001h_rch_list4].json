@@ -9,11 +9,10 @@
     "models": [
       "<Gwf flow15>"
     ],
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>"
+      "<Ims ims0>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -458,7 +457,7 @@
       "ts_time": "float64[2] 60a7b15f5b46a13c"
     }
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -469,7 +468,7 @@
     "models": [
       "flow15"
     ],
-    "name": "ims",
+    "name": "ims0",
     "outer_dvclose": "9.9999997e-06",
     "outer_maximum": 50,
     "print_option": "all",

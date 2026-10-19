@@ -9,11 +9,10 @@
       "<Gwf fhb2015>"
     ],
     "mxiter": 1,
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>"
+      "<Ims ims0>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -334,7 +333,7 @@
       "ts_time": "float64[4] faf15dbdbd95f01c"
     }
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -345,7 +344,7 @@
     "models": [
       "fhb2015"
     ],
-    "name": "ims",
+    "name": "ims0",
     "outer_dvclose": "0.001",
     "outer_maximum": 120,
     "print_option": "summary",
