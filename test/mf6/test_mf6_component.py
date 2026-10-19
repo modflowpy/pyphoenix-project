@@ -1927,8 +1927,11 @@ def test_sel_by_elevation():
     assert da.z_top.values[:, 0].tolist() == [[10.0, 6.0], [5.0, 3.0]]
     assert da.z_bot.values[:, 0].tolist() == botm.tolist()
     assert da.z.values[:, 0].tolist() == [[7.5, 4.5], [2.5, 1.5]]
-    # top is one layer's worth, not on the grid's layers
-    assert "z_top" not in Gwf(dis=dis).dis.to_dataarray("top").coords
+    # top is the top layer's cells' tops, so it gets layer 0's elevations
+    tda = Gwf(dis=dis).dis.to_dataarray("top")
+    assert tda.z_top.dims == ("layer", "row", "col")
+    assert tda.z_top.values[:, 0].tolist() == [[10.0, 6.0]]
+    assert tda.z_bot.values[:, 0].tolist() == [[5.0, 3.0]]
 
     # z=4 is in layer 1 of column 0 and layer 0 of column 1
     out = da.grid.sel_z(4.0)
@@ -1949,6 +1952,8 @@ def test_sel_by_elevation():
     for name in ("z", "z_top", "z_bot"):
         np.testing.assert_array_equal(grid.dataset[name], da[name])
     np.testing.assert_array_equal(grid.botm.z_top, da.z_top)
+    assert grid.top.z_top.dims == ("row", "col")
+    np.testing.assert_array_equal(grid.top.z_bot, da.z_bot[0])
 
     vertices = [
         [i, x, y] for i, (x, y) in enumerate([(0, 0), (0, 1), (1, 1), (1, 0), (2, 1), (2, 0)])
@@ -1958,6 +1963,7 @@ def test_sel_by_elevation():
     assert vgrid.dataset.z_top.dims == ("layer", "cell")
     assert vgrid.dataset.z_top.values.tolist() == [[10.0, 6.0], [5.0, 3.0]]
     assert vgrid.dataset.grid.sel_z(4.0).layer.values.tolist() == [1, 0]
+    assert vgrid.top.z_bot.values.tolist() == [5.0, 3.0]
 
 
 def test_to_dataarray_cell_centers_vertex_rotated():

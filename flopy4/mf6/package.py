@@ -1000,6 +1000,11 @@ class Package(Component, ABC):
         if cells[0] == "layer" and top is not None and botm is not None:
             if np.size(botm) == np.prod(shape):
                 da = da.assign_coords(z_coords(top, np.reshape(botm, shape), cells))
+            elif da.name == "top" and dis is self and shape[0] == 1:
+                # top is the top layer's cells' tops, so it's on layer 0
+                full = (np.size(botm) // np.prod(shape[1:]), *shape[1:])
+                zc = z_coords(top, np.reshape(botm, full), cells)
+                da = da.assign_coords({k: (d, v[:1]) for k, (d, v) in zc.items()})
         if "col" not in da.dims:
             return da
         projection = grid_mapping(

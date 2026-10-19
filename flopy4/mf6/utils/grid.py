@@ -360,7 +360,10 @@ class StructuredGrid(LegacyStructuredGrid):
         if legacy_top.shape != (self.nrow, self.ncol):
             return legacy_top
 
-        coords = {"x": self._coords["x"], "y": self._coords["y"]}
+        # top is the top layer's cells' tops, so it gets their elevations
+        coords = {
+            k: v.isel(layer=0) if "layer" in v.dims else v for k, v in self._cell_coords().items()
+        }
         return (
             xr.DataArray(legacy_top, coords=coords, dims=dims)
             .set_xindex("x", PandasIndex)
@@ -1069,7 +1072,10 @@ class VertexGrid(LegacyVertexGrid):
         if legacy_top.shape != (self.ncpl,):
             return legacy_top
 
-        coords = {"x": self._coords["x"], "y": self._coords["y"]}
+        # top is the top layer's cells' tops, so it gets their elevations
+        coords = {
+            k: v.isel(layer=0) if "layer" in v.dims else v for k, v in self._cell_coords().items()
+        }
         return (
             xr.DataArray(legacy_top, coords=coords, dims=dims)
             .set_xindex("x", PandasIndex)
