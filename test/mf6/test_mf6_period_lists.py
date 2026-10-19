@@ -112,6 +112,19 @@ def test_time_series_value_is_nan_with_its_name():
     assert chd.stress_period_data[0][0].head == TimeSeriesRef("ts1")
 
 
+@pytest.mark.parametrize("sparse", [False, True])
+def test_time_series_round_trips_netcdf(tmp_path, sparse):
+    """NetCDF saves a cell without a series as '', which loads as none."""
+    import xarray as xr
+
+    chd = Chd(stress_period_data={0: [((0, 0, 0), "ts1"), ((0, 0, 1), 2.0)]}, dims=DIMS)
+    expected = chd.stress_period_data
+    ds = chd.to_xarray(sparse=sparse)
+    ds.drop_attrs().to_netcdf(path := tmp_path / "chd.nc")
+    chd.from_xarray(xr.load_dataset(path).assign_attrs(ds.attrs))
+    assert chd.stress_period_data == expected
+
+
 def test_no_grid_dims_raises():
     with pytest.raises(ValueError, match="needs the grid's nlay, nrow, ncol"):
         Chd(stress_period_data={0: [((0, 0, 0), 1.0)]}).to_xarray()
