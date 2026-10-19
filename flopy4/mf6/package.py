@@ -1017,7 +1017,8 @@ class Package(Component, ABC):
         variable per column, dense along its rows' key (``grid=True`` for
         the grid through a feature's cell), or with ``sparse=True`` a row
         per entry. ``duplicates`` ("sum", "first", "last") merges rows at
-        one position. See ``flopy4.mf6.period_lists``.
+        one position, keeping the last row's boundname ("first": the first
+        row's). See ``flopy4.mf6.period_lists``.
         """
         import attrs as _attrs
 

@@ -182,6 +182,17 @@ def test_duplicates_merge(how, q):
     assert two_wells().to_xarray(duplicates=how)["q"].values[0, 0, 0, 0] == q
 
 
+@pytest.mark.parametrize("how, name", [("sum", "b"), ("first", "a"), ("last", "b")])
+@pytest.mark.parametrize("by_column", [False, True], ids=["rows", "columns"])
+def test_duplicates_keep_a_boundname(how, name, by_column):
+    spd = {0: [((0, 0, 0), -1.0, (), "a"), ((0, 0, 0), -2.0, (), "b")]}
+    wel = Wel(stress_period_data=spd, boundnames=True, dims=DIMS)
+    if not by_column:
+        tables = wel.__dict__["_stress_period_data"]
+        wel.__dict__["_stress_period_data"] = {k: t.to_items() for k, t in tables.items()}
+    assert wel.to_xarray(duplicates=how).coords["boundname"].values[0, 0, 0, 0] == name
+
+
 def test_duplicates_must_be_known():
     with pytest.raises(ValueError, match="duplicates must be"):
         two_wells().to_xarray(duplicates="mean")

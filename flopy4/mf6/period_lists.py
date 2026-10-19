@@ -19,9 +19,11 @@ in a ``<variable>_ts`` coordinate; boundnames are a ``boundname``
 coordinate.
 
 Two rows at one position raise unless ``duplicates`` ("sum", "first",
-"last") merges them. ``sparse=True`` keeps every row along an ``entry`` dim,
-with period, key and setting as coordinates; rows without a single key
-(HFB, MVR, OC) have only this form.
+"last") merges them. "sum" adds every value column, aux included; a series
+can't be summed. The merged position keeps one boundname: the first row's
+for "first", the last row's for "sum" and "last". ``sparse=True`` keeps
+every row along an ``entry`` dim, with period, key and setting as
+coordinates; rows without a single key (HFB, MVR, OC) have only this form.
 
 Use ``ds["head"]``, not ``ds.head``, which is ``Dataset.head()``.
 

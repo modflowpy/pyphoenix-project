@@ -142,12 +142,12 @@ assert list(wel.stress_period_data) == [0, 1, 2]
 assert wel.stress_period_data[1][0].q == -2.0
 assert len(wel.stress_period_data[2]) == 1
 
-# Summing adds every value column, auxiliary variables too: the merged well's
-# `conc` is 1.0 + 2.0, which suits a mass rate but not a concentration. The
-# merged cell keeps the last row's boundname. Use `"first"`, `"last"` or
-# `sparse=True` where a sum doesn't fit.
+# Summing adds every value column, auxiliary variables too: the merged
+# well's `conc` is 1.0 + 2.0. A merged cell can only keep one boundname, and
+# it keeps the last row's (`"east-2"`, not `"east"`).
 
 assert wel.stress_period_data[2][0].aux == (3.0,)
+assert wel.stress_period_data[2][0].boundname == "east-2"
 
 # A row needs every column. To add a feature in the array view, set all of
 # its variables at the cell: `q` and `conc` here. Setting only some of them
@@ -169,7 +169,9 @@ assert len(wel.stress_period_data[0]) == 3
 # needs to be told what to do:
 #
 # * `duplicates="sum"`, `"first"` or `"last"` merges them into one value per
-#   cell. A time series can't be summed.
+#   cell. `"sum"` adds every value column, auxiliary variables included, and
+#   a time series can't be summed. The merged cell keeps the boundname of the
+#   first row with `"first"`, and of the last row with `"sum"` or `"last"`.
 # * `sparse=True` gives a row per entry instead of a grid: an `entry` dim, with
 #   the period and the cell as coordinates. Every row is kept, and this form
 #   also suits packages whose rows have no single cell (HFB, MVR, OC).
