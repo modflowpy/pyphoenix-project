@@ -28,7 +28,7 @@
     "dis": "<Disv dis>",
     "drn": [],
     "evt": [
-      "<Evta evt0>"
+      "<Evta evta0>"
     ],
     "filename": "biscayne.nam",
     "ghb": [],
@@ -45,7 +45,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rch0>"
+      "<Rcha rcha0>"
     ],
     "riv": [
       "<Riv riv0>"
@@ -117,7 +117,7 @@
       "yv": "float64[121090] 4e315a5063e48f05"
     }
   },
-  "simulation/Biscayne/evt0": {
+  "simulation/Biscayne/evta0": {
     "__type__": "Evta",
     "depth": {
       "0": "float64[1] 3eafb06982d26cb8"
@@ -132,7 +132,7 @@
     "export_array_netcdf": false,
     "filename": "biscayne.evt",
     "fixed_cell": true,
-    "name": "evt0",
+    "name": "evta0",
     "print_flows": false,
     "print_input": false,
     "rate": "3690 chars c757a62f44f5cc32",
@@ -245,7 +245,7 @@
     "head_file": "biscayne.hds",
     "name": "oc"
   },
-  "simulation/Biscayne/rch0": {
+  "simulation/Biscayne/rcha0": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 2,
@@ -257,7 +257,7 @@
     "export_array_netcdf": false,
     "filename": "biscayne.rch",
     "fixed_cell": true,
-    "name": "rch0",
+    "name": "rcha0",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,

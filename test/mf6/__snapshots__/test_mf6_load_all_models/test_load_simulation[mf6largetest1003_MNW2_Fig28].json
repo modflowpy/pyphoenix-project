@@ -42,7 +42,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rch0>"
+      "<Rcha rcha0>"
     ],
     "riv": [],
     "save_flows": false,
@@ -380,7 +380,7 @@
     "head_file": "MNW2-Fig28.hds",
     "name": "oc"
   },
-  "simulation/GWF_1/rch0": {
+  "simulation/GWF_1/rcha0": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -393,7 +393,7 @@
     "export_array_netcdf": false,
     "filename": "MNW2-Fig28.rch",
     "fixed_cell": true,
-    "name": "rch0",
+    "name": "rcha0",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,

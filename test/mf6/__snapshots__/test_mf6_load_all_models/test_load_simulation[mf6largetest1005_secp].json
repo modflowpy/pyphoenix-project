@@ -68,7 +68,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rch0>"
+      "<Rcha rcha0>"
     ],
     "riv": [
       "<Riv riv0>"
@@ -239,7 +239,7 @@
     "head_file": "secp_mf6_secp.hds",
     "name": "oc"
   },
-  "simulation/secp_mf6/rch0": {
+  "simulation/secp_mf6/rcha0": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -252,7 +252,7 @@
     "export_array_netcdf": false,
     "filename": "secp_mf6.rch",
     "fixed_cell": true,
-    "name": "rch0",
+    "name": "rcha0",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,

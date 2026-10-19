@@ -277,13 +277,82 @@
       "__table__": "Tables",
       "ifno": "int64[3] ab2fa50ae23ce035",
       "laktab": [
-        "<Laktab tables0>",
-        "<Laktab tables1>",
-        "<Laktab tables2>"
+        "<Laktab laktab0>",
+        "<Laktab laktab1>",
+        "<Laktab laktab2>"
       ],
       "n": 3
     },
     "ts": []
+  },
+  "simulation/lake0_e/lak0/laktab0": {
+    "__type__": "Laktab",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 1,
+      "nodes": 25,
+      "nrow": 5
+    },
+    "filename": "l1_table.ref",
+    "name": "laktab0",
+    "ncol": 4,
+    "nrow": 7,
+    "table": {
+      "__table__": "Table",
+      "barea": "float64[7] e2ae95720bc6b406",
+      "n": 7,
+      "sarea": "float64[7] fc470b38a497acdf",
+      "stage": "float64[7] e5311854ae781595",
+      "volume": "float64[7] 69e2c7a6ee9f5260"
+    }
+  },
+  "simulation/lake0_e/lak0/laktab1": {
+    "__type__": "Laktab",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 1,
+      "nodes": 25,
+      "nrow": 5
+    },
+    "filename": "l2_table.ref",
+    "name": "laktab1",
+    "ncol": 5,
+    "nrow": 7,
+    "table": {
+      "__table__": "Table",
+      "barea": "float64[7] 13e42d86bd9629d9",
+      "n": 7,
+      "sarea": "float64[7] a54b74cd3d400a7d",
+      "stage": "float64[7] e5311854ae781595",
+      "volume": "float64[7] 52645fd5b65c6a95"
+    }
+  },
+  "simulation/lake0_e/lak0/laktab2": {
+    "__type__": "Laktab",
+    "dims": {
+      "ncelldim": 3,
+      "ncol": 5,
+      "ncpl": 25,
+      "nlay": 1,
+      "nodes": 25,
+      "nrow": 5
+    },
+    "filename": "l3_table.ref",
+    "name": "laktab2",
+    "ncol": 5,
+    "nrow": 9,
+    "table": {
+      "__table__": "Table",
+      "barea": "float64[9] b3a85666b41dc129",
+      "n": 9,
+      "sarea": "float64[9] 4e715807641d89ad",
+      "stage": "float64[9] c61ce31466248039",
+      "volume": "float64[9] f5937ab1287d7009"
+    }
   },
   "simulation/lake0_e/lak0/obs": {
     "__type__": "Obs",
@@ -385,75 +454,6 @@
     "filename": "lake0_embedded.lak.obs",
     "name": "obs",
     "print_input": true
-  },
-  "simulation/lake0_e/lak0/tables0": {
-    "__type__": "Laktab",
-    "dims": {
-      "ncelldim": 3,
-      "ncol": 5,
-      "ncpl": 25,
-      "nlay": 1,
-      "nodes": 25,
-      "nrow": 5
-    },
-    "filename": "l1_table.ref",
-    "name": "tables0",
-    "ncol": 4,
-    "nrow": 7,
-    "table": {
-      "__table__": "Table",
-      "barea": "float64[7] e2ae95720bc6b406",
-      "n": 7,
-      "sarea": "float64[7] fc470b38a497acdf",
-      "stage": "float64[7] e5311854ae781595",
-      "volume": "float64[7] 69e2c7a6ee9f5260"
-    }
-  },
-  "simulation/lake0_e/lak0/tables1": {
-    "__type__": "Laktab",
-    "dims": {
-      "ncelldim": 3,
-      "ncol": 5,
-      "ncpl": 25,
-      "nlay": 1,
-      "nodes": 25,
-      "nrow": 5
-    },
-    "filename": "l2_table.ref",
-    "name": "tables1",
-    "ncol": 5,
-    "nrow": 7,
-    "table": {
-      "__table__": "Table",
-      "barea": "float64[7] 13e42d86bd9629d9",
-      "n": 7,
-      "sarea": "float64[7] a54b74cd3d400a7d",
-      "stage": "float64[7] e5311854ae781595",
-      "volume": "float64[7] 52645fd5b65c6a95"
-    }
-  },
-  "simulation/lake0_e/lak0/tables2": {
-    "__type__": "Laktab",
-    "dims": {
-      "ncelldim": 3,
-      "ncol": 5,
-      "ncpl": 25,
-      "nlay": 1,
-      "nodes": 25,
-      "nrow": 5
-    },
-    "filename": "l3_table.ref",
-    "name": "tables2",
-    "ncol": 5,
-    "nrow": 9,
-    "table": {
-      "__table__": "Table",
-      "barea": "float64[9] b3a85666b41dc129",
-      "n": 9,
-      "sarea": "float64[9] 4e715807641d89ad",
-      "stage": "float64[9] c61ce31466248039",
-      "volume": "float64[9] f5937ab1287d7009"
-    }
   },
   "simulation/lake0_e/npf": {
     "__type__": "Npf",

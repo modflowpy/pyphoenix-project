@@ -266,7 +266,7 @@
     "adv": "<Adv adv>",
     "api": [],
     "cnc": [
-      "<Cnc cnc0>"
+      "<Cnc cnc>"
     ],
     "dependent_variable_scaling": false,
     "dims": {},
@@ -303,7 +303,7 @@
     "name": "adv",
     "scheme": "upstream"
   },
-  "simulation/gwt_henry/cnc0": {
+  "simulation/gwt_henry/cnc": {
     "__type__": "Cnc",
     "_stress_period_data": {
       "0": {
@@ -325,7 +325,7 @@
       "nrow": 1
     },
     "filename": "gwt_henry.cnc",
-    "name": "cnc0",
+    "name": "cnc",
     "print_flows": false,
     "print_input": false,
     "save_flows": false,

@@ -67,7 +67,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rch0>"
+      "<Rcha rcha0>"
     ],
     "riv": [
       "<Riv riv0>"
@@ -201,7 +201,7 @@
     },
     "name": "oc"
   },
-  "simulation/t4_disv/rch0": {
+  "simulation/t4_disv/rcha0": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 2,
@@ -213,7 +213,7 @@
     "export_array_netcdf": false,
     "filename": "t4.rch",
     "fixed_cell": false,
-    "name": "rch0",
+    "name": "rcha0",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,

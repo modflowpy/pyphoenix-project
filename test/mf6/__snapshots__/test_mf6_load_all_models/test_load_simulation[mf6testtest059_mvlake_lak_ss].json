@@ -60,7 +60,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rch0>"
+      "<Rcha rcha0>"
     ],
     "riv": [
       "<Riv riv0>"
@@ -253,7 +253,7 @@
     },
     "name": "oc"
   },
-  "simulation/mv/rch0": {
+  "simulation/mv/rcha0": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -266,7 +266,7 @@
     "export_array_netcdf": false,
     "filename": "mv.rch",
     "fixed_cell": false,
-    "name": "rch0",
+    "name": "rcha0",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,
