@@ -839,6 +839,54 @@ def test_deepcopy_not_from_a_component():
     assert ims2.models[0] is gwf
 
 
+def test_pickle_simulation():
+    """An unpickled simulation is whole: parents, and solutions' models,
+    are its own."""
+    import pickle
+
+    gwf = Gwf(name="flow", dis=Dis(nlay=1, nrow=2, ncol=2))
+    Ic(parent=gwf)
+    sim = Simulation(models=[gwf], solutiongroup=[Ims(models=[gwf])])
+    clone = pickle.loads(pickle.dumps(sim))
+
+    assert clone["flow"].parent is clone
+    assert clone["flow"].ic.parent is clone["flow"]
+    assert clone.solutiongroup[0].models[0] is clone["flow"]
+    assert clone["flow"].solution is clone.solutiongroup[0]
+
+
+def test_pickle_child_detached():
+    """An unpickled child is detached, as a deep copy is, and a solution
+    refers to its models by name rather than taking them along."""
+    import pickle
+
+    gwf = Gwf(name="flow", dis=Dis(nlay=1, nrow=2, ncol=2))
+    ims = Ims(models=[gwf])
+    sim = Simulation(models=[gwf], solutiongroup=[ims])
+
+    gwf2 = pickle.loads(pickle.dumps(gwf))
+    assert gwf2.parent is None
+    assert gwf2.dis.parent is gwf2
+    ims2 = pickle.loads(pickle.dumps(ims))
+    assert ims2.parent is None
+    assert ims2.models == ["flow"]
+    assert gwf.parent is sim
+    assert ims.models == [gwf]
+
+
+def test_copy_shallow():
+    """A shallow copy shares everything and leaves the original alone."""
+    import copy
+
+    gwf = Gwf(name="flow", dis=Dis(nlay=1, nrow=2, ncol=2))
+    sim = Simulation(models=[gwf])
+    clone = copy.copy(gwf)
+
+    assert clone.parent is sim
+    assert clone.dis is gwf.dis
+    assert gwf.dis.parent is gwf
+
+
 def test_deepcopy_child_detached():
     """A copied child doesn't copy its parent: it comes out detached, with
     its own children copied and parented to it."""

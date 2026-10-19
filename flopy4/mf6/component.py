@@ -12,7 +12,7 @@ from attrs import fields
 from flopy4.dimensions import DimensionResolverMixin
 from flopy4.mf6.constants import MF6
 from flopy4.mf6.external import in_write_session, write_session
-from flopy4.mf6.spec import fields_dict
+from flopy4.mf6.spec import fields_dict, reference_names
 from flopy4.mf6.write_context import WriteContext
 from flopy4.spec import is_reference
 from flopy4.uio import IO, Loader, Writer
@@ -550,6 +550,31 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
 
     def __getitem__(self, key):
         return self._children[key]
+
+    def __copy__(self):
+        """A shallow copy, sharing everything, its parent too. (Without
+        this, `copy.copy` would go through `__getstate__`/`__setstate__`
+        and take the original's children for its own.)"""
+        new = type(self).__new__(type(self))
+        new.__dict__.update(self.__dict__)
+        return new
+
+    def __getstate__(self):
+        """Pickle what this component owns, as `__deepcopy__` copies it:
+        not its parent, so it unpickles detached unless its parent was
+        pickled too, and its reference fields by name, so a solution
+        doesn't take its models along. A simulation resolves its
+        solutions' names again when it's unpickled."""
+        state = dict(self.__dict__)
+        state["_parent"] = None
+        for f in attrs.fields(type(self)):  # type: ignore[arg-type]
+            if is_reference(f) and f.name in state:
+                state[f.name] = reference_names(state[f.name])
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self._set_child_parents()
 
     def __deepcopy__(self, memo):
         """Copy what this component owns (its children and values), not

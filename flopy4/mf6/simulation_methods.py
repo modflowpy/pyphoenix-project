@@ -29,6 +29,17 @@ class SimulationMethods:
                 )
             sim.filename = Path("mfsim.nam")
 
+    def __setstate__(self, state) -> None:
+        super().__setstate__(state)  # type: ignore[misc]
+        # solutions are pickled with their models' names (see
+        # Component.__getstate__): resolve them, as loading does
+        sim: "Simulation" = self  # type: ignore[assignment]
+        by_name = {str(m.name).lower(): m for m in sim.models}
+        for sln in sim.solutiongroup:
+            sln.models = [
+                by_name.get(m.lower(), m) if isinstance(m, str) else m for m in sln.models
+            ]
+
     def write(self, *args, **kwargs) -> None:
         """Check the solution group (see `_solution_models`), then write."""
         self._solution_models(check=True)  # type: ignore[misc]
