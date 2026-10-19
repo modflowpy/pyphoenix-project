@@ -748,6 +748,34 @@ def test_solution_models_are_references():
     assert gwf.solution is ims
 
 
+def test_solution_joins_models_simulation(function_tmpdir):
+    """A solution given no parent joins the simulation its models are in."""
+    sim = Simulation(tdis=Time(perlen=[1.0], nstp=[1], tsmult=[1.0]), workspace=function_tmpdir)
+    gwf = _small_gwf(parent=sim, name="flow")
+    ims = Ims(models=[gwf])
+    assert ims.parent is sim
+    assert sim.solutiongroup == [ims]
+    assert gwf.solution is ims
+    sim.write()
+    (row,) = _solutiongroup_rows(function_tmpdir)
+    assert row[2:] == ["flow"]
+
+    # nothing to join: models without a simulation, or names
+    assert Ims(models=[Gwf()]).parent is None
+    assert Ims(models=["flow"]).parent is None
+    # a parent given wins
+    other = Simulation()
+    assert Ims(parent=other, models=[gwf]).parent is other
+    assert len(sim.solutiongroup) == 1
+
+
+def test_solution_models_in_different_simulations():
+    a = Gwf(parent=Simulation(), name="a")
+    b = Gwf(parent=Simulation(), name="b")
+    with pytest.raises(ValueError, match="different simulations"):
+        Ims(models=[a, b])
+
+
 def test_solution_models_repr_eq():
     gwf = Gwf(name="flow")
     ims = Ims(models=[gwf, "other"])
