@@ -806,6 +806,39 @@ def test_deepcopy_simulation():
     assert sim.solutiongroup[0].models[0] is gwf
 
 
+def test_deepcopy_references_any_order():
+    """References are resolved after the copy, so a solution copied
+    before the models it refers to still gets their copies."""
+    import copy
+
+    gwf = Gwf(name="flow")
+    sim = Simulation(models=[gwf], solutiongroup=[Ims(models=[gwf])])
+    # copy the solution group first (fields are copied in __dict__ order)
+    state = dict(sim.__dict__)
+    sim.__dict__.clear()
+    sim.__dict__["solutiongroup"] = state.pop("solutiongroup")
+    sim.__dict__.update(state)
+    clone = copy.deepcopy(sim)
+
+    assert clone.solutiongroup[0].models[0] is clone["flow"]
+
+
+def test_deepcopy_not_from_a_component():
+    """A copy that doesn't start at a component resolves each top-level
+    component's references when it's done: a solution copied before its
+    model keeps the original. (Copy the simulation instead.)"""
+    import copy
+
+    gwf = Gwf(name="flow")
+    ims = Ims(models=[gwf])
+    Simulation(models=[gwf], solutiongroup=[ims])
+
+    gwf2, ims2 = copy.deepcopy([gwf, ims])
+    assert ims2.models[0] is gwf2
+    ims2, gwf2 = copy.deepcopy([ims, gwf])
+    assert ims2.models[0] is gwf
+
+
 def test_deepcopy_child_detached():
     """A copied child doesn't copy its parent: it comes out detached, with
     its own children copied and parented to it."""
