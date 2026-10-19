@@ -403,3 +403,150 @@ def test_write_names_packages_attached_by_assignment(tmp_path):
 
     assert " CHD6 m.chd chd0" in (tmp_path / "m.nam").read_text().splitlines()
     assert (tmp_path / "m.chd").is_file()
+
+
+def test_loads_a_new_model_type(tmp_path):
+    """A `Chf` model (a 1D channel network, `Disv1d`-discretized) writes
+    and loads like any other model type -- guards `flopy4.mf6.__init__`'s
+    `_COMPONENT_MODULES` registration, without which `Simulation.load()`
+    silently drops the model (warns "no field takes models entry CHF6")."""
+    from flopy4.mf6.chf import Chf
+    from flopy4.mf6.chf.dfw import Dfw
+    from flopy4.mf6.chf.disv1d import Disv1d
+    from flopy4.mf6.chf.ic import Ic as ChfIc
+
+    sim = Simulation(name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]))
+    chf = Chf(parent=sim, name="m")
+    Disv1d(
+        parent=chf,
+        nodes=2,
+        nvert=3,
+        vertices=[(0, 0.0, 0.0), (1, 10.0, 0.0), (2, 20.0, 0.0)],
+        cell1d=[(0, 0.5, 2, (0, 1)), (1, 0.5, 2, (1, 2))],
+        bottom=[0.0, 0.0],
+        idomain=[1, 1],
+    )
+    ChfIc(parent=chf, strt=[1.0, 1.0])
+    Dfw(parent=chf, manningsn=[0.035, 0.035])
+    sim.write()
+
+    loaded = Simulation.load(tmp_path / "mfsim.nam")
+
+    assert [type(m).__name__ for m in loaded.models] == ["Chf"]
+    assert loaded.models[0].name == "m"
+    assert loaded.models[0].disv1d.nodes == 2
+
+
+def test_exchange_resolves_cellid_widths_per_model(tmp_path):
+    """A `Chfgwf` exchange's `EXCHANGEDATA` row gives each side's cellid
+    its own model's width (1 for `Chf`'s `disv1d`, 3 for `Gwf`'s `dis`) --
+    guards `LoadContext._exchange_widths()`'s generic `resolve_dims()`
+    lookup, which replaced a hardcoded `.dis` attribute check that only
+    worked for `Gwf`-shaped models."""
+    from flopy4.mf6.chf import Chf
+    from flopy4.mf6.chf.dfw import Dfw
+    from flopy4.mf6.chf.disv1d import Disv1d
+    from flopy4.mf6.chf.ic import Ic as ChfIc
+    from flopy4.mf6.exg.chfgwf import Chfgwf
+
+    sim = Simulation(name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]))
+    chf = Chf(parent=sim, name="chfmodel")
+    Disv1d(
+        parent=chf,
+        nodes=2,
+        nvert=3,
+        vertices=[(0, 0.0, 0.0), (1, 10.0, 0.0), (2, 20.0, 0.0)],
+        cell1d=[(0, 0.5, 2, (0, 1)), (1, 0.5, 2, (1, 2))],
+        bottom=[0.0, 0.0],
+        idomain=[1, 1],
+    )
+    ChfIc(parent=chf, strt=[1.0, 1.0])
+    Dfw(parent=chf, manningsn=[0.035, 0.035])
+
+    gwf = Gwf(parent=sim, name="gwfmodel", dis=Dis(nlay=1, nrow=1, ncol=2))
+    Ic(parent=gwf, strt=1.0)
+    Npf(parent=gwf, icelltype=0, k=1.0)
+
+    Chfgwf(
+        parent=sim,
+        exgmnamea="chfmodel",
+        exgmnameb="gwfmodel",
+        nexg=2,
+        exchangedata=[
+            Chfgwf.Exchangedata(cellidm1=(0,), cellidm2=(0, 0, 0), bedleak=1.0, cfact=1.0),
+            Chfgwf.Exchangedata(cellidm1=(1,), cellidm2=(0, 0, 1), bedleak=1.0, cfact=1.0),
+        ],
+    )
+    sim.write()
+
+    loaded = Simulation.load(tmp_path / "mfsim.nam")
+    rows = loaded.exchanges[0].exchangedata
+
+    assert [(r.cellidm1, r.cellidm2) for r in rows] == [
+        ((0,), (0, 0, 0)),
+        ((1,), (0, 0, 1)),
+    ]
+
+
+def test_loads_cdb_stress_period_data(tmp_path):
+    """`Cdb` (CHF's channel-divergence boundary package) round-trips its
+    stress period data -- the one CHF package type no upstream test
+    exercises at all, so it's otherwise entirely unverified."""
+    from flopy4.mf6.chf import Chf
+    from flopy4.mf6.chf.cdb import Cdb
+    from flopy4.mf6.chf.dfw import Dfw
+    from flopy4.mf6.chf.disv1d import Disv1d
+    from flopy4.mf6.chf.ic import Ic as ChfIc
+
+    sim = Simulation(name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]))
+    chf = Chf(parent=sim, name="m")
+    Disv1d(
+        parent=chf,
+        nodes=2,
+        nvert=3,
+        vertices=[(0, 0.0, 0.0), (1, 10.0, 0.0), (2, 20.0, 0.0)],
+        cell1d=[(0, 0.5, 2, (0, 1)), (1, 0.5, 2, (1, 2))],
+        bottom=[0.0, 0.0],
+        idomain=[1, 1],
+    )
+    ChfIc(parent=chf, strt=[1.0, 1.0])
+    Dfw(parent=chf, manningsn=[0.035, 0.035])
+    Cdb(parent=chf, stress_period_data={0: [[(0,), 0, 1.0]]})
+    sim.write()
+
+    loaded = Simulation.load(tmp_path / "mfsim.nam")
+    (row,) = loaded.models[0].cdb[0].stress_period_data[0]
+
+    assert (row.cellid, row.idcxs, row.width) == ((0,), 0, 1.0)
+
+
+def test_loads_evp_stress_period_data(tmp_path):
+    """`Evp` (CHF's evaporation package) round-trips its stress period
+    data -- the other CHF package type no upstream test exercises at
+    all (alongside `Cdb`), so it's otherwise entirely unverified."""
+    from flopy4.mf6.chf import Chf
+    from flopy4.mf6.chf.dfw import Dfw
+    from flopy4.mf6.chf.disv1d import Disv1d
+    from flopy4.mf6.chf.evp import Evp
+    from flopy4.mf6.chf.ic import Ic as ChfIc
+
+    sim = Simulation(name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]))
+    chf = Chf(parent=sim, name="m")
+    Disv1d(
+        parent=chf,
+        nodes=2,
+        nvert=3,
+        vertices=[(0, 0.0, 0.0), (1, 10.0, 0.0), (2, 20.0, 0.0)],
+        cell1d=[(0, 0.5, 2, (0, 1)), (1, 0.5, 2, (1, 2))],
+        bottom=[0.0, 0.0],
+        idomain=[1, 1],
+    )
+    ChfIc(parent=chf, strt=[1.0, 1.0])
+    Dfw(parent=chf, manningsn=[0.035, 0.035])
+    Evp(parent=chf, stress_period_data={0: [[(0,), 0.01]]})
+    sim.write()
+
+    loaded = Simulation.load(tmp_path / "mfsim.nam")
+    (row,) = loaded.models[0].evp[0].stress_period_data[0]
+
+    assert (row.cellid, row.evaporation) == ((0,), 0.01)

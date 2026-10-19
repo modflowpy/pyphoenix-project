@@ -11,8 +11,8 @@ from flopy4.mf6.gwf import Chd, Gnc
 def _model(ncelldim: int | None):
     """A stand-in model whose discretization has the given cellid width,
     or none at all."""
-    dis = None if ncelldim is None else SimpleNamespace(get_dims=lambda: {"ncelldim": ncelldim})
-    return SimpleNamespace(dis=dis)
+    dims = {} if ncelldim is None else {"ncelldim": ncelldim}
+    return SimpleNamespace(resolve_dims=lambda *_: dims)
 
 
 def test_resolve_absolute_path_as_is(tmp_path):

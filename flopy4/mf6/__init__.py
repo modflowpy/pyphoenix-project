@@ -31,8 +31,8 @@ from flopy4.mf6.netcdf import NetCDFModel
 from flopy4.uio import DEFAULT_REGISTRY
 
 if TYPE_CHECKING:
+    from flopy4.mf6 import chf, exg, gwe, gwf, gwt, prt, simulation
     from flopy4.mf6 import ems as ems
-    from flopy4.mf6 import exg, gwe, gwf, gwt, prt, simulation
     from flopy4.mf6 import ims as ims
     from flopy4.mf6 import tdis as tdis
     from flopy4.mf6 import utl as utl
@@ -43,7 +43,19 @@ if TYPE_CHECKING:
 
 # Modules holding the generated components. Importing them all
 # registers every component class (see FNAMES in component.py).
-_COMPONENT_MODULES = ("exg", "gwe", "gwf", "gwt", "prt", "utl", "simulation", "ems", "ims", "tdis")
+_COMPONENT_MODULES = (
+    "chf",
+    "exg",
+    "gwe",
+    "gwf",
+    "gwt",
+    "prt",
+    "utl",
+    "simulation",
+    "ems",
+    "ims",
+    "tdis",
+)
 
 # Lazy attributes: name -> (module, attribute or None for the module).
 _LAZY = {
@@ -84,6 +96,7 @@ def __dir__():
 
 
 __all__ = [
+    "chf",
     "exg",
     "gwf",
     "gwt",
