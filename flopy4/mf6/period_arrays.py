@@ -1,19 +1,19 @@
 """Period array fields (WELG's q, RCHA's recharge/irch/aux), stored per period.
 
 Each field holds only the periods it's given, keyed by 0-based stress period:
-``{0: arr, 3: arr}``. A period with no key carries the previous one forward,
-as a period block missing from the file does in MF6. Aux nests the same way,
-``aux[kper][name]``.
+``{0: arr, 3: arr}``. Periods fill forward: a period with no key repeats the
+previous one, as a period block missing from the file does in MF6. Aux nests
+the same way, ``aux[kper][name]``.
 
-How a period carries forward depends on the package:
+How a period fills forward depends on the package:
 
 - Grid packages (CHDG, WELG, ...; those with a ``readarraygrid`` option)
   read a period as one unit. Every period block resets the boundary set, so
-  a field missing from a period that's given is empty, not carried. A
+  a field missing from a period that's given is empty, not filled forward. A
   ``None`` period, ``q={3: None}``, is given with no stress: it clears every
   boundary, as an empty period block does. An array that's entirely
   ``FILL_DNODATA`` means the same, and is stored as ``None``.
-- Layer-array packages (RCHA, EVTA, SPCA) carry each array forward on its
+- Layer-array packages (RCHA, EVTA, SPCA) fill each array forward on its
   own until it's given again.
 
 In layer-array packages a period's value can instead be a time-array
@@ -93,7 +93,7 @@ def split_periods(value: Any) -> dict[int, Any]:
     """Split a dense ``(nper, ...)`` array into ``{kper: array}``.
 
     A float period that's entirely ``FILL_DNODATA`` means the period isn't
-    given, so it's dropped and the previous period carries forward. To clear
+    given, so it's dropped and the previous period fills forward. To clear
     a grid package's period, use the dict form. Integer arrays have no such
     value and keep every period.
     """
@@ -164,7 +164,7 @@ def dense(
     (``carry_forward``), or a fill value: ``FILL_DNODATA`` for floats and
     ``FILL_INT64`` for integers. With ``given`` (a grid package's periods,
     over all its fields), a period that's given but missing from ``periods``
-    is filled, not carried: a grid period block replaces the whole period.
+    gets the fill value instead: a grid period block replaces the whole period.
     A ``None`` (cleared) period is filled too. Periods past ``nper`` are
     dropped, with a warning.
     """

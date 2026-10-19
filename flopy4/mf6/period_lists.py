@@ -13,7 +13,7 @@ per aux name and, for keystring packages (SFR, LAK, MAW), per setting. An
 array column (EVT's pxdp) gets a dim for its size (``nseg-1``). Unset
 positions are ``FILL_DNODATA``, ``FILL_INT64`` or ``None``.
 
-Periods carry forward as in MF6: a plain block replaces the last, keystring
+Periods fill forward as in MF6: a plain block replaces the last, keystring
 settings hold until set again. A time-series value is NaN, its series named
 in a ``<variable>_ts`` coordinate; boundnames are a ``boundname``
 coordinate.

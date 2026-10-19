@@ -251,7 +251,7 @@ plot_head(head, workspace)
 # `(nper, nlay, nrow, ncol)` NumPy array.  Cells inactive for a given stress
 # period are set to `FILL_DNODATA`; MODFLOW skips those cells automatically.
 # A period that's entirely `FILL_DNODATA` isn't given, so the previous period
-# carries forward. They also accept a dict of the periods given, e.g.
+# fills forward. They also accept a dict of the periods given, e.g.
 # `{0: head0, 5: head5}`, which is how they're stored.
 
 # update simulation with array based inputs
