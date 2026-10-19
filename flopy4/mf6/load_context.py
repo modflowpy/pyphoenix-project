@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 from os import PathLike
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import attrs
 
@@ -53,13 +53,18 @@ class LoadContext:
     def _exchange_widths(self) -> dict[str, int] | None:
         """The cellid width of each model the exchange connects, keyed
         as a cellid column names it (``"1"``, ``"2"``), or None if not
-        under an exchange or either model has no discretization package."""
+        under an exchange or either model has no discretization package.
+
+        Resolved via `resolve_dims()` (walks the model's children for a
+        dimension provider), not a hardcoded `.dis` attribute, so it
+        works for any grid field name (`disv1d`, `dis2d`, ...), not just
+        `Gwf`-style models."""
         if self.exchange is None:
             return None
         widths = {}
         for key, model in zip(("1", "2"), self.exchange):
-            dis: Any = getattr(model, "dis", None)
-            if dis is None or (width := dis.get_dims().get("ncelldim")) is None:
+            width = model.resolve_dims("ncelldim").get("ncelldim")
+            if width is None:
                 return None
             widths[key] = width
         return widths

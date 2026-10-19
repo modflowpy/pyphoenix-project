@@ -1034,6 +1034,7 @@ _SLN_PREFIX = "sln"
 _DIS = ["flopy4.mf6.dis_methods:DisMethods"]
 _DISV = ["flopy4.mf6.disv_methods:DisvMethods"]
 _DISU = ["flopy4.mf6.disu_methods:DisuMethods"]
+_DISV1D = ["flopy4.mf6.disv1d_methods:Disv1dMethods"]
 _MODEL = ["flopy4.mf6.model_methods:ModelMethods"]
 MIXINS: dict[str, list[str]] = {
     "sim-nam": ["flopy4.mf6.simulation_methods:SimulationMethods"],
@@ -1041,6 +1042,7 @@ MIXINS: dict[str, list[str]] = {
     "gwt-nam": _MODEL,
     "gwe-nam": _MODEL,
     "prt-nam": _MODEL,
+    "chf-nam": _MODEL,
     "sim-tdis": ["flopy4.mf6.tdis_methods:TdisMethods"],
     "utl-ncf": ["flopy4.mf6.utl.ncf_methods:NcfMethods"],
     "utl-ts": ["flopy4.mf6.utl.ts_methods:TsMethods"],
@@ -1055,6 +1057,7 @@ MIXINS: dict[str, list[str]] = {
     "gwe-disu": _DISU,
     "prt-dis": _DIS,
     "prt-disv": _DISV,
+    "chf-disv1d": _DISV1D,
 }
 
 
