@@ -1949,6 +1949,15 @@ def test_sel_by_elevation():
     out = da.grid.sel_world(xs, ys, xr.DataArray([8.0, 1.0], dims="point"))
     assert out.values.tolist() == [0, 3]
 
+    # sel takes z with any other indexers, x/y in the grid's own frame
+    assert da.grid.sel(x=1.5, y=0.5, z=2.0).item() == 3
+    assert da.grid.sel({"x": 1.4, "y": 0.5}, method="nearest", z=2.0).item() == 3
+    assert da.grid.sel(z=4.0).identical(da.grid.sel_z(4.0))
+    assert da.grid.sel(col=1, z=4.0).item() == 1
+    assert da.grid.sel(x=0.5, y=0.5).identical(da.sel(x=0.5, y=0.5))
+    with pytest.raises(KeyError):
+        da.grid.sel(z=7.0)  # above column 1's top
+
     grid = StructuredGrid.from_dis(dis)
     for name in ("z", "z_top", "z_bot"):
         np.testing.assert_array_equal(grid.dataset[name], da[name])

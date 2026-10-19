@@ -9,6 +9,19 @@ class _GridAccessor:
     def __init__(self, obj):
         self._obj = obj
 
+    def sel(self, indexers=None, method=None, tolerance=None, drop=False, **indexers_kwargs):
+        """Select as ``sel`` does, but also by elevation ``z``:
+        ``da.grid.sel(x=..., y=..., z=...)`` is ``sel(da, ...)`` (see
+        ``flopy4.mf6.utils.grid``). z picks the cell containing it in each
+        vertical column left by the other indexers, raising ``KeyError``
+        where there's none. x/y are in the grid's own frame; for world
+        coordinates, use ``sel_world``."""
+        from flopy4.mf6.utils.grid import sel
+
+        return sel(
+            self._obj, indexers, method=method, tolerance=tolerance, drop=drop, **indexers_kwargs
+        )
+
     def sel_world(self, x, y, z=None, **kwargs):
         """Select by world coordinates: ``da.grid.sel_world(x, y)`` is
         ``sel_world(da, x, y)`` (see ``flopy4.mf6.utils.grid``). On a

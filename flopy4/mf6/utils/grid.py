@@ -1665,6 +1665,22 @@ def index_xy(obj):
     return obj
 
 
+def sel(obj, indexers=None, method=None, tolerance=None, drop=False, **indexers_kwargs):
+    """Select from an array (or dataset) as ``obj.sel`` does, but also by
+    elevation ``z``: after the other indexers, the cell containing z in
+    each vertical column left (see ``flopy4.mf6.utils.vertical.sel_z``),
+    raising ``KeyError`` where there's none. ``obj.sel(z=...)`` can't do
+    this, since ``z`` varies by vertical column and has no index. x/y are
+    in the grid's own frame, as with ``sel``; for world coordinates, use
+    ``sel_world``. ``method`` and ``tolerance`` only apply to the other
+    indexers: z is always containment. For a horizontal slice that's NaN
+    where z is outside, use ``sel_z``. Also ``obj.grid.sel(...)``."""
+    indexers = dict(indexers or {}, **indexers_kwargs)
+    z = indexers.pop("z", None)
+    obj = obj.sel(indexers, method=method, tolerance=tolerance, drop=drop)
+    return obj if z is None else sel_z(obj, z, outside="raise")
+
+
 def sel_world(obj, x, y, z=None, **kwargs):
     """Select from an array (or dataset) by world coordinates. On a rotated
     structured grid, x/y are local, so convert to them through the
@@ -1697,8 +1713,7 @@ def sel_world(obj, x, y, z=None, **kwargs):
         x, y = to_local(x, y, proj["xorigin"], proj["yorigin"], proj["angrot"])
         if not isinstance(x, xr.DataArray) and np.ndim(x) == 0:
             x, y = float(x), float(y)
-    obj = obj.sel(x=x, y=y, **kwargs)
-    return obj if z is None else sel_z(obj, z, outside="raise")
+    return sel(obj, x=x, y=y, z=z, **kwargs)
 
 
 def dims_from_grb(grb_path) -> dict:

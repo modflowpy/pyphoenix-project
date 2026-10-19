@@ -10,8 +10,8 @@
 #   centre
 # * lists select every combination of `x` and `y` (an outer product);
 #   DataArrays on a shared dim select one cell per point
-# * elevations: `.grid.sel_world(x, y, z)`, `.grid.sel_z(z)` and
-#   `.grid.mask_z(zmin, zmax)`
+# * elevations: `.grid.sel(..., z=...)`, `.grid.sel_world(x, y, z)`,
+#   `.grid.sel_z(z)` and `.grid.mask_z(zmin, zmax)`
 # * rotated grids: `x`/`y` are in the grid's own frame, so select by world
 #   coordinates with `.grid.sel_world`, or mask on `x_world`/`y_world`
 
@@ -159,6 +159,14 @@ cell = head.grid.sel_world(12.0, 33.0, 15.0)
 assert cell.layer.item() == 1
 assert (cell.z_top.item(), cell.z_bot.item()) == (17.5, 7.5)
 cell
+
+# `.grid.sel` is the keyword form, like `sel`: it takes z alongside any of
+# `sel`'s indexers, and picks the cell containing z in each vertical
+# column they leave. Its x and y are in the grid's own frame, as `sel`'s
+# are; on an unrotated grid like this one, that's the same as world
+# coordinates (see Rotated grids below).
+
+assert head.grid.sel(x=12.0, y=33.0, z=15.0).identical(cell)
 
 # An elevation on the interface between two layers goes to the upper one,
 # as with x and y. An elevation above the top or below the bottom raises
