@@ -39,9 +39,8 @@ class SimulationMethods:
         by name is looked up among the simulation's models, case-insensitively
         as MF6 does. The only solution, listing no models, solves them all.
         With `check`, raise if a solution lists a model the simulation
-        doesn't have or can't solve its type, or if a model is solved by more
-        than one solution, or by none while there are any. Unresolved names
-        stay as given."""
+        doesn't have or can't solve its type, or if a model is solved by no
+        solution or more than one. Unresolved names stay as given."""
         self._children  # names any unnamed models
         by_name = {str(m.name).lower(): m for m in self.models}
         errors = []
@@ -66,7 +65,7 @@ class SimulationMethods:
             return pairs
         for model in self.models:
             claims = [sln.name for sln, models in pairs if any(m is model for m in models)]
-            if not claims and self.solutiongroup:
+            if not claims:
                 errors.append(f"model {model.name!r} isn't solved by any solution")
             elif len(claims) > 1:
                 errors.append(f"model {model.name!r} is solved by more than one solution: {claims}")
