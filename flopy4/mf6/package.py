@@ -781,6 +781,9 @@ class Package(Component, ABC):
             stem = Path(parent.filename or parent.default_filename()).name
             return f"{stem}.{self.name}"
         name = parent.name if parent else self.name
+        siblings = getattr(parent, "_children", {}).values()
+        if any(c is not self and type(c) is type(self) for c in siblings):
+            return f"{name}.{self.name}"  # one of several: gwf.wel0, gwf.wel1
         cls_name = self.__class__.__name__.lower()
         return f"{name}.{cls_name}"
 
@@ -896,11 +899,11 @@ class Package(Component, ABC):
         return to_named_period_dict(value) if f.metadata.get("fk") else to_period_dict(value)
 
     def period_array(
-        self, name: str, nper: Optional[int] = None, carry_forward: bool = True
+        self, name: str, nper: Optional[int] = None, fill_forward: bool = True
     ) -> "np.ndarray | dict[str, np.ndarray] | None":
         """A period array field as a dense ``(nper, ...)`` array.
 
-        With ``carry_forward`` (the default), each period holds the values in
+        With ``fill_forward`` (the default), each period holds the values in
         effect then. Without it, periods the field doesn't give are filled
         with ``FILL_DNODATA`` (floats) or ``FILL_INT64`` (integers). In a grid
         package a given period replaces the previous one as a whole, so a
@@ -923,13 +926,13 @@ class Package(Component, ABC):
             nper = self.resolve_dims("nper").get("nper") or max(given or periods) + 1
         shape = period_shape(self, f)
         if not f.metadata.get("fk"):
-            return dense(periods, nper, carry_forward, given, shape)
+            return dense(periods, nper, fill_forward, given, shape)
         names = list(dict.fromkeys(n for arrays in periods.values() for n in arrays))
         return {
             n: dense(
                 {k: arrays[n] for k, arrays in periods.items() if n in arrays},
                 nper,
-                carry_forward,
+                fill_forward,
                 given,
                 shape,
             )
@@ -1031,7 +1034,8 @@ class Package(Component, ABC):
         variable per column, dense along its rows' key (``grid=True`` for
         the grid through a feature's cell), or with ``sparse=True`` a row
         per entry. ``duplicates`` ("sum", "first", "last") merges rows at
-        one position. See ``flopy4.mf6.period_lists``.
+        one position, keeping the last row's boundname ("first": the first
+        row's). See ``flopy4.mf6.period_lists``.
         """
         import attrs as _attrs
 

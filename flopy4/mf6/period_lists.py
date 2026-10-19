@@ -13,15 +13,17 @@ per aux name and, for keystring packages (SFR, LAK, MAW), per setting. An
 array column (EVT's pxdp) gets a dim for its size (``nseg-1``). Unset
 positions are ``FILL_DNODATA``, ``FILL_INT64`` or ``None``.
 
-Periods carry forward as in MF6: a plain block replaces the last, keystring
+Periods fill forward as in MF6: a plain block replaces the last, keystring
 settings hold until set again. A time-series value is NaN, its series named
 in a ``<variable>_ts`` coordinate; boundnames are a ``boundname``
 coordinate.
 
 Two rows at one position raise unless ``duplicates`` ("sum", "first",
-"last") merges them. ``sparse=True`` keeps every row along an ``entry`` dim,
-with period, key and setting as coordinates; rows without a single key
-(HFB, MVR, OC) have only this form.
+"last") merges them. "sum" adds every value column, aux included; a series
+can't be summed. The merged position keeps one boundname: the first row's
+for "first", the last row's for "sum" and "last". ``sparse=True`` keeps
+every row along an ``entry`` dim, with period, key and setting as
+coordinates; rows without a single key (HFB, MVR, OC) have only this form.
 
 Use ``ds["head"]``, not ``ds.head``, which is ``Dataset.head()``.
 
@@ -898,7 +900,9 @@ def _period_rows(
             raise ValueError(f"{c.field.name} is missing some of its values in period {p}")
         if got is not None and not isinstance(got, np.ndarray) and all(v is None for v in got):
             got = None
-        if (got is None or (isinstance(got, list) and None in got)) and not _may_be_absent(c.field):
+        # an array column (aux, pxdp) may be absent, but not from some rows only
+        some = isinstance(got, list) and None in got
+        if (got is None or some) and not _may_be_absent(c.field) or some and (c.aux or c.size):
             q = pos[0] if got is None else pos[got.index(None)]
             raise ValueError(
                 f"{c.field.name} has no value at {tuple(q.tolist())} in period {p}, "

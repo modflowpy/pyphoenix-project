@@ -4,7 +4,7 @@ import pytest
 
 from flopy4.mf6._types import TimeSeriesRef
 from flopy4.mf6.constants import FILL_DNODATA
-from flopy4.mf6.gwf import Chd, Evt, Hfb, Lak, Maw, Mvr, Oc, Sfr, Uzf, Wel
+from flopy4.mf6.gwf import Chd, Drn, Evt, Hfb, Lak, Maw, Mvr, Oc, Sfr, Uzf, Wel
 from flopy4.mf6.item_table import ItemTable
 from flopy4.mf6.utl import Tvk
 
@@ -130,6 +130,41 @@ def test_no_grid_dims_raises():
         Chd(stress_period_data={0: [((0, 0, 0), 1.0)]}).to_xarray()
 
 
+def set_at(ds, names, at, value):
+    for name in names:
+        var = ds[name].copy()
+        var[at] = value
+        ds[name] = var
+    return ds
+
+
+@pytest.mark.parametrize(
+    "pkg, names, missing",
+    [
+        (Drn(stress_period_data={0: [((0, 0, 0), 1.0, 10.0)]}, dims=DIMS), ["elev"], "cond"),
+        (
+            Wel(auxiliary=["conc"], stress_period_data={0: [((0, 0, 0), -1.0, (5.0,))]}, dims=DIMS),
+            ["q"],
+            "aux",
+        ),
+        (
+            Evt(
+                nseg=3,
+                stress_period_data={0: [((0, 0, 0), 1.0, 0.1, 2.0, (0.3, 0.6), (0.5, 0.2))]},
+                dims=DIMS,
+            ),
+            ["surface", "rate", "depth"],
+            "pxdp",
+        ),
+    ],
+    ids=["column", "aux", "array-column"],
+)
+def test_cell_missing_a_column_raises(pkg, names, missing):
+    ds = set_at(pkg.to_xarray(), names, (0, 0, 1, 2), 1.0)
+    with pytest.raises(ValueError, match=f"{missing} has no value at \\(0, 1, 2\\) in period 0"):
+        pkg.from_xarray(ds)
+
+
 # --- duplicates -------------------------------------------------------------
 
 
@@ -145,6 +180,17 @@ def test_two_rows_at_a_cell_raise():
 @pytest.mark.parametrize("how, q", [("sum", -3.0), ("first", -1.0), ("last", -2.0)])
 def test_duplicates_merge(how, q):
     assert two_wells().to_xarray(duplicates=how)["q"].values[0, 0, 0, 0] == q
+
+
+@pytest.mark.parametrize("how, name", [("sum", "b"), ("first", "a"), ("last", "b")])
+@pytest.mark.parametrize("by_column", [False, True], ids=["rows", "columns"])
+def test_duplicates_keep_a_boundname(how, name, by_column):
+    spd = {0: [((0, 0, 0), -1.0, (), "a"), ((0, 0, 0), -2.0, (), "b")]}
+    wel = Wel(stress_period_data=spd, boundnames=True, dims=DIMS)
+    if not by_column:
+        tables = wel.__dict__["_stress_period_data"]
+        wel.__dict__["_stress_period_data"] = {k: t.to_items() for k, t in tables.items()}
+    assert wel.to_xarray(duplicates=how).coords["boundname"].values[0, 0, 0, 0] == name
 
 
 def test_duplicates_must_be_known():
