@@ -631,16 +631,17 @@ def test_several_packages_of_a_type_write(function_tmpdir):
         assert (function_tmpdir / name).exists()
 
 
+def _block_rows(workspace, block):
+    """The rows between BEGIN/END `block` in `mfsim.nam`."""
+    lines = [ln.strip().upper() for ln in (Path(workspace) / "mfsim.nam").read_text().splitlines()]
+    start = next(i for i, ln in enumerate(lines) if ln.startswith(f"BEGIN {block}"))
+    end = next(i for i, ln in enumerate(lines) if ln.startswith(f"END {block}"))
+    raw = (Path(workspace) / "mfsim.nam").read_text().splitlines()
+    return [ln.split() for ln in raw[start + 1 : end] if ln.strip()]
+
+
 def _solutiongroup_rows(workspace):
-    """The rows between BEGIN/END SOLUTIONGROUP in `mfsim.nam`."""
-    lines = (Path(workspace) / "mfsim.nam").read_text().splitlines()
-    start = next(
-        i for i, ln in enumerate(lines) if ln.strip().upper().startswith("BEGIN SOLUTIONGROUP")
-    )
-    end = next(
-        i for i, ln in enumerate(lines) if ln.strip().upper().startswith("END SOLUTIONGROUP")
-    )
-    return [ln.split() for ln in lines[start + 1 : end] if ln.strip()]
+    return _block_rows(workspace, "SOLUTIONGROUP")
 
 
 def _small_gwf(**kwargs):
@@ -1000,6 +1001,108 @@ def test_solution_models_dangling(function_tmpdir):
     sim["flow"] = _small_gwf()
     with pytest.raises(ValueError, match="lists model 'flow', which isn't in the simulation"):
         sim.write()
+
+
+def _gwfgwf(**kwargs):
+    from flopy4.mf6.exg.gwfgwf import Gwfgwf
+
+    return Gwfgwf(exchangedata=[((0, 0, 1), (0, 0, 0), 1, 0.5, 0.5, 1.0)], **kwargs)
+
+
+def test_exchange_models_by_object_write(function_tmpdir):
+    """An exchange's models are written by name, looked up when written,
+    so models named on attaching them are written by those names."""
+    left, right = _small_gwf(), _small_gwf()
+    exg = _gwfgwf(exgmnamea=left, exgmnameb=right)
+    sim = Simulation(
+        tdis=Time(perlen=[1.0], nstp=[1], tsmult=[1.0]),
+        workspace=function_tmpdir,
+        models=[left, right],
+        exchanges=[exg],
+        solutiongroup=[Ims()],
+    )
+    sim.write()
+
+    (row,) = _block_rows(function_tmpdir, "EXCHANGES")
+    assert row[0] == "GWF6-GWF6"
+    assert row[2:] == ["gwf0", "gwf1"]
+    assert "exgmnamea='gwf0', exgmnameb='gwf1'" in repr(exg)
+    assert left.exchanges == [exg]
+    assert right.exchanges == [exg]
+
+
+def test_exchange_models_are_references():
+    """Naming a model in an exchange doesn't make the exchange its
+    parent; an exchange given no parent joins its models' simulation."""
+    sim = Simulation()
+    a, b = Gwf(parent=sim, name="a"), Gwf(parent=sim, name="b")
+    exg = _gwfgwf(exgmnamea=a, exgmnameb=b)
+
+    assert exg.parent is sim
+    assert sim.exchanges == [exg]
+    assert a.parent is sim
+    assert a.name == "a"
+    assert b.exchanges == [exg]
+    assert Gwf().exchanges == []
+
+
+def test_exchange_models_load(function_tmpdir):
+    """A loaded exchange holds the loaded models, as a built one does."""
+    Simulation(
+        tdis=Time(perlen=[1.0], nstp=[1], tsmult=[1.0]),
+        workspace=function_tmpdir,
+        models=[_small_gwf(name="a"), _small_gwf(name="b")],
+        exchanges=[_gwfgwf(exgmnamea="A", exgmnameb="b")],
+        solutiongroup=[Ims()],
+    ).write()
+    sim = Simulation.load(Path(function_tmpdir) / "mfsim.nam")
+    (exg,) = sim.exchanges
+    assert exg.exgmnamea is sim["a"]
+    assert exg.exgmnameb is sim["b"]
+
+
+def _gwfgwt(**kwargs):
+    from flopy4.mf6.exg.gwfgwt import Gwfgwt
+
+    return Gwfgwt(**kwargs)
+
+
+@pytest.mark.parametrize(
+    "build, match",
+    [
+        (lambda a, b: _gwfgwf(exgmnamea="a"), "has no model b"),
+        (lambda a, b: _gwfgwf(exgmnamea="a", exgmnameb="nope"), "names model 'nope'"),
+        (lambda a, b: _gwfgwt(exgmnamea=a, exgmnameb=b), "needs a GWT model b, not 'b'"),
+    ],
+)
+def test_exchange_models_invalid(function_tmpdir, build, match):
+    a, b = _small_gwf(name="a"), _small_gwf(name="b")
+    sim = Simulation(
+        tdis=Time(perlen=[1.0], nstp=[1], tsmult=[1.0]),
+        workspace=function_tmpdir,
+        models=[a, b],
+        exchanges=[build(a, b)],
+        solutiongroup=[Ims()],
+    )
+    with pytest.raises(ValueError, match=match):
+        sim.write()
+
+
+def test_exchange_models_copy_and_pickle():
+    """A copied or unpickled simulation's exchanges connect its own
+    models; a lone copy shares the models, a lone unpickling names them."""
+    import copy
+    import pickle
+
+    a, b = Gwf(name="a"), Gwf(name="b")
+    exg = _gwfgwf(exgmnamea=a, exgmnameb=b)
+    sim = Simulation(models=[a, b], exchanges=[exg])
+    for clone in (copy.deepcopy(sim), pickle.loads(pickle.dumps(sim))):
+        (cexg,) = clone.exchanges
+        assert cexg.exgmnamea is clone["a"]
+        assert cexg.exgmnameb is clone["b"]
+    assert copy.deepcopy(exg).exgmnamea is a
+    assert pickle.loads(pickle.dumps(exg)).exgmnamea == "a"
 
 
 def test_init_big_sim():

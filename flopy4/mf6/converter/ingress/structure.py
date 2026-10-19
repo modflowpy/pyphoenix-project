@@ -573,16 +573,18 @@ def _apply_binding_terms(child: Any, terms: list, models: list) -> None:
 
     if not terms:
         return
+    # the models loaded so far (case-insensitively, as MF6 does), so a
+    # loaded exchange or solution holds them as a built one does; unknown
+    # names stay
+    by_name = {str(model.name).lower(): model for model in models}
+    found = [by_name.get(str(t).lower(), str(t)) for t in terms]
     if isinstance(child, Exchange):
-        if len(terms) > 0:
-            child.exgmnamea = str(terms[0])
-        if len(terms) > 1:
-            child.exgmnameb = str(terms[1])
+        if len(found) > 0:
+            child.exgmnamea = found[0]
+        if len(found) > 1:
+            child.exgmnameb = found[1]
     elif isinstance(child, Solution):
-        # the models loaded so far (case-insensitively, as MF6 does), so a
-        # loaded solution holds them as a built one does; unknown names stay
-        by_name = {str(model.name).lower(): model for model in models}
-        child.models = [by_name.get(str(t).lower(), str(t)) for t in terms]
+        child.models = found
 
 
 def _disambiguate_ga_variant(candidates: "list[type[Component]]", path: Path) -> "type[Component]":
