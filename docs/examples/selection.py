@@ -117,9 +117,11 @@ assert outer.dims == ("layer", "row", "col")
 assert outer.shape == (3, 2, 2)
 
 # To select one cell per point, pass x and y as DataArrays on a shared
-# dim, here `point`. Each point gets its own vertical column, and the
-# result is on `point` instead of `row` and `col`. This is xarray's
+# dim. Each point gets its own vertical column, and the result is on that
+# dim instead of `row` and `col`. This is xarray's
 # [vectorized indexing](https://docs.xarray.dev/en/stable/user-guide/indexing.html#vectorized-indexing).
+# The dim's name is up to you: `point` here, as in xarray's own examples
+# (`points`), but `well` or `obs` work just as well.
 
 px = xr.DataArray(xs, dims="point")
 py = xr.DataArray(ys, dims="point")
@@ -132,10 +134,20 @@ points
 
 # ### Selecting by elevation
 #
-# Elevation isn't an index like `x` and `y`: cells' tops and bottoms vary
-# from vertical column to vertical column, so `head.sel(z=...)` doesn't
-# work. The `.grid` accessor selects by elevation instead, from the
-# arrays' `z_top` and `z_bot` coordinates.
+# `sel` only works through an index. `x` and `y` have one, since each is
+# 1-D, on `col` or `row`. `z` doesn't: cells' tops and bottoms vary from
+# vertical column to vertical column, so it's on `(layer, row, col)`, and
+# xarray's default index only takes 1-D coordinates. So `head.sel(z=...)`
+# raises `KeyError`, alone or with `x` and `y`, even on a single vertical
+# column.
+
+try:
+    head.sel(x=12.0, y=33.0, z=15.0)
+except KeyError as e:
+    print("KeyError:", e)
+
+# The `.grid` accessor selects by elevation instead, from the arrays'
+# `z_top` and `z_bot` coordinates.
 #
 # `.grid.sel_world(x, y, z)` gives the cell containing a point in 3D: the
 # vertical column at x/y, then the cell in it whose top and bottom
