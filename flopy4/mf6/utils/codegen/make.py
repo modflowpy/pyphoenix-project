@@ -1291,6 +1291,12 @@ def _child_field_spec(
 # Package types sharing one model field: a model has one discretization.
 _SLOTS = {"DIS6": "dis", "DISV6": "dis", "DISU6": "dis"}
 
+# Discretization slot names, in field order after `_SLOTS` aliasing. Every
+# model has exactly one of these; whichever is present must come first,
+# since MF6's own NAM-file package order is load-order sensitive (a package
+# with a cellid-typed field needs the grid resolved before it loads).
+_GRID_SLOTS = ("dis", "disv1d", "dis2d", "disv2d")
+
 
 def _model_package_specs(
     component: Component, block_name: str, targets: list[str], dfns: Mapping[str, Component]
@@ -1313,8 +1319,10 @@ def _model_package_specs(
             raise ValueError(f"{component.name}: package {t} has no ftype")
         name = _SLOTS.get(ftype, ftype.lower().removesuffix("6"))
         slots.setdefault(name, []).append(t)
-    if "dis" in slots:
-        slots = {"dis": slots.pop("dis"), **slots}
+    for grid_name in _GRID_SLOTS:
+        if grid_name in slots:
+            slots = {grid_name: slots.pop(grid_name), **slots}
+            break
     specs, imports = [], []
     for name, members in slots.items():
         if len({bool(dfns[t].multi) for t in members}) > 1:

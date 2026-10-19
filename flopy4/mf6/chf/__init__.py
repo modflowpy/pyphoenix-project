@@ -81,11 +81,11 @@ class Chf(ModelMethods, Model):
         converter=Newtonoptions.convert,
         block="options",
     )
+    disv1d: Optional[Disv1d] = child(block="packages")
     cdb: list[Cdb] = child(block="packages", default=attrs.Factory(list))
     chd: list[Chd] = child(block="packages", default=attrs.Factory(list))
     cxs: Optional[Cxs] = child(block="packages")
     dfw: Optional[Dfw] = child(block="packages")
-    disv1d: Optional[Disv1d] = child(block="packages")
     evp: list[Evp] = child(block="packages", default=attrs.Factory(list))
     flw: list[Flw] = child(block="packages", default=attrs.Factory(list))
     ic: Optional[Ic] = child(block="packages")
