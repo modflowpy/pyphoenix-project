@@ -1900,7 +1900,7 @@ def test_gwf_oc_period_variations(function_tmpdir):
       sentinel. MF6 OC persists settings at whole-period-block granularity,
       not per line: an explicit period block replaces the previous block's
       settings entirely, so SAVE HEAD ALL must be repeated here for head to
-      keep being saved (it then carries forward to period 2 on its own).
+      keep being saved (it then fills forward to period 2 on its own).
 
     Asserts the CBC has exactly 1 FLOW-JA-FACE record (the period 1 block
     halts the budget setting) and the HDS has records for all three periods.

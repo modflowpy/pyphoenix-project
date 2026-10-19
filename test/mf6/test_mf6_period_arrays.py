@@ -67,8 +67,8 @@ def test_dense_carries_forward():
     np.testing.assert_array_equal(out[3:], [[3.0, 4.0]] * 2)
 
 
-def test_dense_without_carry_forward():
-    out = dense({1: np.array([1, 2])}, nper=3, carry_forward=False)
+def test_dense_without_fill_forward():
+    out = dense({1: np.array([1, 2])}, nper=3, fill_forward=False)
     assert out.dtype == np.int64
     np.testing.assert_array_equal(out, [[FILL_INT64] * 2, [1, 2], [FILL_INT64] * 2])
 
@@ -84,10 +84,10 @@ def test_welg_period_array_dense_input():
     q[0] = [NODATA, -1.0, NODATA, NODATA]
     welg = Welg(q=q)
     np.testing.assert_array_equal(welg.period_array("q", nper=3)[2], [NODATA, -1.0, NODATA, NODATA])
-    out = welg.period_array("q", carry_forward=False)
+    out = welg.period_array("q", fill_forward=False)
     assert out.shape == (1, 4)  # nper defaults to one past the last given period
     np.testing.assert_array_equal(
-        welg.period_array("q", nper=3, carry_forward=False)[1], [NODATA] * 4
+        welg.period_array("q", nper=3, fill_forward=False)[1], [NODATA] * 4
     )
 
 
@@ -134,7 +134,7 @@ def test_welg_aux_missing_from_given_period_is_empty():
     np.testing.assert_array_equal(conc[:, 0], [5.0, NODATA, NODATA])
 
 
-def test_rcha_arrays_carry_forward_separately():
+def test_rcha_arrays_fill_forward_separately():
     rcha = Rcha(
         irch={0: np.array([0, 1])},
         recharge={0: np.array([0.1, 0.2]), 2: np.array([0.3, 0.4])},

@@ -896,11 +896,11 @@ class Package(Component, ABC):
         return to_named_period_dict(value) if f.metadata.get("fk") else to_period_dict(value)
 
     def period_array(
-        self, name: str, nper: Optional[int] = None, carry_forward: bool = True
+        self, name: str, nper: Optional[int] = None, fill_forward: bool = True
     ) -> "np.ndarray | dict[str, np.ndarray] | None":
         """A period array field as a dense ``(nper, ...)`` array.
 
-        With ``carry_forward`` (the default), each period holds the values in
+        With ``fill_forward`` (the default), each period holds the values in
         effect then. Without it, periods the field doesn't give are filled
         with ``FILL_DNODATA`` (floats) or ``FILL_INT64`` (integers). In a grid
         package a given period replaces the previous one as a whole, so a
@@ -923,13 +923,13 @@ class Package(Component, ABC):
             nper = self.resolve_dims("nper").get("nper") or max(given or periods) + 1
         shape = period_shape(self, f)
         if not f.metadata.get("fk"):
-            return dense(periods, nper, carry_forward, given, shape)
+            return dense(periods, nper, fill_forward, given, shape)
         names = list(dict.fromkeys(n for arrays in periods.values() for n in arrays))
         return {
             n: dense(
                 {k: arrays[n] for k, arrays in periods.items() if n in arrays},
                 nper,
-                carry_forward,
+                fill_forward,
                 given,
                 shape,
             )

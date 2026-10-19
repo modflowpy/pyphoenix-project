@@ -150,7 +150,7 @@ def _fill_value(arr: Any) -> Any:
 def dense(
     periods: Mapping[int, Any],
     nper: int,
-    carry_forward: bool = True,
+    fill_forward: bool = True,
     given: Optional[list[int]] = None,
     shape: Optional[tuple[int, ...]] = None,
 ) -> np.ndarray:
@@ -161,7 +161,7 @@ def dense(
     ``shape``, which must then be given.
 
     A period missing from ``periods`` holds the last value at or before it
-    (``carry_forward``), or a fill value: ``FILL_DNODATA`` for floats and
+    (``fill_forward``), or a fill value: ``FILL_DNODATA`` for floats and
     ``FILL_INT64`` for integers. With ``given`` (a grid package's periods,
     over all its fields), a period that's given but missing from ``periods``
     gets the fill value instead: a grid period block replaces the whole period.
@@ -191,7 +191,7 @@ def dense(
     for i, kper in enumerate(starts):
         if kper >= nper:
             break
-        stop = (starts[i + 1] if i + 1 < len(starts) else nper) if carry_forward else kper + 1
+        stop = (starts[i + 1] if i + 1 < len(starts) else nper) if fill_forward else kper + 1
         if periods.get(kper) is not None:
             out[kper:stop] = np.asarray(periods[kper])
     return out

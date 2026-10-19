@@ -1242,7 +1242,7 @@ def test_rcha_irch_round_trip():
 def test_welg_cleared_period_round_trip():
     """A grid period whose stress arrays are all DNODATA clears every boundary:
     an empty period block, which loads back as a clear. A period not given
-    carries forward."""
+    fills forward."""
     from flopy4.mf6._types import array_eq
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.converter.ingress.structure import structure_component
