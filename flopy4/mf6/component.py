@@ -352,14 +352,10 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         are small, so there's no need for the complexity of cache
         invalidation.
 
-        Re-runs `_set_child_parents()` first (idempotent) so every reader
-        sees correctly-named children even if a list field was
-        reassigned via plain attribute set (`gwf.wel = [...]`) rather than
-        construction or `__setitem__` -- the one case that otherwise skips
-        attaching, leaving the new children unnamed (`None`) until now.
-        Centralized here, rather than in each consumer
-        (`write()`, `NetCDFModel.from_model()`, ...), so nothing can read a
-        stale name depending on call order.
+        Re-runs `_set_child_parents()` first (idempotent): child fields
+        attach what's assigned or added to them (see `_attach_field()`),
+        but the children in a list's rows (LAK's, SFR's tables) are
+        attached only here, when a row is changed in place.
 
         Detects child fields via `flopy4.attrs_xarray.child_field_candidates()`.
         """
@@ -498,6 +494,21 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         if self._parent is not None:
             self._attach_to_parent_field(self._parent)
         self._set_child_parents()
+
+    def _attach_field(self, name: str, value: Any) -> Any:
+        """Set the child field `name` to `value`, attaching and naming its
+        children as construction does (`gwf.wel = [...]`, `dis.ncf = ncf`).
+        A name clash raises, leaving the field as it was. Called by the
+        field's `on_setattr` hook, which returns `value` for attrs to set
+        again."""
+        old = self.__dict__.get(name)
+        object.__setattr__(self, name, value)
+        try:
+            self._set_child_parents()
+        except Exception:
+            object.__setattr__(self, name, old)
+            raise
+        return value
 
     def _attach_to_parent_field(self, parent: "Component") -> None:
         """Bottom-up counterpart to `_set_child_parents()`: when this

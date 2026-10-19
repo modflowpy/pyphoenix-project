@@ -1,5 +1,7 @@
 """Test basic MF6 component behaviors like initialization, modification, access."""
 
+import copy
+import pickle
 from pathlib import Path
 
 import numpy as np
@@ -428,9 +430,40 @@ def test_child_names_plain_assignment():
     gwf = Gwf(name="model")
     gwf.wel = [_wel(), _wel()]
 
-    assert gwf.wel[0].name is None  # attached on the next access
-    assert list(gwf) == ["wel0", "wel1"]
+    assert [w.name for w in gwf.wel] == ["wel0", "wel1"]
     assert gwf.wel[0].filename == Path("model.wel0.wel")
+
+
+def test_child_names_list_mutation():
+    gwf = Gwf(name="model", wel=[_wel()])
+    gwf.wel.append(w := _wel())
+    gwf.wel.insert(0, x := _wel())
+    gwf.wel += [y := _wel()]
+
+    assert (w.name, x.name, y.name) == ("wel1", "wel2", "wel3")
+    assert w.parent is gwf
+
+
+def test_child_names_assignment_clash():
+    gwf = Gwf(wel=[_wel()])
+    old = gwf.wel
+
+    with pytest.raises(ValueError, match="collides"):
+        gwf.wel.append(_wel(name="wel0"))
+    with pytest.raises(ValueError, match="collides"):
+        gwf.wel = [_wel(name="a"), _wel(name="a")]
+    assert gwf.wel is old
+    assert [w.name for w in gwf.wel] == ["wel0"]
+
+
+def test_child_list_copies():
+    gwf = Gwf(wel=[_wel()])
+
+    for copied in (copy.deepcopy(gwf), pickle.loads(pickle.dumps(gwf))):
+        copied.wel.append(w := _wel())
+        assert w.parent is copied
+        assert w.name == "wel1"
+    assert len(gwf.wel) == 1
 
 
 def test_setitem_names():
@@ -1627,12 +1660,11 @@ def test_ncf_subpackage_default_filename(function_tmpdir):
     dis = Dis(nlay=1, nrow=1, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=0.0)
     dis.filename = str(function_tmpdir / "gwf.dis")
     dis.ncf = ncf
-    assert ncf.filename == Path("ncf.ncf")  # not attached until dis is read
+    assert ncf.filename == Path("gwf.ncf")
 
     with set_dir(function_tmpdir):
         dis.write()
 
-    assert ncf.filename == Path("gwf.ncf")
     assert f"NCF6 FILEIN {ncf.filename.name}" in (function_tmpdir / "gwf.dis").read_text()
 
 
