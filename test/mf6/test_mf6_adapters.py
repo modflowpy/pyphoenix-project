@@ -76,7 +76,7 @@ def test_flopy3_model(tmp_path):
     ic = Ic(dims=dims)
     oc = Oc(dims=dims, stress_period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]})
     npf = Npf(dims=dims)
-    chd = Chd(dims=dims, stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]]})
+    chd = Chd(name="north", dims=dims, stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]]})
 
     gwf = Gwf(
         dis=dis,
@@ -88,7 +88,7 @@ def test_flopy3_model(tmp_path):
     )
 
     # in field order, the DFN's but for DIS first
-    pnames = ["dis", "chd0", "ic", "npf", "oc"]
+    pnames = ["dis", "north", "ic", "npf", "oc"]
     ptypes = ["DIS", "CHD", "IC", "NPF", "OC"]
 
     gwf3 = Flopy3Model(model=gwf, modeltime=time, ims=ims)
@@ -110,7 +110,7 @@ def test_flopy3_model(tmp_path):
         assert p.package_type == ptypes[i]
         assert p.parent is gwf3
         # TODO oc?
-        if p.name == "chd0" or p.name == "oc":
+        if p.name == "north" or p.name == "oc":
             assert p.has_stress_period_data
         else:
             assert not p.has_stress_period_data
@@ -220,6 +220,9 @@ def test_flopy3_package(tmp_path):
     # model packages
     assert dis3.name == "dis"
     assert dis3.package_type == "DIS"
+    # unattached, so unnamed: type and name come from the class
+    npf3 = Flopy3Package(package=Npf(dims=dims), modelgrid=gwf3.modelgrid)
+    assert (npf3.name, npf3.package_type) == ("npf", "NPF")
     assert not dis3.has_stress_period_data
 
     # package data
