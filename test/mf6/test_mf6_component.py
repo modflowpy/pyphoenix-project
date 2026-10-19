@@ -703,6 +703,25 @@ def test_solution_models_empty_model_by_name():
     assert gwf.solution is ims
 
 
+def test_load_several_solution_groups(function_tmpdir):
+    """Several solution groups aren't supported: loading them is an error,
+    rather than merging them into one, which MF6 would run differently."""
+    _write_sim(
+        function_tmpdir,
+        [_small_gwf(name="a"), _small_gwf(name="b")],
+        [Ims(models=["a"]), Ims(models=["b"])],
+    )
+    nam = Path(function_tmpdir) / "mfsim.nam"
+    text = nam.read_text()
+    second = next(ln for ln in text.splitlines() if ln.split()[-1:] == ["b"] and "IMS6" in ln)
+    text = text.replace(second + "\n", "")
+    text += f"\nBEGIN SOLUTIONGROUP 2\n{second}\nEND SOLUTIONGROUP 2\n"
+    nam.write_text(text)
+
+    with pytest.raises(ValueError, match="more than one solution group"):
+        Simulation.load(nam)
+
+
 def test_solution_models_named_late(function_tmpdir):
     """A model's name is looked up when written, so one named after the
     solution was made (here, on attaching it) is written by that name."""

@@ -680,12 +680,19 @@ def _resolve_bindings(cls: type, raw_lower: dict, context: LoadContext) -> dict[
         # Some binding blocks are numbered (e.g. "SOLUTIONGROUP 1", like
         # "PERIOD 1" elsewhere) -- gather every raw block whose name matches
         # or starts with "{block_name} ".
-        rows = [
-            row
-            for raw_name, raw_rows in raw_lower.items()
+        raw_names = [
+            raw_name
+            for raw_name in raw_lower
             if raw_name == block_name or raw_name.startswith(f"{block_name} ")
-            for row in raw_rows
         ]
+        # several solution groups, each with its own MXITER, would be
+        # merged into one, which MF6 runs differently
+        if block_name == "solutiongroup" and len(raw_names) > 1:
+            groups = ", ".join(n.upper() for n in raw_names)
+            raise ValueError(
+                f"{cls.__name__}: more than one solution group ({groups}); only one is supported"
+            )
+        rows = [row for raw_name in raw_names for row in raw_lower[raw_name]]
         if not rows:
             continue
 
