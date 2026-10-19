@@ -9,18 +9,29 @@
 
 # ### Imports
 
+from pathlib import Path
+
 import numpy as np
+import pandas as pd
 
 from flopy4.mf6.constants import FILL_DNODATA
-from flopy4.mf6.gwf import Evt, Gwf, Wel
+from flopy4.mf6.gwf import Chd, Evt, Gwf, Ic, Npf, Oc, Wel
+from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.utils.grid import StructuredGrid
 from flopy4.mf6.utils.time import Time
+from flopy4.mf6.utl import Ts
 
 # ### A small model
 #
 # One layer of 3 rows and 4 columns, run for 3 stress periods. Packages
 # attached to the model get their dimensions from it.
+
+try:
+    workspace = Path(__file__).parent / "period-data"
+except NameError:
+    workspace = Path.cwd() / "period-data"
+workspace.mkdir(exist_ok=True)
 
 grid = StructuredGrid(
     nlay=1,
@@ -31,16 +42,21 @@ grid = StructuredGrid(
     top=np.ones((3, 4)),
     botm=np.zeros((1, 3, 4)),
 )
-sim = Simulation(name="period-data", tdis=Time(perlen=[1.0] * 3, nstp=[1] * 3))
+sim = Simulation(name="period-data", workspace=workspace, tdis=Time(perlen=[1.0] * 3, nstp=[1] * 3))
 gwf = Gwf(parent=sim, name="model", dis=grid)
 
 # ### Rows
 #
 # Period data maps each (0-based) period to its rows. A row is a tuple of the
 # package's columns, in MF6 input guide order: for WEL, the cell, `q`, the
-# auxiliary values and the boundname. A string in place of a number names a
-# time series.
+# auxiliary values and the boundname.
 #
+# A string in place of a number names a time series, which a TS6 file
+# attached with `ts=` must define. Here `pumping` goes from -1 to -3 over the
+# simulation.
+
+pumping = Ts.from_series(pd.Series([-1.0, -3.0], index=[0.0, 3.0], name="pumping"))
+
 # Periods fill forward: a period without a block repeats the last one, and an
 # empty list turns every feature off. Here period 1 fills forward from period
 # 0, and period 2 has two wells in one cell.
@@ -49,6 +65,7 @@ wel = Wel(
     parent=gwf,
     auxiliary=["conc"],
     boundnames=True,
+    ts=[pumping],
     stress_period_data={
         0: [
             ((0, 0, 0), -1.0, (5.0,), "north"),
@@ -200,6 +217,19 @@ expected = evt.stress_period_data
 evt.from_xarray(ds)
 assert evt.stress_period_data == expected
 # -
+
+# ### Writing and running
+#
+# To run, the model needs a solver, NPF and initial conditions, and here a
+# constant head to supply the wells.
+
+Ims(parent=sim, models=[gwf.name])
+gwf.npf = Npf()
+gwf.ic = Ic(strt=1.0)
+Chd(parent=gwf, stress_period_data={0: [((0, 0, 3), 1.0)]})
+gwf.oc = Oc(head_file=f"{gwf.name}.hds", stress_period_data={0: [("SAVE", "HEAD", "ALL")]})
+sim.write()
+sim.run()
 
 # ### Lists or arrays?
 #
