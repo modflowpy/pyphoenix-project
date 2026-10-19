@@ -898,7 +898,9 @@ def _period_rows(
             raise ValueError(f"{c.field.name} is missing some of its values in period {p}")
         if got is not None and not isinstance(got, np.ndarray) and all(v is None for v in got):
             got = None
-        if (got is None or (isinstance(got, list) and None in got)) and not _may_be_absent(c.field):
+        # an array column (aux, pxdp) may be absent, but not from some rows only
+        some = isinstance(got, list) and None in got
+        if (got is None or some) and not _may_be_absent(c.field) or some and (c.aux or c.size):
             q = pos[0] if got is None else pos[got.index(None)]
             raise ValueError(
                 f"{c.field.name} has no value at {tuple(q.tolist())} in period {p}, "

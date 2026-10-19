@@ -4,7 +4,7 @@ import pytest
 
 from flopy4.mf6._types import TimeSeriesRef
 from flopy4.mf6.constants import FILL_DNODATA
-from flopy4.mf6.gwf import Chd, Evt, Hfb, Lak, Maw, Mvr, Oc, Sfr, Uzf, Wel
+from flopy4.mf6.gwf import Chd, Drn, Evt, Hfb, Lak, Maw, Mvr, Oc, Sfr, Uzf, Wel
 from flopy4.mf6.item_table import ItemTable
 from flopy4.mf6.utl import Tvk
 
@@ -128,6 +128,41 @@ def test_time_series_round_trips_netcdf(tmp_path, sparse):
 def test_no_grid_dims_raises():
     with pytest.raises(ValueError, match="needs the grid's nlay, nrow, ncol"):
         Chd(stress_period_data={0: [((0, 0, 0), 1.0)]}).to_xarray()
+
+
+def set_at(ds, names, at, value):
+    for name in names:
+        var = ds[name].copy()
+        var[at] = value
+        ds[name] = var
+    return ds
+
+
+@pytest.mark.parametrize(
+    "pkg, names, missing",
+    [
+        (Drn(stress_period_data={0: [((0, 0, 0), 1.0, 10.0)]}, dims=DIMS), ["elev"], "cond"),
+        (
+            Wel(auxiliary=["conc"], stress_period_data={0: [((0, 0, 0), -1.0, (5.0,))]}, dims=DIMS),
+            ["q"],
+            "aux",
+        ),
+        (
+            Evt(
+                nseg=3,
+                stress_period_data={0: [((0, 0, 0), 1.0, 0.1, 2.0, (0.3, 0.6), (0.5, 0.2))]},
+                dims=DIMS,
+            ),
+            ["surface", "rate", "depth"],
+            "pxdp",
+        ),
+    ],
+    ids=["column", "aux", "array-column"],
+)
+def test_cell_missing_a_column_raises(pkg, names, missing):
+    ds = set_at(pkg.to_xarray(), names, (0, 0, 1, 2), 1.0)
+    with pytest.raises(ValueError, match=f"{missing} has no value at \\(0, 1, 2\\) in period 0"):
+        pkg.from_xarray(ds)
 
 
 # --- duplicates -------------------------------------------------------------
