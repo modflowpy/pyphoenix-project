@@ -1670,16 +1670,13 @@ def test_ncf_subpackage_default_filename(function_tmpdir):
 
 def test_several_packages_of_a_type_default_filenames():
     """Several packages of one type get a file each, named for the package;
-    one alone keeps the model's name and its type."""
+    adding one doesn't change the others'."""
     gwf = Gwf(name="gwf")
     chd = Chd(parent=gwf, stress_period_data={0: [((0, 0, 0), 1.0)]})
-    assert chd.default_filename() == "gwf.chd"
+    assert chd.default_filename() == "gwf.chd0.chd"
     chd2 = Chd(parent=gwf, stress_period_data={0: [((0, 0, 1), 0.0)]})
-    assert {chd.default_filename(), chd2.default_filename()} == {
-        f"gwf.{chd.name}",
-        f"gwf.{chd2.name}",
-    }
-    assert chd.name != chd2.name
+    assert chd.default_filename() == "gwf.chd0.chd"
+    assert chd2.default_filename() == "gwf.chd1.chd"
 
 
 def test_ncf_subpackage_load(function_tmpdir):
