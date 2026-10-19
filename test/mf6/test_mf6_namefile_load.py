@@ -518,3 +518,35 @@ def test_loads_cdb_stress_period_data(tmp_path):
     (row,) = loaded.models[0].cdb[0].stress_period_data[0]
 
     assert (row.cellid, row.idcxs, row.width) == ((0,), 0, 1.0)
+
+
+def test_loads_evp_stress_period_data(tmp_path):
+    """`Evp` (CHF's evaporation package) round-trips its stress period
+    data -- the other CHF package type no upstream test exercises at
+    all (alongside `Cdb`), so it's otherwise entirely unverified."""
+    from flopy4.mf6.chf import Chf
+    from flopy4.mf6.chf.dfw import Dfw
+    from flopy4.mf6.chf.disv1d import Disv1d
+    from flopy4.mf6.chf.evp import Evp
+    from flopy4.mf6.chf.ic import Ic as ChfIc
+
+    sim = Simulation(name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]))
+    chf = Chf(parent=sim, name="m")
+    Disv1d(
+        parent=chf,
+        nodes=2,
+        nvert=3,
+        vertices=[(0, 0.0, 0.0), (1, 10.0, 0.0), (2, 20.0, 0.0)],
+        cell1d=[(0, 0.5, 2, (0, 1)), (1, 0.5, 2, (1, 2))],
+        bottom=[0.0, 0.0],
+        idomain=[1, 1],
+    )
+    ChfIc(parent=chf, strt=[1.0, 1.0])
+    Dfw(parent=chf, manningsn=[0.035, 0.035])
+    Evp(parent=chf, stress_period_data={0: [[(0,), 0.01]]})
+    sim.write()
+
+    loaded = Simulation.load(tmp_path / "mfsim.nam")
+    (row,) = loaded.models[0].evp[0].stress_period_data[0]
+
+    assert (row.cellid, row.evaporation) == ((0,), 0.01)
