@@ -781,6 +781,9 @@ class Package(Component, ABC):
             stem = Path(parent.filename or parent.default_filename()).name
             return f"{stem}.{self.name}"
         name = parent.name if parent else self.name
+        siblings = getattr(parent, "_children", {}).values()
+        if any(c is not self and type(c) is type(self) for c in siblings):
+            return f"{name}.{self.name}"  # one of several: gwf.wel0, gwf.wel1
         cls_name = self.__class__.__name__.lower()
         return f"{name}.{cls_name}"
 
