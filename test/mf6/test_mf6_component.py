@@ -631,6 +631,206 @@ def test_several_packages_of_a_type_write(function_tmpdir):
         assert (function_tmpdir / name).exists()
 
 
+def _solutiongroup_rows(workspace):
+    """The rows between BEGIN/END SOLUTIONGROUP in `mfsim.nam`."""
+    lines = (Path(workspace) / "mfsim.nam").read_text().splitlines()
+    start = next(
+        i for i, ln in enumerate(lines) if ln.strip().upper().startswith("BEGIN SOLUTIONGROUP")
+    )
+    end = next(
+        i for i, ln in enumerate(lines) if ln.strip().upper().startswith("END SOLUTIONGROUP")
+    )
+    return [ln.split() for ln in lines[start + 1 : end] if ln.strip()]
+
+
+def _small_gwf(**kwargs):
+    gwf = Gwf(dis=Dis(nlay=1, nrow=2, ncol=2), **kwargs)
+    Ic(parent=gwf)
+    Npf(parent=gwf)
+    return gwf
+
+
+def test_solution_models_by_object_write(function_tmpdir):
+    gwf = _small_gwf()
+    ims = Ims(models=[gwf])
+    sim = Simulation(
+        tdis=Time(perlen=[1.0], nstp=[1], tsmult=[1.0]),
+        workspace=function_tmpdir,
+        models=[gwf],
+        solutiongroup=[ims],
+    )
+    sim.write()
+
+    assert gwf.name == "gwf0"
+    (row,) = _solutiongroup_rows(function_tmpdir)
+    assert row[0] == "IMS6"
+    assert row[2:] == ["gwf0"]
+
+
+def _write_sim(workspace, models, solutions):
+    sim = Simulation(
+        tdis=Time(perlen=[1.0], nstp=[1], tsmult=[1.0]),
+        workspace=workspace,
+        models=models,
+        solutiongroup=solutions,
+    )
+    sim.write()
+    return sim
+
+
+def test_solution_models_by_name_write(function_tmpdir):
+    _write_sim(function_tmpdir, [_small_gwf(name="flow")], [Ims(models=["flow"])])
+    (row,) = _solutiongroup_rows(function_tmpdir)
+    assert row[2:] == ["flow"]
+
+
+def test_solution_models_load(function_tmpdir):
+    """A loaded solution holds the loaded models, as a built one does."""
+    _write_sim(function_tmpdir, [_small_gwf(name="flow")], [Ims(models=["FLOW"])])
+    sim = Simulation.load(Path(function_tmpdir) / "mfsim.nam")
+    (ims,) = sim.solutiongroup
+    assert ims.models == [sim["flow"]]
+    assert ims.models[0] is sim["flow"]
+    assert sim["flow"].solution is ims
+
+
+def test_solution_models_empty_model_by_name():
+    """An empty model is falsy; it's still found by name."""
+    gwf = Gwf(name="flow")
+    ims = Ims(models=["flow"])
+    Simulation(models=[gwf], solutiongroup=[ims])
+    assert ims._solved_models()[0] is gwf
+    assert gwf.solution is ims
+
+
+def test_solution_models_named_late(function_tmpdir):
+    """A model's name is looked up when written, so one named after the
+    solution was made (here, on attaching it) is written by that name."""
+    first, second = _small_gwf(), _small_gwf()
+    ims = Ims(models=[first, second])
+    assert second.name is None
+    _write_sim(function_tmpdir, [first, second], [ims])
+    (row,) = _solutiongroup_rows(function_tmpdir)
+    assert row[2:] == ["gwf0", "gwf1"]
+
+
+def test_solution_models_default(function_tmpdir):
+    """The only solution, listing no models, solves them all."""
+    from flopy4.mf6.gwt import Dis as GwtDis
+    from flopy4.mf6.gwt import Gwt
+
+    gwt = Gwt(dis=GwtDis(nlay=1, nrow=2, ncol=2))
+    ims = Ims()
+    sim = _write_sim(function_tmpdir, [_small_gwf(), gwt], [ims])
+    (row,) = _solutiongroup_rows(function_tmpdir)
+    assert row[2:] == ["gwf0", "gwt0"]
+    assert ims.models == []
+    assert sim["gwt0"].solution is ims
+
+
+def test_solution_models_are_references():
+    """Listing a model in a solution doesn't make the solution its parent,
+    or rename it, built either way."""
+    gwf = Gwf(name="flow")
+    ims = Ims(models=[gwf])
+    sim = Simulation(models=[gwf], solutiongroup=[ims])
+    assert gwf.parent is sim
+    assert gwf.name == "flow"
+    assert "flow" not in ims._children
+    assert sim["flow"] is gwf
+
+    sim = Simulation()
+    gwf = Gwf(parent=sim)
+    ims = Ims(parent=sim, models=gwf)
+    assert ims.models == [gwf]
+    assert gwf.parent is sim
+    assert gwf.name == "gwf0"
+    assert gwf.solution is ims
+
+
+def test_solution_models_repr_eq():
+    gwf = Gwf(name="flow")
+    ims = Ims(models=[gwf, "other"])
+    assert "models=['flow', 'other']" in repr(ims)
+    assert "Gwf(" not in repr(ims)
+    assert ims == Ims(models=["flow", "other"])
+    assert ims != Ims(models=["flow"])
+
+
+def test_solution_models_deepcopy():
+    """A copied simulation's solution refers to the copied models."""
+    import copy
+
+    gwf = Gwf(name="flow")
+    sim = Simulation(models=[gwf], solutiongroup=[Ims(models=[gwf])])
+    clone = copy.deepcopy(sim)
+    assert clone.solutiongroup[0].models[0] is clone["flow"]
+    assert clone["flow"] is not gwf
+
+
+def test_solution_models_to_xarray():
+    gwf = Gwf(name="flow")
+    ims = Ims(models=[gwf])
+    Simulation(models=[gwf], solutiongroup=[ims])
+    assert ims.to_xarray().attrs["models"] == ["flow"]
+
+
+def test_solution_model_solution():
+    gwf, other = Gwf(name="flow"), Gwf(name="other")
+    assert gwf.solution is None
+    ims = Ims(models=[gwf])
+    sim = Simulation(models=[gwf, other], solutiongroup=[ims, Ims(models=[])])
+    assert sim["flow"].solution is ims
+    assert other.solution is None
+
+
+@pytest.mark.parametrize(
+    "build, match",
+    [
+        (
+            lambda: ([_small_gwf(name="flow")], [Ims(models=["nope"])]),
+            "lists model 'nope'",
+        ),
+        (
+            lambda: ([_small_gwf(name="a"), _small_gwf(name="b")], [Ims(models=["a"]), Ims()]),
+            "'b' isn't solved",
+        ),
+        (
+            lambda: ([_small_gwf(name="a")], [Ims(models=["a"]), Ims(models=["a"])]),
+            "more than one",
+        ),
+    ],
+)
+def test_solution_models_invalid(function_tmpdir, build, match):
+    models, solutions = build()
+    with pytest.raises(ValueError, match=match):
+        _write_sim(function_tmpdir, models, solutions)
+    assert not (Path(function_tmpdir) / "mfsim.nam").exists()
+
+
+def test_solution_models_invalid_type(function_tmpdir):
+    from flopy4.mf6.ems import Ems
+    from flopy4.mf6.prt import Prt
+
+    with pytest.raises(ValueError, match="EMS.*can't solve model 'flow'"):
+        _write_sim(function_tmpdir, [_small_gwf(name="flow")], [Ems()])
+    assert Ims().solves(_small_gwf()) and not Ims().solves(Prt())
+    assert Ems().solves(Prt()) and not Ems().solves(_small_gwf())
+
+
+def test_solution_models_dangling(function_tmpdir):
+    gwf = _small_gwf(name="flow")
+    sim = Simulation(
+        tdis=Time(perlen=[1.0], nstp=[1], tsmult=[1.0]),
+        workspace=function_tmpdir,
+        models=[gwf],
+        solutiongroup=[Ims(models=[gwf])],
+    )
+    sim["flow"] = _small_gwf()
+    with pytest.raises(ValueError, match="lists model 'flow', which isn't in the simulation"):
+        sim.write()
+
+
 def test_init_big_sim():
     # Large grid: verify tree attachment and that recarray SPD doesn't allocate full grid
     time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])

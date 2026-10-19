@@ -18,3 +18,10 @@ def is_array(f: Attribute) -> bool:
     """Whether a field is an array (its DFN type, which the field functions
     in `flopy4.mf6.spec` record in its metadata)."""
     return f.metadata.get("type") == "array"
+
+
+def is_reference(f: Attribute) -> bool:
+    """Whether a field refers to components it doesn't own (e.g. the models
+    a solution solves). Such a field isn't a child field: walkers that
+    follow children skip it, and its components keep their own parents."""
+    return bool(f.metadata.get("reference"))

@@ -5,6 +5,8 @@ from typing import Any, Protocol, runtime_checkable
 import attrs
 from modflow_devtools.dfns import dim_value
 
+from flopy4.spec import is_reference
+
 
 class DerivedDim:
     """A dimension computed from others on the same component, read-only.
@@ -201,6 +203,8 @@ class DimensionResolverMixin:
     def _walk_providers(self):
         """Yield (source_label, dims_dict) for each DimensionProvider in child fields."""
         for field_obj in attrs.fields(type(self)):  # type: ignore[arg-type]
+            if is_reference(field_obj):
+                continue
             if (value := getattr(self, field_obj.name, None)) is None:
                 continue
             if isinstance(value, DimensionProvider):
@@ -304,6 +308,8 @@ def validate_dimension_resolution(component) -> list[str]:
 
     # Recursively validate children
     for field in attrs.fields(type(component)):
+        if is_reference(field):
+            continue
         value = getattr(component, field.name, None)
         if value is None:
             continue

@@ -567,7 +567,7 @@ def _parse_readarray_period_block(
     return result
 
 
-def _apply_binding_terms(child: Any, terms: list) -> None:
+def _apply_binding_terms(child: Any, terms: list, models: list) -> None:
     from flopy4.mf6.exchange import Exchange
     from flopy4.mf6.solution import Solution
 
@@ -579,7 +579,10 @@ def _apply_binding_terms(child: Any, terms: list) -> None:
         if len(terms) > 1:
             child.exgmnameb = str(terms[1])
     elif isinstance(child, Solution):
-        child.models = [str(t) for t in terms]
+        # the models loaded so far (case-insensitively, as MF6 does), so a
+        # loaded solution holds them as a built one does; unknown names stay
+        by_name = {str(model.name).lower(): model for model in models}
+        child.models = [by_name.get(str(t).lower(), str(t)) for t in terms]
 
 
 def _disambiguate_ga_variant(candidates: "list[type[Component]]", path: Path) -> "type[Component]":
@@ -760,7 +763,7 @@ def _resolve_bindings(cls: type, raw_lower: dict, context: LoadContext) -> dict[
             )
             child = target_cls.load(context.resolve(fname), name=pname, context=child_context)
             child.filename = Path(fname)
-            _apply_binding_terms(child, row[2:])
+            _apply_binding_terms(child, row[2:], kwargs.get("models", []))
             if isinstance(child, DimensionProvider):
                 dims = {**dims, **child.get_dims()}
 

@@ -57,24 +57,24 @@ grid = StructuredGrid(
 # ### Packages
 
 # `Ims` (iterative solver) is registered with the simulation via
-# `parent=sim`; `models=[gwf_name]` links it to the named flow model.
+# `parent=sim`; `models=[gwf]` says which model(s) it solves. With only one
+# solution, `models` can be left out, and it solves every model.
 # Single-instance packages (IC, NPF, OC) are attached via attribute
 # assignment (`gwf.ic = ...`) here; `parent=gwf` at construction (as CHD
 # uses below) works equivalently for these too.
 
 sim = Simulation(name=name, workspace=workspace, tdis=time)
-gwf_name = "mymodel"
+gwf = Gwf(parent=sim, name="mymodel", save_flows=True, dis=grid)
 ims = Ims(
     parent=sim,
-    models=[gwf_name],
+    models=[gwf],
     outer_dvclose=1e-3,
     outer_maximum=25,
     inner_maximum=50,
     inner_dvclose=1e-3,
     rclose=Ims.Rclose(inner_rclose=0.1),
     linear_acceleration="cg",
-)  # registered with sim; references the model by name
-gwf = Gwf(parent=sim, name=gwf_name, save_flows=True, dis=grid)
+)
 
 # Node-property flow: isotropic conductivity; saves specific-discharge for quiver plots.
 gwf.npf = Npf(print_flows=True, save_flows=True, save_specific_discharge=True)

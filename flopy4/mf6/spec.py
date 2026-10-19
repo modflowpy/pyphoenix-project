@@ -457,6 +457,36 @@ def child(
     )
 
 
+def reference_names(value) -> list:
+    """A reference field's values as names; names given as strings stay."""
+    return [v if isinstance(v, str) else v.name for v in value]
+
+
+def _to_reference_list(value) -> list:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple):
+        return list(value)
+    return [value]
+
+
+def reference():
+    """A list of components this one refers to but doesn't own, given as
+    objects or names. The owner (e.g. the simulation, for models) is the
+    components' parent; a reference never changes their parent or name, so
+    names are looked up when needed, not when the reference is made. Shown
+    and compared by name."""
+    return attrs.field(
+        factory=list,
+        converter=_to_reference_list,
+        metadata={"reference": True},
+        repr=lambda v: repr(reference_names(v)),
+        eq=reference_names,
+    )
+
+
 Block = dict[str, Attribute]
 
 
