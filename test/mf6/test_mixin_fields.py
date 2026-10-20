@@ -1,5 +1,5 @@
 from importlib import import_module
-from typing import Optional
+from typing import Optional, Union
 
 import attrs
 import pytest
@@ -89,3 +89,38 @@ def test_mixin_gaps():
         "_Methods.size: no _ChildLacking.items, _Lacking.n",
         "_Methods.build: no _ChildLacking.items, _Lacking.n",
     ]
+
+
+class _Comprehensions:
+    def scoped(self):
+        m = self.child
+        names = [m.name for m in self.models]
+        sizes = {m: m.size for m in self.others}
+        counts = [m.count for m in range(3)]
+        return m.items, names, sizes, counts
+
+    def references(self):
+        return [r.lower() if isinstance(r, str) else r.n for r in self.refs]
+
+
+def test_comprehension_variables_are_scoped():
+    read = _read(_Comprehensions, "scoped")
+    assert {"child.items", "models.name", "others.size"} <= read
+    assert not {"models.size", "others.name", "child.name", "child.count"} & read
+
+
+@attrs.define
+class _Refs(_Comprehensions):
+    refs: list[Union[_Child, str]] = attrs.Factory(list)
+
+
+@attrs.define
+class _RefsLacking(_Comprehensions):
+    refs: list[_Child] = attrs.Factory(list)
+
+
+def test_mixin_gaps_through_union_with_plain_type():
+    # an item might be a str, which has `lower`
+    assert "_Child.lower" not in str(mixin_gaps(_Refs, _Comprehensions))
+    # every item is a _Child, which doesn't
+    assert "_Child.lower" in str(mixin_gaps(_RefsLacking, _Comprehensions))
