@@ -844,19 +844,17 @@ def test_deepcopy_references_any_order():
 
 
 def test_deepcopy_not_from_a_component():
-    """A copy that doesn't start at a component resolves each top-level
-    component's references when it's done: a solution copied before its
-    model keeps the original. (Copy the simulation instead.)"""
+    """A copy that doesn't start at the simulation has no copied
+    simulation to resolve references in: a solution copied along with its
+    model, in either order, names it. (Copy the simulation instead.)"""
     import copy
 
     gwf = Gwf(name="flow")
     ims = Ims(models=[gwf])
     Simulation(models=[gwf], solutiongroup=[ims])
 
-    gwf2, ims2 = copy.deepcopy([gwf, ims])
-    assert ims2.models[0] is gwf2
-    ims2, gwf2 = copy.deepcopy([ims, gwf])
-    assert ims2.models[0] is gwf
+    for copied in (copy.deepcopy([gwf, ims])[1], copy.deepcopy([ims, gwf])[0]):
+        assert copied.models == ["flow"]
 
 
 def test_pickle_simulation():
@@ -923,9 +921,9 @@ def test_deepcopy_child_detached():
     assert sim.models == [gwf]
 
 
-def test_deepcopy_solution_shares_models():
-    """A copied solution refers to the same models: they're the
-    simulation's, not the solution's, to copy."""
+def test_deepcopy_solution_names_models():
+    """A lone copied solution names its models, as an unpickled one does:
+    they're the simulation's, not the solution's, to copy."""
     import copy
 
     gwf = Gwf(name="flow")
@@ -934,7 +932,7 @@ def test_deepcopy_solution_shares_models():
     clone = copy.deepcopy(ims)
 
     assert clone.parent is None
-    assert clone.models[0] is gwf
+    assert clone.models == ["flow"]
     assert clone.outer_maximum == 5
     assert sim.solutiongroup == [ims]
 
@@ -1124,7 +1122,7 @@ def test_exchange_model_must_be_component_or_name():
 
 def test_exchange_models_copy_and_pickle():
     """A copied or unpickled simulation's exchanges connect its own
-    models; a lone copy shares the models, a lone unpickling names them."""
+    models; a lone copy or unpickling names them."""
     import copy
     import pickle
 
@@ -1135,8 +1133,8 @@ def test_exchange_models_copy_and_pickle():
         (cexg,) = clone.exchanges
         assert cexg.exgmnamea is clone["a"]
         assert cexg.exgmnameb is clone["b"]
-    assert copy.deepcopy(exg).exgmnamea is a
-    assert pickle.loads(pickle.dumps(exg)).exgmnamea == "a"
+    for clone in (copy.deepcopy(exg), pickle.loads(pickle.dumps(exg))):
+        assert (clone.exgmnamea, clone.exgmnameb) == ("a", "b")
 
 
 def test_init_big_sim():

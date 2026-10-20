@@ -27,10 +27,6 @@ FNAMES: "dict[str, type[Component]]" = {}
 FTYPES: "dict[str, type[Component]]" = {}
 """MF6 component ftype (e.g. 'gwf-dis6') -> component class."""
 
-_PENDING_REFERENCES = "flopy4.pending_references"
-"""`deepcopy` memo key for the reference fields a copy has yet to resolve
-(see `Component.__deepcopy__`). Not an object id, so it can't collide."""
-
 
 def _prefix(dfn_name: str) -> "str | None":
     prefix, sep, _ = dfn_name.partition("-")
@@ -230,14 +226,6 @@ def _find_child_field(parent_cls: type, child_cls: type) -> "tuple[Any, str] | N
             f"'{child_cls.__name__}' ({names}); can't bind."
         )
     return matches[0]
-
-
-def _copied(value, memo):
-    """A reference field's value with each component in it replaced by
-    its copy, if `memo` holds one (see `Component.__deepcopy__`)."""
-    if isinstance(value, list):
-        return [_copied(v, memo) for v in value]
-    return value if value is None or isinstance(value, str) else memo.get(id(value), value)
 
 
 # kw_only=True necessary so we can define optional fields here
@@ -656,36 +644,27 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
 
     def __deepcopy__(self, memo):
         """Copy what this component owns (its children and values), not
-        what it only refers to: its parent and any reference field (e.g. a
-        solution's models). Each of those becomes its copy if it's copied
-        in the same operation, as when copying a whole simulation;
-        otherwise the parent is dropped, so a lone copy comes out
-        detached, and references stay on the originals.
-
-        A parent is always copied before its children, so it's resolved
-        right away. References are resolved once the outermost component
-        being copied is done, so it doesn't matter which is copied first.
-        A copy that doesn't start at a component sees only what was copied
-        before that component finished: in `deepcopy([ims, gwf])`, `ims`
-        keeps the original `gwf`. Copy the simulation they're in instead.
+        what it only refers to. Its parent becomes its copy if that's
+        copied in the same operation, as when copying a whole simulation;
+        otherwise it's dropped, so a lone copy comes out detached. Its
+        reference fields (e.g. a solution's models) are copied by name, as
+        they're pickled, and resolved by the copied parent among its own
+        copies (see `_resolve_references`): a copied simulation's solutions
+        and exchanges hold its copied models, a lone copy their names.
         """
         cls = type(self)
         new = cls.__new__(cls)
         memo[id(self)] = new
-        outermost = _PENDING_REFERENCES not in memo
-        pending = memo.setdefault(_PENDING_REFERENCES, [])
-        references = {f.name for f in attrs.fields(cls) if is_reference(f)}  # type: ignore[arg-type]
+        references = {f.name for f in self._reference_fields()}
         for key, value in self.__dict__.items():
             if key == "_parent":
                 value = memo.get(id(value))
             elif key in references:
-                pending.append((new, key))
+                value = reference_names(value)
             else:
                 value = copy.deepcopy(value, memo)
             new.__dict__[key] = value
-        if outermost:
-            for obj, key in memo.pop(_PENDING_REFERENCES):
-                obj.__dict__[key] = _copied(obj.__dict__[key], memo)
+        new._resolve_references()
         return new
 
     def __setitem__(self, key, value):
