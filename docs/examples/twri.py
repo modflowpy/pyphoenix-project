@@ -208,7 +208,7 @@ ims = flopy4.mf6.Ims(
     scaling_method=None,
     reordering_method=None,
     relaxation_factor=0.97,
-    models=["gwf"],
+    models=[gwf],
 )
 
 # ### TDIS

@@ -9,11 +9,15 @@ them in.
 
 The scan follows attribute chains starting at the class: ``self.x`` and
 ``cls.x``; ``self.parent.x`` in a nested helper class; local names bound
-to a chain, including loop variables; ``getattr(obj, "x")``; and keyword
+to a chain, including loop variables and a comprehension's variables
+(which, as in Python, are seen only inside it); ``getattr(obj, "x")``; and keyword
 arguments to a class (``cls(x=...)``, ``cls.Inner(y=...)``), including
 those in a local dict with literal keys passed as ``cls(**kwargs)``. A chain is
 followed through field types (a child component, a record, a list's
-items) and inner classes, and stops at anything else, like a method.
+items) and inner classes, and stops at anything else, like a method. A
+field that can also hold something other than a component or record, like
+``list[Model | str]``, can't be checked past that point, so a chain through
+it reports nothing missing.
 ``getattr`` with a default is a field the code does without, and isn't
 followed. Names built at run time, or passed through ``**kwargs``, can't
 be seen.
@@ -23,7 +27,7 @@ import ast
 import inspect
 import textwrap
 import typing
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from functools import cache
 from types import ModuleType
 from typing import Any
@@ -57,22 +61,50 @@ def _chain(node: ast.AST, names: dict[str, list[str]], nested: bool) -> list[str
     return None
 
 
+_COMPREHENSIONS = (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
+
+
 def _bindings(func: ast.FunctionDef) -> list[tuple[str, ast.expr]]:
     """Local names and what they're bound to: assignments, and loop
-    variables to what they iterate over."""
+    variables to what they iterate over. Not a comprehension's variables,
+    which are local to it (see `_scoped`)."""
     found: list[tuple[str, ast.expr]] = []
     for n in ast.walk(func):
         if isinstance(n, ast.Assign) and len(n.targets) == 1:
             target, value = n.targets[0], n.value
         elif isinstance(n, ast.AnnAssign) and n.value is not None:
             target, value = n.target, n.value
-        elif isinstance(n, (ast.For, ast.comprehension)):
+        elif isinstance(n, ast.For):
             target, value = n.target, n.iter
         else:
             continue
         if isinstance(target, ast.Name):
             found.append((target.id, value))
     return found
+
+
+def _scoped(node: ast.AST, names: dict[str, list[str]], nested: bool):
+    """Each expression under ``node`` with the names in scope there: a
+    comprehension's variables, bound in order, shadow the enclosing ones
+    inside it, and only there."""
+    if isinstance(node, _COMPREHENSIONS):
+        inner = dict(names)
+        for gen in node.generators:
+            yield from _scoped(gen.iter, inner, nested)
+            chain = _chain(gen.iter, inner, nested)
+            bound = {t.id for t in ast.walk(gen.target) if isinstance(t, ast.Name)}
+            inner = {k: v for k, v in inner.items() if k not in bound}
+            if isinstance(gen.target, ast.Name) and chain is not None:
+                inner[gen.target.id] = chain
+            for cond in gen.ifs:
+                yield from _scoped(cond, inner, nested)
+        parts = [node.key, node.value] if isinstance(node, ast.DictComp) else [node.elt]
+        for part in parts:
+            yield from _scoped(part, inner, nested)
+        return
+    yield node, names
+    for child in ast.iter_child_nodes(node):
+        yield from _scoped(child, names, nested)
 
 
 def _functions(mixin: type) -> list[tuple[str, ast.FunctionDef, bool]]:
@@ -129,8 +161,8 @@ def mixin_chains(mixin: type) -> dict[str, list[list[str]]]:
     for qualname, func, nested in _functions(mixin):
         names: dict[str, list[str]] = {} if nested else {"self": [], "cls": []}
         bindings = _bindings(func)
-        # Bindings can refer to each other in any order (a comprehension's
-        # variable is bound after its element), so repeat until settled.
+        # Bindings can refer to each other in any order, so repeat until
+        # settled.
         for _ in range(len(bindings)):
             changed = False
             for name, value in bindings:
@@ -141,10 +173,10 @@ def mixin_chains(mixin: type) -> dict[str, list[list[str]]]:
                 break
         dicts = _dict_keys(func)
         found = chains.setdefault(qualname, [])
-        for n in ast.walk(func):
-            if (chain := _chain(n, names, nested)) is not None and chain:
+        for n, scope in _scoped(func, names, nested):
+            if (chain := _chain(n, scope, nested)) is not None and chain:
                 found.append(chain)
-            if isinstance(n, ast.Call) and (chain := _chain(n.func, names, nested)) is not None:
+            if isinstance(n, ast.Call) and (chain := _chain(n.func, scope, nested)) is not None:
                 for k in n.keywords:
                     if k.arg:
                         found.append([*chain, k.arg])
@@ -159,6 +191,21 @@ def _classes(tp: Any) -> set[type]:
     if isinstance(tp, type) and attrs.has(tp):
         return {tp}
     return {c for arg in typing.get_args(tp) for c in _classes(arg)}
+
+
+def _open(tp: Any) -> bool:
+    """Whether a type annotation can hold something besides attrs classes
+    and None, through unions and containers' items (a mapping's values),
+    e.g. ``list[Model | str]``. What that holds can't be checked."""
+    if tp is type(None) or tp is Ellipsis or (isinstance(tp, type) and attrs.has(tp)):
+        return False
+    args = typing.get_args(tp)
+    if not args or typing.get_origin(tp) is typing.Literal:
+        return True
+    origin = typing.get_origin(tp)
+    if isinstance(origin, type) and issubclass(origin, Mapping):
+        args = args[-1:]
+    return any(_open(arg) for arg in args)
 
 
 @cache
@@ -180,22 +227,26 @@ def _field_types(cls: type) -> dict[str, Any]:
 
 def _missing(cls: type, chain: list[str]) -> list[str]:
     """Where a chain read from ``cls`` hits an attribute that isn't there,
-    as ``Class.attr``."""
+    as ``Class.attr``. Past a field that can hold something else too (see
+    `_open`), an attribute only some of the classes have isn't missing."""
     missing = []
     at = {cls}
+    unchecked = False
     for attr in chain:
         following: set[type] = set()
+        following_unchecked = False
         for c in at:
             fields = _field_types(c) if attrs.has(c) else {}
             if attr in fields:
                 following |= _classes(fields[attr])
+                following_unchecked |= _open(fields[attr])
             elif hasattr(c, attr):
                 value = getattr(c, attr)
                 if isinstance(value, type) and attrs.has(value):
                     following.add(value)
-            else:
+            elif not unchecked:
                 missing.append(f"{c.__qualname__}.{attr}")
-        at = following
+        at, unchecked = following, following_unchecked
     return missing
 
 

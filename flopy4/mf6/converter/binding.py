@@ -5,6 +5,7 @@ from flopy4.mf6.exchange import Exchange
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
 from flopy4.mf6.solution import Solution
+from flopy4.mf6.spec import reference_names
 
 
 def component_ftype(cls: type) -> str:
@@ -39,7 +40,7 @@ class Binding:
             if isinstance(component, Exchange):
                 return (component.exgmnamea, component.exgmnameb)  # type: ignore
             elif isinstance(component, Solution):
-                return tuple(component.models)
+                return tuple(reference_names(component._solved_models()))
             elif isinstance(component, (Model, Package)):
                 return (component.name,)  # type: ignore
             return None

@@ -52,8 +52,8 @@ botm = np.stack([top - 10.0, top - 20.0, np.full((nrow, ncol), -10.0)])
 dis = Dis(nlay=nlay, nrow=nrow, ncol=ncol, delr=10.0, delc=10.0, top=top, botm=botm)
 
 sim = Simulation(name=name, workspace=workspace, tdis=Time(perlen=[1.0], nstp=[1]))
-Ims(parent=sim, models=[name])
 gwf = Gwf(parent=sim, name=name, save_flows=True, dis=dis)
+Ims(parent=sim, models=[gwf])
 Ic(parent=gwf, strt=20.0)
 Npf(parent=gwf, k=1.0)
 west = [((0, r, 0), 25.0) for r in range(nrow)]

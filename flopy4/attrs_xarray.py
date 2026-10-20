@@ -37,7 +37,7 @@ import attrs
 import numpy as np
 import xarray as xr
 
-from flopy4.spec import is_array
+from flopy4.spec import is_array, is_reference
 from flopy4.utils import unwrap_optional
 
 
@@ -73,7 +73,13 @@ def _leaf_fields_and_children(
         value = getattr(obj, field.name, None)
         if value is None:
             continue
-        if _period_dim(field):
+        if is_reference(field):
+            # components referred to, not owned: stored by name
+            leaves[field.name] = (
+                field,
+                [v if isinstance(v, str) else v.name for v in value],
+            )
+        elif _period_dim(field):
             # period arrays, even all from time-array series (attrs instances)
             leaves[field.name] = (field, value)
         elif field.name == "_filename":
@@ -306,13 +312,14 @@ def attrs_to_datatree(obj, _ancestors: frozenset = frozenset()) -> xr.DataTree:
 def _child_field_spec(field: attrs.Attribute) -> "tuple[str, type] | None":
     """If `field`'s declared type holds attrs-typed child/children, return
     ``(kind, element_type)`` where `kind` is ``"one"``, ``"list"``, or
-    ``"dict"``. Returns `None` for plain scalar/array fields, an
+    ``"dict"``. Returns `None` for plain scalar/array fields, a reference
+    field (`flopy4.spec.is_reference`), an
     unresolvable (string/forward-ref) annotation, or a collection whose
     element type isn't a plain attrs class (e.g. a `Union` of arms --
     see module docstring).
     """
     tp = field.type
-    if tp is None or isinstance(tp, str):
+    if tp is None or isinstance(tp, str) or is_reference(field):
         return None
     tp = unwrap_optional(tp)
     origin = get_origin(tp)
@@ -333,8 +340,8 @@ def child_field_candidates(field: attrs.Attribute) -> "tuple[str, tuple[type, ..
     position -- e.g. `list[Union[Chd, Chdg]]`, needed to disambiguate an
     MF6 base/grid-array package pair sharing one namefile ftype (see
     `converter/binding.py`'s `component_ftype()`). Returns `None` under
-    the same conditions as `_child_field_spec`: an unresolvable
-    annotation, or a type/collection-element that resolves to no
+    the same conditions as `_child_field_spec`: a reference field, an
+    unresolvable annotation, or a type/collection-element that resolves to no
     attrs-decorated candidate at all.
 
     Kind is `"only"` or `"list"`, matching the child-collection
@@ -342,7 +349,7 @@ def child_field_candidates(field: attrs.Attribute) -> "tuple[str, tuple[type, ..
     collections of children in lists, so a dict isn't a child field.
     """
     tp = field.type
-    if tp is None or isinstance(tp, str):
+    if tp is None or isinstance(tp, str) or is_reference(field):
         return None
     tp = unwrap_optional(tp)
     origin = get_origin(tp)

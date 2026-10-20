@@ -8,6 +8,7 @@ from modflow_devtools.misc import cd, get_ostag, is_in_ci, run_cmd
 if TYPE_CHECKING:
     from flopy4.mf6.context import Context
     from flopy4.mf6.simulation import Simulation
+    from flopy4.mf6.solution import Solution
     from flopy4.mf6.utils.time import Time
 
 
@@ -27,6 +28,68 @@ class SimulationMethods:
                     UserWarning,
                 )
             sim.filename = Path("mfsim.nam")
+
+    def __setstate__(self, state) -> None:
+        super().__setstate__(state)  # type: ignore[misc]
+        # solutions are pickled with their models' names (see
+        # Component.__getstate__): resolve them, as loading does
+        sim: "Simulation" = self  # type: ignore[assignment]
+        by_name = {str(m.name).lower(): m for m in sim.models}
+        for sln in sim.solutiongroup:
+            sln.models = [
+                by_name.get(m.lower(), m) if isinstance(m, str) else m for m in sln.models
+            ]
+
+    def write(self, *args, **kwargs) -> None:
+        """Check the solution group (see `_solution_models`), then write."""
+        self._solution_models(check=True)  # type: ignore[misc]
+        super().write(*args, **kwargs)  # type: ignore[misc]
+
+    def _solution_models(self: "Simulation", check: bool = False) -> list:  # type: ignore[misc]
+        """Each solution with the models it solves, as pairs. A model given
+        by name is looked up among the simulation's models, case-insensitively
+        as MF6 does. The only solution, listing no models, solves them all.
+        With `check`, raise if a solution lists a model the simulation
+        doesn't have or can't solve its type, or if a model is solved by no
+        solution or more than one. Unresolved names stay as given."""
+        self._children  # names any unnamed models
+        by_name = {str(m.name).lower(): m for m in self.models}
+        errors = []
+        pairs: list[tuple[Solution, list]] = []
+        for sln in self.solutiongroup:
+            if not sln.models and len(self.solutiongroup) == 1:
+                pairs.append((sln, list(self.models)))
+                continue
+            models = []
+            for m in sln.models:
+                found = (
+                    by_name.get(m.lower())
+                    if isinstance(m, str)
+                    else next((x for x in self.models if x is m), None)
+                )
+                if found is None:
+                    name = m if isinstance(m, str) else m.name
+                    errors.append(f"{sln.name} lists model {name!r}, which isn't in the simulation")
+                models.append(m if found is None else found)
+            pairs.append((sln, models))
+        if not check:
+            return pairs
+        for model in self.models:
+            claims = [sln.name for sln, models in pairs if any(m is model for m in models)]
+            if not claims:
+                errors.append(f"model {model.name!r} isn't solved by any solution")
+            elif len(claims) > 1:
+                errors.append(f"model {model.name!r} is solved by more than one solution: {claims}")
+        for sln, models in pairs:
+            for m in models:
+                if not isinstance(m, str) and not sln.solves(m):
+                    errors.append(
+                        f"{sln.name} ({sln.slntype.upper()}) can't solve model "
+                        f"{m.name!r} ({type(m).__name__})"
+                    )
+        if errors:
+            raise ValueError("Invalid solution group: " + "; ".join(errors))
+        return pairs
 
     @property
     def time(self: "Simulation") -> "Time":  # type: ignore[misc]

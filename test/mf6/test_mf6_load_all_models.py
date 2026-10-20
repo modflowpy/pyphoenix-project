@@ -102,6 +102,8 @@ from flopy4.mf6.component import Component
 from flopy4.mf6.item_table import ItemTable
 from flopy4.mf6.package import Package
 from flopy4.mf6.simulation import Simulation
+from flopy4.mf6.spec import reference_names
+from flopy4.spec import is_reference
 
 try:
     ALL_MODELS = sorted(get_models())
@@ -568,6 +570,8 @@ def _load_digest(component: Component, workspace: Path) -> dict:
             if f.name in ("_parent", "write_context"):
                 continue
             value = getattr(c, f.name, None)
+            if is_reference(f):
+                value = reference_names(value)
             if value is not None:
                 fields[f.alias if f.name == "_filename" else f.name] = _digest(value, ws)
         out[path] = {"__type__": type(c).__name__, **fields}

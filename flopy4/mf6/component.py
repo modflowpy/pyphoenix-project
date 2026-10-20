@@ -1,3 +1,4 @@
+import copy
 from abc import ABC
 from collections.abc import MutableMapping
 from functools import lru_cache
@@ -11,8 +12,9 @@ from attrs import fields
 from flopy4.dimensions import DimensionResolverMixin
 from flopy4.mf6.constants import MF6
 from flopy4.mf6.external import in_write_session, write_session
-from flopy4.mf6.spec import fields_dict
+from flopy4.mf6.spec import fields_dict, reference_names
 from flopy4.mf6.write_context import WriteContext
+from flopy4.spec import is_reference
 from flopy4.uio import IO, Loader, Writer
 from flopy4.utils import empty_if_none
 
@@ -24,6 +26,10 @@ FNAMES: "dict[str, type[Component]]" = {}
 
 FTYPES: "dict[str, type[Component]]" = {}
 """MF6 component ftype (e.g. 'gwf-dis6') -> component class."""
+
+_PENDING_REFERENCES = "flopy4.pending_references"
+"""`deepcopy` memo key for the reference lists a copy has yet to resolve
+(see `Component.__deepcopy__`). Not an object id, so it can't collide."""
 
 
 def _prefix(dfn_name: str) -> "str | None":
@@ -544,6 +550,66 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
 
     def __getitem__(self, key):
         return self._children[key]
+
+    def __copy__(self):
+        """A shallow copy, sharing everything, its parent too. (Without
+        this, `copy.copy` would go through `__getstate__`/`__setstate__`
+        and take the original's children for its own.)"""
+        new = type(self).__new__(type(self))
+        new.__dict__.update(self.__dict__)
+        return new
+
+    def __getstate__(self):
+        """Pickle what this component owns, as `__deepcopy__` copies it:
+        not its parent, so it unpickles detached unless its parent was
+        pickled too, and its reference fields by name, so a solution
+        doesn't take its models along. A simulation resolves its
+        solutions' names again when it's unpickled."""
+        state = dict(self.__dict__)
+        state["_parent"] = None
+        for f in attrs.fields(type(self)):  # type: ignore[arg-type]
+            if is_reference(f) and f.name in state:
+                state[f.name] = reference_names(state[f.name])
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self._set_child_parents()
+
+    def __deepcopy__(self, memo):
+        """Copy what this component owns (its children and values), not
+        what it only refers to: its parent and any reference field (e.g. a
+        solution's models). Each of those becomes its copy if it's copied
+        in the same operation, as when copying a whole simulation;
+        otherwise the parent is dropped, so a lone copy comes out
+        detached, and references stay on the originals.
+
+        A parent is always copied before its children, so it's resolved
+        right away. References are resolved once the outermost component
+        being copied is done, so it doesn't matter which is copied first.
+        A copy that doesn't start at a component sees only what was copied
+        before that component finished: in `deepcopy([ims, gwf])`, `ims`
+        keeps the original `gwf`. Copy the simulation they're in instead.
+        """
+        cls = type(self)
+        new = cls.__new__(cls)
+        memo[id(self)] = new
+        outermost = _PENDING_REFERENCES not in memo
+        pending = memo.setdefault(_PENDING_REFERENCES, [])
+        references = {f.name for f in attrs.fields(cls) if is_reference(f)}  # type: ignore[arg-type]
+        for key, value in self.__dict__.items():
+            if key == "_parent":
+                value = memo.get(id(value))
+            elif key in references:
+                value = list(value)
+                pending.append(value)
+            else:
+                value = copy.deepcopy(value, memo)
+            new.__dict__[key] = value
+        if outermost:
+            for refs in memo.pop(_PENDING_REFERENCES):
+                refs[:] = [v if isinstance(v, str) else memo.get(id(v), v) for v in refs]
+        return new
 
     def __setitem__(self, key, value):
         """Attach `value` under `key`.

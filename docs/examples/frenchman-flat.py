@@ -644,7 +644,7 @@ ims = flopy4.mf6.Ims(
     linear_acceleration="bicgstab",
     number_orthogonalizations=0,
     reordering_method=None,
-    models=["ff"],
+    models=[gwf],
 )
 
 # ### TDIS

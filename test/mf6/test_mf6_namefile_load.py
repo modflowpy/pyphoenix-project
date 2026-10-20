@@ -72,7 +72,7 @@ def test_load_simulation_resolves_model_and_solution(written_sim):
     assert len(loaded.solutiongroup) == 1
     ims = next(iter(loaded.solutiongroup))
     assert isinstance(ims, Ims)
-    assert ims.models == ["mymodel"]
+    assert ims.models == [gwf]
 
 
 def test_load_simulation_resolves_dis_and_dims(written_sim):
@@ -144,7 +144,9 @@ def test_load_preserves_model_pname(tmp_path):
         top=1.0 * np.ones((2, 2)),
         botm=0.0 * np.ones((1, 2, 2)),
     )
-    sim = Simulation(name="sim", workspace=workspace, tdis=Time(perlen=[1.0], nstp=[1]))
+    sim = Simulation(
+        name="sim", workspace=workspace, tdis=Time(perlen=[1.0], nstp=[1]), solutiongroup=[Ims()]
+    )
     Gwf(parent=sim, name="a_custom_model_name", dis=grid)
     sim.write()
 
@@ -239,7 +241,9 @@ def test_load_exchange_between_grids(tmp_path):
     from flopy4.mf6.exg.gwfgwf import Gwfgwf
     from flopy4.mf6.gwf import Disv, Gnc
 
-    sim = Simulation(name="mx", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]))
+    sim = Simulation(
+        name="mx", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]), solutiongroup=[Ims()]
+    )
     Gwf(
         parent=sim,
         name="a",
@@ -286,7 +290,9 @@ def subdir_sim(tmp_path):
     (``GWF6 gwf/m.nam``, ``DIS6 gwf/m.dis``, ``OPEN/CLOSE gwf/k.txt``)."""
     workspace = tmp_path / "sim"
     workspace.mkdir()
-    sim = Simulation(name="sub", workspace=workspace, tdis=Time(perlen=[1.0], nstp=[1]))
+    sim = Simulation(
+        name="sub", workspace=workspace, tdis=Time(perlen=[1.0], nstp=[1]), solutiongroup=[Ims()]
+    )
     gwf = Gwf(
         parent=sim,
         name="m",
@@ -359,7 +365,9 @@ def test_model_workspace_follows_simulation(tmp_path):
 
 
 def test_model_workspace_under_simulation_is_not_settable(tmp_path):
-    sim = Simulation(name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]))
+    sim = Simulation(
+        name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]), solutiongroup=[Ims()]
+    )
     gwf = Gwf(parent=sim, name="m", dis=Dis(nlay=1, nrow=1, ncol=1))
 
     gwf.workspace = tmp_path  # the simulation's: no change
@@ -379,7 +387,12 @@ def test_write_does_not_depend_on_cwd(tmp_path, monkeypatch):
     """Files are written to the workspace without changing into it."""
     (tmp_path / "elsewhere").mkdir()
     monkeypatch.chdir(tmp_path / "elsewhere")
-    sim = Simulation(name="sim", workspace=tmp_path / "sim", tdis=Time(perlen=[1.0], nstp=[1]))
+    sim = Simulation(
+        name="sim",
+        workspace=tmp_path / "sim",
+        tdis=Time(perlen=[1.0], nstp=[1]),
+        solutiongroup=[Ims()],
+    )
     gwf = Gwf(parent=sim, name="m", filename="gwf/m.nam", dis=Dis(nlay=1, nrow=1, ncol=1))
     gwf.dis.filename = "gwf/m.dis"
 
@@ -394,7 +407,9 @@ def test_write_names_packages_attached_by_assignment(tmp_path):
     """A package swapped in by plain assignment (``gwf.chd = [...]``)
     after a write is named, and given its filename, from its model before
     the model's name file is written again."""
-    sim = Simulation(name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]))
+    sim = Simulation(
+        name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]), solutiongroup=[Ims()]
+    )
     gwf = Gwf(parent=sim, name="m", dis=Dis(nlay=1, nrow=1, ncol=2))
     gwf.chd = [Chd(stress_period_data={0: [[(0, 0, 0), 1.0]]})]
     sim.write()
@@ -417,7 +432,9 @@ def test_loads_a_new_model_type(tmp_path):
     from flopy4.mf6.chf.disv1d import Disv1d
     from flopy4.mf6.chf.ic import Ic as ChfIc
 
-    sim = Simulation(name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]))
+    sim = Simulation(
+        name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]), solutiongroup=[Ims()]
+    )
     chf = Chf(parent=sim, name="m")
     Disv1d(
         parent=chf,
@@ -449,7 +466,9 @@ def test_loads_a_new_olf_model_type(tmp_path):
     from flopy4.mf6.olf.dis2d import Dis2d
     from flopy4.mf6.olf.ic import Ic as OlfIc
 
-    sim = Simulation(name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]))
+    sim = Simulation(
+        name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]), solutiongroup=[Ims()]
+    )
     olf = Olf(parent=sim, name="m")
     Dis2d(parent=olf, nrow=1, ncol=2, delr=1.0, delc=1.0, bottom=0.0)
     OlfIc(parent=olf, strt=[1.0, 1.0])
@@ -475,7 +494,9 @@ def test_exchange_resolves_cellid_widths_per_model(tmp_path):
     from flopy4.mf6.chf.ic import Ic as ChfIc
     from flopy4.mf6.exg.chfgwf import Chfgwf
 
-    sim = Simulation(name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]))
+    sim = Simulation(
+        name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]), solutiongroup=[Ims()]
+    )
     chf = Chf(parent=sim, name="chfmodel")
     Disv1d(
         parent=chf,
@@ -526,7 +547,9 @@ def test_exchange_resolves_cellid_widths_for_dis2d(tmp_path):
     from flopy4.mf6.olf.dis2d import Dis2d
     from flopy4.mf6.olf.ic import Ic as OlfIc
 
-    sim = Simulation(name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]))
+    sim = Simulation(
+        name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]), solutiongroup=[Ims()]
+    )
     olf = Olf(parent=sim, name="olfmodel")
     Dis2d(parent=olf, nrow=1, ncol=2, delr=1.0, delc=1.0, bottom=0.0)
     OlfIc(parent=olf, strt=[1.0, 1.0])
@@ -567,7 +590,9 @@ def test_loads_cdb_stress_period_data(tmp_path):
     from flopy4.mf6.chf.disv1d import Disv1d
     from flopy4.mf6.chf.ic import Ic as ChfIc
 
-    sim = Simulation(name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]))
+    sim = Simulation(
+        name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]), solutiongroup=[Ims()]
+    )
     chf = Chf(parent=sim, name="m")
     Disv1d(
         parent=chf,
@@ -599,7 +624,9 @@ def test_loads_olf_cdb_stress_period_data(tmp_path):
     from flopy4.mf6.olf.dis2d import Dis2d
     from flopy4.mf6.olf.ic import Ic as OlfIc
 
-    sim = Simulation(name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]))
+    sim = Simulation(
+        name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]), solutiongroup=[Ims()]
+    )
     olf = Olf(parent=sim, name="m")
     Dis2d(parent=olf, nrow=1, ncol=2, delr=1.0, delc=1.0, bottom=0.0)
     OlfIc(parent=olf, strt=[1.0, 1.0])
@@ -623,7 +650,9 @@ def test_loads_evp_stress_period_data(tmp_path):
     from flopy4.mf6.chf.evp import Evp
     from flopy4.mf6.chf.ic import Ic as ChfIc
 
-    sim = Simulation(name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]))
+    sim = Simulation(
+        name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]), solutiongroup=[Ims()]
+    )
     chf = Chf(parent=sim, name="m")
     Disv1d(
         parent=chf,
@@ -655,7 +684,9 @@ def test_loads_olf_evp_stress_period_data(tmp_path):
     from flopy4.mf6.olf.evp import Evp
     from flopy4.mf6.olf.ic import Ic as OlfIc
 
-    sim = Simulation(name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]))
+    sim = Simulation(
+        name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]), solutiongroup=[Ims()]
+    )
     olf = Olf(parent=sim, name="m")
     Dis2d(parent=olf, nrow=1, ncol=2, delr=1.0, delc=1.0, bottom=0.0)
     OlfIc(parent=olf, strt=[1.0, 1.0])
