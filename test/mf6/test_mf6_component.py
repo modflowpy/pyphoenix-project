@@ -20,6 +20,7 @@ from flopy4.mf6.utils.grid import StructuredGrid, VertexGrid
 from flopy4.mf6.utils.time import Time
 from flopy4.mf6.utl.ncf import Ncf
 from flopy4.mf6.write_context import WriteContext
+from flopy4.spec import reference_names
 
 
 def test_registry():
@@ -827,7 +828,7 @@ def test_deepcopy_simulation():
 
 
 def test_deepcopy_references_any_order():
-    """References are resolved after the copy, so a solution copied
+    """References are retargeted after the copy, so a solution copied
     before the models it refers to still gets their copies."""
     import copy
 
@@ -844,19 +845,18 @@ def test_deepcopy_references_any_order():
 
 
 def test_deepcopy_not_from_a_component():
-    """A copy that doesn't start at a component resolves each top-level
-    component's references when it's done: a solution copied before its
-    model keeps the original. (Copy the simulation instead.)"""
+    """A copy that doesn't start at the simulation has no copied
+    simulation to retarget references in: a solution copied along with its
+    model, in either order, refers to the original. (Copy the simulation
+    instead.)"""
     import copy
 
     gwf = Gwf(name="flow")
     ims = Ims(models=[gwf])
     Simulation(models=[gwf], solutiongroup=[ims])
 
-    gwf2, ims2 = copy.deepcopy([gwf, ims])
-    assert ims2.models[0] is gwf2
-    ims2, gwf2 = copy.deepcopy([ims, gwf])
-    assert ims2.models[0] is gwf
+    for copied in (copy.deepcopy([gwf, ims])[1], copy.deepcopy([ims, gwf])[0]):
+        assert copied.models[0] is gwf
 
 
 def test_pickle_simulation():
@@ -923,9 +923,9 @@ def test_deepcopy_child_detached():
     assert sim.models == [gwf]
 
 
-def test_deepcopy_solution_shares_models():
-    """A copied solution refers to the same models: they're the
-    simulation's, not the solution's, to copy."""
+def test_deepcopy_solution_keeps_models():
+    """A lone copied solution refers to the original models: they're the
+    simulation's, not the solution's, to copy. So it follows a rename."""
     import copy
 
     gwf = Gwf(name="flow")
@@ -937,6 +937,46 @@ def test_deepcopy_solution_shares_models():
     assert clone.models[0] is gwf
     assert clone.outer_maximum == 5
     assert sim.solutiongroup == [ims]
+    gwf.name = "renamed"
+    assert reference_names(clone.models) == ["renamed"]
+
+
+@pytest.mark.parametrize("how", ["append", "setitem", "parent"])
+def test_deepcopy_solution_joins_other_simulation(how):
+    """A copy added to another simulation refers to that simulation's
+    models of the same names, however it's added."""
+    import copy
+
+    gwf = Gwf(name="flow")
+    ims = Ims(models=[gwf], name="ims")
+    Simulation(models=[gwf], solutiongroup=[ims])
+    other_gwf = Gwf(name="flow")
+    other = Simulation(models=[other_gwf])
+    clone = copy.deepcopy(ims)
+    if how == "append":
+        other.solutiongroup.append(clone)
+    elif how == "setitem":
+        other["ims"] = clone
+    else:
+        clone.parent = other
+
+    assert clone.parent is other
+    assert clone.models[0] is other_gwf
+    assert other_gwf.solution is clone
+    assert ims.models[0] is gwf
+
+
+def test_joining_simulation_keeps_unmatched_references():
+    """A reference to a model the joined simulation has no model by the
+    name of is kept, and is an error on write."""
+    gwf = Gwf(name="flow")
+    ims = Ims(models=[gwf])
+    Simulation(models=[gwf], solutiongroup=[ims])
+    other = Simulation(models=[Gwf(name="other")])
+    ims.parent = other
+
+    assert ims.models[0] is gwf
+    assert any("isn't in the simulation" in e for e in ims._reference_errors())
 
 
 def test_solution_models_to_xarray():
@@ -960,7 +1000,7 @@ def test_solution_model_solution():
     [
         (
             lambda: ([_small_gwf(name="flow")], [Ims(models=["nope"])]),
-            "lists model 'nope'",
+            "refers to model 'nope' in models, which isn't in the simulation",
         ),
         (
             lambda: ([_small_gwf(name="a"), _small_gwf(name="b")], [Ims(models=["a"]), Ims()]),
@@ -986,6 +1026,8 @@ def test_solution_models_invalid_type(function_tmpdir):
 
     with pytest.raises(ValueError, match="EMS.*can't solve model 'flow'"):
         _write_sim(function_tmpdir, [_small_gwf(name="flow")], [Ems()])
+    with pytest.raises(ValueError, match=r"\(EMS\) can't solve model 'flow' \(Gwf\)"):
+        _write_sim(function_tmpdir, [_small_gwf(name="flow")], [Ems(models=["flow"])])
     assert Ims().solves(_small_gwf()) and not Ims().solves(Prt())
     assert Ems().solves(Prt()) and not Ems().solves(_small_gwf())
 
@@ -999,7 +1041,9 @@ def test_solution_models_dangling(function_tmpdir):
         solutiongroup=[Ims(models=[gwf])],
     )
     sim["flow"] = _small_gwf()
-    with pytest.raises(ValueError, match="lists model 'flow', which isn't in the simulation"):
+    with pytest.raises(
+        ValueError, match="refers to model 'flow' in models, which isn't in the simulation"
+    ):
         sim.write()
 
 
@@ -1070,9 +1114,15 @@ def _gwfgwt(**kwargs):
 @pytest.mark.parametrize(
     "build, match",
     [
-        (lambda a, b: _gwfgwf(exgmnamea="a"), "has no model b"),
-        (lambda a, b: _gwfgwf(exgmnamea="a", exgmnameb="nope"), "names model 'nope'"),
-        (lambda a, b: _gwfgwt(exgmnamea=a, exgmnameb=b), "needs a GWT model b, not 'b'"),
+        (lambda a, b: _gwfgwf(exgmnamea="a"), "has no exgmnameb"),
+        (
+            lambda a, b: _gwfgwf(exgmnamea="a", exgmnameb="nope"),
+            "refers to model 'nope' in exgmnameb",
+        ),
+        (
+            lambda a, b: _gwfgwt(exgmnamea=a, exgmnameb=b),
+            r"\(Gwfgwt\) needs a GWT model b, not 'b' \(Gwf\)",
+        ),
     ],
     ids=["missing", "unknown", "wrong-type"],
 )
@@ -1089,9 +1139,28 @@ def test_exchange_models_invalid(function_tmpdir, build, match):
         sim.write()
 
 
+@pytest.mark.parametrize(
+    "exchange, types",
+    [("Gwfgwt", ("gwf", "gwt")), ("Gwfprt", ("gwf", "prt")), ("Chfgwf", ("chf", "gwf"))],
+)
+def test_exchange_model_types(exchange, types):
+    import flopy4.mf6.exg as exg
+
+    assert getattr(exg, exchange)().model_types == types
+
+
+def test_exchange_model_must_be_component_or_name():
+    with pytest.raises(TypeError, match="exgmnamea takes a component or a name, not int"):
+        _gwfgwf(exgmnamea=1)
+    exg = _gwfgwf()
+    with pytest.raises(TypeError, match="exgmnameb takes a component or a name"):
+        exg.exgmnameb = 1.0
+
+
 def test_exchange_models_copy_and_pickle():
     """A copied or unpickled simulation's exchanges connect its own
-    models; a lone copy shares the models, a lone unpickling names them."""
+    models; a lone copy keeps the originals, a lone unpickling names
+    them."""
     import copy
     import pickle
 
@@ -1102,8 +1171,10 @@ def test_exchange_models_copy_and_pickle():
         (cexg,) = clone.exchanges
         assert cexg.exgmnamea is clone["a"]
         assert cexg.exgmnameb is clone["b"]
-    assert copy.deepcopy(exg).exgmnamea is a
-    assert pickle.loads(pickle.dumps(exg)).exgmnamea == "a"
+    clone = copy.deepcopy(exg)
+    assert (clone.exgmnamea, clone.exgmnameb) == (a, b)
+    clone = pickle.loads(pickle.dumps(exg))
+    assert (clone.exgmnamea, clone.exgmnameb) == ("a", "b")
 
 
 def test_init_big_sim():

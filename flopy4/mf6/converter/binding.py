@@ -5,7 +5,7 @@ from flopy4.mf6.exchange import Exchange
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
 from flopy4.mf6.solution import Solution
-from flopy4.mf6.spec import reference_names
+from flopy4.spec import reference_names
 
 
 def component_ftype(cls: type) -> str:

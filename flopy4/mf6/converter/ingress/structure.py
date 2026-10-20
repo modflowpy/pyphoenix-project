@@ -34,7 +34,7 @@ from flopy4.mf6.period_arrays import is_grid_package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import repeating_array_key_type, to_field_type
 from flopy4.mf6.write_context import ArrayIO, WriteContext, array_hash
-from flopy4.spec import is_array
+from flopy4.spec import is_array, resolve
 from flopy4.utils import unwrap_optional
 
 
@@ -571,19 +571,15 @@ def _apply_binding_terms(child: Any, terms: list, models: list) -> None:
     from flopy4.mf6.exchange import Exchange
     from flopy4.mf6.solution import Solution
 
-    if not terms:
-        return
-    # the models loaded so far (case-insensitively, as MF6 does), so a
-    # loaded exchange or solution holds them as a built one does; unknown
-    # names stay
-    by_name = {str(model.name).lower(): model for model in models}
-    found = [by_name.get(str(t).lower(), str(t)) for t in terms]
+    # the models loaded so far, so a loaded exchange or solution holds
+    # them as a built one does; unknown names stay
+    found = resolve([str(t) for t in terms], models)
     if isinstance(child, Exchange):
         if len(found) > 0:
             child.exgmnamea = found[0]
         if len(found) > 1:
             child.exgmnameb = found[1]
-    elif isinstance(child, Solution):
+    elif isinstance(child, Solution) and found:
         child.models = found
 
 

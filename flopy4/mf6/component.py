@@ -14,7 +14,7 @@ from flopy4.mf6.constants import MF6
 from flopy4.mf6.external import in_write_session, write_session
 from flopy4.mf6.spec import fields_dict
 from flopy4.mf6.write_context import WriteContext
-from flopy4.spec import is_reference, reference_names, referenced
+from flopy4.spec import is_reference, reference_names, referenced, resolve, retarget
 from flopy4.uio import IO, Loader, Writer
 from flopy4.utils import empty_if_none
 
@@ -26,10 +26,6 @@ FNAMES: "dict[str, type[Component]]" = {}
 
 FTYPES: "dict[str, type[Component]]" = {}
 """MF6 component ftype (e.g. 'gwf-dis6') -> component class."""
-
-_PENDING_REFERENCES = "flopy4.pending_references"
-"""`deepcopy` memo key for the reference fields a copy has yet to resolve
-(see `Component.__deepcopy__`). Not an object id, so it can't collide."""
 
 
 def _prefix(dfn_name: str) -> "str | None":
@@ -232,14 +228,6 @@ def _find_child_field(parent_cls: type, child_cls: type) -> "tuple[Any, str] | N
     return matches[0]
 
 
-def _copied(value, memo):
-    """A reference field's value with each component in it replaced by
-    its copy, if `memo` holds one (see `Component.__deepcopy__`)."""
-    if isinstance(value, list):
-        return [_copied(v, memo) for v in value]
-    return value if value is None or isinstance(value, str) else memo.get(id(value), value)
-
-
 # kw_only=True necessary so we can define optional fields here
 # and required fields in subclasses. attrs complains otherwise
 @attrs.define(kw_only=True, slots=False)
@@ -356,6 +344,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         if value is not None:
             self._parent = value
             self._attach_to_parent_field(value)
+            self._retarget_references()
 
     @property
     def _children(self) -> "dict[str, Component]":
@@ -416,10 +405,13 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         found: "list[tuple[str, Component]]" = []
         # rows may share a child (one table file named in several places)
         stamped: "set[int]" = set()
+        joined: "list[Component]" = []
 
         def add(kind: str, c: "Component") -> None:
             if id(c) not in stamped:
                 stamped.add(id(c))
+                if c.__dict__.get("_parent") is not self:
+                    joined.append(c)
                 c.__dict__["_parent"] = self
                 found.append((kind, c))
 
@@ -449,6 +441,8 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             if c.name is None:  # type: ignore[attr-defined]
                 c.name = _resolve_child_name(used, kind, c)  # type: ignore[attr-defined]
                 used.add(c.name)  # type: ignore[attr-defined]
+        for c in joined:
+            c._retarget_references()
 
     @property
     def path(self) -> Path:
@@ -509,6 +503,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             self._parent = self._references_parent()
         if self._parent is not None:
             self._attach_to_parent_field(self._parent)
+            self._retarget_references()
         self._set_child_parents()
 
     def _attach_field(self, name: str, value: Any) -> Any:
@@ -531,19 +526,77 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         simulation a solution's or an exchange's models are in), which a
         component given no parent joins. None if they have none; an error
         if they have different ones."""
-        refs = [
-            c
-            for f in fields(type(self))
-            if is_reference(f)
-            for c in referenced(getattr(self, f.name))
-        ]
-        parents = {id(p): p for c in refs if (p := c.__dict__.get("_parent")) is not None}
+        parents = {}
+        refs = []
+        for f in self._reference_fields():
+            for c in referenced(getattr(self, f.name)):
+                refs.append(c)
+                p = c.__dict__.get("_parent")
+                if hasattr(p, "models"):
+                    parents[id(p)] = p
         if len(parents) > 1:
             names = [c.name for c in refs]
             raise ValueError(
                 f"{self.name}: {names} belong to different simulations"  # type: ignore[attr-defined]
             )
         return next(iter(parents.values()), None)
+
+    def _reference_fields(self) -> list:
+        """This component's reference fields (see `flopy4.spec.reference`)."""
+        return [f for f in fields(type(self)) if is_reference(f)]
+
+    def _resolved(self, name: str) -> Any:
+        """Reference field `name`'s value with names resolved among the
+        parent's (the simulation's) models. As given if there's no parent
+        to look in."""
+        value = getattr(self, name)
+        models = getattr(self._parent, "models", None)
+        return value if models is None else resolve(value, models)
+
+    def _resolve_references(self) -> None:
+        """Resolve the names in this component's children's reference
+        fields to the models they name, where it has them."""
+        for child in self._children.values():
+            for f in child._reference_fields():
+                setattr(child, f.name, child._resolved(f.name))
+
+    def _retarget_references(self) -> None:
+        """Point this component's references to models outside its
+        simulation at the simulation's models of the same names, where it
+        has them (see `flopy4.spec.retarget`). Run when it joins one, so a
+        copy added to another simulation refers to that simulation's
+        models. References to the simulation's own models, and names, stay."""
+        models = getattr(self._parent, "models", None)
+        if models is None:
+            return
+        for f in self._reference_fields():
+            value = getattr(self, f.name)
+            new = retarget(value, models)
+            if any(a is not b for a, b in zip(referenced(new), referenced(value))):
+                setattr(self, f.name, new)
+
+    def _reference_errors(self) -> list[str]:
+        """What's wrong with this component's references: a required one
+        missing, one not among the simulation's models, or one its field's
+        check finds a problem with (see `flopy4.spec.reference`)."""
+        errors = []
+        models = getattr(self._parent, "models", [])
+        for f in self._reference_fields():
+            value = self._resolved(f.name)
+            if value is None and f.metadata["required"]:
+                errors.append(f"{self.name} has no {f.name}")  # type: ignore[attr-defined]
+            check = f.metadata["check"]
+            for v in value if isinstance(value, list) else [value]:
+                if v is None:
+                    continue
+                if isinstance(v, str) or not any(m is v for m in models):
+                    errors.append(
+                        f"{self.name} refers to model {reference_names(v)!r} in {f.name}, "  # type: ignore[attr-defined]
+                        "which isn't in the simulation"
+                    )
+                elif check is not None and (problem := check(self, v)):
+                    errors.append(f"{self.name} {problem}")  # type: ignore[attr-defined]
+        return errors
 
     def _attach_to_parent_field(self, parent: "Component") -> None:
         """Bottom-up counterpart to `_set_child_parents()`: when this
@@ -607,36 +660,28 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
 
     def __deepcopy__(self, memo):
         """Copy what this component owns (its children and values), not
-        what it only refers to: its parent and any reference field (e.g. a
-        solution's models). Each of those becomes its copy if it's copied
-        in the same operation, as when copying a whole simulation;
-        otherwise the parent is dropped, so a lone copy comes out
-        detached, and references stay on the originals.
-
-        A parent is always copied before its children, so it's resolved
-        right away. References are resolved once the outermost component
-        being copied is done, so it doesn't matter which is copied first.
-        A copy that doesn't start at a component sees only what was copied
-        before that component finished: in `deepcopy([ims, gwf])`, `ims`
-        keeps the original `gwf`. Copy the simulation they're in instead.
+        what it only refers to. Its parent becomes its copy if that's
+        copied in the same operation, as when copying a whole simulation;
+        otherwise it's dropped, so a lone copy comes out detached. Its
+        reference fields (e.g. a solution's models) keep the originals,
+        until it joins a simulation (see `_retarget_references`): a copied
+        simulation's solutions and exchanges then refer to its copied
+        models, as does a lone copy added to the copied simulation.
         """
         cls = type(self)
         new = cls.__new__(cls)
         memo[id(self)] = new
-        outermost = _PENDING_REFERENCES not in memo
-        pending = memo.setdefault(_PENDING_REFERENCES, [])
-        references = {f.name for f in attrs.fields(cls) if is_reference(f)}  # type: ignore[arg-type]
+        references = {f.name for f in self._reference_fields()}
         for key, value in self.__dict__.items():
             if key == "_parent":
                 value = memo.get(id(value))
             elif key in references:
-                pending.append((new, key))
+                value = list(value) if isinstance(value, list) else value
             else:
                 value = copy.deepcopy(value, memo)
             new.__dict__[key] = value
-        if outermost:
-            for obj, key in memo.pop(_PENDING_REFERENCES):
-                obj.__dict__[key] = _copied(obj.__dict__[key], memo)
+        for child in new._children.values():
+            child._retarget_references()
         return new
 
     def __setitem__(self, key, value):
@@ -660,6 +705,13 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
                 f"under '{key}'; rename it first, or use '{value.name}' as the key."  # type: ignore[attr-defined]
             )
 
+        joining = value._parent is not self
+        self._attach_item(key, value)
+        if joining:
+            value._retarget_references()
+
+    def _attach_item(self, key, value) -> None:
+        """Attach `value` under `key` (see `__setitem__`)."""
         from flopy4.attrs_xarray import child_field_candidates
 
         for f in fields(type(self)):
@@ -679,7 +731,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
                     if isinstance(child, Component) and child.name == key:  # type: ignore[attr-defined]
                         value.name = key  # type: ignore[attr-defined]
                         value.__dict__["_parent"] = self
-                        current[i] = value
+                        current[i] = value  # type: ignore[index]
                         return
 
         match = _find_child_field(type(self), type(value))

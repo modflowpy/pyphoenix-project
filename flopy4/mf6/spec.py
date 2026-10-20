@@ -23,7 +23,6 @@ from flopy4.mf6._types import (
 )
 from flopy4.mf6.item import to_union_arm
 from flopy4.spec import fields_dict as flopy_fields_dict
-from flopy4.spec import reference_names
 
 FieldType = Literal["keyword", "integer", "double", "string", "list", "record"]
 
@@ -455,33 +454,6 @@ def child(
         converter=converter or attrs.Converter(coerce_child, takes_self=True, takes_field=True),
         on_setattr=_pipe(attrs.setters.convert, attrs.setters.validate, _attach_children),
         metadata=metadata,
-    )
-
-
-def _to_reference_list(value) -> list:
-    if value is None:
-        return []
-    if isinstance(value, list):
-        return value
-    if isinstance(value, tuple):
-        return list(value)
-    return [value]
-
-
-def reference(many: bool = True):
-    """Components this one refers to but doesn't own, given as objects or
-    names: a list of them, or with `many=False` one (or None). The owner
-    (e.g. the simulation, for models) is the components' parent; a
-    reference never changes their parent or name, so names are looked up
-    when needed, not when the reference is made. Shown and compared by
-    name. A component given no parent joins its references' parent (see
-    `Component.__attrs_post_init__`)."""
-    shape: dict = {"factory": list, "converter": _to_reference_list} if many else {"default": None}
-    return attrs.field(
-        **shape,
-        metadata={"reference": True},
-        repr=lambda v: repr(reference_names(v)),
-        eq=reference_names,
     )
 
 
