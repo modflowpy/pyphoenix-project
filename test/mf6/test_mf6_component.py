@@ -970,6 +970,7 @@ def test_solution_model_solution():
             "more than one",
         ),
     ],
+    ids=["missing", "unsolved", "solved-twice"],
 )
 def test_solution_models_invalid(function_tmpdir, build, match):
     models, solutions = build()
