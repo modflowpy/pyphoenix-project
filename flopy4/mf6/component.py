@@ -10,7 +10,7 @@ from attrs import fields
 
 from flopy4.dimensions import DimensionResolverMixin
 from flopy4.mf6.constants import MF6
-from flopy4.mf6.external import write_session
+from flopy4.mf6.external import in_write_session, write_session
 from flopy4.mf6.spec import fields_dict
 from flopy4.mf6.write_context import WriteContext
 from flopy4.uio import IO, Loader, Writer
@@ -18,11 +18,6 @@ from flopy4.utils import empty_if_none
 
 if TYPE_CHECKING:
     from flopy4.mf6.load_context import LoadContext
-
-_NAME_UNSET = object()
-"""Sentinel default for `Component.name`, so `__attrs_post_init__()` can
-tell "no name given" apart from an explicit name matching the class-name
-default -- see `Component._name_given`."""
 
 FNAMES: "dict[str, type[Component]]" = {}
 """MF6 component name (e.g. 'gwf-dis') -> component class."""
@@ -80,69 +75,53 @@ def get_ftype(token: str, prefix: "str | None" = None) -> "type[Component] | Non
     return ftypes.get(token)
 
 
-def _is_default_child_name(child: "Component") -> bool:
-    """Whether `child` was given no explicit name, based on `_name_given`
-    rather than the name string itself, since an explicit name can
-    coincide with the class-name default (e.g. a lone WEL package named
-    "wel")."""
-    return not child._name_given  # type: ignore[attr-defined]
-
-
-def _names_by_class(candidates: "tuple[type, ...]") -> bool:
-    """Whether a list field's unnamed children are named after their own
-    class rather than the field: true for a field of an abstract base
-    (`Simulation.models`, a list of `Model`), whose name says nothing
-    about which kind of child it holds."""
-    return not any("dfn_name" in c.__dict__ for c in candidates)
-
-
-def _resolve_child_name(
-    used: "set[str]",
-    kind: str,
-    field_name: str,
-    child: "Component",
-    by_class: bool = False,
-) -> str:
+def _resolve_child_name(used: "set[str]", kind: str, child: "Component") -> str:
     """Resolve the name `child` should be attached under (stored as its
     own `.name`), given the set of names already claimed by any of the
     parent's other children (`used`).
 
-    An explicitly-given name sticks as-is, raising on a collision. An
-    unnamed "only"-kind child gets the field's own name; an unnamed
-    "list"-kind child gets `f"{name}{i}"` from 0, by its own concrete
-    class (e.g. "rch0" for `Rch`, "rcha0" for `Rcha`), even for a
-    base/grid-array arm pair sharing one field (e.g. `rch: list[Union[Rch,
-    Rcha]]`) and one real MF6 namefile ftype (see `converter/binding.py`'s
-    `component_ftype()`). With `by_class` (see `_names_by_class()`), an
-    unnamed child keeps its class-name default if it's free, else gets
-    `f"{name}{i}"` from 1, e.g. "gwf", "gwf1"; `_is_default_child_name()`
-    (via `_name_given`) lets this coexist with an explicitly-named
-    sibling that happens to equal the default.
+    A name already set (given, or assigned on an earlier attach) is kept
+    as is, raising if a sibling has it. An unnamed "only"-kind child takes
+    its class name ("dis" for `Dis`, "disv" for `Disv`). An unnamed
+    "list"-kind child takes its class name plus the first free index from
+    0 ("wel0", "rcha0", "gwf0"). A stored name never changes, so deleting
+    a sibling doesn't renumber the rest.
     """
     if kind not in ("only", "list"):
         raise TypeError(f"Bad child collection kind '{kind}'")
-    if not _is_default_child_name(child):
+    if child.name is not None:  # type: ignore[attr-defined]
         if child.name in used:  # type: ignore[attr-defined]
             raise ValueError(
                 f"Child name '{child.name}' collides with an existing child "  # type: ignore[attr-defined]
                 "on the same parent."
             )
         return child.name  # type: ignore[attr-defined]
-    if kind == "only":
-        return field_name
-    if by_class:
-        name = child.name  # type: ignore[attr-defined]
-        if name not in used:
-            return name
-        i = 1
-        while f"{name}{i}" in used:
-            i += 1
-        return f"{name}{i}"
     name = type(child).__name__.lower()
+    if kind == "only":
+        return name
     i = 0
     while f"{name}{i}" in used:
         i += 1
     return f"{name}{i}"
+
+
+def _check_filenames(top: "Component") -> None:
+    """Raise if two components in the tree under `top` have one file,
+    which writing would overwrite. Compares paths case-insensitively, as
+    macOS's and Windows' filesystems do."""
+    seen: "dict[str, Component]" = {}
+    stack = [top]
+    while stack:
+        c = stack.pop()
+        key = c.path.as_posix().casefold()
+        if (other := seen.get(key)) is not None and other is not c:
+            raise ValueError(
+                f"{c.filename} is the file for both {type(other).__name__} "
+                f"'{other.name}' and {type(c).__name__} '{c.name}'; "
+                "give one a different filename"
+            )
+        seen[key] = c
+        stack.extend(reversed(list(c._children.values())))
 
 
 @lru_cache(maxsize=None)
@@ -267,27 +246,18 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     _load = IO(Loader)  # type: ignore
     _write = IO(Writer)  # type: ignore
 
-    filename: Optional[Path] = attrs.field(default=None, converter=attrs.converters.optional(Path))
-    """The component's input file, relative to the workspace (a `str` is
-    accepted and converted). Written to name files with POSIX separators."""
+    _filename: Optional[Path] = attrs.field(
+        default=None, alias="filename", converter=attrs.converters.optional(Path)
+    )
+    """The filename set, if any (see `filename`). `None` means the
+    default."""
 
-    name: str = attrs.field(default=_NAME_UNSET)  # type: ignore[assignment]
-    """The component's own identity/tag name. Resolved in
-    `__attrs_post_init__()`, not here, so an explicit name can be told
-    apart from the default even when they coincide (see `_name_given`):
-    if still `_NAME_UNSET`, it's computed from the *actual* runtime
-    class, so a `Package` leaf like `Ic` gets "ic", not "package".
-    Overridden by `_resolve_child_name()`/`_attach_to_parent_field()`
-    when attached as a named child."""
-
-    _name_given: bool = attrs.field(default=False, repr=False, eq=False, init=False)
-    """Whether `name` was actually given (by a caller, or a namefile
-    pname via `structure_component`), vs. left to default. Resolved in
-    `__attrs_post_init__()` alongside `name`, not a constructor
-    parameter since a passed value could drift from the real `name=`
-    outcome. Needed because the default can coincide exactly with an
-    explicit name -- e.g. a lone WEL package named "wel" -- so the name
-    string alone can't distinguish the two."""
+    name: Optional[str] = attrs.field(default=None)
+    """The component's name among its parent's children. `None` until
+    given or attached: attaching gives an unnamed component one (see
+    `_resolve_child_name()`), which is then kept like a given name. To
+    rename, assign it; a clash with a sibling raises on the parent's next
+    access to its children."""
 
     _parent: Any = attrs.field(default=None, repr=False, eq=False)
     """Parent back-reference -- source of truth for "who is this
@@ -326,6 +296,19 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     accepted and converted to an empty dict."""
 
     @property
+    def filename(self) -> Path:
+        """The component's input file, relative to the workspace: the one
+        set (given, or loaded from the name file), else `default_filename()`,
+        worked out fresh on each read, so a default follows a rename. Set it
+        to a path (a `str` is converted), or to `None` to go back to the
+        default. Written to name files with POSIX separators."""
+        return self._filename or Path(self.default_filename())
+
+    @filename.setter
+    def filename(self, value: "str | PathLike | None") -> None:
+        self._filename = None if value is None else Path(value)
+
+    @property
     def parent(self) -> "Component | None":
         """This component's parent, if attached (`None` otherwise).
 
@@ -345,9 +328,8 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         field first (`del old[self.name]`), then attaches to the new one
         via `_attach_to_parent_field()` -- the same logic construction-time
         bottom-up attach (`Ic(parent=gwf)`) uses, including its naming
-        rule: an explicitly-set `.name` is kept as long as it doesn't
-        collide with a sibling already on the new parent, otherwise a
-        fresh default name is resolved there.
+        rule: a name already set is kept, and raises if a sibling on the
+        new parent has it; an unnamed component gets an automatic name.
         """
         if value is not None and not isinstance(value, Component):
             raise TypeError(f"parent must be a Component or None, got {type(value).__name__}")
@@ -370,16 +352,10 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         are small, so there's no need for the complexity of cache
         invalidation.
 
-        Re-runs `_set_child_parents()` first (idempotent) so every reader
-        sees correctly-named children even if a list field was
-        reassigned via plain attribute set (`gwf.wel = [...]`) rather than
-        construction or `__setitem__` -- the one case that otherwise skips
-        naming, leaving siblings collided on the shared class-name default
-        (which becomes the MF6 PNAME on write, e.g. `Binding.from_component()`
-        -- some MF6 builds tolerate the resulting duplicate registration,
-        others don't). Centralized here, rather than in each consumer
-        (`write()`, `NetCDFModel.from_model()`, ...), so nothing can read a
-        stale name depending on call order.
+        Re-runs `_set_child_parents()` first (idempotent): child fields
+        attach what's assigned or added to them (see `_attach_field()`),
+        but the children in a list's rows (LAK's, SFR's tables) are
+        attached only here, when a row is changed in place.
 
         Detects child fields via `flopy4.attrs_xarray.child_field_candidates()`.
         """
@@ -392,7 +368,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             spec = child_field_candidates(f)
             if spec is None:
                 for c in _period_row_children(getattr(self, f.name, None)):
-                    result[c.name] = c  # type: ignore[attr-defined]
+                    result[c.name] = c  # type: ignore[attr-defined,index]
                 continue
             value = getattr(self, f.name, None)
             if value is None:
@@ -400,13 +376,13 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             kind, _ = spec
             if kind == "only":
                 if isinstance(value, Component):
-                    result[value.name] = value
+                    result[value.name] = value  # type: ignore[index]
             elif kind == "list" and _may_hold_any(value):
                 for child in value:
                     if isinstance(child, Component):
-                        result[child.name] = child
+                        result[child.name] = child  # type: ignore[index]
                     for c in _row_children(child):
-                        result[c.name] = c
+                        result[c.name] = c  # type: ignore[index]
         return result
 
     def _set_child_parents(self) -> None:
@@ -421,48 +397,49 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         """
         from flopy4.attrs_xarray import child_field_candidates
 
-        used: "set[str]" = set()
+        # gather first, so automatic names avoid every name already set,
+        # wherever its child comes in the field order
+        found: "list[tuple[str, Component]]" = []
         # rows may share a child (one table file named in several places)
         stamped: "set[int]" = set()
+
+        def add(kind: str, c: "Component") -> None:
+            if id(c) not in stamped:
+                stamped.add(id(c))
+                c.__dict__["_parent"] = self
+                found.append((kind, c))
+
         for f in fields(type(self)):
             spec = child_field_candidates(f)
             if spec is None:
                 for c in _period_row_children(getattr(self, f.name, None)):
-                    if id(c) in stamped:
-                        continue
-                    stamped.add(id(c))
-                    c.__dict__["_parent"] = self
-                    c.name = _resolve_child_name(used, "list", f.alias or f.name, c)  # type: ignore[attr-defined]
-                    used.add(c.name)  # type: ignore[attr-defined]
+                    add("list", c)
                 continue
             value = getattr(self, f.name, None)
             if value is None:
                 continue
-            kind, candidates = spec
-
+            kind, _ = spec
             if kind == "only":
                 if isinstance(value, Component):
-                    value.__dict__["_parent"] = self
-                    value.name = _resolve_child_name(used, kind, f.name, value)  # type: ignore[attr-defined]
-                    used.add(value.name)  # type: ignore[attr-defined]
+                    add(kind, value)
             elif kind == "list" and _may_hold_any(value):
-                by_class = _names_by_class(candidates)
                 for child in value:
                     for c in [child] if isinstance(child, Component) else _row_children(child):
-                        if id(c) in stamped:
-                            continue
-                        stamped.add(id(c))
-                        c.__dict__["_parent"] = self
-                        c.name = _resolve_child_name(  # type: ignore[attr-defined]
-                            used, kind, f.name, c, by_class=by_class and c is child
-                        )
-                        used.add(c.name)  # type: ignore[attr-defined]
+                        add(kind, c)
+
+        used: "set[str]" = set()
+        for kind, c in found:
+            if c.name is not None:  # type: ignore[attr-defined]
+                used.add(_resolve_child_name(used, kind, c))
+        for kind, c in found:
+            if c.name is None:  # type: ignore[attr-defined]
+                c.name = _resolve_child_name(used, kind, c)  # type: ignore[attr-defined]
+                used.add(c.name)  # type: ignore[attr-defined]
 
     @property
     def path(self) -> Path:
         """The path to the component's input file: in the workspace of the
         model or simulation it belongs to, or the cwd if none."""
-        self.filename = self.filename or Path(self.default_filename())
         return self.root / self.filename
 
     @property
@@ -477,9 +454,14 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             node = node._parent
         if node is not None:
             return node.workspace
-        if self.filename is not None and self.filename.is_absolute():
-            return self.filename.parent
+        if self._filename is not None and self._filename.is_absolute():
+            return self._filename.parent
         return Path.cwd()
+
+    def _name_or_class(self) -> str:
+        """The component's name, or its class name, lowercase, if it has
+        none yet (it's detached)."""
+        return self.name or type(self).__name__.lower()
 
     def default_filename(self) -> str:
         """
@@ -490,18 +472,13 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         Override this method in subclasses to provide
         a custom default filename.
         """
-        name = self.name  # type: ignore
         cls_name = self.__class__.__name__.lower()
-        return f"{name}.{cls_name}"
+        return f"{self._name_or_class()}.{cls_name}"
 
     def __attrs_post_init__(self):
         """
         Post-initialization hook for all components. Chains to parent
         class post-init hooks (including DimensionRegistryMixin).
-
-        First resolves `name`/`_name_given` (see their docstrings),
-        before anything below reads either (`_attach_to_parent_field()`,
-        `_set_child_parents()`).
 
         Also runs the two `_parent`-tracking hooks (see `_parent`'s
         docstring): stamps `_parent` on this component's own already-
@@ -511,16 +488,27 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         on it and resolves its `.name` -- see `_attach_to_parent_field()`'s
         docstring.
         """
-        if self.name is _NAME_UNSET:
-            self.name = type(self).__name__.lower()
-        else:
-            self._name_given = True
         # Chain to parent classes (including DimensionRegistryMixin)
         if hasattr(super(), "__attrs_post_init__"):
             super().__attrs_post_init__()  # type: ignore[misc]
         if self._parent is not None:
             self._attach_to_parent_field(self._parent)
         self._set_child_parents()
+
+    def _attach_field(self, name: str, value: Any) -> Any:
+        """Set the child field `name` to `value`, attaching and naming its
+        children as construction does (`gwf.wel = [...]`, `dis.ncf = ncf`).
+        A name clash raises, leaving the field as it was. Called by the
+        field's `on_setattr` hook, which returns `value` for attrs to set
+        again."""
+        old = self.__dict__.get(name)
+        object.__setattr__(self, name, value)
+        try:
+            self._set_child_parents()
+        except Exception:
+            object.__setattr__(self, name, old)
+            raise
+        return value
 
     def _attach_to_parent_field(self, parent: "Component") -> None:
         """Bottom-up counterpart to `_set_child_parents()`: when this
@@ -538,18 +526,11 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         if match is None:
             return
         target_field, kind = match
-        used = {c.name for c in parent._children.values()}  # type: ignore[attr-defined]
+        used = set(parent._children)
+        self.name = _resolve_child_name(used, kind, self)  # type: ignore[attr-defined]
         if kind == "only":
-            self.name = _resolve_child_name(used, kind, target_field.name, self)  # type: ignore[attr-defined]
             setattr(parent, target_field.name, self)
         elif kind == "list":
-            from flopy4.attrs_xarray import child_field_candidates
-
-            spec = child_field_candidates(target_field)
-            assert spec is not None
-            self.name = _resolve_child_name(  # type: ignore[attr-defined]
-                used, kind, target_field.name, self, by_class=_names_by_class(spec[1])
-            )
             getattr(parent, target_field.name).append(self)
 
     @classmethod
@@ -567,16 +548,23 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     def __setitem__(self, key, value):
         """Attach `value` under `key`.
 
-        If `key` names an already-attached child, replace it in place, in
-        whatever field/slot currently holds it (matching that child's
-        own kind). Otherwise, find the single field on this class that
-        accepts `type(value)` (`_find_child_field`) and attach it there
-        fresh. Either way, `value.name` is set to `key` and its `_parent`
-        stamped -- mirrors `_set_child_parents`/`_attach_to_parent_field`,
-        just triggered by assignment instead of construction/attachment.
+        `value` must be unnamed (it takes `key`) or already named `key`;
+        any other name raises, rather than renaming it silently. If `key`
+        names an already-attached child, replace it in place, in whatever
+        field/slot currently holds it (matching that child's own kind).
+        Otherwise, find the single field on this class that accepts
+        `type(value)` (`_find_child_field`) and attach it there fresh.
+        Either way, `value`'s `_parent` is stamped -- mirrors
+        `_set_child_parents`/`_attach_to_parent_field`, just triggered by
+        assignment instead of construction/attachment.
         """
         if not isinstance(value, Component):
             raise TypeError(f"Expected a Component, got {type(value).__name__}")
+        if value.name is not None and value.name != key:  # type: ignore[attr-defined]
+            raise ValueError(
+                f"Can't attach a {type(value).__name__} named '{value.name}' "  # type: ignore[attr-defined]
+                f"under '{key}'; rename it first, or use '{value.name}' as the key."  # type: ignore[attr-defined]
+            )
 
         from flopy4.attrs_xarray import child_field_candidates
 
@@ -674,12 +662,6 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             ancestors' `write_context`; see `WriteContext.resolve`. Each
             child resolves its own, from the same argument.
         """
-        # TODO: setting filename is a temp hack to get the parent's
-        # name as this component's filename stem, if it has one. an
-        # actual solution is to auto-set the filename when children
-        # are attached to parents.
-        self.filename = self.filename or Path(self.default_filename())
-
         # ancestors' contexts give whole-write settings only: their arrays
         # key the ancestor's own fields, not this component's
         ancestors = []
@@ -696,6 +678,8 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         # stamps their parents and names, which a name file's rows (and
         # the children's default filenames) are made from
         children = self._children
+        if not in_write_session():
+            _check_filenames(self)
         with write_session():
             self._write(format=format, context=active_context)
             for child in children.values():
@@ -722,18 +706,15 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         # Exclude any field literally named "parent" or "_parent" at every
         # recursion level, not just this component's own: a back-reference
         # to the owner would loop forever (child -> parent -> child -> ...).
-        # "_name_given" is excluded too: bookkeeping for "name", not data.
         data = attrs.asdict(
             self,
             recurse=True,
-            filter=lambda attr, value: (
-                attr.name not in ("parent", "_parent", "write_context", "_name_given")
-            ),
+            filter=lambda attr, value: attr.name not in ("parent", "_parent", "write_context"),
         )
         spec = fields_dict(self.__class__)
 
         if strict:
-            data.pop("filename")
+            data.pop("_filename")
             data.pop("workspace", None)  # might be a Context
 
         if blocks:

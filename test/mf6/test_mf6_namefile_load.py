@@ -162,7 +162,9 @@ def test_load_preserves_list_package_pname(written_sim):
     """
     nam_path = written_sim / "mymodel.nam"
     nam_path.write_text(
-        nam_path.read_text().replace("CHD6 mymodel.chd chd0", "CHD6 mymodel.chd boundary_west")
+        nam_path.read_text().replace(
+            "CHD6 mymodel.chd0.chd chd0", "CHD6 mymodel.chd0.chd boundary_west"
+        )
     )
 
     gwf = next(iter(Simulation.load(written_sim / "mfsim.nam").models))
@@ -172,7 +174,7 @@ def test_load_preserves_list_package_pname(written_sim):
 
     gwf.write()
     rewritten = (written_sim / "mymodel.nam").read_text()
-    assert "CHD6 mymodel.chd boundary_west" in rewritten
+    assert "CHD6 mymodel.chd0.chd boundary_west" in rewritten
 
 
 def test_load_disambiguates_ga_variant(tmp_path):
@@ -401,8 +403,8 @@ def test_write_names_packages_attached_by_assignment(tmp_path):
     gwf.chd = [Chd(stress_period_data={0: [[(0, 0, 0), 2.0]]})]
     sim.write()
 
-    assert " CHD6 m.chd chd0" in (tmp_path / "m.nam").read_text().splitlines()
-    assert (tmp_path / "m.chd").is_file()
+    assert " CHD6 m.chd0.chd chd0" in (tmp_path / "m.nam").read_text().splitlines()
+    assert (tmp_path / "m.chd0.chd").is_file()
 
 
 def test_loads_a_new_model_type(tmp_path):

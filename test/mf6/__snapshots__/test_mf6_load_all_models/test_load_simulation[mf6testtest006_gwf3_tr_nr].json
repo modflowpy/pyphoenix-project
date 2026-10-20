@@ -9,11 +9,10 @@
       "<Gwf GWF_1>"
     ],
     "mxiter": 1,
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>"
+      "<Ims ims0>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -25,7 +24,7 @@
       "<Chd chd0>"
     ],
     "dims": {},
-    "dis": "<Disu dis>",
+    "dis": "<Disu disu>",
     "drn": [],
     "evt": [],
     "filename": "flow.nam",
@@ -91,7 +90,7 @@
     "save_flows": true,
     "ts": []
   },
-  "simulation/GWF_1/dis": {
+  "simulation/GWF_1/disu": {
     "__type__": "Disu",
     "area": "float64[121] 59942b3e3b9abd7c",
     "bot": "float64[121] 0af962dbf0aeb730",
@@ -104,7 +103,7 @@
     "ihc": "int64[601] 51e1fdced0b78c4a",
     "ja": "int64[601] c0277e7c637695da",
     "length_units": "meters",
-    "name": "dis",
+    "name": "disu",
     "nja": 601,
     "nodes": 121,
     "nogrb": false,
@@ -202,7 +201,7 @@
     "storagecoefficient": false,
     "sy": "float64[121] 5060a250d6162f36"
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "dims": {},
     "filename": "flow.ims",
@@ -212,7 +211,7 @@
     "models": [
       "GWF_1"
     ],
-    "name": "ims",
+    "name": "ims0",
     "outer_dvclose": "1e-08",
     "outer_maximum": 1000,
     "print_option": "summary",

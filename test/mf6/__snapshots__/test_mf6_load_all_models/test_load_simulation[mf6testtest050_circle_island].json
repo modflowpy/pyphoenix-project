@@ -9,11 +9,10 @@
       "<Gwf CI>"
     ],
     "mxiter": 1,
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>"
+      "<Ims ims0>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -23,7 +22,7 @@
     "api": [],
     "chd": [],
     "dims": {},
-    "dis": "<Disv dis>",
+    "dis": "<Disv disv>",
     "drn": [],
     "evt": [],
     "filename": "ci.nam",
@@ -48,7 +47,7 @@
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/CI/dis": {
+  "simulation/CI/disv": {
     "__type__": "Disv",
     "botm": "float64[10480] fb0e9157edb5a417",
     "cell2d": {
@@ -65,7 +64,7 @@
     "export_array_netcdf": false,
     "filename": "ci.disv",
     "idomain": "int64[10480] b6fb5deb818304a4",
-    "name": "dis",
+    "name": "disv",
     "ncpl": 5240,
     "nlay": 2,
     "nogrb": false,
@@ -209,7 +208,7 @@
     "save_flows": true,
     "tas": []
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "dims": {},
     "filename": "ci.ims",
@@ -219,7 +218,7 @@
     "models": [
       "CI"
     ],
-    "name": "ims",
+    "name": "ims0",
     "outer_dvclose": "1e-06",
     "outer_maximum": 500,
     "print_option": "summary",

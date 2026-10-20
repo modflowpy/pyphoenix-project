@@ -8,11 +8,10 @@
     "models": [
       "<Gwf holly>"
     ],
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>"
+      "<Ims ims0>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -498,7 +497,7 @@
     "storagecoefficient": false,
     "sy": "float64[14] 5c0168621a045c60"
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "complexity": "complex",
     "dims": {},
@@ -508,7 +507,7 @@
     "models": [
       "holly"
     ],
-    "name": "ims",
+    "name": "ims0",
     "outer_dvclose": "1e-06",
     "outer_maximum": 200,
     "print_option": "summary",

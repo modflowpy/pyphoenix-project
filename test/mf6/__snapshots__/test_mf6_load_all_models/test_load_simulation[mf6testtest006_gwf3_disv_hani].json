@@ -9,11 +9,10 @@
       "<Gwf GWF_1>"
     ],
     "mxiter": 1,
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>"
+      "<Ims ims0>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -25,7 +24,7 @@
       "<Chd chd0>"
     ],
     "dims": {},
-    "dis": "<Disv dis>",
+    "dis": "<Disv disv>",
     "drn": [],
     "evt": [],
     "filename": "flow.nam",
@@ -91,7 +90,7 @@
     "save_flows": true,
     "ts": []
   },
-  "simulation/GWF_1/dis": {
+  "simulation/GWF_1/disv": {
     "__type__": "Disv",
     "botm": "float64[121] 0af962dbf0aeb730",
     "cell2d": {
@@ -108,7 +107,7 @@
     "export_array_netcdf": false,
     "filename": "flow.disv",
     "idomain": "int64[121] bf8262f7ebb91138",
-    "name": "dis",
+    "name": "disv",
     "ncpl": 121,
     "nlay": 1,
     "nogrb": false,
@@ -267,7 +266,7 @@
     "save_flows": false,
     "ts": []
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "dims": {},
     "filename": "flow.ims",
@@ -277,7 +276,7 @@
     "models": [
       "GWF_1"
     ],
-    "name": "ims",
+    "name": "ims0",
     "outer_dvclose": "1e-08",
     "outer_maximum": 1000,
     "print_option": "summary",

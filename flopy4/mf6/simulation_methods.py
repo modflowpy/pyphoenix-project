@@ -20,8 +20,8 @@ class SimulationMethods:
     def __attrs_post_init__(self) -> None:
         super().__attrs_post_init__()  # type: ignore[misc]
         sim: "Context" = self  # type: ignore[assignment]
-        if sim.filename != Path("mfsim.nam"):
-            if sim.filename is not None:
+        if sim._filename != Path("mfsim.nam"):
+            if sim._filename is not None:
                 warn(
                     "Simulation filename must be 'mfsim.nam'.",
                     UserWarning,

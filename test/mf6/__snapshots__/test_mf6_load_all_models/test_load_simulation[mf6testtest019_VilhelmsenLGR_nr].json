@@ -4,7 +4,7 @@
     "continue_": false,
     "dims": {},
     "exchanges": [
-      "<Gwfgwf gwfgwf>"
+      "<Gwfgwf gwfgwf0>"
     ],
     "filename": "mfsim.nam",
     "models": [
@@ -12,11 +12,10 @@
       "<Gwf CHILD>"
     ],
     "mxiter": 1,
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>"
+      "<Ims ims0>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -648,7 +647,7 @@
     "save_flows": true,
     "ts": []
   },
-  "simulation/gwfgwf": {
+  "simulation/gwfgwf0": {
     "__type__": "Gwfgwf",
     "boundnames": false,
     "dims": {},
@@ -667,7 +666,7 @@
     "exgmnamea": "PARENT",
     "exgmnameb": "CHILD",
     "filename": "parent-child.gwfexg",
-    "name": "gwfgwf",
+    "name": "gwfgwf0",
     "newton": false,
     "nexg": 8400,
     "print_flows": false,
@@ -675,7 +674,7 @@
     "save_flows": true,
     "xt3d": false
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "csv_inner_output_file": "tm9.inner.ims.csv",
     "csv_outer_output_file": "tm9.outer.ims.csv",
@@ -688,7 +687,7 @@
       "PARENT",
       "CHILD"
     ],
-    "name": "ims",
+    "name": "ims0",
     "outer_dvclose": "1e-05",
     "outer_maximum": 100,
     "print_option": "all",

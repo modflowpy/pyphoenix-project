@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from attrs import define
 
 from flopy4.mf6.component import Component
@@ -48,6 +46,6 @@ class Binding:
 
         return cls(
             type=component_ftype(type(component)),
-            fname=Path(component.filename or component.default_filename()).as_posix(),
+            fname=component.filename.as_posix(),
             terms=_get_binding_terms(component),
         )

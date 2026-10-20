@@ -181,8 +181,8 @@ def _write_mf6(component: Component, context=None, **kwargs) -> None:
     data = write_external_arrays(
         data,
         component.root,
-        component.filename or Path(component.default_filename()),
-        component.name,
+        component.filename,
+        component._name_or_class(),
         ctx,
     )
     with _open_for_write(component) as fp:

@@ -565,16 +565,16 @@ def _load_digest(component: Component, workspace: Path) -> dict:
     def walk(c: Component, path: str) -> None:
         fields = {}
         for f in attrs.fields(type(c)):
-            if f.name in ("_parent", "write_context", "_name_given"):
+            if f.name in ("_parent", "write_context"):
                 continue
             value = getattr(c, f.name, None)
             if value is not None:
-                fields[f.name] = _digest(value, ws)
+                fields[f.alias if f.name == "_filename" else f.name] = _digest(value, ws)
         out[path] = {"__type__": type(c).__name__, **fields}
         for name, child in c._children.items():
             walk(child, f"{path}/{name}")
 
-    walk(component, component.name or "sim")
+    walk(component, component.name or "simulation")
     return out
 
 

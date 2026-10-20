@@ -9,11 +9,10 @@
       "<Gwf GWF_1>"
     ],
     "mxiter": 1,
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>"
+      "<Ims ims0>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -25,7 +24,7 @@
       "<Chd chd0>"
     ],
     "dims": {},
-    "dis": "<Disu dis>",
+    "dis": "<Disu disu>",
     "drn": [],
     "evt": [],
     "filename": "keatinglike.nam",
@@ -81,7 +80,7 @@
     "save_flows": true,
     "ts": []
   },
-  "simulation/GWF_1/dis": {
+  "simulation/GWF_1/disu": {
     "__type__": "Disu",
     "area": "float64[38] b450bcec9a89f465",
     "bot": "float64[38] 76d4ef42aeac9be5",
@@ -93,7 +92,7 @@
     "iac": "int64[38] a06c989d84312cc0",
     "ihc": "int64[166] b42a226e21cbecd5",
     "ja": "int64[166] a9461c31cef060ce",
-    "name": "dis",
+    "name": "disu",
     "nja": 166,
     "nodes": 38,
     "nogrb": false,
@@ -201,7 +200,7 @@
     "save_flows": true,
     "ts": []
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "backtracking_number": 20,
     "backtracking_reduction_factor": "0.6",
@@ -215,7 +214,7 @@
     "models": [
       "GWF_1"
     ],
-    "name": "ims",
+    "name": "ims0",
     "number_orthogonalizations": 2,
     "outer_dvclose": "1e-06",
     "outer_maximum": 2000,

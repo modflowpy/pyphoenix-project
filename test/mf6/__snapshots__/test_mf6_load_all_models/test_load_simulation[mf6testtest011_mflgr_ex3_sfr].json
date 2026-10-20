@@ -4,7 +4,7 @@
     "continue_": false,
     "dims": {},
     "exchanges": [
-      "<Gwfgwf gwfgwf>"
+      "<Gwfgwf gwfgwf0>"
     ],
     "filename": "mfsim.nam",
     "models": [
@@ -12,11 +12,10 @@
       "<Gwf CHILD>"
     ],
     "mxiter": 1,
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>"
+      "<Ims ims0>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -753,7 +752,7 @@
     "storage": false,
     "ts": []
   },
-  "simulation/gwfgwf": {
+  "simulation/gwfgwf0": {
     "__type__": "Gwfgwf",
     "boundnames": false,
     "dims": {},
@@ -774,7 +773,7 @@
     "filename": "simulation.exg",
     "gnc": "<Gnc gnc>",
     "mvr": "<Mvr mvr>",
-    "name": "gwfgwf",
+    "name": "gwfgwf0",
     "newton": false,
     "nexg": 666,
     "print_flows": true,
@@ -782,7 +781,7 @@
     "save_flows": false,
     "xt3d": false
   },
-  "simulation/gwfgwf/gnc": {
+  "simulation/gwfgwf0/gnc": {
     "__type__": "Gnc",
     "dims": {},
     "explicit": false,
@@ -801,7 +800,7 @@
     "print_flows": true,
     "print_input": true
   },
-  "simulation/gwfgwf/mvr": {
+  "simulation/gwfgwf0/mvr": {
     "__type__": "Mvr",
     "_stress_period_data": {
       "0": {
@@ -853,7 +852,7 @@
     "print_flows": true,
     "print_input": true
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "dims": {},
     "filename": "ex3_parent.ims",
@@ -864,7 +863,7 @@
       "PARENT",
       "CHILD"
     ],
-    "name": "ims",
+    "name": "ims0",
     "outer_dvclose": "0.0001",
     "outer_maximum": 25,
     "print_option": "summary",

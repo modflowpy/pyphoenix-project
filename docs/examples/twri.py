@@ -180,6 +180,7 @@ wel = flopy4.mf6.gwf.Wel(
 
 # assemble GWF model from all packages defined above.
 gwf = flopy4.mf6.gwf.Gwf(
+    name="gwf",
     dis=grid,
     ic=ic,
     npf=npf,

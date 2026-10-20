@@ -138,7 +138,7 @@ def test_gwf_chd01(function_tmpdir):
     assert Path(function_tmpdir, f"{gwf_name}.ic").is_file()
     assert Path(function_tmpdir, f"{gwf_name}.oc").is_file()
     assert Path(function_tmpdir, f"{gwf_name}.npf").is_file()
-    assert Path(function_tmpdir, f"{gwf_name}.chd").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.chd-1.chd").is_file()
     assert Path(function_tmpdir, "sln1.ims").is_file()
 
 
@@ -530,7 +530,7 @@ def test_gwf_disv_uzf(function_tmpdir):
     assert Path(function_tmpdir, f"{gwf_name}.oc").is_file()
     assert Path(function_tmpdir, f"{gwf_name}.npf").is_file()
     assert Path(function_tmpdir, f"{gwf_name}.sto").is_file()
-    assert Path(function_tmpdir, f"{gwf_name}.ghb").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.ghb-1.ghb").is_file()
     assert Path(function_tmpdir, "sln1.ims").is_file()
 
 
@@ -669,7 +669,7 @@ def test_quickstart_grid(function_tmpdir):
     # No maxbound supplied -- the DIMENSIONS block must not be written at
     # all (MF6 defaults MAXBOUND to NCPL internally for READARRAYGRID
     # packages; the block is not merely allowed to be empty, it is omitted).
-    chdg_text = (function_tmpdir / f"{gwf_name}.chdg").read_text()
+    chdg_text = (function_tmpdir / f"{gwf_name}.chdg0.chd").read_text()
     assert "DIMENSIONS" not in chdg_text
 
 
@@ -732,7 +732,7 @@ def test_quickstart_grid_explicit_maxbound(function_tmpdir):
 
     sim.write()
 
-    chdg_text = (function_tmpdir / f"{gwf_name}.chdg").read_text()
+    chdg_text = (function_tmpdir / f"{gwf_name}.chdg0.chd").read_text()
     assert "BEGIN DIMENSIONS" in chdg_text
     assert "MAXBOUND 2" in chdg_text
 
@@ -822,7 +822,7 @@ def test_quickstart_netcdf(function_tmpdir):
     with open(function_tmpdir / f"{gwf_name}.ic", "r") as fh:
         lines = fh.readlines()
         assert " STRT NETCDF\n" in lines
-    with open(function_tmpdir / f"{gwf_name}.chdg", "r") as fh:
+    with open(function_tmpdir / f"{gwf_name}.chdg0.chd", "r") as fh:
         lines = fh.readlines()
         assert " HEAD NETCDF\n" in lines
 
@@ -935,7 +935,7 @@ def test_quickstart_netcdf_mesh(function_tmpdir):
     with open(function_tmpdir / f"{gwf_name}.ic", "r") as fh:
         lines = fh.readlines()
         assert " STRT NETCDF\n" in lines
-    with open(function_tmpdir / f"{gwf_name}.chdg", "r") as fh:
+    with open(function_tmpdir / f"{gwf_name}.chdg0.chd", "r") as fh:
         lines = fh.readlines()
         assert " HEAD NETCDF\n" in lines
 
@@ -1007,7 +1007,7 @@ def test_gwf_wel(function_tmpdir):
     sim.write()
     sim.run()
 
-    assert Path(function_tmpdir, f"{gwf_name}.wel").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.wel-1.wel").is_file()
 
 
 def test_gwf_drn(function_tmpdir):
@@ -1055,7 +1055,7 @@ def test_gwf_drn(function_tmpdir):
     sim.write()
     sim.run()
 
-    assert Path(function_tmpdir, f"{gwf_name}.drn").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.drn-1.drn").is_file()
 
 
 def test_gwf_riv(function_tmpdir):
@@ -1103,7 +1103,7 @@ def test_gwf_riv(function_tmpdir):
     sim.write()
     sim.run()
 
-    assert Path(function_tmpdir, f"{gwf_name}.riv").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.riv-1.riv").is_file()
 
 
 def test_gwf_rch(function_tmpdir):
@@ -1160,7 +1160,7 @@ def test_gwf_rch(function_tmpdir):
     sim.write()
     sim.run()
 
-    assert Path(function_tmpdir, f"{gwf_name}.rch").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.rch-1.rch").is_file()
 
 
 def test_gwf_rcha(function_tmpdir):
@@ -1216,7 +1216,7 @@ def test_gwf_rcha(function_tmpdir):
     sim.write()
     sim.run()
 
-    assert Path(function_tmpdir, f"{gwf_name}.rcha").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.rcha-1.rch").is_file()
 
 
 def test_gwf_evt(function_tmpdir):
@@ -1275,7 +1275,7 @@ def test_gwf_evt(function_tmpdir):
     sim.write()
     sim.run()
 
-    assert Path(function_tmpdir, f"{gwf_name}.evt").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.evt-1.evt").is_file()
 
 
 def test_gwf_evta(function_tmpdir):
@@ -1332,7 +1332,7 @@ def test_gwf_evta(function_tmpdir):
     sim.write()
     sim.run()
 
-    assert Path(function_tmpdir, f"{gwf_name}.evta").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.evta-1.evt").is_file()
 
 
 def test_gwf_mvr(function_tmpdir):
@@ -1513,12 +1513,12 @@ def test_gwt_basic(function_tmpdir):
     sim.run()
 
     assert Path(function_tmpdir, f"{gwt_name}.ic").is_file()
-    assert Path(function_tmpdir, f"{gwt_name}.cnc").is_file()
-    assert Path(function_tmpdir, f"{gwt_name}.src").is_file()
+    assert Path(function_tmpdir, f"{gwt_name}.cnc-1.cnc").is_file()
+    assert Path(function_tmpdir, f"{gwt_name}.src-1.src").is_file()
 
-    # exgfile=None triggers default_filename() → "{exchange_name}.exg"
+    # exgfile=None triggers default_filename() → "{sim}.{exchange_name}.{ext}"
     mfsim = Path(function_tmpdir, "mfsim.nam").read_text()
-    assert "gwfgwt.exg" in mfsim
+    assert f"{sim_name}.gwfgwt" in mfsim
 
 
 def test_gwe_basic(function_tmpdir):
@@ -1598,12 +1598,12 @@ def test_gwe_basic(function_tmpdir):
     sim.run()
 
     assert Path(function_tmpdir, f"{gwe_name}.ic").is_file()
-    assert Path(function_tmpdir, f"{gwe_name}.ctp").is_file()
-    assert Path(function_tmpdir, f"{gwe_name}.esl").is_file()
+    assert Path(function_tmpdir, f"{gwe_name}.ctp-1.ctp").is_file()
+    assert Path(function_tmpdir, f"{gwe_name}.esl-1.esl").is_file()
 
-    # exgfile=None triggers default_filename() → "{exchange_name}.exg"
+    # exgfile=None triggers default_filename() → "{sim}.{exchange_name}.{ext}"
     mfsim = Path(function_tmpdir, "mfsim.nam").read_text()
-    assert "gwfgwe.exg" in mfsim
+    assert f"{sim_name}.gwfgwe" in mfsim
 
 
 def test_gwf_buy(function_tmpdir):
@@ -1788,7 +1788,7 @@ def test_gwf_vsc(function_tmpdir):
     assert any(gwe_name in line and "temperature" in line for line in content.splitlines()), (
         "PACKAGEDATA row should have all columns on one line"
     )
-    assert Path(function_tmpdir, f"{gwe_name}.ctp").is_file()
+    assert Path(function_tmpdir, f"{gwe_name}.ctp-1.ctp").is_file()
 
 
 def test_prt_basic(function_tmpdir):

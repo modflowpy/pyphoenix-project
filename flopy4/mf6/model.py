@@ -34,4 +34,4 @@ class Model(Context, ABC):
         self.__dict__["_workspace"] = value
 
     def default_filename(self) -> str:
-        return f"{self.name}.nam"  # type: ignore
+        return f"{self._name_or_class()}.nam"

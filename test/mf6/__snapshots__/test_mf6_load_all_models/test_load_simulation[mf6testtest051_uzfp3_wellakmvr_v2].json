@@ -9,16 +9,15 @@
       "<Gwf uzfp3_lakmvr>"
     ],
     "mxiter": 1,
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>"
+      "<Ims ims0>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "dims": {},
     "filename": "uzfp3_lakmvr_v2.ims",
@@ -28,7 +27,7 @@
     "models": [
       "uzfp3_lakmvr"
     ],
-    "name": "ims",
+    "name": "ims0",
     "outer_dvclose": "0.001",
     "outer_maximum": 200,
     "print_option": "all",

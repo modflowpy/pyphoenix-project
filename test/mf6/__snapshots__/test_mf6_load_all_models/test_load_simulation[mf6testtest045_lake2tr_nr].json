@@ -9,16 +9,15 @@
       "<Gwf lakeex2a>"
     ],
     "mxiter": 1,
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>"
+      "<Ims ims0>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "backtracking_number": 0,
     "backtracking_reduction_factor": "0.2",
@@ -32,7 +31,7 @@
     "models": [
       "lakeex2a"
     ],
-    "name": "ims",
+    "name": "ims0",
     "number_orthogonalizations": 2,
     "outer_dvclose": "0.0001",
     "outer_maximum": 500,

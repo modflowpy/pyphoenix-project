@@ -1,4 +1,3 @@
-import re
 import types
 from typing import Optional, Union, get_args, get_origin
 from warnings import warn
@@ -255,7 +254,7 @@ class Flopy3Package(PackageInterface):
     @property
     def name(self):
         # or upper() or title()
-        return self._package.name
+        return self._package._name_or_class()
 
     @name.setter
     def name(self, name):
@@ -273,7 +272,8 @@ class Flopy3Package(PackageInterface):
 
     @property
     def package_type(self):
-        return re.sub(r"\d+$", "", self._package.name).upper()
+        # from the class, not the name, which may be anything
+        return type(self._package).__name__.upper()
 
     @property
     def data_list(self):

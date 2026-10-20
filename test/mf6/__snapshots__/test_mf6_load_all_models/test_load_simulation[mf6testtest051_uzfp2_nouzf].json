@@ -9,16 +9,15 @@
       "<Gwf uzfp2_nouzf>"
     ],
     "mxiter": 1,
-    "name": "simulation",
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims>"
+      "<Ims ims0>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
   },
-  "simulation/ims": {
+  "simulation/ims0": {
     "__type__": "Ims",
     "backtracking_number": 0,
     "backtracking_reduction_factor": "0.7",
@@ -33,7 +32,7 @@
     "models": [
       "uzfp2_nouzf"
     ],
-    "name": "ims",
+    "name": "ims0",
     "outer_dvclose": "1e-05",
     "outer_maximum": 100,
     "print_option": "summary",
