@@ -1074,6 +1074,7 @@ def _gwfgwt(**kwargs):
         (lambda a, b: _gwfgwf(exgmnamea="a", exgmnameb="nope"), "names model 'nope'"),
         (lambda a, b: _gwfgwt(exgmnamea=a, exgmnameb=b), "needs a GWT model b, not 'b'"),
     ],
+    ids=["missing", "unknown", "wrong-type"],
 )
 def test_exchange_models_invalid(function_tmpdir, build, match):
     a, b = _small_gwf(name="a"), _small_gwf(name="b")
