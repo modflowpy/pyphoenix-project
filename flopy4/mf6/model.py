@@ -46,5 +46,15 @@ class Model(Context, ABC):
             None,
         )
 
+    @property
+    def exchanges(self) -> list:
+        """The exchanges that connect this model to others; empty if it
+        has no simulation. Set them by naming the model in an exchange's
+        `exgmnamea` or `exgmnameb`."""
+        sim = self.__dict__.get("_parent")
+        if sim is None or not hasattr(sim, "_exchange_models"):
+            return []
+        return [exg for exg, models in sim._exchange_models() if any(m is self for m in models)]
+
     def default_filename(self) -> str:
         return f"{self._name_or_class()}.nam"

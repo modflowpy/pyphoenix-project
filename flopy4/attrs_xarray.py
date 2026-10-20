@@ -37,7 +37,7 @@ import attrs
 import numpy as np
 import xarray as xr
 
-from flopy4.spec import is_array, is_reference
+from flopy4.spec import is_array, is_reference, reference_names
 from flopy4.utils import unwrap_optional
 
 
@@ -75,10 +75,7 @@ def _leaf_fields_and_children(
             continue
         if is_reference(field):
             # components referred to, not owned: stored by name
-            leaves[field.name] = (
-                field,
-                [v if isinstance(v, str) else v.name for v in value],
-            )
+            leaves[field.name] = (field, reference_names(value))
         elif _period_dim(field):
             # period arrays, even all from time-array series (attrs instances)
             leaves[field.name] = (field, value)

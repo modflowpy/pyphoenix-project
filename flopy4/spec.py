@@ -20,6 +20,20 @@ def is_array(f: Attribute) -> bool:
     return f.metadata.get("type") == "array"
 
 
+def reference_names(value):
+    """A reference field's value as names, in the field's own shape (a
+    list, or one value); names given as strings, and None, stay."""
+    if isinstance(value, list):
+        return [reference_names(v) for v in value]
+    return value if value is None or isinstance(value, str) else value.name
+
+
+def referenced(value) -> list:
+    """The components a reference field's value refers to (not names)."""
+    values = value if isinstance(value, list) else [value]
+    return [v for v in values if v is not None and not isinstance(v, str)]
+
+
 def is_reference(f: Attribute) -> bool:
     """Whether a field refers to components it doesn't own (e.g. the models
     a solution solves). Such a field isn't a child field: walkers that

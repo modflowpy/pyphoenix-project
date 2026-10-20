@@ -38,7 +38,7 @@ class Binding:
     def from_component(cls, component: Component) -> "Binding":
         def _get_binding_terms(component: Component) -> tuple[str, ...] | None:
             if isinstance(component, Exchange):
-                return (component.exgmnamea, component.exgmnameb)  # type: ignore
+                return tuple(reference_names([component.exgmnamea, component.exgmnameb]))
             elif isinstance(component, Solution):
                 return tuple(reference_names(component._solved_models()))
             elif isinstance(component, (Model, Package)):

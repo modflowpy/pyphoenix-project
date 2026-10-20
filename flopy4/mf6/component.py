@@ -12,9 +12,9 @@ from attrs import fields
 from flopy4.dimensions import DimensionResolverMixin
 from flopy4.mf6.constants import MF6
 from flopy4.mf6.external import in_write_session, write_session
-from flopy4.mf6.spec import fields_dict, reference_names
+from flopy4.mf6.spec import fields_dict
 from flopy4.mf6.write_context import WriteContext
-from flopy4.spec import is_reference
+from flopy4.spec import is_reference, reference_names, referenced
 from flopy4.uio import IO, Loader, Writer
 from flopy4.utils import empty_if_none
 
@@ -28,7 +28,7 @@ FTYPES: "dict[str, type[Component]]" = {}
 """MF6 component ftype (e.g. 'gwf-dis6') -> component class."""
 
 _PENDING_REFERENCES = "flopy4.pending_references"
-"""`deepcopy` memo key for the reference lists a copy has yet to resolve
+"""`deepcopy` memo key for the reference fields a copy has yet to resolve
 (see `Component.__deepcopy__`). Not an object id, so it can't collide."""
 
 
@@ -230,6 +230,14 @@ def _find_child_field(parent_cls: type, child_cls: type) -> "tuple[Any, str] | N
             f"'{child_cls.__name__}' ({names}); can't bind."
         )
     return matches[0]
+
+
+def _copied(value, memo):
+    """A reference field's value with each component in it replaced by
+    its copy, if `memo` holds one (see `Component.__deepcopy__`)."""
+    if isinstance(value, list):
+        return [_copied(v, memo) for v in value]
+    return value if value is None or isinstance(value, str) else memo.get(id(value), value)
 
 
 # kw_only=True necessary so we can define optional fields here
@@ -497,6 +505,8 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         # Chain to parent classes (including DimensionRegistryMixin)
         if hasattr(super(), "__attrs_post_init__"):
             super().__attrs_post_init__()  # type: ignore[misc]
+        if self._parent is None:
+            self._parent = self._references_parent()
         if self._parent is not None:
             self._attach_to_parent_field(self._parent)
         self._set_child_parents()
@@ -515,6 +525,25 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             object.__setattr__(self, name, old)
             raise
         return value
+
+    def _references_parent(self) -> "Component | None":
+        """The parent the components this one refers to share (e.g. the
+        simulation a solution's or an exchange's models are in), which a
+        component given no parent joins. None if they have none; an error
+        if they have different ones."""
+        refs = [
+            c
+            for f in fields(type(self))
+            if is_reference(f)
+            for c in referenced(getattr(self, f.name))
+        ]
+        parents = {id(p): p for c in refs if (p := c.__dict__.get("_parent")) is not None}
+        if len(parents) > 1:
+            names = [c.name for c in refs]
+            raise ValueError(
+                f"{self.name}: {names} belong to different simulations"  # type: ignore[attr-defined]
+            )
+        return next(iter(parents.values()), None)
 
     def _attach_to_parent_field(self, parent: "Component") -> None:
         """Bottom-up counterpart to `_set_child_parents()`: when this
@@ -601,14 +630,13 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             if key == "_parent":
                 value = memo.get(id(value))
             elif key in references:
-                value = list(value)
-                pending.append(value)
+                pending.append((new, key))
             else:
                 value = copy.deepcopy(value, memo)
             new.__dict__[key] = value
         if outermost:
-            for refs in memo.pop(_PENDING_REFERENCES):
-                refs[:] = [v if isinstance(v, str) else memo.get(id(v), v) for v in refs]
+            for obj, key in memo.pop(_PENDING_REFERENCES):
+                obj.__dict__[key] = _copied(obj.__dict__[key], memo)
         return new
 
     def __setitem__(self, key, value):
