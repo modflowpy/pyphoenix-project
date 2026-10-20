@@ -1079,6 +1079,7 @@ def _gwfgwt(**kwargs):
             r"\(Gwfgwt\) can't refer to 'b' \(Gwf\) in exgmnameb",
         ),
     ],
+    ids=["missing", "unknown", "wrong-type"],
 )
 def test_exchange_models_invalid(function_tmpdir, build, match):
     a, b = _small_gwf(name="a"), _small_gwf(name="b")
