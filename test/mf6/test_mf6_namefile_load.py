@@ -437,6 +437,30 @@ def test_loads_a_new_model_type(tmp_path):
     assert loaded.models[0].disv1d.nodes == 2
 
 
+def test_loads_a_new_olf_model_type(tmp_path):
+    """An `Olf` model (an overland-flow model, `Dis2d`-discretized) writes
+    and loads like any other model type -- guards `flopy4.mf6.__init__`'s
+    `_COMPONENT_MODULES` registration, without which `Simulation.load()`
+    silently drops the model (warns "no field takes models entry OLF6")."""
+    from flopy4.mf6.olf import Olf
+    from flopy4.mf6.olf.dfw import Dfw
+    from flopy4.mf6.olf.dis2d import Dis2d
+    from flopy4.mf6.olf.ic import Ic as OlfIc
+
+    sim = Simulation(name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]))
+    olf = Olf(parent=sim, name="m")
+    Dis2d(parent=olf, nrow=1, ncol=2, delr=1.0, delc=1.0, bottom=0.0)
+    OlfIc(parent=olf, strt=[1.0, 1.0])
+    Dfw(parent=olf, manningsn=[0.035, 0.035])
+    sim.write()
+
+    loaded = Simulation.load(tmp_path / "mfsim.nam")
+
+    assert [type(m).__name__ for m in loaded.models] == ["Olf"]
+    assert loaded.models[0].name == "m"
+    assert (loaded.models[0].dis2d.nrow, loaded.models[0].dis2d.ncol) == (1, 2)
+
+
 def test_exchange_resolves_cellid_widths_per_model(tmp_path):
     """A `Chfgwf` exchange's `EXCHANGEDATA` row gives each side's cellid
     its own model's width (1 for `Chf`'s `disv1d`, 3 for `Gwf`'s `dis`) --
@@ -488,6 +512,49 @@ def test_exchange_resolves_cellid_widths_per_model(tmp_path):
     ]
 
 
+def test_exchange_resolves_cellid_widths_for_dis2d(tmp_path):
+    """An `Olfgwf` exchange's `EXCHANGEDATA` row gives each side's cellid
+    its own model's width (2 for `Olf`'s `dis2d`, a layerless structured
+    grid, 3 for `Gwf`'s `dis`) -- guards `ncelldim_from_dims()`, which
+    used to assume any `nrow`/`ncol` pair implied a 3-wide, layered
+    cellid; `Dis2d` has `nrow`/`ncol` but no `nlay` at all."""
+    from flopy4.mf6.exg.olfgwf import Olfgwf
+    from flopy4.mf6.olf import Olf
+    from flopy4.mf6.olf.dfw import Dfw
+    from flopy4.mf6.olf.dis2d import Dis2d
+    from flopy4.mf6.olf.ic import Ic as OlfIc
+
+    sim = Simulation(name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]))
+    olf = Olf(parent=sim, name="olfmodel")
+    Dis2d(parent=olf, nrow=1, ncol=2, delr=1.0, delc=1.0, bottom=0.0)
+    OlfIc(parent=olf, strt=[1.0, 1.0])
+    Dfw(parent=olf, manningsn=[0.035, 0.035])
+
+    gwf = Gwf(parent=sim, name="gwfmodel", dis=Dis(nlay=1, nrow=1, ncol=2))
+    Ic(parent=gwf, strt=1.0)
+    Npf(parent=gwf, icelltype=0, k=1.0)
+
+    Olfgwf(
+        parent=sim,
+        exgmnamea="olfmodel",
+        exgmnameb="gwfmodel",
+        nexg=2,
+        exchangedata=[
+            Olfgwf.Exchangedata(cellidm1=(0, 0), cellidm2=(0, 0, 0), bedleak=1.0, cfact=1.0),
+            Olfgwf.Exchangedata(cellidm1=(0, 1), cellidm2=(0, 0, 1), bedleak=1.0, cfact=1.0),
+        ],
+    )
+    sim.write()
+
+    loaded = Simulation.load(tmp_path / "mfsim.nam")
+    rows = loaded.exchanges[0].exchangedata
+
+    assert [(r.cellidm1, r.cellidm2) for r in rows] == [
+        ((0, 0), (0, 0, 0)),
+        ((0, 1), (0, 0, 1)),
+    ]
+
+
 def test_loads_cdb_stress_period_data(tmp_path):
     """`Cdb` (CHF's channel-divergence boundary package) round-trips its
     stress period data -- the one CHF package type no upstream test
@@ -520,6 +587,30 @@ def test_loads_cdb_stress_period_data(tmp_path):
     assert (row.cellid, row.idcxs, row.width) == ((0,), 0, 1.0)
 
 
+def test_loads_olf_cdb_stress_period_data(tmp_path):
+    """`Cdb` (OLF's channel-divergence boundary package) round-trips its
+    stress period data -- the one OLF package type no upstream test
+    exercises at all, so it's otherwise entirely unverified."""
+    from flopy4.mf6.olf import Olf
+    from flopy4.mf6.olf.cdb import Cdb
+    from flopy4.mf6.olf.dfw import Dfw
+    from flopy4.mf6.olf.dis2d import Dis2d
+    from flopy4.mf6.olf.ic import Ic as OlfIc
+
+    sim = Simulation(name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]))
+    olf = Olf(parent=sim, name="m")
+    Dis2d(parent=olf, nrow=1, ncol=2, delr=1.0, delc=1.0, bottom=0.0)
+    OlfIc(parent=olf, strt=[1.0, 1.0])
+    Dfw(parent=olf, manningsn=[0.035, 0.035])
+    Cdb(parent=olf, stress_period_data={0: [[(0, 0), 0, 1.0]]})
+    sim.write()
+
+    loaded = Simulation.load(tmp_path / "mfsim.nam")
+    (row,) = loaded.models[0].cdb[0].stress_period_data[0]
+
+    assert (row.cellid, row.idcxs, row.width) == ((0, 0), 0, 1.0)
+
+
 def test_loads_evp_stress_period_data(tmp_path):
     """`Evp` (CHF's evaporation package) round-trips its stress period
     data -- the other CHF package type no upstream test exercises at
@@ -550,3 +641,27 @@ def test_loads_evp_stress_period_data(tmp_path):
     (row,) = loaded.models[0].evp[0].stress_period_data[0]
 
     assert (row.cellid, row.evaporation) == ((0,), 0.01)
+
+
+def test_loads_olf_evp_stress_period_data(tmp_path):
+    """`Evp` (OLF's evaporation package) round-trips its stress period
+    data -- the other OLF package type no upstream test exercises at
+    all (alongside `Cdb`), so it's otherwise entirely unverified."""
+    from flopy4.mf6.olf import Olf
+    from flopy4.mf6.olf.dfw import Dfw
+    from flopy4.mf6.olf.dis2d import Dis2d
+    from flopy4.mf6.olf.evp import Evp
+    from flopy4.mf6.olf.ic import Ic as OlfIc
+
+    sim = Simulation(name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]))
+    olf = Olf(parent=sim, name="m")
+    Dis2d(parent=olf, nrow=1, ncol=2, delr=1.0, delc=1.0, bottom=0.0)
+    OlfIc(parent=olf, strt=[1.0, 1.0])
+    Dfw(parent=olf, manningsn=[0.035, 0.035])
+    Evp(parent=olf, stress_period_data={0: [[(0, 0), 0.01]]})
+    sim.write()
+
+    loaded = Simulation.load(tmp_path / "mfsim.nam")
+    (row,) = loaded.models[0].evp[0].stress_period_data[0]
+
+    assert (row.cellid, row.evaporation) == ((0, 0), 0.01)

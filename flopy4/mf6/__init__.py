@@ -31,7 +31,7 @@ from flopy4.mf6.netcdf import NetCDFModel
 from flopy4.uio import DEFAULT_REGISTRY
 
 if TYPE_CHECKING:
-    from flopy4.mf6 import chf, exg, gwe, gwf, gwt, prt, simulation
+    from flopy4.mf6 import chf, exg, gwe, gwf, gwt, olf, prt, simulation
     from flopy4.mf6 import ems as ems
     from flopy4.mf6 import ims as ims
     from flopy4.mf6 import tdis as tdis
@@ -49,6 +49,7 @@ _COMPONENT_MODULES = (
     "gwe",
     "gwf",
     "gwt",
+    "olf",
     "prt",
     "utl",
     "simulation",
@@ -101,6 +102,7 @@ __all__ = [
     "gwf",
     "gwt",
     "gwe",
+    "olf",
     "prt",
     "simulation",
     "solution",

@@ -1035,6 +1035,8 @@ _DIS = ["flopy4.mf6.dis_methods:DisMethods"]
 _DISV = ["flopy4.mf6.disv_methods:DisvMethods"]
 _DISU = ["flopy4.mf6.disu_methods:DisuMethods"]
 _DISV1D = ["flopy4.mf6.disv1d_methods:Disv1dMethods"]
+_DIS2D = ["flopy4.mf6.dis2d_methods:Dis2dMethods"]
+_DISV2D = ["flopy4.mf6.disv2d_methods:Disv2dMethods"]
 _MODEL = ["flopy4.mf6.model_methods:ModelMethods"]
 MIXINS: dict[str, list[str]] = {
     "sim-nam": ["flopy4.mf6.simulation_methods:SimulationMethods"],
@@ -1058,6 +1060,19 @@ MIXINS: dict[str, list[str]] = {
     "prt-dis": _DIS,
     "prt-disv": _DISV,
     "chf-disv1d": _DISV1D,
+    "olf-nam": _MODEL,
+    "olf-dis2d": _DIS2D,
+    "olf-disv2d": _DISV2D,
+    # No "olf-disv1d" entry: the dfn exists but isn't a real MF6 capability
+    # (excluded from dfns.txt/olf-nam.dfn; absent from doc/mf6io/olf/olf.tex,
+    # which lists only DIS2D/DISV2D) -- likely a leftover from the SWF ->
+    # CHF/OLF model split (CHF kept DISV1D for channel routing). This only
+    # withholds the grid-conversion mixin: Olf.disv1d is still a live,
+    # writable field (olf-disv1d.dfn still exists, so codegen still
+    # includes it), so flopy4 won't stop a user from writing an invalid
+    # DISV16 entry into an OLF model. Deleting olf-disv1d.dfn upstream
+    # would remove both the class and this field; no flopy4-side fix for
+    # the field alone is planned.
 }
 
 
@@ -1291,10 +1306,14 @@ def _child_field_spec(
 # Package types sharing one model field: a model has one discretization.
 _SLOTS = {"DIS6": "dis", "DISV6": "dis", "DISU6": "dis"}
 
-# Discretization slot names, in field order after `_SLOTS` aliasing. Every
-# model has exactly one of these; whichever is present must come first,
-# since MF6's own NAM-file package order is load-order sensitive (a package
-# with a cellid-typed field needs the grid resolved before it loads).
+# Discretization slot names, in field order after `_SLOTS` aliasing. A model
+# has exactly one discretization *instance*, but can have more than one
+# static grid field when its variants aren't aliased into one slot (e.g.
+# OLF's `dis2d`/`disv2d`, unlike GWF's `dis`/`disv`/`disu`, which `_SLOTS`
+# unifies into one) -- only one is ever populated, but both must come
+# first, since MF6's own NAM-file package order is load-order sensitive (a
+# package with a cellid-typed field needs the grid resolved before it
+# loads).
 _GRID_SLOTS = ("dis", "disv1d", "dis2d", "disv2d")
 
 
@@ -1319,10 +1338,9 @@ def _model_package_specs(
             raise ValueError(f"{component.name}: package {t} has no ftype")
         name = _SLOTS.get(ftype, ftype.lower().removesuffix("6"))
         slots.setdefault(name, []).append(t)
-    for grid_name in _GRID_SLOTS:
-        if grid_name in slots:
-            slots = {grid_name: slots.pop(grid_name), **slots}
-            break
+    grid_names = [g for g in _GRID_SLOTS if g in slots]
+    if grid_names:
+        slots = {**{g: slots.pop(g) for g in grid_names}, **slots}
     specs, imports = [], []
     for name, members in slots.items():
         if len({bool(dfns[t].multi) for t in members}) > 1:
