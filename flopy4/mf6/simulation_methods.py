@@ -33,88 +33,36 @@ class SimulationMethods:
         super().__setstate__(state)  # type: ignore[misc]
         # solutions and exchanges are pickled with their models' names
         # (see Component.__getstate__): resolve them, as loading does
-        sim: "Simulation" = self  # type: ignore[assignment]
-
-        def find(m):
-            # not `or`: an empty model is falsy
-            return m if (found := sim._find_model(m)) is None else found
-
-        for sln in sim.solutiongroup:
-            sln.models = [find(m) for m in sln.models]
-        for exg in sim.exchanges:
-            exg.exgmnamea = find(exg.exgmnamea)
-            exg.exgmnameb = find(exg.exgmnameb)
+        self._resolve_references()  # type: ignore[attr-defined]
 
     def write(self, *args, **kwargs) -> None:
-        """Check the solution group and exchanges (see `_solution_models`
-        and `_exchange_models`), then write."""
+        """Check the children's references (see `Component._reference_errors`)
+        and the solution group (see `_solution_models`), then write."""
+        sim: "Simulation" = self  # type: ignore[assignment]
+        errors = [e for child in sim._children.values() for e in child._reference_errors()]
+        if errors:
+            raise ValueError("Invalid references: " + "; ".join(errors))
         self._solution_models(check=True)  # type: ignore[misc]
-        self._exchange_models(check=True)  # type: ignore[misc]
         super().write(*args, **kwargs)  # type: ignore[misc]
 
-    def _find_model(self: "Simulation", model):  # type: ignore[misc]
-        """The simulation's model given as a model or a name (looked up
-        case-insensitively, as MF6 does), or None if it has no such model."""
-        if model is None:
-            return None
-        if isinstance(model, str):
-            return next((m for m in self.models if str(m.name).lower() == model.lower()), None)
-        return next((m for m in self.models if m is model), None)
-
-    def _exchange_models(self: "Simulation", check: bool = False) -> list:  # type: ignore[misc]
-        """Each exchange with the two models it connects, as pairs. Models
-        given by name are looked up as `_find_model` does; unresolved
-        names stay as given. With `check`, raise if an exchange is missing
-        a model, names one the simulation doesn't have, or connects models
-        of types it doesn't (a GWF-GWT exchange connects a GWF model to a
-        GWT model)."""
-        self._children  # names any unnamed models
-        errors = []
-        pairs = []
-        for exg in self.exchanges:
-            models = []
-            for side, m, mtype in zip("ab", (exg.exgmnamea, exg.exgmnameb), exg.model_types):
-                found = self._find_model(m)
-                if m is None:
-                    errors.append(f"{exg.name} has no model {side} (exgmname{side})")
-                elif found is None:
-                    name = m if isinstance(m, str) else m.name
-                    errors.append(f"{exg.name} names model {name!r}, which isn't in the simulation")
-                elif _model_type(found) != mtype:
-                    errors.append(
-                        f"{exg.name} ({type(exg).__name__}) needs a {mtype.upper()} model "
-                        f"{side}, not {found.name!r} ({type(found).__name__})"
-                    )
-                models.append(m if found is None else found)
-            pairs.append((exg, tuple(models)))
-        if check and errors:
-            raise ValueError("Invalid exchanges: " + "; ".join(errors))
-        return pairs
-
     def _solution_models(self: "Simulation", check: bool = False) -> list:  # type: ignore[misc]
-        """Each solution with the models it solves, as pairs. A model given
-        by name is looked up among the simulation's models, case-insensitively
-        as MF6 does. The only solution, listing no models, solves them all.
-        With `check`, raise if a solution lists a model the simulation
-        doesn't have or can't solve its type, or if a model is solved by no
-        solution or more than one. Unresolved names stay as given."""
+        """Each solution with the models it solves, as pairs, models given
+        by name resolved (see `Component._resolved`). The only solution,
+        listing no models, solves them all. With `check`, raise if a model
+        is solved by no solution or more than one, or the only solution
+        can't solve one it solves by listing none. (`write` checks that the
+        models listed are the simulation's, and of types the solutions
+        solve, as it does any reference.)"""
         self._children  # names any unnamed models
-        errors = []
         pairs: list[tuple[Solution, list]] = []
         for sln in self.solutiongroup:
             if not sln.models and len(self.solutiongroup) == 1:
                 pairs.append((sln, list(self.models)))
-                continue
-            models = []
-            for m in sln.models:
-                found = self._find_model(m)
-                if found is None:
-                    name = m if isinstance(m, str) else m.name
-                    errors.append(f"{sln.name} lists model {name!r}, which isn't in the simulation")
-                models.append(m if found is None else found)
-            pairs.append((sln, models))
+            else:
+                pairs.append((sln, sln._resolved("models")))
         if not check:
             return pairs
+        errors = []
         for model in self.models:
             claims = [sln.name for sln, models in pairs if any(m is model for m in models)]
             if not claims:
@@ -122,12 +70,14 @@ class SimulationMethods:
             elif len(claims) > 1:
                 errors.append(f"model {model.name!r} is solved by more than one solution: {claims}")
         for sln, models in pairs:
-            for m in models:
-                if not isinstance(m, str) and not sln.solves(m):
-                    errors.append(
-                        f"{sln.name} ({sln.slntype.upper()}) can't solve model "
-                        f"{m.name!r} ({type(m).__name__})"
-                    )
+            # listed models are checked as references; these are implied
+            if not sln.models:
+                errors.extend(
+                    f"{sln.name} ({sln.slntype.upper()}) can't solve model "
+                    f"{m.name!r} ({type(m).__name__})"
+                    for m in models
+                    if not sln.solves(m)
+                )
         if errors:
             raise ValueError("Invalid solution group: " + "; ".join(errors))
         return pairs
@@ -200,8 +150,3 @@ class SimulationMethods:
                 raise RuntimeError(
                     f"Simulation {self.name}: {exe} failed with {detail}, output:\n\n{out + err} "
                 )
-
-
-def _model_type(model) -> str:
-    """A model's type, e.g. ``"gwf"``."""
-    return type(model).dfn_name.partition("-")[0]

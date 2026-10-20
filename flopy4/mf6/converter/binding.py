@@ -5,7 +5,7 @@ from flopy4.mf6.exchange import Exchange
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
 from flopy4.mf6.solution import Solution
-from flopy4.mf6.spec import reference_names
+from flopy4.spec import reference_names
 
 
 def component_ftype(cls: type) -> str:
@@ -37,10 +37,13 @@ class Binding:
     @classmethod
     def from_component(cls, component: Component) -> "Binding":
         def _get_binding_terms(component: Component) -> tuple[str, ...] | None:
-            if isinstance(component, Exchange):
-                return tuple(reference_names([component.exgmnamea, component.exgmnameb]))
-            elif isinstance(component, Solution):
+            if isinstance(component, Solution):
                 return tuple(reference_names(component._solved_models()))
+            elif refs := component._reference_fields():
+                values = [getattr(component, f.name) for f in refs]
+                return tuple(
+                    n for v in values for n in reference_names(v if isinstance(v, list) else [v])
+                )
             elif isinstance(component, (Model, Package)):
                 return (component.name,)  # type: ignore
             return None

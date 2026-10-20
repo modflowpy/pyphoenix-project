@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, ClassVar
 import attrs
 
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import reference
+from flopy4.spec import reference
 
 if TYPE_CHECKING:
     from flopy4.mf6.model import Model
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 @attrs.define(kw_only=True, slots=False)
 class Solution(Package, ABC):
     slntype: ClassVar[str] = "sln"
-    models: "list[Model | str]" = reference()
+    models: "list[Model | str]" = reference(accepts=lambda sln, m: sln.solves(m))
     """The models this solution solves, as objects or names. The simulation
     owns its models; a solution only refers to them. If a simulation has
     one solution and it lists no models, it solves them all. A solution

@@ -14,7 +14,7 @@ from flopy4.mf6.constants import MF6
 from flopy4.mf6.external import in_write_session, write_session
 from flopy4.mf6.spec import fields_dict
 from flopy4.mf6.write_context import WriteContext
-from flopy4.spec import is_reference, reference_names, referenced
+from flopy4.spec import is_reference, reference_names, referenced, resolve
 from flopy4.uio import IO, Loader, Writer
 from flopy4.utils import empty_if_none
 
@@ -531,19 +531,68 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         simulation a solution's or an exchange's models are in), which a
         component given no parent joins. None if they have none; an error
         if they have different ones."""
-        refs = [
-            c
-            for f in fields(type(self))
-            if is_reference(f)
-            for c in referenced(getattr(self, f.name))
-        ]
-        parents = {id(p): p for c in refs if (p := c.__dict__.get("_parent")) is not None}
+        parents = {}
+        refs = []
+        for f in self._reference_fields():
+            for c in referenced(getattr(self, f.name)):
+                refs.append(c)
+                p = c.__dict__.get("_parent")
+                if hasattr(p, f.metadata["among"]):
+                    parents[id(p)] = p
         if len(parents) > 1:
             names = [c.name for c in refs]
             raise ValueError(
                 f"{self.name}: {names} belong to different simulations"  # type: ignore[attr-defined]
             )
         return next(iter(parents.values()), None)
+
+    def _reference_fields(self) -> list:
+        """This component's reference fields (see `flopy4.spec.reference`)."""
+        return [f for f in fields(type(self)) if is_reference(f)]
+
+    def _resolved(self, name: str) -> Any:
+        """Reference field `name`'s value with names resolved among the
+        parent's components (those in the parent's field named by the
+        reference's `among`). As given if there's no parent to look in."""
+        value = getattr(self, name)
+        among = attrs.fields_dict(type(self))[name].metadata["among"]  # type: ignore[arg-type]
+        candidates = getattr(self._parent, among, None)
+        return value if candidates is None else resolve(value, candidates)
+
+    def _resolve_references(self) -> None:
+        """Resolve the names in this component's children's reference
+        fields to the components they name, where it has them."""
+        for child in self._children.values():
+            for f in child._reference_fields():
+                setattr(child, f.name, child._resolved(f.name))
+
+    def _reference_errors(self) -> list[str]:
+        """What's wrong with this component's references: a required one
+        missing, one not among the parent's, or one its field doesn't
+        accept (see `flopy4.spec.reference`)."""
+        errors = []
+        parent = self._parent
+        where = "its parent" if parent is None else f"the {type(parent).__name__.lower()}"
+        for f in self._reference_fields():
+            value = self._resolved(f.name)
+            if value is None and f.metadata["required"]:
+                errors.append(f"{self.name} has no {f.name}")  # type: ignore[attr-defined]
+            candidates = getattr(parent, f.metadata["among"], [])
+            accepts = f.metadata["accepts"]
+            for v in value if isinstance(value, list) else [value]:
+                if v is None:
+                    continue
+                if isinstance(v, str) or not any(c is v for c in candidates):
+                    errors.append(
+                        f"{self.name} refers to {reference_names(v)!r} in {f.name}, "  # type: ignore[attr-defined]
+                        f"which isn't in {where}"
+                    )
+                elif accepts is not None and not accepts(self, v):
+                    errors.append(
+                        f"{self.name} ({type(self).__name__}) can't refer to "  # type: ignore[attr-defined]
+                        f"{v.name!r} ({type(v).__name__}) in {f.name}"
+                    )
+        return errors
 
     def _attach_to_parent_field(self, parent: "Component") -> None:
         """Bottom-up counterpart to `_set_child_parents()`: when this

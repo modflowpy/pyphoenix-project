@@ -102,8 +102,7 @@ from flopy4.mf6.component import Component
 from flopy4.mf6.item_table import ItemTable
 from flopy4.mf6.package import Package
 from flopy4.mf6.simulation import Simulation
-from flopy4.mf6.spec import reference_names
-from flopy4.spec import is_reference
+from flopy4.spec import is_reference, reference_names
 
 try:
     ALL_MODELS = sorted(get_models())
