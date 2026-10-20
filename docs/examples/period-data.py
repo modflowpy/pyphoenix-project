@@ -223,7 +223,7 @@ assert evt.stress_period_data == expected
 # To run, the model needs a solver, NPF and initial conditions, and here a
 # constant head to supply the wells.
 
-Ims(parent=sim, models=[gwf.name])
+Ims(parent=sim, models=[gwf])
 gwf.npf = Npf()
 gwf.ic = Ic(strt=1.0)
 Chd(parent=gwf, stress_period_data={0: [((0, 0, 3), 1.0)]})
