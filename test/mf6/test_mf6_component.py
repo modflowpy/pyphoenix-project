@@ -958,7 +958,7 @@ def test_solution_model_solution():
     [
         (
             lambda: ([_small_gwf(name="flow")], [Ims(models=["nope"])]),
-            "refers to 'nope' in models, which isn't in the simulation",
+            "refers to model 'nope' in models, which isn't in the simulation",
         ),
         (
             lambda: ([_small_gwf(name="a"), _small_gwf(name="b")], [Ims(models=["a"]), Ims()]),
@@ -984,7 +984,7 @@ def test_solution_models_invalid_type(function_tmpdir):
 
     with pytest.raises(ValueError, match="EMS.*can't solve model 'flow'"):
         _write_sim(function_tmpdir, [_small_gwf(name="flow")], [Ems()])
-    with pytest.raises(ValueError, match=r"\(Ems\) can't refer to 'flow' \(Gwf\) in models"):
+    with pytest.raises(ValueError, match=r"\(EMS\) can't solve model 'flow' \(Gwf\)"):
         _write_sim(function_tmpdir, [_small_gwf(name="flow")], [Ems(models=["flow"])])
     assert Ims().solves(_small_gwf()) and not Ims().solves(Prt())
     assert Ems().solves(Prt()) and not Ems().solves(_small_gwf())
@@ -1000,7 +1000,7 @@ def test_solution_models_dangling(function_tmpdir):
     )
     sim["flow"] = _small_gwf()
     with pytest.raises(
-        ValueError, match="refers to 'flow' in models, which isn't in the simulation"
+        ValueError, match="refers to model 'flow' in models, which isn't in the simulation"
     ):
         sim.write()
 
@@ -1073,10 +1073,13 @@ def _gwfgwt(**kwargs):
     "build, match",
     [
         (lambda a, b: _gwfgwf(exgmnamea="a"), "has no exgmnameb"),
-        (lambda a, b: _gwfgwf(exgmnamea="a", exgmnameb="nope"), "refers to 'nope' in exgmnameb"),
+        (
+            lambda a, b: _gwfgwf(exgmnamea="a", exgmnameb="nope"),
+            "refers to model 'nope' in exgmnameb",
+        ),
         (
             lambda a, b: _gwfgwt(exgmnamea=a, exgmnameb=b),
-            r"\(Gwfgwt\) can't refer to 'b' \(Gwf\) in exgmnameb",
+            r"\(Gwfgwt\) needs a GWT model b, not 'b' \(Gwf\)",
         ),
     ],
     ids=["missing", "unknown", "wrong-type"],
@@ -1095,22 +1098,13 @@ def test_exchange_models_invalid(function_tmpdir, build, match):
 
 
 @pytest.mark.parametrize(
-    "exchange, models",
-    [
-        ("Gwfgwf", ("Gwf", "Gwf")),
-        ("Gwfgwt", ("Gwf", "Gwt")),
-        ("Gwfprt", ("Gwf", "Prt")),
-        ("Chfgwf", ("Chf", "Gwf")),
-        ("Olfgwf", ("Olf", "Gwf")),
-    ],
+    "exchange, types",
+    [("Gwfgwt", ("gwf", "gwt")), ("Gwfprt", ("gwf", "prt")), ("Chfgwf", ("chf", "gwf"))],
 )
-def test_exchange_model_classes(exchange, models):
-    """An exchange's model classes come from the registered model types,
-    whatever their names' lengths."""
+def test_exchange_model_types(exchange, types):
     import flopy4.mf6.exg as exg
 
-    classes = getattr(exg, exchange).model_classes()
-    assert tuple(c.__name__ for c in classes) == models
+    assert getattr(exg, exchange)().model_types == types
 
 
 def test_exchange_model_must_be_component_or_name():

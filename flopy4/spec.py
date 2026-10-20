@@ -66,22 +66,21 @@ def _check_reference(instance, attribute, value) -> None:
 
 def reference(
     many: bool = True,
-    among: str = "models",
-    accepts: "Callable[[Any, Any], bool] | None" = None,
+    check: "Callable[[Any, Any], str | None] | None" = None,
     required: bool = False,
 ):
-    """Components this one refers to but doesn't own, given as objects or
-    names: a list of them, or with `many=False` one (or None). The owner
-    (e.g. the simulation, for models) is the components' parent, and
-    `among` names its field holding them; a reference never changes their
-    parent or name, so names are looked up there when needed, not when the
-    reference is made (see `resolve`). Shown and compared by name. A
-    component given no parent joins its references' parent (see
+    """Models this component refers to but doesn't own (e.g. the models a
+    solution solves), given as objects or names: a list of them, or with
+    `many=False` one (or None). The simulation owns its models; a
+    reference never changes their parent or name, so names are looked up
+    among the simulation's models when needed, not when the reference is
+    made (see `resolve`). Shown and compared by name. A component given no
+    parent joins its references' simulation (see
     `Component.__attrs_post_init__`).
 
-    When written, a reference must be found `among` the owner's, and
-    `accepts(component, referenced)`, if given, must hold. A single one
-    must also be given if `required`."""
+    When written, a reference must be one of the simulation's models, and
+    `check(component, model)`, if given, must return no problem with it. A
+    single one must also be given if `required`."""
     shape: dict = (
         {"factory": list, "converter": _to_reference_list}
         if many
@@ -89,7 +88,7 @@ def reference(
     )
     return attrs.field(
         **shape,
-        metadata={"reference": True, "among": among, "accepts": accepts, "required": required},
+        metadata={"reference": True, "check": check, "required": required},
         repr=lambda v: repr(reference_names(v)),
         eq=reference_names,
     )

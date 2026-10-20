@@ -525,7 +525,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             for c in referenced(getattr(self, f.name)):
                 refs.append(c)
                 p = c.__dict__.get("_parent")
-                if hasattr(p, f.metadata["among"]):
+                if hasattr(p, "models"):
                     parents[id(p)] = p
         if len(parents) > 1:
             names = [c.name for c in refs]
@@ -540,46 +540,40 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
 
     def _resolved(self, name: str) -> Any:
         """Reference field `name`'s value with names resolved among the
-        parent's components (those in the parent's field named by the
-        reference's `among`). As given if there's no parent to look in."""
+        parent's (the simulation's) models. As given if there's no parent
+        to look in."""
         value = getattr(self, name)
-        among = attrs.fields_dict(type(self))[name].metadata["among"]  # type: ignore[arg-type]
-        candidates = getattr(self._parent, among, None)
-        return value if candidates is None else resolve(value, candidates)
+        models = getattr(self._parent, "models", None)
+        return value if models is None else resolve(value, models)
 
     def _resolve_references(self) -> None:
         """Resolve the names in this component's children's reference
-        fields to the components they name, where it has them."""
+        fields to the models they name, where it has them."""
         for child in self._children.values():
             for f in child._reference_fields():
                 setattr(child, f.name, child._resolved(f.name))
 
     def _reference_errors(self) -> list[str]:
         """What's wrong with this component's references: a required one
-        missing, one not among the parent's, or one its field doesn't
-        accept (see `flopy4.spec.reference`)."""
+        missing, one not among the simulation's models, or one its field's
+        check finds a problem with (see `flopy4.spec.reference`)."""
         errors = []
-        parent = self._parent
-        where = "its parent" if parent is None else f"the {type(parent).__name__.lower()}"
+        models = getattr(self._parent, "models", [])
         for f in self._reference_fields():
             value = self._resolved(f.name)
             if value is None and f.metadata["required"]:
                 errors.append(f"{self.name} has no {f.name}")  # type: ignore[attr-defined]
-            candidates = getattr(parent, f.metadata["among"], [])
-            accepts = f.metadata["accepts"]
+            check = f.metadata["check"]
             for v in value if isinstance(value, list) else [value]:
                 if v is None:
                     continue
-                if isinstance(v, str) or not any(c is v for c in candidates):
+                if isinstance(v, str) or not any(m is v for m in models):
                     errors.append(
-                        f"{self.name} refers to {reference_names(v)!r} in {f.name}, "  # type: ignore[attr-defined]
-                        f"which isn't in {where}"
+                        f"{self.name} refers to model {reference_names(v)!r} in {f.name}, "  # type: ignore[attr-defined]
+                        "which isn't in the simulation"
                     )
-                elif accepts is not None and not accepts(self, v):
-                    errors.append(
-                        f"{self.name} ({type(self).__name__}) can't refer to "  # type: ignore[attr-defined]
-                        f"{v.name!r} ({type(v).__name__}) in {f.name}"
-                    )
+                elif check is not None and (problem := check(self, v)):
+                    errors.append(f"{self.name} {problem}")  # type: ignore[attr-defined]
         return errors
 
     def _attach_to_parent_field(self, parent: "Component") -> None:

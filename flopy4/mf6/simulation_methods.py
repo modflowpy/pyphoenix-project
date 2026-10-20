@@ -73,10 +73,7 @@ class SimulationMethods:
             # listed models are checked as references; these are implied
             if not sln.models:
                 errors.extend(
-                    f"{sln.name} ({sln.slntype.upper()}) can't solve model "
-                    f"{m.name!r} ({type(m).__name__})"
-                    for m in models
-                    if not sln.solves(m)
+                    f"{sln.name} {problem}" for m in models if (problem := sln._cant_solve(m))
                 )
         if errors:
             raise ValueError("Invalid solution group: " + "; ".join(errors))

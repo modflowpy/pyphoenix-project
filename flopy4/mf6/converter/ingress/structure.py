@@ -568,18 +568,19 @@ def _parse_readarray_period_block(
 
 
 def _apply_binding_terms(child: Any, terms: list, models: list) -> None:
-    """Set an exchange's or a solution's reference fields from the models
-    its namefile row names, in field order: one name to a single reference,
-    the rest to a list. Names are resolved among the models loaded so far
-    (see `flopy4.spec.resolve`), so a loaded exchange or solution holds
-    them as a built one does; unknown names stay."""
-    names = [str(t) for t in terms]
-    for f in child._reference_fields():
-        if not names:
-            break
-        many = isinstance(getattr(child, f.name), list)
-        value, names = (names, []) if many else (names[0], names[1:])
-        setattr(child, f.name, resolve(value, models))
+    from flopy4.mf6.exchange import Exchange
+    from flopy4.mf6.solution import Solution
+
+    # the models loaded so far, so a loaded exchange or solution holds
+    # them as a built one does; unknown names stay
+    found = resolve([str(t) for t in terms], models)
+    if isinstance(child, Exchange):
+        if len(found) > 0:
+            child.exgmnamea = found[0]
+        if len(found) > 1:
+            child.exgmnameb = found[1]
+    elif isinstance(child, Solution) and found:
+        child.models = found
 
 
 def _disambiguate_ga_variant(candidates: "list[type[Component]]", path: Path) -> "type[Component]":
