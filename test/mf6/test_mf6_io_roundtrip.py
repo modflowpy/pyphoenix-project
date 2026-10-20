@@ -2,8 +2,14 @@
 Round-trip IO test: load -> write -> reload, then check for equivalence.
 Also include a few specific tests for known gaps in the loader, which are
 not caught by the round-trip tests.
+
+What each model writes is also checked against a snapshot
+(`__snapshots__/test_mf6_io_roundtrip/`, a JSON file per model), so a change
+to the writer's output shows up as a failure and, once accepted with
+`--snapshot-update`, in the diff. See `_written_digest` for what's recorded.
 """
 
+import hashlib
 import math
 import warnings
 from collections.abc import Mapping
@@ -14,6 +20,7 @@ import numpy as np
 import pytest
 import xarray as xr
 from modflow_devtools.models import copy_to
+from syrupy.extensions.json import JSONSnapshotExtension
 
 from flopy4.mf6.component import Component
 from flopy4.mf6.gwe import Adv as GweAdv
@@ -144,12 +151,75 @@ def _roundtrip(tmp_path, model_name):
     return sim, Simulation.load(out / "mfsim.nam"), out
 
 
+# a run of more numeric lines than this, or a line longer than this many
+# characters, is replaced by its hash
+_DIGEST_RUN = 8
+_DIGEST_LINE = 200
+
+
+def _sha1(text: str) -> str:
+    return hashlib.sha1(text.encode()).hexdigest()[:16]
+
+
+def _is_data(line: str) -> bool:
+    """Whether ``line`` is a row of values (array or list data), not a
+    keyword, header or control record."""
+    first = line.split(maxsplit=1)[0] if line.strip() else ""
+    try:
+        float(first)
+    except ValueError:
+        return False
+    return True
+
+
+def _digest_lines(lines: list[str]) -> list[str]:
+    """``lines`` with each run of more than `_DIGEST_RUN` data lines, and
+    each line over `_DIGEST_LINE` characters, collapsed to a hash, so the
+    snapshot keeps every keyword and control record and shows which block's
+    data changed, not how."""
+    out: list[str] = []
+    run: list[str] = []
+
+    def flush():
+        if len(run) > _DIGEST_RUN:
+            out.append(f"<{len(run)} data lines {_sha1(chr(10).join(run))}>")
+        else:
+            out.extend(run)
+        run.clear()
+
+    for line in lines:
+        if _is_data(line):
+            run.append(line)
+            continue
+        flush()
+        out.append(line)
+    flush()
+    return [
+        f"<{len(line)} chars {_sha1(line)}>" if len(line) > _DIGEST_LINE else line for line in out
+    ]
+
+
+def _written_digest(workspace: Path) -> dict[str, list[str]]:
+    """Each file written under ``workspace``, by its relative path, as its
+    lines (see `_digest_lines`)."""
+    return {
+        path.relative_to(workspace).as_posix(): _digest_lines(path.read_text().splitlines())
+        for path in sorted(workspace.rglob("*"))
+        if path.is_file()
+    }
+
+
 @pytest.mark.parametrize("model_name", [_param(m) for m in MODELS])
-def test_roundtrip(tmp_path, model_name):
-    loaded, reloaded, _ = _roundtrip(tmp_path, model_name)
+def test_roundtrip(tmp_path, model_name, snapshot):
+    """A model's written files reload to the same values it loaded with,
+    and match its snapshot (see `_written_digest`)."""
+    loaded, reloaded, out = _roundtrip(tmp_path, model_name)
     diffs = []
     _diff_components(loaded, reloaded, "sim", diffs)
     assert not diffs, "\n".join(diffs)
+    if hasattr(snapshot, "use_extension"):  # not with --snapshot-disable
+        snapshot = snapshot.use_extension(JSONSnapshotExtension)
+    assert _written_digest(out) == snapshot
 
 
 def _period_block(workspace, text):
