@@ -49,6 +49,20 @@ def resolve(value, candidates):
     return next((c for c in candidates if str(c.name).lower() == value.lower()), value)
 
 
+def retarget(value, candidates):
+    """A reference field's value with each component that isn't one of
+    the candidates replaced by the candidate of its name, if there is one,
+    in the field's own shape. Names, None and the candidates stay."""
+    if isinstance(value, list):
+        return [retarget(v, candidates) for v in value]
+    if value is None or isinstance(value, str) or value.name is None:
+        return value
+    if any(c is value for c in candidates):
+        return value
+    found = resolve(str(value.name), candidates)
+    return value if isinstance(found, str) else found
+
+
 def _to_reference_list(value) -> list:
     if value is None:
         return []

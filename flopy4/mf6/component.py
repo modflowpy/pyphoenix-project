@@ -14,7 +14,7 @@ from flopy4.mf6.constants import MF6
 from flopy4.mf6.external import in_write_session, write_session
 from flopy4.mf6.spec import fields_dict
 from flopy4.mf6.write_context import WriteContext
-from flopy4.spec import is_reference, reference_names, referenced, resolve
+from flopy4.spec import is_reference, reference_names, referenced, resolve, retarget
 from flopy4.uio import IO, Loader, Writer
 from flopy4.utils import empty_if_none
 
@@ -344,6 +344,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         if value is not None:
             self._parent = value
             self._attach_to_parent_field(value)
+            self._retarget_references()
 
     @property
     def _children(self) -> "dict[str, Component]":
@@ -404,10 +405,13 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         found: "list[tuple[str, Component]]" = []
         # rows may share a child (one table file named in several places)
         stamped: "set[int]" = set()
+        joined: "list[Component]" = []
 
         def add(kind: str, c: "Component") -> None:
             if id(c) not in stamped:
                 stamped.add(id(c))
+                if c.__dict__.get("_parent") is not self:
+                    joined.append(c)
                 c.__dict__["_parent"] = self
                 found.append((kind, c))
 
@@ -437,6 +441,8 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             if c.name is None:  # type: ignore[attr-defined]
                 c.name = _resolve_child_name(used, kind, c)  # type: ignore[attr-defined]
                 used.add(c.name)  # type: ignore[attr-defined]
+        for c in joined:
+            c._retarget_references()
 
     @property
     def path(self) -> Path:
@@ -497,6 +503,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             self._parent = self._references_parent()
         if self._parent is not None:
             self._attach_to_parent_field(self._parent)
+            self._retarget_references()
         self._set_child_parents()
 
     def _attach_field(self, name: str, value: Any) -> Any:
@@ -552,6 +559,21 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         for child in self._children.values():
             for f in child._reference_fields():
                 setattr(child, f.name, child._resolved(f.name))
+
+    def _retarget_references(self) -> None:
+        """Point this component's references to models outside its
+        simulation at the simulation's models of the same names, where it
+        has them (see `flopy4.spec.retarget`). Run when it joins one, so a
+        copy added to another simulation refers to that simulation's
+        models. References to the simulation's own models, and names, stay."""
+        models = getattr(self._parent, "models", None)
+        if models is None:
+            return
+        for f in self._reference_fields():
+            value = getattr(self, f.name)
+            new = retarget(value, models)
+            if any(a is not b for a, b in zip(referenced(new), referenced(value))):
+                setattr(self, f.name, new)
 
     def _reference_errors(self) -> list[str]:
         """What's wrong with this component's references: a required one
@@ -641,10 +663,10 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         what it only refers to. Its parent becomes its copy if that's
         copied in the same operation, as when copying a whole simulation;
         otherwise it's dropped, so a lone copy comes out detached. Its
-        reference fields (e.g. a solution's models) are copied by name, as
-        they're pickled, and resolved by the copied parent among its own
-        copies (see `_resolve_references`): a copied simulation's solutions
-        and exchanges hold its copied models, a lone copy their names.
+        reference fields (e.g. a solution's models) keep the originals,
+        until it joins a simulation (see `_retarget_references`): a copied
+        simulation's solutions and exchanges then refer to its copied
+        models, as does a lone copy added to the copied simulation.
         """
         cls = type(self)
         new = cls.__new__(cls)
@@ -654,11 +676,12 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             if key == "_parent":
                 value = memo.get(id(value))
             elif key in references:
-                value = reference_names(value)
+                value = list(value) if isinstance(value, list) else value
             else:
                 value = copy.deepcopy(value, memo)
             new.__dict__[key] = value
-        new._resolve_references()
+        for child in new._children.values():
+            child._retarget_references()
         return new
 
     def __setitem__(self, key, value):
@@ -682,6 +705,13 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
                 f"under '{key}'; rename it first, or use '{value.name}' as the key."  # type: ignore[attr-defined]
             )
 
+        joining = value._parent is not self
+        self._attach_item(key, value)
+        if joining:
+            value._retarget_references()
+
+    def _attach_item(self, key, value) -> None:
+        """Attach `value` under `key` (see `__setitem__`)."""
         from flopy4.attrs_xarray import child_field_candidates
 
         for f in fields(type(self)):
@@ -701,7 +731,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
                     if isinstance(child, Component) and child.name == key:  # type: ignore[attr-defined]
                         value.name = key  # type: ignore[attr-defined]
                         value.__dict__["_parent"] = self
-                        current[i] = value
+                        current[i] = value  # type: ignore[index]
                         return
 
         match = _find_child_field(type(self), type(value))
