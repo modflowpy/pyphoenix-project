@@ -4,9 +4,11 @@ from typing import ClassVar, Optional
 
 import attrs
 
+from flopy4.mf6.model import Model
 from flopy4.mf6.record import Record
 from flopy4.mf6.solution import Solution
 from flopy4.mf6.spec import double, file, integer, record, string
+from flopy4.spec import reference
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -26,6 +28,7 @@ class Ims(Solution):
         inner_rclose: float = double()
         rclose_option: Optional[str] = string(default=None, optional=True)
 
+    models: list[Model | str] = reference()
     print_option: Optional[str] = string(
         default=None,
         block="options",

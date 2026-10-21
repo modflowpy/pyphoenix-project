@@ -5,8 +5,10 @@ import attrs
 
 from flopy4.mf6.exchange import Exchange
 from flopy4.mf6.item import Item
+from flopy4.mf6.model import Model
 from flopy4.mf6.spec import cellid_, child, double, integer, keyword, list_
 from flopy4.mf6.utl.obs import Obs
+from flopy4.spec import reference
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -22,6 +24,8 @@ class Olfgwf(Exchange):
         bedleak: float = double()
         cfact: float = double()
 
+    exgmnamea: Model | str | None = reference(many=False, required=True)
+    exgmnameb: Model | str | None = reference(many=False, required=True)
     print_input: bool = keyword(
         default=False,
         block="options",

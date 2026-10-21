@@ -1303,6 +1303,65 @@ def _child_field_spec(
     ), [f"from {_component_module(target)} import {cls}"]
 
 
+# Reference fields' Python names, where they aren't the DFN's: a solution's
+# models kept the name they had before the DFNs keyed them.
+_REFERENCE_NAMES = {"slnmnames": "models"}
+
+
+def _binding_row(component: Component, dfns: Mapping[str, Component]) -> Record | None:
+    """The row naming the component in its parent's name file (an
+    exchange's ``exgtype exgfile exgmnamea exgmnameb`` in the simulation's
+    exchanges block), or None. Such a row's file column picks its
+    component by a ``component_ftype`` column."""
+    for parent in dfns.values():
+        if not _is_child_of(component, parent):
+            continue
+        for _, f in filters.flat_fields(parent):
+            if not isinstance(f, ListField) or not isinstance(f.item, Record):
+                continue
+            found = _find_link(f)
+            if found is None or found[1].component_ftype is None:
+                continue
+            if component.name in resolve_link(parent, found[0], found[1], dfns):
+                return f.item
+    return None
+
+
+def _reference_specs(
+    component: Component, dfns: Mapping[str, Component] | None
+) -> tuple[list[FieldSpec], list[str]]:
+    """The component's reference fields (see `flopy4.spec.reference`) and
+    their imports: the columns of its row in its parent's name file keyed
+    (``fk``) to the parent's models, in row order. An exchange's
+    ``exgmnamea`` and ``exgmnameb``, a solution's ``slnmnames``."""
+    row = _binding_row(component, dfns) if dfns is not None else None
+    if row is None:
+        return [], []
+    specs = []
+    for name, m in (row.fields or {}).items():
+        if not (fk := getattr(m, "fk", None)):
+            continue
+        if fk.partition(".")[0] != "models":
+            raise NotImplementedError(f"{component.name}.{name}: a reference to {fk}")
+        if isinstance(m, Array):
+            annotation, call = "list[Model | str]", "reference()"
+        else:
+            annotation = "Model | str | None"
+            call = "reference(many=False)" if m.optional else "reference(many=False, required=True)"
+        specs.append(
+            FieldSpec(
+                dfn_name=name,
+                py_name=_REFERENCE_NAMES.get(name, filters.safe_name(name)),
+                type_annotation=annotation,
+                spec_call=call,
+                generatable=True,
+            )
+        )
+    if not specs:
+        return [], []
+    return specs, ["from flopy4.mf6.model import Model", "from flopy4.spec import reference"]
+
+
 # Package types sharing one model field: a model has one discretization.
 _SLOTS = {"DIS6": "dis", "DISV6": "dis", "DISU6": "dis"}
 
@@ -1466,6 +1525,10 @@ def build_component_spec(
     _linked_dims = {bp.dim_attr for bp in block_properties if bp.dim_is_dfn_declared}
 
     extra_imports: list[str] = []  # child fields' imports
+    # reference fields first, in row order
+    _reference_fields, _reference_imports = _reference_specs(component, dfns)
+    prefix_specs.extend(_reference_fields)
+    extra_imports.extend(_reference_imports)
     _period_item: str | None = None  # element type of the fill-forward block's list
     _readarray_period_fields: list[FieldV3] = []  # READARRAY period fields (CHDG, DRNG …)
     _dynamically_named_period_fields: list[tuple] = []  # (list, array, fk): RCHA's aux

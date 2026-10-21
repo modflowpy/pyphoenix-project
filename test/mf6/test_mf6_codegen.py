@@ -416,6 +416,29 @@ def test_simulation_spec(all_dfns):
     assert {"continue_", "nocheck", "maxerrors", "mxiter"} <= set(types)
 
 
+@pytest.mark.parametrize(
+    "name, expected",
+    [
+        (
+            "exg-gwfgwt",
+            [
+                ("exgmnamea", "Model | str | None", "reference(many=False, required=True)"),
+                ("exgmnameb", "Model | str | None", "reference(many=False, required=True)"),
+            ],
+        ),
+        ("sln-ims", [("models", "list[Model | str]", "reference()")]),
+        ("gwf-chd", []),
+    ],
+)
+def test_reference_fields_from_keys(all_dfns, name, expected):
+    """A component's columns in its row in the simulation's name file that
+    are keyed to its models become reference fields, first, in row order."""
+    spec = build_component_spec(all_dfns[name], root=Path("/fake/mf6"), dfns=all_dfns)
+    refs = [f for f in spec.fields if f.spec_call.startswith("reference(")]
+    assert [(f.py_name, f.type_annotation, f.spec_call) for f in refs] == expected
+    assert spec.fields[: len(refs)] == refs
+
+
 def test_model_spec(all_dfns):
     root = Path("/fake/mf6")
     spec = build_component_spec(all_dfns["gwt-nam"], root=root, dfns=all_dfns)

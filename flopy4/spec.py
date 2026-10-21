@@ -2,9 +2,6 @@
 Wrap `attrs` specification utilities.
 """
 
-from collections.abc import Callable
-from typing import Any
-
 import attrs
 from attrs import Attribute
 from attrs import fields_dict as attrs_fields_dict
@@ -78,11 +75,7 @@ def _check_reference(instance, attribute, value) -> None:
         raise TypeError(f"{attribute.name} takes a component or a name, not {type(value).__name__}")
 
 
-def reference(
-    many: bool = True,
-    check: "Callable[[Any, Any], str | None] | None" = None,
-    required: bool = False,
-):
+def reference(many: bool = True, required: bool = False):
     """Models this component refers to but doesn't own (e.g. the models a
     solution solves), given as objects or names: a list of them, or with
     `many=False` one (or None). The simulation owns its models; a
@@ -92,9 +85,12 @@ def reference(
     parent joins its references' simulation (see
     `Component.__attrs_post_init__`).
 
-    When written, a reference must be one of the simulation's models, and
-    `check(component, model)`, if given, must return no problem with it. A
-    single one must also be given if `required`."""
+    Generated from the DFNs: a column of the component's row in its
+    parent's name file keyed to the parent's models (``fk``) is a
+    reference, in row order. When written, a reference must be one of the
+    simulation's models, and the component's `_reference_problem` must
+    find no problem with it. A single one must also be given if
+    `required`."""
     shape: dict = (
         {"factory": list, "converter": _to_reference_list}
         if many
@@ -102,7 +98,7 @@ def reference(
     )
     return attrs.field(
         **shape,
-        metadata={"reference": True, "check": check, "required": required},
+        metadata={"reference": True, "many": many, "required": required},
         repr=lambda v: repr(reference_names(v)),
         eq=reference_names,
     )

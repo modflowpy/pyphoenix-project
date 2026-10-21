@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Optional
 
 import attrs
-from attrs import fields
+from attrs import Attribute, fields
 
 from flopy4.dimensions import DimensionResolverMixin
 from flopy4.mf6.constants import MF6
@@ -575,17 +575,22 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             if any(a is not b for a, b in zip(referenced(new), referenced(value))):
                 setattr(self, f.name, new)
 
+    def _reference_problem(self, field: Attribute, model: "Component") -> str | None:
+        """What's wrong with reference field `field` referring to `model`
+        (one of the simulation's models), or None. Subclasses say what they
+        accept (e.g. the model types an exchange connects)."""
+        return None
+
     def _reference_errors(self) -> list[str]:
         """What's wrong with this component's references: a required one
-        missing, one not among the simulation's models, or one its field's
-        check finds a problem with (see `flopy4.spec.reference`)."""
+        missing, one not among the simulation's models, or one
+        `_reference_problem` finds a problem with."""
         errors = []
         models = getattr(self._parent, "models", [])
         for f in self._reference_fields():
             value = self._resolved(f.name)
             if value is None and f.metadata["required"]:
                 errors.append(f"{self.name} has no {f.name}")  # type: ignore[attr-defined]
-            check = f.metadata["check"]
             for v in value if isinstance(value, list) else [value]:
                 if v is None:
                     continue
@@ -594,7 +599,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
                         f"{self.name} refers to model {reference_names(v)!r} in {f.name}, "  # type: ignore[attr-defined]
                         "which isn't in the simulation"
                     )
-                elif check is not None and (problem := check(self, v)):
+                elif problem := self._reference_problem(f, v):
                     errors.append(f"{self.name} {problem}")  # type: ignore[attr-defined]
         return errors
 

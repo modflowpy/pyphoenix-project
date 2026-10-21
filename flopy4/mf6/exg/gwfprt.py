@@ -4,8 +4,13 @@ from typing import ClassVar
 import attrs
 
 from flopy4.mf6.exchange import Exchange
+from flopy4.mf6.model import Model
+from flopy4.spec import reference
 
 
 @attrs.define(kw_only=True, slots=False)
 class Gwfprt(Exchange):
     dfn_name: ClassVar[str] = "exg-gwfprt"
+
+    exgmnamea: Model | str | None = reference(many=False, required=True)
+    exgmnameb: Model | str | None = reference(many=False, required=True)

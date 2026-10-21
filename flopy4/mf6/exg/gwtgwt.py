@@ -9,8 +9,10 @@ from flopy4.mf6._types import to_array
 from flopy4.mf6.exchange import Exchange
 from flopy4.mf6.gwt.mvt import Mvt
 from flopy4.mf6.item import Item
+from flopy4.mf6.model import Model
 from flopy4.mf6.spec import array, cellid_, child, double, integer, keyword, list_, string
 from flopy4.mf6.utl.obs import Obs
+from flopy4.spec import reference
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -36,6 +38,8 @@ class Gwtgwt(Exchange):
             default=None, empty_is_none=True, optional=True, when="boundnames"
         )
 
+    exgmnamea: Model | str | None = reference(many=False, required=True)
+    exgmnameb: Model | str | None = reference(many=False, required=True)
     gwfmodelname1: str = string(
         default=None,
         block="options",
