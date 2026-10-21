@@ -416,6 +416,50 @@ def test_simulation_spec(all_dfns):
     assert {"continue_", "nocheck", "maxerrors", "mxiter"} <= set(types)
 
 
+def _with_model_keys(dfns):
+    """The DFNs with sim-nam's model-name columns keyed to its models, as
+    devtools marks them (drop once the DFNs flopy4 syncs from have them)."""
+    sim = dfns["sim-nam"]
+    blocks = dict(sim.blocks)
+    for block, column in [
+        ("exchanges", "exgmnamea"),
+        ("exchanges", "exgmnameb"),
+        ("solutiongroup", "slnmnames"),
+    ]:
+        b = blocks[block]
+        rows = b.fields[block]
+        item = rows.item
+        keyed = item.fields[column].model_copy(update={"fk": "models.mname"})
+        columns = {**item.fields, column: keyed}
+        rows = rows.model_copy(update={"item": item.model_copy(update={"fields": columns})})
+        blocks[block] = b.model_copy(update={"fields": {**b.fields, block: rows}})
+    return {**dfns, "sim-nam": sim.model_copy(update={"blocks": blocks})}
+
+
+@pytest.mark.parametrize(
+    "name, expected",
+    [
+        (
+            "exg-gwfgwt",
+            [
+                ("exgmnamea", "Model | str | None", "reference(many=False, required=True)"),
+                ("exgmnameb", "Model | str | None", "reference(many=False, required=True)"),
+            ],
+        ),
+        ("sln-ims", [("models", "list[Model | str]", "reference()")]),
+        ("gwf-chd", []),
+    ],
+)
+def test_reference_fields_from_keys(all_dfns, name, expected):
+    """A component's columns in its row in the simulation's name file that
+    are keyed to its models become reference fields, first, in row order."""
+    dfns = _with_model_keys(all_dfns)
+    spec = build_component_spec(dfns[name], root=Path("/fake/mf6"), dfns=dfns)
+    refs = [f for f in spec.fields if f.spec_call.startswith("reference(")]
+    assert [(f.py_name, f.type_annotation, f.spec_call) for f in refs] == expected
+    assert spec.fields[: len(refs)] == refs
+
+
 def test_model_spec(all_dfns):
     root = Path("/fake/mf6")
     spec = build_component_spec(all_dfns["gwt-nam"], root=root, dfns=all_dfns)

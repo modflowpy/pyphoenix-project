@@ -3,7 +3,9 @@ from typing import ClassVar
 
 import attrs
 
+from flopy4.mf6.model import Model
 from flopy4.mf6.solution import Solution
+from flopy4.spec import reference
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -11,3 +13,5 @@ class Ems(Solution):
     dfn_name: ClassVar[str] = "sln-ems"
 
     slntype: ClassVar[str] = "ems"
+
+    models: list[Model | str] = reference()
