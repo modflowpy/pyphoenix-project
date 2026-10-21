@@ -381,7 +381,7 @@ def test_make_grammar_with_dynamically_named_arrays(tmp_path):
     item = Record(
         name="aux",
         fields={
-            "auxname": String(name="auxname", tagged=False, fk="options.auxiliary"),
+            "auxname": String(name="auxname", tagged=False, fk="options.auxiliary", dynamic=True),
             "aux": Array(name="aux", dtype="double", shape=["ncpl"], tagged=False),
         },
     )
