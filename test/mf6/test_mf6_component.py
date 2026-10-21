@@ -844,7 +844,7 @@ def test_solution_models_in_different_simulations():
 def test_solution_models_repr_eq():
     gwf = Gwf(name="flow")
     ims = Ims(models=[gwf, "other"])
-    assert "models=['flow', 'other']" in repr(ims)
+    assert "slnmnames=['flow', 'other']" in repr(ims)
     assert "Gwf(" not in repr(ims)
     assert ims == Ims(models=["flow", "other"])
     assert ims != Ims(models=["flow"])
@@ -1023,11 +1023,21 @@ def test_joining_simulation_keeps_unmatched_references():
     assert any("isn't in the simulation" in e for e in ims._reference_errors())
 
 
+def test_solution_models_alias():
+    """A solution's `slnmnames` (the DFN's name) is also `models`, in the
+    constructor and as an attribute."""
+    gwf, other = Gwf(name="flow"), Gwf(name="other")
+    ims = Ims(models=[gwf])
+    assert ims.slnmnames == ims.models == [gwf]
+    ims.models = [other]
+    assert ims.slnmnames[0] is other
+
+
 def test_solution_models_to_xarray():
     gwf = Gwf(name="flow")
     ims = Ims(models=[gwf])
     Simulation(models=[gwf], solutiongroup=[ims])
-    assert ims.to_xarray().attrs["models"] == ["flow"]
+    assert ims.to_xarray().attrs["slnmnames"] == ["flow"]
 
 
 def test_solution_model_solution():
@@ -1044,7 +1054,7 @@ def test_solution_model_solution():
     [
         (
             lambda: ([_small_gwf(name="flow")], [Ims(models=["nope"])]),
-            "refers to model 'nope' in models, which isn't in the simulation",
+            "refers to model 'nope' in slnmnames, which isn't in the simulation",
         ),
         (
             lambda: ([_small_gwf(name="a"), _small_gwf(name="b")], [Ims(models=["a"]), Ims()]),
@@ -1086,7 +1096,7 @@ def test_solution_models_dangling(function_tmpdir):
     )
     sim["flow"] = _small_gwf()
     with pytest.raises(
-        ValueError, match="refers to model 'flow' in models, which isn't in the simulation"
+        ValueError, match="refers to model 'flow' in slnmnames, which isn't in the simulation"
     ):
         sim.write()
 

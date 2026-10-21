@@ -237,7 +237,7 @@ def _missing(cls: type, chain: list[str]) -> list[str]:
     as ``Class.attr``. Past a field that can hold something else too (see
     `_open`), an attribute only some of the classes have isn't missing.
     An attribute a base class lacks is looked for on its leaf subclasses,
-    which the DFNs may give it (e.g. ``Solution.models``)."""
+    which the DFNs may give it (e.g. ``Solution.slnmnames``)."""
     missing = []
     at = {cls}
     unchecked = False

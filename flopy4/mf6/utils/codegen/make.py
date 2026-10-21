@@ -1353,14 +1353,10 @@ def _legacy_kwargs(component: Component) -> dict[str, str]:
     }
 
 
-# Reference fields' Python names, where they aren't the DFN's: a solution's
-# models kept the name they had before the DFNs keyed them.
-_REFERENCE_NAMES = {"slnmnames": "models"}
-
-
-def _reference_name(column: str) -> str:
-    """A reference field's Python name, from its column's."""
-    return _REFERENCE_NAMES.get(column, filters.safe_name(column))
+# Reference fields' constructor names, where they aren't the DFN's: a
+# solution takes its models as `models`, as it did before the DFNs keyed
+# them (see `Solution.models`).
+_REFERENCE_ALIASES = {"slnmnames": "models"}
 
 
 def _row_columns(component: Component, f: FieldV3, link: File) -> tuple[str, ...]:
@@ -1368,7 +1364,7 @@ def _row_columns(component: Component, f: FieldV3, link: File) -> tuple[str, ...
     `flopy4.mf6.converter.binding`), by the column's role in the DFN: the
     type the file's ``component_ftype`` names (``ftype``), the file
     (``filename``), the child's key (``pk``, its ``name``), or a key to
-    the parent's models (``fk``, a reference field)."""
+    the parent's models (``fk``, a reference field of the column's name)."""
     assert isinstance(f, ListField) and isinstance(f.item, Record)
     columns = []
     for name, m in (f.item.fields or {}).items():
@@ -1380,16 +1376,18 @@ def _row_columns(component: Component, f: FieldV3, link: File) -> tuple[str, ...
         elif getattr(m, "pk", False) or (filters.is_model_nam(component.name) and name == "pname"):
             columns.append("name")
         elif getattr(m, "fk", None):
-            columns.append(_reference_name(name))
+            columns.append(filters.safe_name(name))
         else:
             raise ValueError(f"{component.name}.{f.name}: no role for column {name!r}")
     return tuple(columns)
 
 
-def _binding_row(component: Component, dfns: Mapping[str, Component]) -> Record | None:
-    """The row naming the component in its parent's name file (an
-    exchange's ``exgtype exgfile exgmnamea exgmnameb`` in the simulation's
-    exchanges block), or None. Such a row's file column picks its
+def _binding_row(
+    component: Component, dfns: Mapping[str, Component]
+) -> tuple[Component, ListField, File] | None:
+    """The list naming the component in its parent's name file (the
+    simulation's exchanges, for an exchange), with the parent and the
+    list's file column, or None. Such a list's file column picks its
     component by a ``component_ftype`` column."""
     for parent in dfns.values():
         if not _is_child_of(component, parent):
@@ -1401,7 +1399,7 @@ def _binding_row(component: Component, dfns: Mapping[str, Component]) -> Record 
             if found is None or found[1].component_ftype is None:
                 continue
             if component.name in resolve_link(parent, found[0], found[1], dfns):
-                return f.item
+                return parent, f, found[1]
     return None
 
 
@@ -1410,28 +1408,34 @@ def _reference_specs(
 ) -> tuple[list[FieldSpec], list[str]]:
     """The component's reference fields (see `flopy4.spec.reference`) and
     their imports: the columns of its row in its parent's name file keyed
-    (``fk``) to the parent's models, in row order. An exchange's
-    ``exgmnamea`` and ``exgmnameb``, a solution's ``slnmnames``."""
-    row = _binding_row(component, dfns) if dfns is not None else None
-    if row is None:
+    (``fk``) to the parent's models, in row order, named as the parent's
+    ``row`` names them (see `_row_columns`). An exchange's ``exgmnamea``
+    and ``exgmnameb``, a solution's ``slnmnames``."""
+    found = _binding_row(component, dfns) if dfns is not None else None
+    if found is None:
         return [], []
+    parent, f, link = found
+    columns = zip(_row_columns(parent, f, link), (f.item.fields or {}).items())
     specs = []
-    for name, m in (row.fields or {}).items():
+    for py_name, (name, m) in columns:
         if not (fk := getattr(m, "fk", None)):
             continue
         if fk.partition(".")[0] != "models":
             raise NotImplementedError(f"{component.name}.{name}: a reference to {fk}")
+        args = []
         if isinstance(m, Array):
-            annotation, call = "list[Model | str]", "reference()"
+            annotation = "list[Model | str]"
         else:
             annotation = "Model | str | None"
-            call = "reference(many=False)" if m.optional else "reference(many=False, required=True)"
+            args += ["many=False"] + ([] if m.optional else ["required=True"])
+        if alias := _REFERENCE_ALIASES.get(name):
+            args.append(f'alias="{alias}"')
         specs.append(
             FieldSpec(
                 dfn_name=name,
-                py_name=_reference_name(name),
+                py_name=py_name,
                 type_annotation=annotation,
-                spec_call=call,
+                spec_call=f"reference({', '.join(args)})",
                 generatable=True,
             )
         )

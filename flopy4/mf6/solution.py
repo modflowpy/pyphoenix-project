@@ -13,15 +13,25 @@ if TYPE_CHECKING:
 
 @attrs.define(kw_only=True, slots=False)
 class Solution(Package, ABC):
-    """A solution. Its `models` (generated, from its row in the
-    simulation's name file) are the models it solves, as objects or names.
-    The simulation owns its models; a solution only refers to them. If a
-    simulation has one solution and it lists no models, it solves them
-    all. A solution given no parent joins its models' simulation, if they
-    have one."""
+    """A solution. Its `slnmnames` (generated, from its row in the
+    simulation's name file), also `models`, are the models it solves, as
+    objects or names. The simulation owns its models; a solution only
+    refers to them. If a simulation has one solution and it lists no
+    models, it solves them all. A solution given no parent joins its
+    models' simulation, if they have one."""
 
     if TYPE_CHECKING:
-        models: "list[Model | str]"
+        slnmnames: "list[Model | str]"
+
+    @property
+    def models(self) -> "list[Model | str]":
+        """The models the solution solves: `slnmnames`, which the
+        constructor also takes as `models`."""
+        return self.slnmnames
+
+    @models.setter
+    def models(self, value) -> None:
+        self.slnmnames = value
 
     def solves(self, model: "Model") -> bool:
         """Whether this kind of solution can solve the model's type: EMS
@@ -34,7 +44,7 @@ class Solution(Package, ABC):
 
     def _row_value(self, attr: str):
         # a lone solution listing none solves them all
-        if attr == "models":
+        if attr == "slnmnames":
             return reference_names(self._solved_models())
         return super()._row_value(attr)
 
@@ -53,5 +63,5 @@ class Solution(Package, ABC):
         models as listed."""
         sim = self._parent
         if sim is None or not hasattr(sim, "_solution_models"):
-            return list(self.models)
+            return list(self.slnmnames)
         return next(models for sln, models in sim._solution_models() if sln is self)

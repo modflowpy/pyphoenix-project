@@ -59,7 +59,7 @@ class SimulationMethods:
             if not sln.models and len(self.solutiongroup) == 1:
                 pairs.append((sln, list(self.models)))
             else:
-                pairs.append((sln, sln._resolved("models")))
+                pairs.append((sln, sln._resolved("slnmnames")))
         if not check:
             return pairs
         errors = []

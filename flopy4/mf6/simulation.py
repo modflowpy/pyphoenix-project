@@ -70,5 +70,5 @@ class Simulation(SimulationMethods, Context):
         longname="maximum solution group iterations",
     )
     solutiongroup: list[Solution] = child(
-        block="solutiongroup", row=("ftype", "filename", "models"), default=attrs.Factory(list)
+        block="solutiongroup", row=("ftype", "filename", "slnmnames"), default=attrs.Factory(list)
     )

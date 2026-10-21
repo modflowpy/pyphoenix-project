@@ -27,7 +27,7 @@ class Ims(Solution):
         inner_rclose: float = double()
         rclose_option: Optional[str] = string(default=None, optional=True)
 
-    models: list[Model | str] = reference()
+    slnmnames: list[Model | str] = reference(alias="models")
     print_option: Optional[str] = string(
         default=None,
         block="options",

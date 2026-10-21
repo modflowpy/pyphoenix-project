@@ -13,4 +13,4 @@ class Ems(Solution):
     dfn_name: ClassVar[str] = "sln-ems"
     ftype: ClassVar[str] = "EMS6"
 
-    models: list[Model | str] = reference()
+    slnmnames: list[Model | str] = reference(alias="models")

@@ -426,7 +426,7 @@ def test_simulation_spec(all_dfns):
                 ("exgmnameb", "Model | str | None", "reference(many=False, required=True)"),
             ],
         ),
-        ("sln-ims", [("models", "list[Model | str]", "reference()")]),
+        ("sln-ims", [("slnmnames", "list[Model | str]", 'reference(alias="models")')]),
         ("gwf-chd", []),
     ],
 )
@@ -1025,7 +1025,7 @@ def test_link_selector_errors(all_dfns, selector, match):
     [
         ("sim-nam", "models", ("ftype", "filename", "name")),
         ("sim-nam", "exchanges", ("ftype", "filename", "exgmnamea", "exgmnameb")),
-        ("sim-nam", "solutiongroup", ("ftype", "filename", "models")),
+        ("sim-nam", "solutiongroup", ("ftype", "filename", "slnmnames")),
         ("gwf-nam", "chd", ("ftype", "filename", "name")),
         ("gwf-nam", "dis", ("ftype", "filename", "name")),
     ],

@@ -75,7 +75,7 @@ def _check_reference(instance, attribute, value) -> None:
         raise TypeError(f"{attribute.name} takes a component or a name, not {type(value).__name__}")
 
 
-def reference(many: bool = True, required: bool = False):
+def reference(many: bool = True, required: bool = False, alias: str | None = None):
     """Models this component refers to but doesn't own (e.g. the models a
     solution solves), given as objects or names: a list of them, or with
     `many=False` one (or None). The simulation owns its models; a
@@ -90,7 +90,7 @@ def reference(many: bool = True, required: bool = False):
     reference, in row order. When written, a reference must be one of the
     simulation's models, and the component's `_reference_problem` must
     find no problem with it. A single one must also be given if
-    `required`."""
+    `required`. `alias` is its name in the constructor, if not its own."""
     shape: dict = (
         {"factory": list, "converter": _to_reference_list}
         if many
@@ -98,6 +98,7 @@ def reference(many: bool = True, required: bool = False):
     )
     return attrs.field(
         **shape,
+        alias=alias,
         metadata={"reference": True, "many": many, "required": required},
         repr=lambda v: repr(reference_names(v)),
         eq=reference_names,
