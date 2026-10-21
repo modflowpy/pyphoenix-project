@@ -149,27 +149,53 @@ class Gwf(GwfMethods, ModelMethods, Model):
         direction="in",
         keyword="netcdf",
     )
-    dis: Optional[Union[Dis, Disu, Disv]] = child(block="packages")
-    api: list[Api] = child(block="packages", default=attrs.Factory(list))
-    buy: Optional[Buy] = child(block="packages")
-    chd: list[Union[Chd, Chdg]] = child(block="packages", default=attrs.Factory(list))
-    csub: Optional[Csub] = child(block="packages")
-    drn: list[Union[Drn, Drng]] = child(block="packages", default=attrs.Factory(list))
-    evt: list[Union[Evt, Evta]] = child(block="packages", default=attrs.Factory(list))
-    ghb: list[Union[Ghb, Ghbg]] = child(block="packages", default=attrs.Factory(list))
-    gnc: Optional[Gnc] = child(block="packages")
-    hfb: Optional[Hfb] = child(block="packages")
-    ic: Optional[Ic] = child(block="packages")
-    lak: list[Lak] = child(block="packages", default=attrs.Factory(list))
-    maw: list[Maw] = child(block="packages", default=attrs.Factory(list))
-    mvr: Optional[Mvr] = child(block="packages")
-    npf: Optional[Npf] = child(block="packages")
-    oc: Optional[Oc] = child(block="packages")
-    rch: list[Union[Rch, Rcha]] = child(block="packages", default=attrs.Factory(list))
-    riv: list[Union[Riv, Rivg]] = child(block="packages", default=attrs.Factory(list))
-    sfr: list[Sfr] = child(block="packages", default=attrs.Factory(list))
-    sto: Optional[Sto] = child(block="packages")
-    uzf: list[Uzf] = child(block="packages", default=attrs.Factory(list))
-    vsc: Optional[Vsc] = child(block="packages")
-    wel: list[Union[Wel, Welg]] = child(block="packages", default=attrs.Factory(list))
-    obs: Optional[Obs] = child(block="packages")
+    dis: Optional[Union[Dis, Disu, Disv]] = child(
+        block="packages", row=("ftype", "filename", "name")
+    )
+    api: list[Api] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    buy: Optional[Buy] = child(block="packages", row=("ftype", "filename", "name"))
+    chd: list[Union[Chd, Chdg]] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    csub: Optional[Csub] = child(block="packages", row=("ftype", "filename", "name"))
+    drn: list[Union[Drn, Drng]] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    evt: list[Union[Evt, Evta]] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    ghb: list[Union[Ghb, Ghbg]] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    gnc: Optional[Gnc] = child(block="packages", row=("ftype", "filename", "name"))
+    hfb: Optional[Hfb] = child(block="packages", row=("ftype", "filename", "name"))
+    ic: Optional[Ic] = child(block="packages", row=("ftype", "filename", "name"))
+    lak: list[Lak] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    maw: list[Maw] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    mvr: Optional[Mvr] = child(block="packages", row=("ftype", "filename", "name"))
+    npf: Optional[Npf] = child(block="packages", row=("ftype", "filename", "name"))
+    oc: Optional[Oc] = child(block="packages", row=("ftype", "filename", "name"))
+    rch: list[Union[Rch, Rcha]] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    riv: list[Union[Riv, Rivg]] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    sfr: list[Sfr] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    sto: Optional[Sto] = child(block="packages", row=("ftype", "filename", "name"))
+    uzf: list[Uzf] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    vsc: Optional[Vsc] = child(block="packages", row=("ftype", "filename", "name"))
+    wel: list[Union[Wel, Welg]] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    obs: Optional[Obs] = child(block="packages", row=("ftype", "filename", "name"))

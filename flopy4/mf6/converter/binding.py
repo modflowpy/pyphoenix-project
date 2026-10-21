@@ -1,46 +1,57 @@
-from attrs import define
+"""Binding rows: the rows naming a component's children in its name file
+(a simulation's ``GWF6 model.nam model``, a model's ``CHD6 model.chd
+chd0``). A child field's ``row`` (see `flopy4.mf6.spec.child`), generated
+from the DFN, names the child attribute each column holds: ``ftype``,
+``filename``, ``name``, or a reference field."""
+
+from typing import Any
+
+import attrs
 
 from flopy4.mf6.component import Component
-from flopy4.mf6.model import Model
-from flopy4.mf6.package import Package
-from flopy4.mf6.solution import Solution
-from flopy4.spec import reference_names
+from flopy4.spec import is_reference, resolve
 
 
-def _flat(values) -> list:
-    """Reference fields' values as a row's terms, lists spread out."""
-    return [v for value in values for v in (value if isinstance(value, list) else [value])]
-
-
-@define
-class Binding:
-    """A serializable representation of a component."""
-
-    type: str
-    fname: str
-    terms: tuple[str, ...] | None = None
-
-    def to_tuple(self) -> tuple[str, ...]:
-        if self.terms and any(self.terms):
-            return (self.type, self.fname, *self.terms)
+def write_row(child: Component, columns: tuple[str, ...]) -> tuple[str, ...]:
+    """The child's row: its columns' values, with the filename in POSIX
+    form and references as names (see `Component._row_value`). A list's
+    values are spread out. Trailing empty values (an unnamed package's
+    name) are left off."""
+    terms: list = []
+    for attr in columns:
+        if attr == "ftype":
+            value: Any = child.ftype
+        elif attr == "filename":
+            value = child.filename.as_posix()  # type: ignore[attr-defined]
         else:
-            return (self.type, self.fname)
+            value = child._row_value(attr)
+        terms += value if isinstance(value, list) else [value]
+    while terms and not terms[-1]:
+        terms.pop()
+    return tuple(terms)
 
-    @classmethod
-    def from_component(cls, component: Component) -> "Binding":
-        def _get_binding_terms(component: Component) -> tuple[str, ...] | None:
-            if isinstance(component, Solution):
-                # a lone solution listing none solves them all
-                return tuple(reference_names(component._solved_models()))
-            if refs := component._reference_fields():
-                # the reference fields are the row's terms, in order
-                return tuple(_flat(reference_names(getattr(component, f.name)) for f in refs))
-            if isinstance(component, (Model, Package)):
-                return (component.name,)  # type: ignore
-            return None
 
-        return cls(
-            type=component.ftype,
-            fname=component.filename.as_posix(),
-            terms=_get_binding_terms(component),
-        )
+def read_row(row: list, columns: tuple[str, ...], cls: type, models: list) -> dict[str, Any]:
+    """The values a row gives a child of class `cls`, by the attribute
+    each column holds. A list reference takes the rest of the row.
+    References are resolved among `models` (those loaded so far)
+    case-insensitively, as MF6 looks them up; unknown names stay. An empty
+    name is none."""
+    fields = attrs.fields_dict(cls)
+    values: dict[str, Any] = {}
+    terms = list(row)
+    for attr in columns:
+        if not terms:
+            break
+        f = fields.get(attr)
+        if f is not None and is_reference(f):
+            if f.metadata["many"]:
+                names, terms = [str(t) for t in terms], []
+                values[attr] = resolve(names, models)
+            else:
+                values[attr], terms = resolve(str(terms[0]), models), terms[1:]
+        else:
+            values[attr], terms = terms[0], terms[1:]
+    if "name" in values:
+        values["name"] = str(values["name"]) or None
+    return values

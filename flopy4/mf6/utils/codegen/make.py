@@ -1271,11 +1271,12 @@ def _child_field_spec(
         if len(bases) != 1:
             raise NotImplementedError(f"{component.name}.{f.name}: children of {sorted(bases)}")
         module, base = bases.pop().split(":")
+        row = filters.tuple_repr(_row_columns(component, f, link))
         return FieldSpec(
             dfn_name=f.name,
             py_name=filters.safe_name(f.name),
             type_annotation=f"list[{base}]",
-            spec_call=f'child(block="{block_name}", default=attrs.Factory(list))',
+            spec_call=f'child(block="{block_name}", row={row}, default=attrs.Factory(list))',
             generatable=True,
         ), [f"from {module} import {base}"]
     (target,) = targets
@@ -1357,6 +1358,34 @@ def _legacy_kwargs(component: Component) -> dict[str, str]:
 _REFERENCE_NAMES = {"slnmnames": "models"}
 
 
+def _reference_name(column: str) -> str:
+    """A reference field's Python name, from its column's."""
+    return _REFERENCE_NAMES.get(column, filters.safe_name(column))
+
+
+def _row_columns(component: Component, f: FieldV3, link: File) -> tuple[str, ...]:
+    """The child attribute each column of a binding row holds (see
+    `flopy4.mf6.converter.binding`), by the column's role in the DFN: the
+    type the file's ``component_ftype`` names (``ftype``), the file
+    (``filename``), the child's key (``pk``, its ``name``), or a key to
+    the parent's models (``fk``, a reference field)."""
+    assert isinstance(f, ListField) and isinstance(f.item, Record)
+    columns = []
+    for name, m in (f.item.fields or {}).items():
+        if name == link.component_ftype:
+            columns.append("ftype")
+        elif m is link:
+            columns.append("filename")
+        # TODO: a model's package names aren't keyed in the DFNs yet
+        elif getattr(m, "pk", False) or (filters.is_model_nam(component.name) and name == "pname"):
+            columns.append("name")
+        elif getattr(m, "fk", None):
+            columns.append(_reference_name(name))
+        else:
+            raise ValueError(f"{component.name}.{f.name}: no role for column {name!r}")
+    return tuple(columns)
+
+
 def _binding_row(component: Component, dfns: Mapping[str, Component]) -> Record | None:
     """The row naming the component in its parent's name file (an
     exchange's ``exgtype exgfile exgmnamea exgmnameb`` in the simulation's
@@ -1400,7 +1429,7 @@ def _reference_specs(
         specs.append(
             FieldSpec(
                 dfn_name=name,
-                py_name=_REFERENCE_NAMES.get(name, filters.safe_name(name)),
+                py_name=_reference_name(name),
                 type_annotation=annotation,
                 spec_call=call,
                 generatable=True,
@@ -1426,13 +1455,18 @@ _GRID_SLOTS = ("dis", "disv1d", "dis2d", "disv2d")
 
 
 def _model_package_specs(
-    component: Component, block_name: str, targets: list[str], dfns: Mapping[str, Component]
+    component: Component,
+    block_name: str,
+    row: tuple[str, ...],
+    targets: list[str],
+    dfns: Mapping[str, Component],
 ) -> tuple[list[FieldSpec], list[str]]:
     """A model's package fields, one per package type in its name file's
     packages block, and their imports. Variants sharing a type (CHD and
     CHDG) share a field typed as their union; a type MF6 reads more than
     once (``multi``) is a list. Packages without a generated class are left
-    out until they have one. The discretization comes first."""
+    out until they have one. The discretization comes first. Each field's
+    binding rows have the packages block's columns, ``row``."""
     slots: dict[str, list[str]] = {}
     for t in targets:
         if not _has_module(t):
@@ -1456,11 +1490,11 @@ def _model_package_specs(
         classes = [filters.class_name(t) for t in members]
         imports += [f"from {_component_module(t)} import {c}" for t, c in zip(members, classes)]
         cls = classes[0] if len(classes) == 1 else f"Union[{', '.join(classes)}]"
+        args = f'block="{block_name}", row={filters.tuple_repr(row)}'
         if dfns[members[0]].multi:
-            annotation = f"list[{cls}]"
-            call = f'child(block="{block_name}", default=attrs.Factory(list))'
+            annotation, call = f"list[{cls}]", f"child({args}, default=attrs.Factory(list))"
         else:
-            annotation, call = f"Optional[{cls}]", f'child(block="{block_name}")'
+            annotation, call = f"Optional[{cls}]", f"child({args})"
         specs.append(
             FieldSpec(
                 dfn_name=name,
@@ -1619,7 +1653,10 @@ def build_component_spec(
             link, targets = links[f.name]
             if filters.is_model_nam(component.name) and link.component_ftype is not None:
                 assert dfns is not None  # resolve_link needed them
-                specs, child_imports = _model_package_specs(component, block_name, targets, dfns)
+                row = _row_columns(component, f, link)
+                specs, child_imports = _model_package_specs(
+                    component, block_name, row, targets, dfns
+                )
             else:
                 spec, child_imports = _child_field_spec(
                     component, f, block_name, link, targets, dfns

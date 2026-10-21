@@ -21,6 +21,7 @@ from flopy4.mf6.codec.reader.transformer.rows import (
     without_comments,
 )
 from flopy4.mf6.component import Component, get_ftype
+from flopy4.mf6.converter.binding import read_row
 from flopy4.mf6.external import read_array_file, read_binary_list_file, read_list_file
 from flopy4.mf6.item import (
     Item,
@@ -41,7 +42,7 @@ from flopy4.mf6.period_arrays import is_grid_package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import repeating_array_key_type, to_field_type
 from flopy4.mf6.write_context import ArrayIO, ListIO, WriteContext, array_hash, list_hash
-from flopy4.spec import is_array, resolve
+from flopy4.spec import is_array, referenced
 from flopy4.utils import fortran_float, unwrap_optional
 
 
@@ -597,22 +598,6 @@ def _parse_readarray_period_block(
     return result
 
 
-def _apply_binding_terms(child: Any, terms: list, models: list) -> None:
-    """Set the child's reference fields from the rest of its row, in
-    order: a single one takes a term, a list the rest."""
-    # the models loaded so far, so a loaded exchange or solution holds
-    # them as a built one does; unknown names stay
-    found = resolve([str(t) for t in terms], models)
-    for f in child._reference_fields():
-        if not found:
-            break
-        if f.metadata["many"]:
-            value, found = found, []
-        else:
-            value, found = found[0], found[1:]
-        setattr(child, f.name, value)
-
-
 def _disambiguate_ga_variant(candidates: "list[type[Component]]", path: Path) -> "type[Component]":
     """
     Pick between a base package class and its G/A-variant sibling
@@ -633,20 +618,11 @@ def _disambiguate_ga_variant(candidates: "list[type[Component]]", path: Path) ->
                 is_variant = True
                 break
     for c in candidates:
-        suffixed = len(c.__name__) == 4 and c.__name__[-1] in ("g", "a")
-        if suffixed == is_variant:
+        # a variant's DFN name isn't its ftype's: gwf-chdg is a CHD6
+        variant = c.dfn_name.partition("-")[2] != c.ftype.lower().removesuffix("6")
+        if variant == is_variant:
             return c
     return candidates[0]
-
-
-def _exchange_models(model_names: list, models: list) -> tuple[Any, Any] | None:
-    """The models an exchange row names, looked up case-insensitively
-    (as MF6 does) among those loaded so far, or None if either isn't."""
-    by_name = {str(model.name).lower(): model for model in models}
-    found = [by_name.get(str(name).lower()) for name in model_names[:2]]
-    if len(found) < 2 or None in found:
-        return None
-    return found[0], found[1]
 
 
 def _resolve_bindings(cls: type, raw_lower: dict, context: LoadContext) -> dict[str, Any]:
@@ -662,14 +638,14 @@ def _resolve_bindings(cls: type, raw_lower: dict, context: LoadContext) -> dict[
     `DimensionProvider` targets (`dis`/`disv`/`disu`) are resolved first so
     their dims can be threaded into the context of that block's other
     children -- `dimensions.py`'s object-graph walk only helps once a child
-    is already attached, not while its siblings are still loading. An
-    exchange's context gets the models it connects, from the models block,
-    loaded before the exchanges block (field order).
+    is already attached, not while its siblings are still loading. A row's
+    columns are read as its field's ``row`` says (see `converter.binding`).
+    Its references (an exchange's models) resolve among the models loaded
+    so far, from the models block, which comes first (field order), and go
+    in the child's context as well.
     """
     from flopy4.attrs_xarray import child_field_candidates
-    from flopy4.mf6.exchange import Exchange
     from flopy4.mf6.model import Model
-    from flopy4.mf6.solution import Solution
 
     # Model scope to prefer when resolving this class's own binding rows'
     # ftype tokens via get_ftype() below -- e.g. structuring a Gwf's
@@ -697,7 +673,8 @@ def _resolve_bindings(cls: type, raw_lower: dict, context: LoadContext) -> dict[
         if block_name is None or f.metadata.get("_keyword"):
             continue  # file records' children load with their records
         kind, candidates = spec
-        fields_by_block.setdefault(block_name, []).append((f.name, kind, candidates))
+        columns = f.metadata["row"]
+        fields_by_block.setdefault(block_name, []).append((f.name, kind, candidates, columns))
 
     if not fields_by_block:
         return {}
@@ -729,8 +706,8 @@ def _resolve_bindings(cls: type, raw_lower: dict, context: LoadContext) -> dict[
         for row in rows:
             if not row:
                 continue
-            token = str(row[0]).lower()
-            for child_name, kind, accepted in field_specs:
+            for child_name, kind, accepted, columns in field_specs:
+                token = str(row[columns.index("ftype")]).lower()
                 # Concrete candidates first: compare each accepted class's
                 # own ftype directly to the row's token. G/A-variant pairs
                 # (Chd/Chdg, Rch/Rcha, ...) share one namefile ftype (real
@@ -740,7 +717,8 @@ def _resolve_bindings(cls: type, raw_lower: dict, context: LoadContext) -> dict[
                 concrete = [c for c in accepted if ABC not in c.__bases__]
                 matches = [c for c in concrete if c.ftype.lower() == token]
                 if len(matches) > 1:
-                    target_cls = _disambiguate_ga_variant(matches, context.resolve(str(row[1])))
+                    fname = str(row[columns.index("filename")])
+                    target_cls = _disambiguate_ga_variant(matches, context.resolve(fname))
                 elif matches:
                     target_cls = matches[0]
                 else:
@@ -755,7 +733,7 @@ def _resolve_bindings(cls: type, raw_lower: dict, context: LoadContext) -> dict[
                         continue
                     target_cls = resolved_cls
 
-                resolved.append((row, target_cls, child_name, kind))
+                resolved.append((row, target_cls, child_name, kind, columns))
                 break
             else:
                 if block_name in mixed:
@@ -771,33 +749,23 @@ def _resolve_bindings(cls: type, raw_lower: dict, context: LoadContext) -> dict[
 
         dims: dict = {}
         collectors: dict[str, Any] = {}
-        for row, target_cls, child_name, kind in resolved:
-            fname = str(row[1])
-            # A row's third+ terms mean different things by target kind (see
-            # _apply_binding_terms): for a plain Model/Package they're the
-            # pname, passed through as name= and preserved directly on the
-            # loaded child's own .name attribute; for Exchange/Solution
-            # they're real semantic data (coupled model names / applicable
-            # models), not a name to assign the loaded child itself.
-            # an empty pname is none
-            pname = (
-                str(row[2]) or None
-                if len(row) > 2 and not issubclass(target_cls, (Exchange, Solution))
-                else None
-            )
+        for row, target_cls, child_name, kind, columns in resolved:
+            values = read_row(row, columns, target_cls, kwargs.get("models", []))
+            fname = str(values.pop("filename"))
+            name = values.pop("name", None)
+            values.pop("ftype")
+            # the rest are references, set like a built child's
+            referenced_models = [v for value in values.values() for v in referenced(value)]
             child_context = attrs.evolve(
                 context,
                 dims=dims,
                 parent=None,
-                exchange=(
-                    _exchange_models(row[2:], kwargs.get("models", []))
-                    if issubclass(target_cls, Exchange)
-                    else None
-                ),
+                models=tuple(referenced_models) or None,
             )
-            child = target_cls.load(context.resolve(fname), name=pname, context=child_context)
+            child = target_cls.load(context.resolve(fname), name=name, context=child_context)
             child.filename = Path(fname)
-            _apply_binding_terms(child, row[2:], kwargs.get("models", []))
+            for attr, value in values.items():
+                setattr(child, attr, value)
             if isinstance(child, DimensionProvider):
                 dims = {**dims, **child.get_dims()}
 
@@ -896,9 +864,10 @@ def structure_component(
         paths resolve against, the grid dims (e.g. {"nlay": 3, "nodes":
         675}) array shapes and cellid widths come from, the class of the
         component whose file named this one (see `_union_arm`), and the
-        models an exchange connects. Its children's contexts derive from
-        it. Without one, there are no dims and no workspace, so a file
-        that names others (a namefile, OPEN/CLOSE) can't be read.
+        models its row refers to (an exchange's). Its children's contexts
+        derive from it. Without one, there are no dims and no workspace,
+        so a file that names others (a namefile, OPEN/CLOSE) can't be
+        read.
     name : str, optional
         Explicit component name (e.g. a namefile binding row's pname),
         overriding the component's default auto-assigned name. Not

@@ -1021,6 +1021,31 @@ def test_link_selector_errors(all_dfns, selector, match):
 
 
 @pytest.mark.parametrize(
+    "name,field,row",
+    [
+        ("sim-nam", "models", ("ftype", "filename", "name")),
+        ("sim-nam", "exchanges", ("ftype", "filename", "exgmnamea", "exgmnameb")),
+        ("sim-nam", "solutiongroup", ("ftype", "filename", "models")),
+        ("gwf-nam", "chd", ("ftype", "filename", "name")),
+        ("gwf-nam", "dis", ("ftype", "filename", "name")),
+    ],
+)
+def test_binding_row_columns(all_dfns, name, field, row):
+    """A child named by a row in a name file has the child attribute each
+    column holds, by its role in the DFN."""
+    spec = build_component_spec(all_dfns[name], root=Path("/fake"), dfns=all_dfns)
+    calls = {f.py_name: f.spec_call for f in spec.fields}
+    assert f"row={row!r}".replace("'", '"') in calls[field]
+
+
+def test_binding_row_column_without_role(all_dfns):
+    sim = all_dfns["sim-nam"].model_copy(deep=True)
+    sim.blocks["exchanges"].fields["exchanges"].item.fields["exgmnameb"].fk = None
+    with pytest.raises(ValueError, match="no role for column 'exgmnameb'"):
+        build_component_spec(sim, root=Path("/fake"), dfns=all_dfns)
+
+
+@pytest.mark.parametrize(
     "name,field,cls",
     [
         ("sim-nam", "hpc", "Hpc"),

@@ -553,6 +553,12 @@ class Component(DimensionResolverMixin, ABC, MutableMapping, metaclass=LegacyKwa
         """This component's reference fields (see `flopy4.spec.reference`)."""
         return [f for f in fields(type(self)) if is_reference(f)]
 
+    def _row_value(self, attr: str) -> Any:
+        """What attribute `attr` puts in this component's row in its
+        parent's name file (see `flopy4.mf6.converter.binding`): its
+        value, references as names."""
+        return reference_names(getattr(self, attr))
+
     def _resolved(self, name: str) -> Any:
         """Reference field `name`'s value with names resolved among the
         parent's (the simulation's) models. As given if there's no parent

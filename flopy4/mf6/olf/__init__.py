@@ -84,17 +84,29 @@ class Olf(ModelMethods, Model):
         converter=Newtonoptions.convert,
         block="options",
     )
-    disv1d: Optional[Disv1d] = child(block="packages")
-    dis2d: Optional[Dis2d] = child(block="packages")
-    disv2d: Optional[Disv2d] = child(block="packages")
-    cdb: list[Cdb] = child(block="packages", default=attrs.Factory(list))
-    chd: list[Chd] = child(block="packages", default=attrs.Factory(list))
-    dfw: Optional[Dfw] = child(block="packages")
-    evp: list[Evp] = child(block="packages", default=attrs.Factory(list))
-    flw: list[Flw] = child(block="packages", default=attrs.Factory(list))
-    ic: Optional[Ic] = child(block="packages")
-    oc: Optional[Oc] = child(block="packages")
-    pcp: list[Pcp] = child(block="packages", default=attrs.Factory(list))
-    sto: Optional[Sto] = child(block="packages")
-    zdg: list[Zdg] = child(block="packages", default=attrs.Factory(list))
-    obs: Optional[Obs] = child(block="packages")
+    disv1d: Optional[Disv1d] = child(block="packages", row=("ftype", "filename", "name"))
+    dis2d: Optional[Dis2d] = child(block="packages", row=("ftype", "filename", "name"))
+    disv2d: Optional[Disv2d] = child(block="packages", row=("ftype", "filename", "name"))
+    cdb: list[Cdb] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    chd: list[Chd] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    dfw: Optional[Dfw] = child(block="packages", row=("ftype", "filename", "name"))
+    evp: list[Evp] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    flw: list[Flw] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    ic: Optional[Ic] = child(block="packages", row=("ftype", "filename", "name"))
+    oc: Optional[Oc] = child(block="packages", row=("ftype", "filename", "name"))
+    pcp: list[Pcp] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    sto: Optional[Sto] = child(block="packages", row=("ftype", "filename", "name"))
+    zdg: list[Zdg] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    obs: Optional[Obs] = child(block="packages", row=("ftype", "filename", "name"))

@@ -116,21 +116,39 @@ class Gwt(ModelMethods, Model):
         direction="in",
         keyword="netcdf",
     )
-    dis: Optional[Union[Dis, Disu, Disv]] = child(block="packages")
-    adv: Optional[Adv] = child(block="packages")
-    api: list[Api] = child(block="packages", default=attrs.Factory(list))
-    cnc: list[Cnc] = child(block="packages", default=attrs.Factory(list))
-    dsp: Optional[Dsp] = child(block="packages")
-    fmi: Optional[Fmi] = child(block="packages")
-    ic: Optional[Ic] = child(block="packages")
-    ist: list[Ist] = child(block="packages", default=attrs.Factory(list))
-    lkt: list[Lkt] = child(block="packages", default=attrs.Factory(list))
-    mst: Optional[Mst] = child(block="packages")
-    mvt: Optional[Mvt] = child(block="packages")
-    mwt: list[Mwt] = child(block="packages", default=attrs.Factory(list))
-    oc: Optional[Oc] = child(block="packages")
-    sft: list[Sft] = child(block="packages", default=attrs.Factory(list))
-    src: list[Src] = child(block="packages", default=attrs.Factory(list))
-    ssm: Optional[Ssm] = child(block="packages")
-    uzt: list[Uzt] = child(block="packages", default=attrs.Factory(list))
-    obs: Optional[Obs] = child(block="packages")
+    dis: Optional[Union[Dis, Disu, Disv]] = child(
+        block="packages", row=("ftype", "filename", "name")
+    )
+    adv: Optional[Adv] = child(block="packages", row=("ftype", "filename", "name"))
+    api: list[Api] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    cnc: list[Cnc] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    dsp: Optional[Dsp] = child(block="packages", row=("ftype", "filename", "name"))
+    fmi: Optional[Fmi] = child(block="packages", row=("ftype", "filename", "name"))
+    ic: Optional[Ic] = child(block="packages", row=("ftype", "filename", "name"))
+    ist: list[Ist] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    lkt: list[Lkt] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    mst: Optional[Mst] = child(block="packages", row=("ftype", "filename", "name"))
+    mvt: Optional[Mvt] = child(block="packages", row=("ftype", "filename", "name"))
+    mwt: list[Mwt] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    oc: Optional[Oc] = child(block="packages", row=("ftype", "filename", "name"))
+    sft: list[Sft] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    src: list[Src] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    ssm: Optional[Ssm] = child(block="packages", row=("ftype", "filename", "name"))
+    uzt: list[Uzt] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    obs: Optional[Obs] = child(block="packages", row=("ftype", "filename", "name"))

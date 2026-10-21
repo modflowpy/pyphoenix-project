@@ -53,8 +53,10 @@ class Prt(ModelMethods, Model):
         optional=True,
         longname="save flows for all packages to budget file",
     )
-    dis: Optional[Union[Dis, Disv]] = child(block="packages")
-    fmi: Optional[Fmi] = child(block="packages")
-    mip: Optional[Mip] = child(block="packages")
-    oc: Optional[Oc] = child(block="packages")
-    prp: list[Prp] = child(block="packages", default=attrs.Factory(list))
+    dis: Optional[Union[Dis, Disv]] = child(block="packages", row=("ftype", "filename", "name"))
+    fmi: Optional[Fmi] = child(block="packages", row=("ftype", "filename", "name"))
+    mip: Optional[Mip] = child(block="packages", row=("ftype", "filename", "name"))
+    oc: Optional[Oc] = child(block="packages", row=("ftype", "filename", "name"))
+    prp: list[Prp] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )

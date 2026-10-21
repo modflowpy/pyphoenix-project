@@ -5,6 +5,7 @@ import attrs
 from attrs import Attribute
 
 from flopy4.mf6.package import Package
+from flopy4.spec import reference_names
 
 if TYPE_CHECKING:
     from flopy4.mf6.model import Model
@@ -30,6 +31,12 @@ class Solution(Package, ABC):
 
     def _reference_problem(self, field: Attribute, model) -> "str | None":
         return self._cant_solve(model)
+
+    def _row_value(self, attr: str):
+        # a lone solution listing none solves them all
+        if attr == "models":
+            return reference_names(self._solved_models())
+        return super()._row_value(attr)
 
     def _cant_solve(self, model: "Model") -> "str | None":
         """Why this solution can't solve the model, or None if it can."""

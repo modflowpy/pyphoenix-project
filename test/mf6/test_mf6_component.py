@@ -3163,14 +3163,14 @@ def test_filename_is_path():
     from pathlib import PureWindowsPath
 
     from flopy4.mf6.codec.writer.filters import quote_if_needed
-    from flopy4.mf6.converter.binding import Binding
+    from flopy4.mf6.converter.binding import write_row
 
     ic = Ic(filename="gwf.ic")
     assert ic.filename == Path("gwf.ic")
     ic.filename = "other.ic"
     assert ic.filename == Path("other.ic")
     ic.filename = Path("sub") / "gwf.ic"
-    assert Binding.from_component(ic).fname == "sub/gwf.ic"
+    assert write_row(ic, ("ftype", "filename")) == ("IC6", "sub/gwf.ic")
     assert quote_if_needed(PureWindowsPath("sub\\gwf.ic")) == "sub/gwf.ic"
 
 
