@@ -225,27 +225,38 @@ def _field_types(cls: type) -> dict[str, Any]:
     return types
 
 
+def _leaves(cls: type) -> list[type]:
+    """A class's subclasses that have none of their own, or the class if
+    it has none."""
+    subs = cls.__subclasses__()
+    return [leaf for s in subs for leaf in _leaves(s)] if subs else [cls]
+
+
 def _missing(cls: type, chain: list[str]) -> list[str]:
     """Where a chain read from ``cls`` hits an attribute that isn't there,
     as ``Class.attr``. Past a field that can hold something else too (see
-    `_open`), an attribute only some of the classes have isn't missing."""
+    `_open`), an attribute only some of the classes have isn't missing.
+    An attribute a base class lacks is looked for on its leaf subclasses,
+    which the DFNs may give it (e.g. ``Solution.models``)."""
     missing = []
     at = {cls}
     unchecked = False
     for attr in chain:
         following: set[type] = set()
         following_unchecked = False
-        for c in at:
-            fields = _field_types(c) if attrs.has(c) else {}
-            if attr in fields:
-                following |= _classes(fields[attr])
-                following_unchecked |= _open(fields[attr])
-            elif hasattr(c, attr):
-                value = getattr(c, attr)
-                if isinstance(value, type) and attrs.has(value):
-                    following.add(value)
-            elif not unchecked:
-                missing.append(f"{c.__qualname__}.{attr}")
+        for base in at:
+            on_base = hasattr(base, attr) or (attrs.has(base) and attr in _field_types(base))
+            for c in [base] if on_base else _leaves(base):
+                fields = _field_types(c) if attrs.has(c) else {}
+                if attr in fields:
+                    following |= _classes(fields[attr])
+                    following_unchecked |= _open(fields[attr])
+                elif hasattr(c, attr):
+                    value = getattr(c, attr)
+                    if isinstance(value, type) and attrs.has(value):
+                        following.add(value)
+                elif not unchecked:
+                    missing.append(f"{c.__qualname__}.{attr}")
         at, unchecked = following, following_unchecked
     return missing
 

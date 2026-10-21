@@ -119,6 +119,36 @@ class _RefsLacking(_Comprehensions):
     refs: list[_Child] = attrs.Factory(list)
 
 
+@attrs.define
+class _Base:
+    pass
+
+
+@attrs.define
+class _Full(_Base):
+    name: str = ""
+
+
+@attrs.define
+class _Bare(_Base):
+    pass
+
+
+class _ReadsBase:
+    def names(self):
+        return [b.name for b in self.bases]
+
+
+@attrs.define
+class _HasBases(_ReadsBase):
+    bases: list[_Base] = attrs.Factory(list)
+
+
+def test_mixin_gaps_through_base_class():
+    # the base lacks `name`; of its subclasses, only _Bare does too
+    assert mixin_gaps(_HasBases, _ReadsBase) == ["_ReadsBase.names: no _Bare.name"]
+
+
 def test_mixin_gaps_through_union_with_plain_type():
     # an item might be a str, which has `lower`
     assert "_Child.lower" not in str(mixin_gaps(_Refs, _Comprehensions))
