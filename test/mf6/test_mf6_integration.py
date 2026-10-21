@@ -2961,3 +2961,37 @@ def test_structured_grid_arrays_written_by_row(function_tmpdir):
     assert lines[top + 1] == " INTERNAL"
     assert all(len(ln.split()) == 4 for ln in lines[top + 2 : top + 5])
     sim.run()
+
+
+def test_tas_arrays_written_by_row(function_tmpdir):
+    """MF6 reads a TAS time's array like a griddata layer, a row per line on
+    a structured grid, so it's written that way; all on one line, MF6 reads
+    the second row from the block's END line."""
+    from flopy4.mf6 import TimeArraySeriesRef
+    from flopy4.mf6.utl.tas import Tas
+
+    nlay, nrow, ncol = 3, 5, 5
+    sim = Simulation(
+        name="tasrows",
+        workspace=function_tmpdir,
+        tdis=Time(perlen=[5.0], nstp=[2]),
+        solutiongroup=[Ims(models=["gwf"], linear_acceleration="cg")],
+    )
+    gwf = Gwf(parent=sim, name="gwf")
+    Dis(parent=gwf, nlay=nlay, nrow=nrow, ncol=ncol, top=10.0, botm=[5.0, 0.0, -5.0])
+    Ic(parent=gwf, strt=10.0)
+    Npf(parent=gwf, k=1.0)
+    Chd(parent=gwf, stress_period_data={0: [[(nlay - 1, nrow - 1, ncol - 1), 4.0]]})
+    tas = Tas(
+        time_series_name=Tas.TimeSeriesName(time_series_name=("rcharray",)),
+        interpolation_method=Tas.InterpolationMethod(interpolation_method="linear"),
+        tas_array={0.0: 0.0, 5.0: np.arange(nrow * ncol, dtype=float) + 1},
+    )
+    Rcha(parent=gwf, recharge={0: TimeArraySeriesRef("rcharray")}, tas=[tas])
+    sim.write()
+
+    lines = (function_tmpdir / tas.filename).read_text().splitlines()
+    internal = lines.index(" INTERNAL")
+    assert [len(ln.split()) for ln in lines[internal + 1 : internal + 1 + nrow]] == [ncol] * nrow
+    assert lines[internal + 1 + nrow].startswith("END TIME")
+    sim.run()
