@@ -16,6 +16,7 @@ from flopy4.mf6.utl.ts import Ts
 @attrs.define(kw_only=True, slots=False)
 class Esl(Package):
     dfn_name: ClassVar[str] = "gwe-esl"
+    ftype: ClassVar[str] = "ESL6"
 
     multi_package: ClassVar[bool] = True
 

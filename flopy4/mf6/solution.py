@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 import attrs
 from attrs import Attribute
@@ -19,7 +19,6 @@ class Solution(Package, ABC):
     all. A solution given no parent joins its models' simulation, if they
     have one."""
 
-    slntype: ClassVar[str] = "sln"
     if TYPE_CHECKING:
         models: "list[Model | str]"
 
@@ -27,7 +26,7 @@ class Solution(Package, ABC):
         """Whether this kind of solution can solve the model's type: EMS
         solves particle tracking (PRT) models, IMS all the others."""
         is_prt = type(model).dfn_name.startswith("prt")  # type: ignore[attr-defined]
-        return is_prt == (self.slntype == "ems")
+        return is_prt == (self.ftype == "EMS6")
 
     def _reference_problem(self, field: Attribute, model) -> "str | None":
         return self._cant_solve(model)
@@ -37,7 +36,7 @@ class Solution(Package, ABC):
         if self.solves(model):
             return None
         return (
-            f"({self.slntype.upper()}) can't solve model "
+            f"({self.ftype.removesuffix('6')}) can't solve model "
             f"{model.name!r} ({type(model).__name__})"  # type: ignore[attr-defined]
         )
 

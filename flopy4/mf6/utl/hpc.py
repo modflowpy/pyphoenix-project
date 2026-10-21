@@ -11,6 +11,7 @@ from flopy4.mf6.spec import integer, keyword, list_, string
 @attrs.define(kw_only=True, slots=False)
 class Hpc(Package):
     dfn_name: ClassVar[str] = "utl-hpc"
+    ftype: ClassVar[str] = "HPC6"
 
     @attrs.define
     class Partitions(Item):

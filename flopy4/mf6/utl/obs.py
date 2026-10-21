@@ -13,6 +13,7 @@ from flopy4.mf6.spec import file, integer, keyword, list_, string, union
 @attrs.define(kw_only=True, slots=False)
 class Obs(Package):
     dfn_name: ClassVar[str] = "utl-obs"
+    ftype: ClassVar[str] = "OBS6"
 
     @attrs.define
     class Continuous(Item):

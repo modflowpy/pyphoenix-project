@@ -14,6 +14,7 @@ from flopy4.mf6.utl.obs import Obs
 @attrs.define(kw_only=True, slots=False)
 class Drng(Package):
     dfn_name: ClassVar[str] = "gwf-drng"
+    ftype: ClassVar[str] = "DRN6"
 
     multi_package: ClassVar[bool] = True
 

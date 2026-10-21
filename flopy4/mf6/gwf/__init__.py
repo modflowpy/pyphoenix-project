@@ -83,6 +83,7 @@ __all__ = [
 @attrs.define(kw_only=True, slots=False)
 class Gwf(GwfMethods, ModelMethods, Model):
     dfn_name: ClassVar[str] = "gwf-nam"
+    ftype: ClassVar[str] = "GWF6"
 
     observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
         "drawdown": (("cellid",),),

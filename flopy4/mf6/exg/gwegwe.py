@@ -18,6 +18,7 @@ from flopy4.spec import reference
 @attrs.define(kw_only=True, slots=False)
 class Gwegwe(Exchange):
     dfn_name: ClassVar[str] = "exg-gwegwe"
+    ftype: ClassVar[str] = "GWE6-GWE6"
 
     multi_package: ClassVar[bool] = True
 

@@ -15,6 +15,7 @@ from flopy4.mf6.spec import array, double, file, integer, keyword, list_, string
 @attrs.define(kw_only=True, slots=False)
 class Disv1d(DimsProviderMethods, Package):
     dfn_name: ClassVar[str] = "olf-disv1d"
+    ftype: ClassVar[str] = "DISV1D6"
 
     shared_dims: ClassVar[tuple[str, ...]] = ("nodes", "nvert", "ncelldim")
 

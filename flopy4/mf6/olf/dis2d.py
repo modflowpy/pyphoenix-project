@@ -15,6 +15,7 @@ from flopy4.mf6.spec import array, double, file, integer, keyword, string
 @attrs.define(kw_only=True, slots=False)
 class Dis2d(Dis2dMethods, DimsProviderMethods, Package):
     dfn_name: ClassVar[str] = "olf-dis2d"
+    ftype: ClassVar[str] = "DIS2D6"
 
     shared_dims: ClassVar[tuple[str, ...]] = ("nrow", "ncol", "ncpl", "nodes", "ncelldim")
 

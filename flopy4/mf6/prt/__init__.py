@@ -27,6 +27,7 @@ __all__ = [
 @attrs.define(kw_only=True, slots=False)
 class Prt(ModelMethods, Model):
     dfn_name: ClassVar[str] = "prt-nam"
+    ftype: ClassVar[str] = "PRT6"
 
     list_: Optional[str] = string(
         default=None,

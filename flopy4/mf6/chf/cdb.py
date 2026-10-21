@@ -15,6 +15,7 @@ from flopy4.mf6.utl.obs import Obs
 @attrs.define(kw_only=True, slots=False)
 class Cdb(Package):
     dfn_name: ClassVar[str] = "chf-cdb"
+    ftype: ClassVar[str] = "CDB6"
 
     multi_package: ClassVar[bool] = True
 

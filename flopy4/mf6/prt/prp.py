@@ -13,6 +13,7 @@ from flopy4.mf6.spec import array, cellid_, double, file, integer, keyword, list
 @attrs.define(kw_only=True, slots=False)
 class Prp(Package):
     dfn_name: ClassVar[str] = "prt-prp"
+    ftype: ClassVar[str] = "PRP6"
 
     multi_package: ClassVar[bool] = True
 

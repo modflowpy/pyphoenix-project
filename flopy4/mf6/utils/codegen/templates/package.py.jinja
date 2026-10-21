@@ -25,6 +25,9 @@ __all__ = [
 @attrs.define(kw_only=True, slots=False)
 class {{ spec.class_name }}({% for m in spec.mixins %}{{ m }}, {% endfor %}{{ spec.base_class }}):
     dfn_name: ClassVar[str] = "{{ spec.dfn_name }}"
+{% if spec.ftype %}
+    ftype: ClassVar[str] = "{{ spec.ftype }}"
+{% endif %}
 
 {% if spec.multi %}
     multi_package: ClassVar[bool] = True
@@ -32,10 +35,6 @@ class {{ spec.class_name }}({% for m in spec.mixins %}{{ m }}, {% endfor %}{{ sp
 {% endif %}
 {% if spec.shared_dims %}
     shared_dims: ClassVar[tuple[str, ...]] = {{ spec.shared_dims | tuple_repr }}
-
-{% endif %}
-{% if spec.slntype %}
-    slntype: ClassVar[str] = "{{ spec.slntype }}"
 
 {% endif %}
 {% if spec.observations %}

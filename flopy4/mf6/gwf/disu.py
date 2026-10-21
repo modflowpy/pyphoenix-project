@@ -16,6 +16,7 @@ from flopy4.mf6.spec import array, double, file, integer, keyword, list_, string
 @attrs.define(kw_only=True, slots=False)
 class Disu(DisuMethods, DimsProviderMethods, Package):
     dfn_name: ClassVar[str] = "gwf-disu"
+    ftype: ClassVar[str] = "DISU6"
 
     shared_dims: ClassVar[tuple[str, ...]] = ("nodes", "nja", "nvert", "ncelldim")
 

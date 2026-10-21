@@ -16,6 +16,7 @@ from flopy4.mf6.utl.ts import Ts
 @attrs.define(kw_only=True, slots=False)
 class Zdg(Package):
     dfn_name: ClassVar[str] = "olf-zdg"
+    ftype: ClassVar[str] = "ZDG6"
 
     multi_package: ClassVar[bool] = True
 

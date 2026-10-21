@@ -16,6 +16,7 @@ from flopy4.mf6.utl.ts import Ts
 @attrs.define(kw_only=True, slots=False)
 class Drn(Package):
     dfn_name: ClassVar[str] = "gwf-drn"
+    ftype: ClassVar[str] = "DRN6"
 
     multi_package: ClassVar[bool] = True
 

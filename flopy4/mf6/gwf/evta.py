@@ -15,6 +15,7 @@ from flopy4.mf6.utl.tas import Tas
 @attrs.define(kw_only=True, slots=False)
 class Evta(Package):
     dfn_name: ClassVar[str] = "gwf-evta"
+    ftype: ClassVar[str] = "EVT6"
 
     multi_package: ClassVar[bool] = True
 

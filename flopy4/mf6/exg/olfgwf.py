@@ -14,6 +14,7 @@ from flopy4.spec import reference
 @attrs.define(kw_only=True, slots=False)
 class Olfgwf(Exchange):
     dfn_name: ClassVar[str] = "exg-olfgwf"
+    ftype: ClassVar[str] = "OLF6-GWF6"
 
     multi_package: ClassVar[bool] = True
 

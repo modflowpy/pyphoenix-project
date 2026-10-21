@@ -15,6 +15,7 @@ from flopy4.mf6.utl.tas import Tas
 @attrs.define(kw_only=True, slots=False)
 class Rcha(Package):
     dfn_name: ClassVar[str] = "gwf-rcha"
+    ftype: ClassVar[str] = "RCH6"
 
     multi_package: ClassVar[bool] = True
 

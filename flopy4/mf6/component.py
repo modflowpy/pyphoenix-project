@@ -54,11 +54,10 @@ def get_ftypes() -> "dict[str, type[Component]]":
         _import_components()
         from collections import defaultdict
 
-        from flopy4.mf6.converter.binding import component_ftype
-
         by_token: "dict[str, list[type[Component]]]" = defaultdict(list)
         for cls in set(FNAMES.values()):
-            by_token[component_ftype(cls).lower()].append(cls)
+            if cls.ftype:
+                by_token[cls.ftype.lower()].append(cls)
 
         for token, classes in by_token.items():
             if len(classes) == 1:
@@ -249,6 +248,10 @@ class Component(DimensionResolverMixin, ABC, MutableMapping, metaclass=LegacyKwa
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {}
     """flopy3's constructor keywords the class also takes, deprecated, by
     name (see `flopy4.mf6.legacy`)."""
+    ftype: ClassVar[str] = ""
+    """The token naming the component's file type in name files (e.g.
+    'GWF6', 'CHD6', 'GWF6-GWT6'), from its DFN. Array-based variants share
+    their base's ('Chdg' is 'CHD6'). Empty for the simulation."""
 
     _load = IO(Loader)  # type: ignore
     _write = IO(Writer)  # type: ignore

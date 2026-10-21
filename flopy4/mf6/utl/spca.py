@@ -12,6 +12,7 @@ from flopy4.mf6.utl.tas import Tas
 @attrs.define(kw_only=True, slots=False)
 class Spca(Package):
     dfn_name: ClassVar[str] = "utl-spca"
+    ftype: ClassVar[str] = "SPC6"
 
     multi_package: ClassVar[bool] = True
 

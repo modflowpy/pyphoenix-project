@@ -11,6 +11,7 @@ from flopy4.mf6.spec import array, double, keyword
 @attrs.define(kw_only=True, slots=False)
 class Est(Package):
     dfn_name: ClassVar[str] = "gwe-est"
+    ftype: ClassVar[str] = "EST6"
 
     save_flows: bool = keyword(
         default=False,

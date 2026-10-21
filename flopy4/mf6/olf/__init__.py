@@ -43,6 +43,7 @@ __all__ = [
 @attrs.define(kw_only=True, slots=False)
 class Olf(ModelMethods, Model):
     dfn_name: ClassVar[str] = "olf-nam"
+    ftype: ClassVar[str] = "OLF6"
 
     observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
         "flow-ja-face": (("cellid", "cellid"),),

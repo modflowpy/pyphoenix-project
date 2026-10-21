@@ -336,8 +336,8 @@ def child_field_candidates(field: attrs.Attribute) -> "tuple[str, tuple[type, ..
     a `Union` of attrs classes in the collection-element (or bare "only")
     position -- e.g. `list[Union[Chd, Chdg]]`, needed to disambiguate an
     MF6 base/grid-array package pair sharing one namefile ftype (see
-    `converter/binding.py`'s `component_ftype()`). Returns `None` under
-    the same conditions as `_child_field_spec`: a reference field, an
+    `Component.ftype`). Returns `None` under the same conditions as
+    `_child_field_spec`: a reference field, an
     unresolvable annotation, or a type/collection-element that resolves to no
     attrs-decorated candidate at all.
 

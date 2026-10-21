@@ -11,6 +11,7 @@ from flopy4.mf6.spec import array, keyword
 @attrs.define(kw_only=True, slots=False)
 class Mip(Package):
     dfn_name: ClassVar[str] = "prt-mip"
+    ftype: ClassVar[str] = "MIP6"
 
     export_array_ascii: bool = keyword(
         default=False,

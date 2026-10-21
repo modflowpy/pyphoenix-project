@@ -12,6 +12,7 @@ from flopy4.mf6.utl.ncf_methods import NcfMethods
 @attrs.define(kw_only=True, slots=False)
 class Ncf(NcfMethods, Package):
     dfn_name: ClassVar[str] = "utl-ncf"
+    ftype: ClassVar[str] = "NCF6"
 
     wkt: Optional[str] = string(
         default=None,

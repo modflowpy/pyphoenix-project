@@ -18,6 +18,7 @@ from flopy4.spec import reference
 @attrs.define(kw_only=True, slots=False)
 class Gwtgwt(Exchange):
     dfn_name: ClassVar[str] = "exg-gwtgwt"
+    ftype: ClassVar[str] = "GWT6-GWT6"
 
     multi_package: ClassVar[bool] = True
 

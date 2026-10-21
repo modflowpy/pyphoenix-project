@@ -11,6 +11,7 @@ from flopy4.mf6.spec import double, integer, list_
 @attrs.define(kw_only=True, slots=False)
 class Ats(Package):
     dfn_name: ClassVar[str] = "utl-ats"
+    ftype: ClassVar[str] = "ATS6"
 
     @attrs.define
     class Perioddata(Item):

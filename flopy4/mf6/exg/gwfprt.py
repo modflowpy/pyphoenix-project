@@ -11,6 +11,7 @@ from flopy4.spec import reference
 @attrs.define(kw_only=True, slots=False)
 class Gwfprt(Exchange):
     dfn_name: ClassVar[str] = "exg-gwfprt"
+    ftype: ClassVar[str] = "GWF6-PRT6"
 
     exgmnamea: Model | str | None = reference(many=False, required=True)
     exgmnameb: Model | str | None = reference(many=False, required=True)

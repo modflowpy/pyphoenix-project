@@ -11,6 +11,7 @@ from flopy4.mf6.spec import array, keyword
 @attrs.define(kw_only=True, slots=False)
 class Ic(Package):
     dfn_name: ClassVar[str] = "gwt-ic"
+    ftype: ClassVar[str] = "IC6"
 
     export_array_ascii: bool = keyword(
         default=False,

@@ -169,7 +169,7 @@ class ComponentSpec:
     base_class: str
     mixins: list[str]
     multi: bool
-    slntype: str | None
+    ftype: str | None
     imports: dict[str, list[str]]
     fields: list[FieldSpec]
     inner_classes: list[InnerClassSpec]
@@ -922,7 +922,6 @@ def _generated_imports(
     base_class: str = "Package",
     mixins: list[str] | None = None,
     multi: bool = False,
-    slntype: bool = False,
     has_inner_classes: bool = False,
     has_readarray_period: bool = False,
     needs_int_arraylike: bool = False,
@@ -950,7 +949,7 @@ def _generated_imports(
         or has_optional_child
     )
     # dfn_name is always emitted as a ClassVar (see package.py.jinja), so
-    # ClassVar is always needed regardless of multi/slntype/inner classes.
+    # ClassVar is always needed regardless of multi/ftype/inner classes.
     has_classvar = True
     # Union[float, TimeSeriesRef] is used by item_class() for time_series columns.
     # Check every generated Item class's columns.
@@ -1487,13 +1486,6 @@ def _base_class(component: Component) -> str:
     return "Package"
 
 
-def _slntype(component: Component) -> str | None:
-    """Return the slntype string for solution DFNs, or None."""
-    if component.name.split("-")[0] == _SLN_PREFIX:
-        return component.name.split("-")[1]
-    return None
-
-
 def build_component_spec(
     component: Component,
     *,
@@ -1970,7 +1962,6 @@ def build_component_spec(
     shared_dims = filters.shared_dims(component)
     mixins = [*MIXINS.get(component.name, []), *([_DIMS_PROVIDER] if shared_dims else [])]
     multi = bool(component.multi) if hasattr(component, "multi") else False
-    slntype = _slntype(component)
     has_inner_classes = bool(inner_class_specs)
 
     _has_griddata = any(
@@ -2005,7 +1996,6 @@ def build_component_spec(
         base_class=base,
         mixins=mixins,
         multi=multi,
-        slntype=slntype is not None,
         has_inner_classes=has_inner_classes,
         needs_int_arraylike=_needs_int_arraylike,
         needs_float_arraylike=_needs_float_arraylike,
@@ -2056,7 +2046,7 @@ def build_component_spec(
         base_class=base,
         mixins=[m.split(":")[1] for m in mixins],
         multi=multi,
-        slntype=slntype,
+        ftype=component.ftype,
         imports=imports,
         fields=field_specs,
         inner_classes=inner_class_specs,

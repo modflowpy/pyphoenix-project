@@ -12,6 +12,7 @@ from flopy4.mf6.spec import file, keyword, list_, string
 @attrs.define(kw_only=True, slots=False)
 class Fmi(Package):
     dfn_name: ClassVar[str] = "gwt-fmi"
+    ftype: ClassVar[str] = "FMI6"
 
     @attrs.define
     class Packagedata(Item):

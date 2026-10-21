@@ -51,6 +51,7 @@ __all__ = [
 @attrs.define(kw_only=True, slots=False)
 class Gwe(ModelMethods, Model):
     dfn_name: ClassVar[str] = "gwe-nam"
+    ftype: ClassVar[str] = "GWE6"
 
     observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
         "flow-ja-face": (("cellid", "cellid"),),

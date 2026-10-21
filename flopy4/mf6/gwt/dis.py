@@ -16,6 +16,7 @@ from flopy4.mf6.utl.ncf import Ncf
 @attrs.define(kw_only=True, slots=False)
 class Dis(DisMethods, DimsProviderMethods, Package):
     dfn_name: ClassVar[str] = "gwt-dis"
+    ftype: ClassVar[str] = "DIS6"
 
     shared_dims: ClassVar[tuple[str, ...]] = ("nlay", "nrow", "ncol", "ncpl", "nodes", "ncelldim")
 

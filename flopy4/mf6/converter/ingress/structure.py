@@ -667,7 +667,6 @@ def _resolve_bindings(cls: type, raw_lower: dict, context: LoadContext) -> dict[
     loaded before the exchanges block (field order).
     """
     from flopy4.attrs_xarray import child_field_candidates
-    from flopy4.mf6.converter.binding import component_ftype
     from flopy4.mf6.exchange import Exchange
     from flopy4.mf6.model import Model
     from flopy4.mf6.solution import Solution
@@ -736,10 +735,10 @@ def _resolve_bindings(cls: type, raw_lower: dict, context: LoadContext) -> dict[
                 # own ftype directly to the row's token. G/A-variant pairs
                 # (Chd/Chdg, Rch/Rcha, ...) share one namefile ftype (real
                 # MF6 has no separate 'CHDG6' case, only 'CHD6' -- see
-                # component_ftype()'s docstring), so more than one concrete
+                # Component.ftype), so more than one concrete
                 # candidate can match; disambiguate from the file content.
                 concrete = [c for c in accepted if ABC not in c.__bases__]
-                matches = [c for c in concrete if component_ftype(c).lower() == token]
+                matches = [c for c in concrete if c.ftype.lower() == token]
                 if len(matches) > 1:
                     target_cls = _disambiguate_ga_variant(matches, context.resolve(str(row[1])))
                 elif matches:

@@ -41,6 +41,7 @@ __all__ = [
 @attrs.define(kw_only=True, slots=False)
 class Chf(ModelMethods, Model):
     dfn_name: ClassVar[str] = "chf-nam"
+    ftype: ClassVar[str] = "CHF6"
 
     observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
         "flow-ja-face": (("cellid", "cellid"),),

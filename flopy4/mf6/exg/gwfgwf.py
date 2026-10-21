@@ -20,6 +20,7 @@ from flopy4.spec import reference
 @attrs.define(kw_only=True, slots=False)
 class Gwfgwf(Exchange):
     dfn_name: ClassVar[str] = "exg-gwfgwf"
+    ftype: ClassVar[str] = "GWF6-GWF6"
 
     multi_package: ClassVar[bool] = True
 

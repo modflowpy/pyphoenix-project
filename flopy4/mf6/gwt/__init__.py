@@ -55,6 +55,7 @@ __all__ = [
 @attrs.define(kw_only=True, slots=False)
 class Gwt(ModelMethods, Model):
     dfn_name: ClassVar[str] = "gwt-nam"
+    ftype: ClassVar[str] = "GWT6"
 
     observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
         "concentration": (("cellid",),),

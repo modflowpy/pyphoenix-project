@@ -11,6 +11,7 @@ from flopy4.mf6.spec import file, keyword
 @attrs.define(kw_only=True, slots=False)
 class Mvt(Package):
     dfn_name: ClassVar[str] = "gwt-mvt"
+    ftype: ClassVar[str] = "MVT6"
 
     print_input: bool = keyword(
         default=False,

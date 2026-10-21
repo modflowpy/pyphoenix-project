@@ -1,23 +1,10 @@
 from attrs import define
 
 from flopy4.mf6.component import Component
-from flopy4.mf6.exchange import Exchange
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
 from flopy4.mf6.solution import Solution
 from flopy4.spec import reference_names
-
-
-def component_ftype(cls: type) -> str:
-    """E.g. ``"GWF6"``, ``"CHD6"``."""
-    cls_name = cls.__name__
-    if issubclass(cls, Exchange):
-        return f"{cls_name[:3].upper()}6-{cls_name[3:].upper()}6"
-    if issubclass(cls, Solution):
-        return f"{cls.slntype.upper()}6"  # type: ignore[attr-defined]
-    if len(cls_name) == 4 and cls_name[3] in ("g", "a"):
-        return f"{cls_name[0:3].upper()}6"
-    return f"{cls_name.upper()}6"
 
 
 def _flat(values) -> list:
@@ -53,7 +40,7 @@ class Binding:
             return None
 
         return cls(
-            type=component_ftype(type(component)),
+            type=component.ftype,
             fname=component.filename.as_posix(),
             terms=_get_binding_terms(component),
         )

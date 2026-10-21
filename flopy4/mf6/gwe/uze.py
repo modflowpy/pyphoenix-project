@@ -18,6 +18,7 @@ from flopy4.mf6.utl.ts import Ts
 @attrs.define(kw_only=True, slots=False)
 class Uze(Package):
     dfn_name: ClassVar[str] = "gwe-uze"
+    ftype: ClassVar[str] = "UZE6"
 
     multi_package: ClassVar[bool] = True
 

@@ -14,8 +14,7 @@ from flopy4.spec import reference
 @attrs.define(kw_only=True, slots=False)
 class Ims(Solution):
     dfn_name: ClassVar[str] = "sln-ims"
-
-    slntype: ClassVar[str] = "ims"
+    ftype: ClassVar[str] = "IMS6"
 
     @attrs.define
     class NoPtc(Record):

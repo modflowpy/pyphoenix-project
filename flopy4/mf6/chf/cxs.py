@@ -11,6 +11,7 @@ from flopy4.mf6.spec import double, integer, keyword, list_
 @attrs.define(kw_only=True, slots=False)
 class Cxs(Package):
     dfn_name: ClassVar[str] = "chf-cxs"
+    ftype: ClassVar[str] = "CXS6"
 
     @attrs.define
     class Packagedata(Item):

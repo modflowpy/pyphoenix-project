@@ -14,6 +14,7 @@ from flopy4.mf6.utl.ats import Ats
 @attrs.define(kw_only=True, slots=False)
 class Tdis(TdisMethods, DimsProviderMethods, Package):
     dfn_name: ClassVar[str] = "sim-tdis"
+    ftype: ClassVar[str] = "TDIS6"
 
     shared_dims: ClassVar[tuple[str, ...]] = ("nper",)
 

@@ -134,8 +134,8 @@ EXG_TIER = {
 }
 
 SOLUTION_TIER = {
-    "sln-ims": ("Ims", "Solution", "ims"),
-    "sln-ems": ("Ems", "Solution", "ems"),
+    "sln-ims": ("Ims", "Solution", "IMS6"),
+    "sln-ems": ("Ems", "Solution", "EMS6"),
 }
 
 
@@ -481,7 +481,7 @@ def test_model_spec_shares_variant_field(all_dfns):
 
 # Layer 2: Solution-tier ComponentSpec tests
 @pytest.mark.parametrize(
-    "dfn_name,expected_class,expected_base,expected_slntype",
+    "dfn_name,expected_class,expected_base,expected_ftype",
     [(k, v[0], v[1], v[2]) for k, v in SOLUTION_TIER.items()],
 )
 class TestSolutionTierComponentSpec:
@@ -492,29 +492,29 @@ class TestSolutionTierComponentSpec:
             pytest.skip(f"{dfn_name} not available in DFN set")
         return all_dfns[dfn_name]
 
-    def test_class_name(self, dfn_name, expected_class, expected_base, expected_slntype, all_dfns):
+    def test_class_name(self, dfn_name, expected_class, expected_base, expected_ftype, all_dfns):
         dfn = self._get_dfn(dfn_name, all_dfns)
         spec = build_component_spec(dfn, root=Path("/fake"))
         assert spec.class_name == expected_class
 
-    def test_base_class(self, dfn_name, expected_class, expected_base, expected_slntype, all_dfns):
+    def test_base_class(self, dfn_name, expected_class, expected_base, expected_ftype, all_dfns):
         dfn = self._get_dfn(dfn_name, all_dfns)
         spec = build_component_spec(dfn, root=Path("/fake"))
         assert spec.base_class == expected_base
 
-    def test_slntype(self, dfn_name, expected_class, expected_base, expected_slntype, all_dfns):
+    def test_ftype(self, dfn_name, expected_class, expected_base, expected_ftype, all_dfns):
         dfn = self._get_dfn(dfn_name, all_dfns)
         spec = build_component_spec(dfn, root=Path("/fake"))
-        assert spec.slntype == expected_slntype
+        assert spec.ftype == expected_ftype
 
-    def test_outpath(self, dfn_name, expected_class, expected_base, expected_slntype, all_dfns):
+    def test_outpath(self, dfn_name, expected_class, expected_base, expected_ftype, all_dfns):
         root = Path("/fake/mf6")
         dfn = self._get_dfn(dfn_name, all_dfns)
         spec = build_component_spec(dfn, root=root)
         assert spec.outpath == root / f"{expected_class.lower()}.py"
 
     def test_imports_include_solution(
-        self, dfn_name, expected_class, expected_base, expected_slntype, all_dfns
+        self, dfn_name, expected_class, expected_base, expected_ftype, all_dfns
     ):
         dfn = self._get_dfn(dfn_name, all_dfns)
         spec = build_component_spec(dfn, root=Path("/fake"))
@@ -819,7 +819,7 @@ def test_solution_tier_generates_importable_files(tmp_path, all_dfns):
 
     generated = {s.dfn_name: s for s in specs}
 
-    for dfn_name, (expected_class, _, expected_slntype) in SOLUTION_TIER.items():
+    for dfn_name, (expected_class, _, expected_ftype) in SOLUTION_TIER.items():
         if dfn_name not in all_dfns:
             continue
         if dfn_name not in generated:
@@ -845,8 +845,8 @@ def test_solution_tier_generates_importable_files(tmp_path, all_dfns):
         assert hasattr(mod, expected_class), f"Class {expected_class} not found in {spec.outpath}"
         cls = getattr(mod, expected_class)
         assert issubclass(cls, Solution), f"{expected_class} should subclass Solution"
-        assert cls.slntype == expected_slntype, (
-            f"{expected_class}.slntype expected {expected_slntype!r}, got {cls.slntype!r}"
+        assert cls.ftype == expected_ftype, (
+            f"{expected_class}.ftype expected {expected_ftype!r}, got {cls.ftype!r}"
         )
 
 

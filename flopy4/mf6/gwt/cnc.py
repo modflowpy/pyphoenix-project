@@ -16,6 +16,7 @@ from flopy4.mf6.utl.ts import Ts
 @attrs.define(kw_only=True, slots=False)
 class Cnc(Package):
     dfn_name: ClassVar[str] = "gwt-cnc"
+    ftype: ClassVar[str] = "CNC6"
 
     multi_package: ClassVar[bool] = True
 

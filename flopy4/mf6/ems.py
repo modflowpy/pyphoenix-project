@@ -11,7 +11,6 @@ from flopy4.spec import reference
 @attrs.define(kw_only=True, slots=False)
 class Ems(Solution):
     dfn_name: ClassVar[str] = "sln-ems"
-
-    slntype: ClassVar[str] = "ems"
+    ftype: ClassVar[str] = "EMS6"
 
     models: list[Model | str] = reference()

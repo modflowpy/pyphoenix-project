@@ -30,6 +30,7 @@ from flopy4.mf6.utl.ts import Ts
 @attrs.define(kw_only=True, slots=False)
 class Sfr(Package):
     dfn_name: ClassVar[str] = "gwf-sfr"
+    ftype: ClassVar[str] = "SFR6"
 
     multi_package: ClassVar[bool] = True
 

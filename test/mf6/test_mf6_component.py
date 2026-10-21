@@ -36,7 +36,7 @@ def test_registry():
     assert FNAMES["gwf-oc"] is Oc
 
 
-def test_component_ftype_ga_variants():
+def test_ftype_ga_variants():
     """G/A-variant package classes (Chdg, Drng, Evta, Ghbg, Rcha, Rivg,
     Welg) share their base's namefile ftype -- confirmed against real MF6
     source (gwf.f90's package-type dispatch has no 'CHDG6'/'RCHA6'/etc.
@@ -44,16 +44,15 @@ def test_component_ftype_ga_variants():
     token with "Model package type not supported"). Legacy flopy's
     dfn_file_name='gwf-chdg.dfn' describes the DFN/class identity, not the
     namefile-level ftype -- don't infer the latter from the former."""
-    from flopy4.mf6.converter.binding import component_ftype
     from flopy4.mf6.gwf.chd import Chd
     from flopy4.mf6.gwf.chdg import Chdg
     from flopy4.mf6.gwf.rch import Rch
     from flopy4.mf6.gwf.rcha import Rcha
 
-    assert component_ftype(Chd) == "CHD6"
-    assert component_ftype(Chdg) == "CHD6"
-    assert component_ftype(Rch) == "RCH6"
-    assert component_ftype(Rcha) == "RCH6"
+    assert Chd.ftype == "CHD6"
+    assert Chdg.ftype == "CHD6"
+    assert Rch.ftype == "RCH6"
+    assert Rcha.ftype == "RCH6"
 
 
 def test_ftypes_registry():

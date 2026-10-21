@@ -16,6 +16,7 @@ from flopy4.mf6.utl.ts import Ts
 @attrs.define(kw_only=True, slots=False)
 class Pcp(Package):
     dfn_name: ClassVar[str] = "olf-pcp"
+    ftype: ClassVar[str] = "PCP6"
 
     multi_package: ClassVar[bool] = True
 

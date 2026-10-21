@@ -11,6 +11,7 @@ from flopy4.mf6.spec import array, keyword
 @attrs.define(kw_only=True, slots=False)
 class Dsp(Package):
     dfn_name: ClassVar[str] = "gwt-dsp"
+    ftype: ClassVar[str] = "DSP6"
 
     xt3d_off: bool = keyword(
         default=False,

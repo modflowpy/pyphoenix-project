@@ -12,6 +12,7 @@ from flopy4.mf6.spec import array, file, keyword, string
 @attrs.define(kw_only=True, slots=False)
 class Mst(Package):
     dfn_name: ClassVar[str] = "gwt-mst"
+    ftype: ClassVar[str] = "MST6"
 
     save_flows: bool = keyword(
         default=False,

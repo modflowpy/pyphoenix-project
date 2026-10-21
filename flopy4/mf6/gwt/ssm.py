@@ -13,6 +13,7 @@ from flopy4.mf6.utl.spca import Spca
 @attrs.define(kw_only=True, slots=False)
 class Ssm(Package):
     dfn_name: ClassVar[str] = "gwt-ssm"
+    ftype: ClassVar[str] = "SSM6"
 
     @attrs.define
     class Sources(Item):
