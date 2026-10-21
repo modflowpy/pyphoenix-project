@@ -1,5 +1,6 @@
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from datetime import datetime
+from functools import cache
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,7 @@ from flopy4.mf6.component import Component
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.context import Context
 from flopy4.mf6.converter.binding import Binding
+from flopy4.mf6.dims_provider_methods import DimsProviderMethods
 from flopy4.mf6.item import Item, cellid_widths, item_list_type
 from flopy4.mf6.item_table import ItemTable
 from flopy4.mf6.package import Package
@@ -91,11 +93,11 @@ def _make_binding_blocks(value: Component) -> dict[str, dict[str, list[tuple[str
 
 
 def _grid_dims(value: Package) -> tuple[int, tuple[int, ...]]:
-    """(nlay, layer shape) for writing period arrays: a layer is (nrow, ncol)
-    on a structured grid, else (ncpl,). Empty if the grid isn't known."""
-    if not value._period_array_fields():
-        return 1, ()
-    d = value.dims | value.resolve_dims("nlay", "nrow", "ncol", "ncpl", "nodes")
+    """(nlay, layer shape) of the package's grid: a layer is (nrow, ncol) on
+    a structured grid, else (ncpl,). Empty if the grid isn't known. A grid
+    package's are its own."""
+    own = value.get_dims() if isinstance(value, DimsProviderMethods) else {}
+    d = own | value.dims | value.resolve_dims("nlay", "nrow", "ncol", "ncpl", "nodes")
     nlay = d.get("nlay", 1)
     if "nrow" in d and "ncol" in d:
         return nlay, (d["nrow"], d["ncol"])
@@ -113,27 +115,35 @@ def _mark_netcdf(da: xr.DataArray, meta: Mapping) -> xr.DataArray:
     return da
 
 
+def _grid_shaped(value: Any, meta: Mapping, nlay: int, layer: tuple[int, ...]) -> xr.DataArray:
+    """A per-cell array shaped like the grid (see `_grid_dims`), since MF6
+    reads a structured grid's layer a row per line: each layer (nrow, ncol).
+    A layered one (dfn `layered`) the size of the grid is shaped by layer,
+    with an nlay dim to signal the writer to use layered format. An array
+    of another size, or one already an xr.DataArray, is kept as it is."""
+    if isinstance(value, xr.DataArray) or not hasattr(value, "reshape"):
+        return _wrap_array(value)
+    ncpl = int(np.prod(layer)) if layer else 0
+    layer_dims = ("nrow", "ncol") if len(layer) > 1 else ("ncpl",)
+    if meta.get("layered", False) and nlay > 1 and ncpl and value.size == nlay * ncpl:
+        return xr.DataArray(value.reshape(nlay, *layer), dims=("nlay", *layer_dims))
+    if len(layer) > 1 and value.size == ncpl:
+        return xr.DataArray(value.reshape(layer), dims=layer_dims)
+    return _wrap_array(value)
+
+
 def _period_dataarray(
     name: str, value: Any, meta: Mapping, nlay: int, layer: tuple[int, ...]
 ) -> xr.DataArray | tuple:
-    """One period's array, shaped like the grid so it's written a row per
-    line. A layered one is written by layer, with an nlay dim. A time-array
-    series' name is written as a reference to it."""
+    """One period's array, shaped like the grid (see `_grid_shaped`). A
+    time-array series' name is written as a reference to it."""
     if isinstance(value, TimeArraySeriesRef):
         return (name.upper(), "TIMEARRAYSERIES", value.name)
     if not hasattr(value, "shape"):
         value = np.asarray(value)
     if meta.get("index"):
         value = _to_file_index(value)
-    ncpl = int(np.prod(layer)) if layer else 0
-    if meta.get("layered", False) and nlay > 1 and ncpl and value.size == nlay * ncpl:
-        dims = ("nlay", *(f"x{i}" for i in range(len(layer))))
-        da = xr.DataArray(value.reshape(nlay, *layer), dims=dims)
-    elif ncpl and value.size == ncpl and len(layer) > 1:
-        da = xr.DataArray(value.reshape(layer))
-    else:
-        da = xr.DataArray(value)
-    return _mark_netcdf(da, meta)
+    return _mark_netcdf(_grid_shaped(value, meta, nlay, layer), meta)
 
 
 def _rows_to_tuples(row_list: "list | ItemTable", ncelldim: int | None = None) -> list:
@@ -257,7 +267,8 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
     # per period, the (non-aux) array fields given, and those all DNODATA
     stress_period: dict[int, set[str]] = {}
     nodata_period: dict[int, set[str]] = {}
-    grid_dims = _grid_dims(value)
+    # resolved once, if an array's written
+    grid_dims = cache(lambda: _grid_dims(value))
     ncelldim = _ncelldim(value)
     grid = is_grid_package(cls)
     fill_forward_block: str | None = None
@@ -288,7 +299,7 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
                 for kper, arrays in field_value.items():
                     for name, arr in arrays.items():
                         readarray_period.setdefault(kper, {})[name] = _period_dataarray(
-                            name, arr, meta, *grid_dims
+                            name, arr, meta, *grid_dims()
                         )
                 continue
             # arrays: {kper: array}
@@ -296,7 +307,7 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
                 for kper, arr in field_value.items():
                     # a cleared grid period's array is None, filled below
                     readarray_period.setdefault(kper, {})[f.name] = (
-                        None if arr is None else _period_dataarray(f.name, arr, meta, *grid_dims)
+                        None if arr is None else _period_dataarray(f.name, arr, meta, *grid_dims())
                     )
                     if grid and is_cleared(arr):
                         nodata_period.setdefault(kper, set()).add(f.name)
@@ -324,9 +335,11 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
             continue
 
         if isinstance(field_value, dict):
+            # arrays keyed by time (a TAS's), a layer each
             array_key = f.name if meta.get("tagged") else ""
             for tval, arr in field_value.items():
-                blocks[f"{block_name} {tval}"] = {array_key: _wrap_array(arr)}
+                arr = arr if hasattr(arr, "shape") or isinstance(arr, str) else np.asarray(arr)
+                blocks[f"{block_name} {tval}"] = {array_key: _grid_shaped(arr, meta, *grid_dims())}
             continue
 
         # non-fill-forward block
@@ -362,37 +375,10 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
             # a grid array; an inline one has no shape (AUXILIARY's names)
             if meta.get("index"):
                 field_value = _to_file_index(field_value)
-            # shape a per-cell array like the grid: a layered one by
-            # layer, with an nlay dim to signal the writer to use
-            # layered format, and on a structured grid each layer
-            # (nrow, ncol), since MF6 reads such a layer a row per line
-            if hasattr(field_value, "reshape") and not isinstance(field_value, xr.DataArray):
-                _get_dims = getattr(value, "get_dims", None)
-                _dims_d = _get_dims() if _get_dims else {}
-                _nlay = _dims_d.get("nlay", 0)
-                _ncpl = _dims_d.get("ncpl", 0)
-                _layer = (
-                    (_dims_d["nrow"], _dims_d["ncol"])
-                    if "nrow" in _dims_d and "ncol" in _dims_d
-                    else (_ncpl,)
-                )
-                _da = None
-                if (
-                    meta.get("layered")
-                    and _nlay > 1
-                    and _ncpl > 0
-                    and field_value.size == _nlay * _ncpl
-                ):
-                    _da = xr.DataArray(
-                        field_value.reshape(_nlay, *_layer),
-                        dims=("nlay", *(("nrow", "ncol") if len(_layer) > 1 else ("ncpl",))),
-                    )
-                elif len(_layer) > 1 and _ncpl > 0 and field_value.size == _ncpl:
-                    _da = xr.DataArray(field_value.reshape(_layer), dims=("nrow", "ncol"))
-                if _da is not None:
-                    blocks[block_name][f.name] = _mark_netcdf(_da, meta)
-                    continue
-            blocks[block_name][f.name] = _mark_netcdf(_wrap_array(field_value), meta)
+            # a grid package's arrays are shaped like its grid; others' (NPF's
+            # K) stay as given, non-layered, which MF6 reads in one go
+            dims = grid_dims() if isinstance(value, DimsProviderMethods) else (1, ())
+            blocks[block_name][f.name] = _mark_netcdf(_grid_shaped(field_value, meta, *dims), meta)
 
         elif isinstance(field_value, np.ndarray) and field_value.dtype.kind == "U":
             # An inline string array (AUXILIARY's names): one line.
