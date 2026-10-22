@@ -245,14 +245,14 @@
       "0": {
         "__table__": "StressPeriodData",
         "n": 1,
-        "storage": [
+        "stress_period_data": [
           "transient"
         ]
       },
       "1": {
         "__table__": "StressPeriodData",
         "n": 1,
-        "storage": [
+        "stress_period_data": [
           "TRANSIENT"
         ]
       }

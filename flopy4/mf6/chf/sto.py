@@ -20,7 +20,7 @@ class Sto(Package):
 
     @attrs.define
     class StressPeriodData(Item):
-        storage: str = string()
+        stress_period_data: str = string()
 
     save_flows: bool = keyword(
         default=False,
