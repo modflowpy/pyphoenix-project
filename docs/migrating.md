@@ -20,6 +20,11 @@ and assign `stress_period_data`.
 
 The values are the same, except for STO's and OC's.
 
+The examples below also show differences the old names don't cover, which
+you need to make anyway: flopy4's class names (`Sto`, not
+`flopy.mf6.ModflowGwfsto`), and its constructors taking the parent as a
+keyword (`parent=gwf`), not by position.
+
 STO takes one entry per period, `STEADY-STATE` or `TRANSIENT`:
 
 ```python
