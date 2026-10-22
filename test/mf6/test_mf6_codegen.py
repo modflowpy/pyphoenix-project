@@ -1630,3 +1630,34 @@ def test_number_or_word_validated():
     assert _is_instance(0.1, fields["bedleak"])
     assert not _is_instance("OFF", fields["bedleak"])
     assert not _is_instance(1.0, fields["claktype"])
+
+
+def test_legacy_period_kwargs_match_dfns(all_dfns):
+    """flopy3 names a period list after its v1 DFN field. Where the DFNs
+    still give that name, it's the legacy keyword. Once they name every
+    list stress_period_data, the table stands on its own."""
+    from flopy4.mf6.utils.codegen import filters
+    from flopy4.mf6.utils.codegen.make import _LEGACY_PERIOD_KWARGS
+
+    for name, component in all_dfns.items():
+        for block in filters.fill_forward_blocks(component):
+            fields = component.blocks[block].fields
+            if len(fields) != 1:
+                continue  # a grid package's named arrays
+            (field,) = fields.values()
+            if not filters.is_list_field(field) or field.name in ("stress_period_data", "output"):
+                continue
+            assert _LEGACY_PERIOD_KWARGS[name] == ((field.name, None),), name
+
+
+def test_legacy_kwargs_spec(all_dfns):
+    lak = build_component_spec(all_dfns["gwf-lak"], root=Path("."), dfns=all_dfns)
+    assert lak.legacy_kwargs == {"perioddata": 'Legacy("stress_period_data")'}
+    oc = build_component_spec(all_dfns["gwf-oc"], root=Path("."), dfns=all_dfns)
+    assert oc.legacy_kwargs == {
+        "saverecord": 'Legacy("stress_period_data", oc_period_data)',
+        "printrecord": 'Legacy("stress_period_data", oc_period_data)',
+    }
+    assert "from flopy4.mf6.legacy import Legacy, oc_period_data" in oc.imports["flopy4"]
+    ic = build_component_spec(all_dfns["gwf-ic"], root=Path("."), dfns=all_dfns)
+    assert ic.legacy_kwargs == {}

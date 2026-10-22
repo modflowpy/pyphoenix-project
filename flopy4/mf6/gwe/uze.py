@@ -8,6 +8,7 @@ from numpy.typing import NDArray
 
 from flopy4.mf6._types import TimeSeriesRef, to_array
 from flopy4.mf6.item import Item
+from flopy4.mf6.legacy import Legacy
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, child, double, file, integer, keyword, list_, string, union
 from flopy4.mf6.utl.obs import Obs
@@ -32,6 +33,10 @@ class Uze(Package):
         "thermal-equil": (("index",), ("string",)),
         "uze": (("index",), ("string",)),
         "uzet": (("index",), ("string",)),
+    }
+
+    legacy_kwargs: ClassVar[dict[str, Legacy]] = {
+        "uzeperioddata": Legacy("stress_period_data"),
     }
 
     @attrs.define

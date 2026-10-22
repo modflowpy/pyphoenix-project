@@ -5,6 +5,7 @@ import attrs
 
 from flopy4.mf6._types import FloatArrayLike, IntArrayLike
 from flopy4.mf6.item import Item
+from flopy4.mf6.legacy import Legacy, sto_period_data
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, child, keyword, list_, string
 from flopy4.mf6.utl.tvs import Tvs
@@ -13,6 +14,11 @@ from flopy4.mf6.utl.tvs import Tvs
 @attrs.define(kw_only=True, slots=False)
 class Sto(Package):
     dfn_name: ClassVar[str] = "gwf-sto"
+
+    legacy_kwargs: ClassVar[dict[str, Legacy]] = {
+        "steady_state": Legacy("stress_period_data", sto_period_data),
+        "transient": Legacy("stress_period_data", sto_period_data),
+    }
 
     @attrs.define
     class StressPeriodData(Item):

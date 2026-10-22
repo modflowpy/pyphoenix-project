@@ -190,6 +190,8 @@ class ComponentSpec:
     has_readarray_period: bool = False
     # A model subpackage's __all__: the model and its packages
     exports: list[str] = dc_field(default_factory=list)
+    # flopy3's constructor keywords, deprecated: name -> Legacy(...) source
+    legacy_kwargs: dict[str, str] = dc_field(default_factory=dict)
 
 
 # Column-schema-dict builders
@@ -1303,6 +1305,54 @@ def _child_field_spec(
     ), [f"from {_component_module(target)} import {cls}"]
 
 
+# flopy3's constructor keywords for the period list, by component, as
+# (keyword, converter): flopy4 takes them as deprecated aliases of
+# stress_period_data (see flopy4.mf6.legacy). A closed set, since flopy3's
+# names are frozen. Most are the v1 DFN's name for the list; STO's and
+# OC's are reshaped by the converter named.
+_LEGACY_PERIOD_KWARGS: dict[str, tuple[tuple[str, str | None], ...]] = {
+    **{
+        name: (("perioddata", None),)
+        for name in (
+            "gwf-lak",
+            "gwf-maw",
+            "gwf-mvr",
+            "gwf-sfr",
+            "gwf-uzf",
+            "prt-prp",
+            "utl-spc",
+            "utl-tvk",
+            "utl-tvs",
+        )
+    },
+    "gwt-lkt": (("lakeperioddata", None),),
+    "gwe-lke": (("lakeperioddata", None),),
+    "gwt-sft": (("reachperioddata", None),),
+    "gwe-sfe": (("reachperioddata", None),),
+    "gwt-mwt": (("mwtperioddata", None),),
+    "gwe-mwe": (("mweperioddata", None),),
+    "gwt-uzt": (("uztperioddata", None),),
+    "gwe-uze": (("uzeperioddata", None),),
+    **{
+        f"{model}-sto": (("steady_state", "sto_period_data"), ("transient", "sto_period_data"))
+        for model in ("gwf", "chf", "olf")
+    },
+    **{
+        f"{model}-oc": (("saverecord", "oc_period_data"), ("printrecord", "oc_period_data"))
+        for model in ("gwf", "gwt", "gwe", "prt", "chf", "olf")
+    },
+}
+
+
+def _legacy_kwargs(component: Component) -> dict[str, str]:
+    """The component's legacy_kwargs, by flopy3 keyword, as the Legacy
+    calls to render."""
+    return {
+        old: f'Legacy("stress_period_data"{f", {convert}" if convert else ""})'
+        for old, convert in _LEGACY_PERIOD_KWARGS.get(component.name, ())
+    }
+
+
 # Reference fields' Python names, where they aren't the DFN's: a solution's
 # models kept the name they had before the DFNs keyed them.
 _REFERENCE_NAMES = {"slnmnames": "models"}
@@ -1931,6 +1981,14 @@ def build_component_spec(
         *(filters.spec_functions(fs.spec_call) for fs in field_specs if fs.generatable),
         *(filters.spec_functions(f.rhs) for rec in inner_class_specs for f in rec.fields),
     )
+    legacy_kwargs = _legacy_kwargs(component)
+    if legacy_kwargs:
+        if _period_item is None:
+            raise ValueError(f"{component.name}: legacy period keywords, but no period list")
+        extra_imports.extend(
+            f"from flopy4.mf6.legacy import {convert or 'Legacy'}"
+            for convert in {None, *(c for _, c in _LEGACY_PERIOD_KWARGS[component.name])}
+        )
     imports = _generated_imports(
         generatable_field_objects,
         base_class=base,
@@ -2005,6 +2063,7 @@ def build_component_spec(
         has_griddata=_has_griddata,
         has_readarray_period=bool(_readarray_period_fields),
         exports=_exports,
+        legacy_kwargs=legacy_kwargs,
     )
 
 

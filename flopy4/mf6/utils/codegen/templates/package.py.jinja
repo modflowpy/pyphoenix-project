@@ -46,6 +46,14 @@ class {{ spec.class_name }}({% for m in spec.mixins %}{{ m }}, {% endfor %}{{ sp
     }
 
 {% endif %}
+{% if spec.legacy_kwargs %}
+    legacy_kwargs: ClassVar[dict[str, Legacy]] = {
+{% for old, legacy in spec.legacy_kwargs.items() %}
+        "{{ old }}": {{ legacy }},
+{% endfor %}
+    }
+
+{% endif %}
 {% for rec in spec.inner_classes %}
     @attrs.define
     class {{ rec.class_name }}(Record):

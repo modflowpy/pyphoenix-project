@@ -21,6 +21,8 @@ parts:
         title: MF6 versions
       - file: examples/selection
         title: Selecting cells
+      - file: migrating
+        title: Migrating from flopy3
 
   - caption: Developer Notes
     chapters:
