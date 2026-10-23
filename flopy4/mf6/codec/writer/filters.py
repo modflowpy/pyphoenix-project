@@ -170,9 +170,10 @@ def array2const(value: xr.DataArray, precision: "FloatPrecision | None" = None) 
 def array2chunks(value: xr.DataArray, chunks: Mapping[Hashable, int] | None = None):
     """
     Yield chunks from a dask-backed array of up to 3 dimensions.
-    If it's not already chunked, split it into chunks of the
-    specified sizes, given as a dictionary mapping dimension
-    names to chunk sizes.
+    Always (re)chunked to the given sizes, a dictionary mapping
+    dimension names to chunk sizes -- a cheap no-op if the array
+    already matches, so a caller can't rely on its own chunking
+    being preserved.
 
     If chunk sizes are not specified, chunk the array with at
     most 2 dimensions per chunk, where:
@@ -189,32 +190,44 @@ def array2chunks(value: xr.DataArray, chunks: Mapping[Hashable, int] | None = No
     """
 
     if hasattr(value.data, "blocks"):
-        if value.chunks is None:
-            if chunks is None:
-                match value.ndim:
-                    case 1:
-                        # 1D array, single chunk
-                        chunks = {value.dims[0]: value.shape[0]}
-                    case 2:
-                        # 2D array, single chunk
-                        chunks = {value.dims[0]: value.shape[0], value.dims[1]: value.shape[1]}
-                    case 3:
-                        # 3D array, chunk for each layer
-                        chunks = {
-                            value.dims[0]: 1,
-                            value.dims[1]: value.shape[1],
-                            value.dims[2]: value.shape[2],
-                        }
-            value = value.chunk(chunks)
+        # a dask array's own `.chunks` is never None, so it can't signal
+        # "not yet chunked" -- always (re)chunk to the scheme below (a
+        # cheap no-op if it already matches) rather than trusting
+        # whatever chunking the caller happened to construct it with
+        if chunks is None:
+            match value.ndim:
+                case 1:
+                    # 1D array, single chunk
+                    chunks = {value.dims[0]: value.shape[0]}
+                case 2:
+                    # 2D array, single chunk
+                    chunks = {value.dims[0]: value.shape[0], value.dims[1]: value.shape[1]}
+                case 3:
+                    # 3D array, chunk for each layer
+                    chunks = {
+                        value.dims[0]: 1,
+                        value.dims[1]: value.shape[1],
+                        value.dims[2]: value.shape[2],
+                    }
+        value = value.chunk(chunks)
         for chunk in value.data.blocks:
-            yield np.squeeze(chunk.compute())
+            computed = chunk.compute()
+            # a block's leading axis may hold more than one layer (an
+            # explicit `chunks` argument isn't required to use 1) --
+            # always split it one layer at a time, never squeeze it,
+            # so a genuine row/col axis of size 1 is never touched
+            if computed.ndim == 3:
+                yield from computed
+            else:
+                yield computed
     elif value.ndim == 3:
-        # regular 3D array, a chunk per layer
+        # regular 3D array, a chunk per layer -- iterating already drops
+        # the layer axis, leaving each layer's real (row, col) shape
         for layer in value.values:
-            yield np.squeeze(layer)
+            yield layer
     else:
-        # regular array, single chunk
-        yield np.squeeze(value.values)
+        # regular array, single chunk -- already the right shape
+        yield value.values
 
 
 def array2string(value: NDArray, precision: "FloatPrecision | None" = None) -> str:
@@ -238,7 +251,7 @@ def array2string(value: NDArray, precision: "FloatPrecision | None" = None) -> s
     value = np.asarray(value)
     if value.ndim > 2:
         raise ValueError(f"Only 1D and 2D arrays are supported, got ndim={value.ndim}")
-    # a single value (squeezed by array2chunks) is a 1d array of one
+    # a scalar value arrives as a 0d array; promote to 1d of one
     value = np.atleast_1d(value)
     if value.ndim == 1:
         # add an axis to 1d arrays so np.savetxt writes elements on 1 line
