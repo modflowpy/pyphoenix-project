@@ -170,9 +170,10 @@ def array2const(value: xr.DataArray, precision: "FloatPrecision | None" = None) 
 def array2chunks(value: xr.DataArray, chunks: Mapping[Hashable, int] | None = None):
     """
     Yield chunks from a dask-backed array of up to 3 dimensions.
-    If it's not already chunked, split it into chunks of the
-    specified sizes, given as a dictionary mapping dimension
-    names to chunk sizes.
+    Always (re)chunked to the given sizes, a dictionary mapping
+    dimension names to chunk sizes -- a cheap no-op if the array
+    already matches, so a caller can't rely on its own chunking
+    being preserved.
 
     If chunk sizes are not specified, chunk the array with at
     most 2 dimensions per chunk, where:
@@ -211,11 +212,14 @@ def array2chunks(value: xr.DataArray, chunks: Mapping[Hashable, int] | None = No
         value = value.chunk(chunks)
         for chunk in value.data.blocks:
             computed = chunk.compute()
-            # only the per-layer chunking's own leading axis is ever
-            # extra -- never squeeze a genuine row/col axis of size 1
-            if computed.ndim == 3 and computed.shape[0] == 1:
-                computed = np.squeeze(computed, axis=0)
-            yield computed
+            # a block's leading axis may hold more than one layer (an
+            # explicit `chunks` argument isn't required to use 1) --
+            # always split it one layer at a time, never squeeze it,
+            # so a genuine row/col axis of size 1 is never touched
+            if computed.ndim == 3:
+                yield from computed
+            else:
+                yield computed
     elif value.ndim == 3:
         # regular 3D array, a chunk per layer -- iterating already drops
         # the layer axis, leaving each layer's real (row, col) shape
