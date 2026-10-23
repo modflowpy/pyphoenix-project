@@ -207,14 +207,20 @@ def array2chunks(value: xr.DataArray, chunks: Mapping[Hashable, int] | None = No
                         }
             value = value.chunk(chunks)
         for chunk in value.data.blocks:
-            yield np.squeeze(chunk.compute())
+            computed = chunk.compute()
+            # only the per-layer chunking's own leading axis is ever
+            # extra -- never squeeze a genuine row/col axis of size 1
+            if computed.ndim == 3 and computed.shape[0] == 1:
+                computed = np.squeeze(computed, axis=0)
+            yield computed
     elif value.ndim == 3:
-        # regular 3D array, a chunk per layer
+        # regular 3D array, a chunk per layer -- iterating already drops
+        # the layer axis, leaving each layer's real (row, col) shape
         for layer in value.values:
-            yield np.squeeze(layer)
+            yield layer
     else:
-        # regular array, single chunk
-        yield np.squeeze(value.values)
+        # regular array, single chunk -- already the right shape
+        yield value.values
 
 
 def array2string(value: NDArray, precision: "FloatPrecision | None" = None) -> str:
