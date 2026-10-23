@@ -2,15 +2,13 @@ import re
 from collections.abc import Hashable, Mapping, Sequence
 from io import StringIO
 from pathlib import PurePath
-from typing import Any, Literal
+from typing import Literal
 
-import attrs
 import numpy as np
 import xarray as xr
 from numpy.typing import NDArray
 
 from flopy4.mf6._types import Scalar
-from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.write_context import ArrayFormat, FloatPrecision
 
 _NUMBER_RE = re.compile(r"[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?")
@@ -278,59 +276,7 @@ def quote_if_needed(value: Scalar) -> str:
     raise ValueError(f"MF6 can't represent a value with both quote types: {value!r}")
 
 
-def nonempty(value: NDArray | xr.DataArray) -> NDArray:
-    """
-    Return a boolean mask of non-empty (non-nodata) values in an array.
-    TODO: don't hardcode FILL_DNODATA, support different fill values
-    """
-    if isinstance(value, xr.DataArray):
-        value = value.values
-    if value.dtype == "object":
-        mask = value != None  # noqa: E711
-    else:
-        mask = ~np.ma.masked_invalid(value).mask
-        mask = mask & (value != FILL_DNODATA)
-    return mask
-
-
-def data2list(value: list | tuple | dict | xr.Dataset | xr.DataArray):
-    """
-    Yield records (tuples) from data in a `list`, `dict`, `DataArray` or `Dataset`.
-    """
-    if isinstance(value, Sequence):  # a list, tuple or Rows
-        yield from value
-        return
-
-    if isinstance(value, dict):
-        for name, val in value.values():
-            yield (name, val)
-        return
-
-    if isinstance(value, xr.Dataset):
-        yield from dataset2list(value)
-        return
-
-    # otherwise we have a DataArray
-    if value.ndim == 0:  # handle scalar
-        if not np.isnan(value.item()) and value.item() is not None:
-            yield (value.item(),)
-        return
-
-    spatial_dims = [d for d in value.dims if d in ("nlay", "nrow", "ncol", "ncpl", "nodes")]
-    has_spatial_dims = len(spatial_dims) > 0
-    mask = nonempty(value)
-    indices = np.where(mask)
-    values = value.values[mask]
-    for i, val in enumerate(values):
-        if has_spatial_dims:
-            cellid = tuple(idx[i] + 1 for idx in indices)
-            rec = cellid + (val,)
-        else:
-            rec = (val,)
-        yield rec
-
-
-def data2lines(value: list | tuple | dict | xr.Dataset | xr.DataArray, inset: str = " ") -> str:
+def data2lines(value: Sequence, inset: str = " ") -> str:
     """
     Pre-format list data rows to a single newline-joined string.
 
@@ -339,98 +285,4 @@ def data2lines(value: list | tuple | dict | xr.Dataset | xr.DataArray, inset: st
     Functionally equivalent to the list macro's ``{% for row %}{{ record(row) }}``
     loop but ~10x faster for large packages.
     """
-    return "\n".join(inset + " ".join(quote_if_needed(x) for x in row) for row in data2list(value))
-
-
-def dataset2list(value: xr.Dataset):
-    """
-    Yield records (tuples) from an `xarray.Dataset`.
-
-    If the first data variable is a string type, assume all are
-    string type. Then the dataset represents keyword settings;
-    yield tuples of (name, *value). Otherwise, yield tuples: (*value)
-    if no spatial dimensions, or (*cellid, *value) when spatial
-    dimensions are present.
-    """
-    if value is None or not any(value.data_vars):
-        return
-
-    # special case OC for now.
-    # TODO remove after properly handling object dtype period data arrays
-    is_oc = any(
-        str(v.name).startswith("save_") or str(v.name).startswith("print_")
-        for v in value.data_vars.values()
-    )
-
-    # handle scalar
-    if (first := next(iter(value.data_vars.values()))).ndim == 0:
-        if is_oc:
-            for name in value.data_vars.keys():
-                if not (name.startswith("save_") or name.startswith("print_")):  # type: ignore
-                    # TODO: not working yet
-                    if name == "perioddata":
-                        val = value[name]
-                        val = val.item() if val.shape == () else val
-                        yield attrs.astuple(val, recurse=True)  # type: ignore
-                    continue
-                val = value[name]
-                val = val.item() if val.shape == () else val
-                yield (*name.split("_"), val)  # type: ignore
-
-        else:
-            row: list[Any] = []
-            for da in value.data_vars.values():
-                row.append(da.item() if da.shape == () else da)
-            yield tuple(row)
-        return
-
-    combined_mask: Any = None
-    spatial_da = None  # a non-aux DataArray for deriving spatial dims/mask
-    for name, first in value.data_vars.items():
-        if "naux" in first.dims:
-            # nonempty gives (spatial..., naux) bool array; collapse naux with any()
-            mask = nonempty(first).any(axis=-1)
-        else:
-            mask = nonempty(first)
-            spatial_da = first
-        combined_mask = mask if combined_mask is None else (combined_mask | mask)
-    if combined_mask is None or not np.any(combined_mask):
-        return
-
-    if spatial_da is None:
-        spatial_da = first
-    spatial_dims = [d for d in spatial_da.dims if d in ("nlay", "nrow", "ncol", "nodes")]
-    has_spatial_dims = len(spatial_dims) > 0
-    indices = np.where(combined_mask)
-    n_active = len(indices[0])
-
-    # Pre-extract all values from each data variable as numpy arrays so the
-    # per-row loop uses O(1) numpy scalar access instead of per-cell xarray
-    # label-based indexing (which has ~80µs overhead per call).
-    extracted: dict[str, np.ndarray] = {
-        str(name): da.values[tuple(indices)] for name, da in value.data_vars.items()
-    }
-
-    # Pre-compute 1-based cellids for all active cells.
-    cellids: list[np.ndarray] = [idx + 1 for idx in indices] if has_spatial_dims else []
-
-    for i in range(n_active):
-        if is_oc:
-            for name in value.data_vars.keys():
-                raw = extracted[str(name)][i]
-                val = raw.item() if hasattr(raw, "ndim") and raw.ndim == 0 else raw
-                yield (*str(name).split("_"), val)  # type: ignore
-        else:
-            row2: list[Any] = []
-            for name in value.data_vars.keys():
-                raw = extracted[str(name)][i]
-                val = raw.item() if hasattr(raw, "ndim") and raw.ndim == 0 else raw
-                if hasattr(val, "ndim") and val.ndim > 0:
-                    row2.extend(float(v) for v in np.asarray(val).flat)
-                else:
-                    row2.append(val)
-            if has_spatial_dims:
-                cellid = tuple(cid[i].item() for cid in cellids)
-                yield cellid + tuple(row2)
-            else:
-                yield tuple(row2)
+    return "\n".join(inset + " ".join(quote_if_needed(x) for x in row) for row in value)

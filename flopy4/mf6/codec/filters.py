@@ -26,9 +26,7 @@ def field_type(value: Any) -> FieldType:
             return type_
         return "record"
     if isinstance(value, xr.DataArray):
-        if value.dtype == "object":
-            return "list"
         return "array"
-    if isinstance(value, (Sequence, xr.Dataset)):  # a list, or Rows
+    if isinstance(value, Sequence):  # a list, or Rows
         return "list"
     raise ValueError(f"Unsupported field type: {type(value)}")
