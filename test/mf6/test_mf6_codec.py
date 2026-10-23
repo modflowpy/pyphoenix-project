@@ -11,6 +11,7 @@ import xarray as xr
 
 from flopy4.mf6 import TimeSeriesRef
 from flopy4.mf6.codec import dumps, loads, writer
+from flopy4.mf6.codec.filters import field_type
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.converter import COMPONENT_CONVERTER
 from flopy4.mf6.gwf import Ghb, Oc
@@ -186,6 +187,12 @@ def test_dumps_sto():
     loaded = loads(dumped)
     print("STO load:")
     pprint(loaded)
+
+
+def test_field_type_rejects_dataset():
+    # egress hands the writer list data as rows, never as a Dataset
+    with pytest.raises(ValueError, match="Unsupported field type"):
+        field_type(xr.Dataset({"q": ("nodes", np.zeros(3))}))
 
 
 def test_dumps_oc():
