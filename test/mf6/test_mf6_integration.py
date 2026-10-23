@@ -2995,3 +2995,46 @@ def test_tas_arrays_written_by_row(function_tmpdir):
     assert [len(ln.split()) for ln in lines[internal + 1 : internal + 1 + nrow]] == [ncol] * nrow
     assert lines[internal + 1 + nrow].startswith("END TIME")
     sim.run()
+
+
+def test_grid_arrays_with_unit_dim_written_by_row(function_tmpdir):
+    """A structured grid layer with ncol=1 must still be written one value
+    per row, not collapsed onto a single line -- the squeeze in
+    array2chunks used to drop that genuine size-1 axis along with the
+    chunking axis it was meant to remove."""
+    sim = Simulation(
+        name="rows",
+        workspace=function_tmpdir,
+        tdis=Time(perlen=[1.0], nstp=[1]),
+        solutiongroup=[
+            Ims(
+                models=["gwf"],
+                outer_dvclose=1e-9,
+                outer_maximum=100,
+                inner_maximum=300,
+                inner_dvclose=1e-9,
+                linear_acceleration="cg",
+            )
+        ],
+    )
+    dis = Dis(
+        nlay=1,
+        nrow=2,
+        ncol=1,
+        delr=1.0,
+        delc=1.0,
+        top=np.array([1.0, 1.5]),
+        botm=np.array([0.0, 0.5]),
+    )
+    gwf = Gwf(parent=sim, name="gwf", dis=dis)
+    Ic(parent=gwf, strt=1.0)
+    Npf(parent=gwf, k=1.0, icelltype=0)
+    Chd(parent=gwf, stress_period_data={0: [[(0, 0, 0), 1.0]]})
+    Oc(parent=gwf, head_file="gwf.hds", stress_period_data={0: [("SAVE", "HEAD", "LAST")]})
+    sim.write()
+
+    lines = (function_tmpdir / "gwf.dis").read_text().splitlines()
+    top = lines.index(" TOP")
+    assert lines[top + 1] == " INTERNAL"
+    assert [ln.split() for ln in lines[top + 2 : top + 4]] == [["1.0"], ["1.5"]]
+    sim.run()

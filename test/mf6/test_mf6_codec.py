@@ -3,6 +3,7 @@
 from pathlib import Path
 from pprint import pprint
 
+import dask.array as da
 import numpy as np
 import pandas as pd
 import pytest
@@ -292,6 +293,46 @@ def test_dumps_dis_with_layered_arrays(dis_with_constant_arrays):
     loaded = loads(dumped)
     print("DIS load:")
     pprint(loaded)
+
+
+def test_array2chunks_rechunks_a_dask_array_not_pre_chunked_per_layer():
+    """`array2chunks` promises a chunk per layer for a 3D array, but a
+    dask array's own `.chunks` is never None, so the function's old
+    "if value.chunks is None" guard for applying its own per-layer
+    rechunking never fired for a genuinely dask-backed array -- any 3D
+    dask array not already pre-chunked exactly that way (here: a single
+    whole-array block) was iterated as one block, not one per layer.
+    Calling the function directly (not through a component's griddata,
+    which happens to always arrive already correctly chunked) is the
+    only way to exercise this, since that's precisely the case it's
+    meant to guard against."""
+    import xarray as xr
+
+    from flopy4.mf6.codec.writer.filters import array2chunks
+
+    arr = np.repeat([5.0, 0.0], 12).reshape(2, 3, 4)
+    value = xr.DataArray(da.from_array(arr, chunks=arr.shape), dims=["lay", "row", "col"])
+    chunks = list(array2chunks(value))
+    assert [c.shape for c in chunks] == [(3, 4), (3, 4)]
+    assert np.array_equal(chunks[0], arr[0])
+    assert np.array_equal(chunks[1], arr[1])
+
+
+def test_dumps_dis_with_dask_backed_unit_dim_not_squeezed():
+    """A dask-backed griddata array with a genuine size-1 column axis must
+    still be written one value per row, not collapsed onto one line --
+    array2chunks used to squeeze that axis away along with the chunking
+    axis it was meant to remove."""
+    from flopy4.mf6.gwf import Dis
+
+    botm = da.from_array(np.array([[[0.0], [0.5]]]), chunks=(1, 2, 1))
+    dis = Dis(nlay=1, nrow=2, ncol=1, delr=1.0, delc=1.0, top=1.0, botm=botm, idomain=1)
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(dis))
+    print("DIS dump:")
+    print(dumped)
+    botm_internal = dumped.index(" BOTM\n INTERNAL\n") + len(" BOTM\n INTERNAL\n")
+    rows = dumped[botm_internal:].split("\n", 2)[:2]
+    assert rows == ["  0.0", "  0.5"]
 
 
 @pytest.fixture

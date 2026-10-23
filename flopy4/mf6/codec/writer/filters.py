@@ -189,23 +189,26 @@ def array2chunks(value: xr.DataArray, chunks: Mapping[Hashable, int] | None = No
     """
 
     if hasattr(value.data, "blocks"):
-        if value.chunks is None:
-            if chunks is None:
-                match value.ndim:
-                    case 1:
-                        # 1D array, single chunk
-                        chunks = {value.dims[0]: value.shape[0]}
-                    case 2:
-                        # 2D array, single chunk
-                        chunks = {value.dims[0]: value.shape[0], value.dims[1]: value.shape[1]}
-                    case 3:
-                        # 3D array, chunk for each layer
-                        chunks = {
-                            value.dims[0]: 1,
-                            value.dims[1]: value.shape[1],
-                            value.dims[2]: value.shape[2],
-                        }
-            value = value.chunk(chunks)
+        # a dask array's own `.chunks` is never None, so it can't signal
+        # "not yet chunked" -- always (re)chunk to the scheme below (a
+        # cheap no-op if it already matches) rather than trusting
+        # whatever chunking the caller happened to construct it with
+        if chunks is None:
+            match value.ndim:
+                case 1:
+                    # 1D array, single chunk
+                    chunks = {value.dims[0]: value.shape[0]}
+                case 2:
+                    # 2D array, single chunk
+                    chunks = {value.dims[0]: value.shape[0], value.dims[1]: value.shape[1]}
+                case 3:
+                    # 3D array, chunk for each layer
+                    chunks = {
+                        value.dims[0]: 1,
+                        value.dims[1]: value.shape[1],
+                        value.dims[2]: value.shape[2],
+                    }
+        value = value.chunk(chunks)
         for chunk in value.data.blocks:
             computed = chunk.compute()
             # only the per-layer chunking's own leading axis is ever
@@ -244,7 +247,7 @@ def array2string(value: NDArray, precision: "FloatPrecision | None" = None) -> s
     value = np.asarray(value)
     if value.ndim > 2:
         raise ValueError(f"Only 1D and 2D arrays are supported, got ndim={value.ndim}")
-    # a single value (squeezed by array2chunks) is a 1d array of one
+    # a scalar value arrives as a 0d array; promote to 1d of one
     value = np.atleast_1d(value)
     if value.ndim == 1:
         # add an axis to 1d arrays so np.savetxt writes elements on 1 line
