@@ -8,6 +8,7 @@ from numpy.typing import NDArray
 
 from flopy4.mf6._types import TimeSeriesRef, to_array
 from flopy4.mf6.item import Item
+from flopy4.mf6.legacy import Legacy
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, child, double, file, integer, keyword, list_, string, union
 from flopy4.mf6.utl.obs import Obs
@@ -34,6 +35,10 @@ class Sfe(Package):
         "strmbd-cond": (("index",), ("string",)),
         "temperature": (("index",), ("string",)),
         "to-mvr": (("index",), ("string",)),
+    }
+
+    legacy_kwargs: ClassVar[dict[str, Legacy]] = {
+        "reachperioddata": Legacy("stress_period_data"),
     }
 
     @attrs.define

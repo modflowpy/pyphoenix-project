@@ -12,6 +12,7 @@ from attrs import Attribute, fields
 from flopy4.dimensions import DimensionResolverMixin
 from flopy4.mf6.constants import MF6
 from flopy4.mf6.external import in_write_session, write_session
+from flopy4.mf6.legacy import Legacy, LegacyKwargs
 from flopy4.mf6.spec import fields_dict
 from flopy4.mf6.write_context import WriteContext
 from flopy4.spec import is_reference, reference_names, referenced, resolve, retarget
@@ -231,7 +232,7 @@ def _find_child_field(parent_cls: type, child_cls: type) -> "tuple[Any, str] | N
 # kw_only=True necessary so we can define optional fields here
 # and required fields in subclasses. attrs complains otherwise
 @attrs.define(kw_only=True, slots=False)
-class Component(DimensionResolverMixin, ABC, MutableMapping):
+class Component(DimensionResolverMixin, ABC, MutableMapping, metaclass=LegacyKwargs):
     """
     Base class for MF6 components.
 
@@ -244,6 +245,10 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     dfn_name: ClassVar[str] = ""
     """The component's canonical DFN name (e.g. 'gwf-ic'), set by subclasses
     that are registered in FNAMES/FTYPES -- see the FNAMES docstring above."""
+
+    legacy_kwargs: ClassVar[dict[str, Legacy]] = {}
+    """flopy3's constructor keywords the class also takes, deprecated, by
+    name (see `flopy4.mf6.legacy`)."""
 
     _load = IO(Loader)  # type: ignore
     _write = IO(Writer)  # type: ignore

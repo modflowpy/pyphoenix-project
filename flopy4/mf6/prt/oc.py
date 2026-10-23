@@ -5,6 +5,7 @@ from typing import ClassVar, Literal, Optional
 import attrs
 
 from flopy4.mf6.item import Item
+from flopy4.mf6.legacy import Legacy, oc_period_data
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, double, file, integer, keyword, list_, string, union
 
@@ -12,6 +13,11 @@ from flopy4.mf6.spec import array, double, file, integer, keyword, list_, string
 @attrs.define(kw_only=True, slots=False)
 class Oc(Package):
     dfn_name: ClassVar[str] = "prt-oc"
+
+    legacy_kwargs: ClassVar[dict[str, Legacy]] = {
+        "saverecord": Legacy("stress_period_data", oc_period_data),
+        "printrecord": Legacy("stress_period_data", oc_period_data),
+    }
 
     @attrs.define
     class Tracktimes(Item):

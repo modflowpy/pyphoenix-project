@@ -1,9 +1,9 @@
-from abc import ABCMeta
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from flopy4._imports import isinstance_of
+from flopy4.mf6.legacy import LegacyKwargs
 
 if TYPE_CHECKING:
     from flopy4.mf6.gwf.disv import Disv
@@ -19,7 +19,7 @@ class _Cell2dRecord:
         return owner.Cell2d  # type: ignore[attr-defined]
 
 
-class _LegacyInputs(ABCMeta):
+class _LegacyInputs(LegacyKwargs):
     """Accept the earlier array-style constructor inputs `iv`, `xv`, `yv` and
     `cell2ddata` (0-based) and convert them into `vertices` and `cell2d`,
     which are what `Disv` stores."""

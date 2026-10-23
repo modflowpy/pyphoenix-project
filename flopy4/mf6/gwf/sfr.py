@@ -8,6 +8,7 @@ from numpy.typing import NDArray
 
 from flopy4.mf6._types import TimeSeriesRef, to_array
 from flopy4.mf6.item import Item
+from flopy4.mf6.legacy import Legacy
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import (
     array,
@@ -50,6 +51,10 @@ class Sfr(Package):
         "wet-area": (("index",), ("string",)),
         "wet-perimeter": (("index",), ("string",)),
         "wet-width": (("index",), ("string",)),
+    }
+
+    legacy_kwargs: ClassVar[dict[str, Legacy]] = {
+        "perioddata": Legacy("stress_period_data"),
     }
 
     @attrs.define

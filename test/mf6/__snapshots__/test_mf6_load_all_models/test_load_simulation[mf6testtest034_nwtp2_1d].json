@@ -434,7 +434,7 @@
       "3": {
         "__table__": "StressPeriodData",
         "n": 1,
-        "storage": [
+        "stress_period_data": [
           "steady-state"
         ]
       }
