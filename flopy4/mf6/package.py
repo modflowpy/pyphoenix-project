@@ -82,6 +82,28 @@ def _check_rows(dim: str, declared: int, nrows: int, bound: str | None) -> None:
         )
 
 
+def _stress_active_at(stress_periods: dict[int, Any], kper: int) -> bool:
+    """Whether a stress field is active at `kper`: given, and not cleared
+    (None), in the latest period <= `kper`. A field left out of a period's
+    block isn't touched by MF6's grid-array loader (GridArrayLoadType%rp/
+    param_load, Mf6FileGridArray.f90), so its last given value persists
+    regardless of what else that block restates. Necessary but not
+    sufficient: see `_grid_period_has_explicit_clear`."""
+    earlier = [k for k in stress_periods if k <= kper]
+    return bool(earlier) and stress_periods[max(earlier)] is not None
+
+
+def _grid_period_has_explicit_clear(stress_periods: list[dict[int, Any]], kper: int) -> bool:
+    """Whether any stress field is explicitly cleared (None) at exactly
+    `kper`, for a grid package. The loader's shared NBOUND is
+    (re-)established from whichever field is read first in a period's
+    block (DFN declaration order, not tracked here); that field's clear
+    can zero NBOUND for the whole block, discarding even a sibling's real
+    data given there. Any explicit clear in the block is conservatively
+    treated as disqualifying."""
+    return any(kper in sp and sp[kper] is None for sp in stress_periods)
+
+
 class PeriodRows(dict):
     """A fill-forward list field's ``{kper: rows}`` (CHD's
     stress_period_data). Rows assigned to a period are coerced as at
@@ -364,9 +386,13 @@ class Package(Component, ABC):
         be among those the field's fk points at. Dense ``(nper, ...)`` input
         is split by period (see ``flopy4.mf6.period_arrays``). In a grid
         package, a period with no stress in any cell is stored as ``None``,
-        and aux can only be given in periods the stress arrays are."""
+        and aux can only be given in a period the stress array is active
+        in, including later periods it fills forward into."""
         grid = is_grid_package(type(self))
-        stress_periods: set[int] = set()
+        # one {kper: array-or-None} dict per non-fk stress field (RIVG has
+        # several) -- kept separate, not merged, so a period counts as
+        # active if any field is, not whichever field was declared last
+        stress_periods: list[dict[int, Any]] = []
         named: list = []
         for f in fields:
             if not f.metadata.get("fill_forward") or item_list_type(f.type) is not None:
@@ -412,7 +438,7 @@ class Package(Component, ABC):
                 named.append((f, periods))
             else:
                 periods = {k: _normalize(a, k) for k, a in (to_period_dict(value) or {}).items()}
-                stress_periods.update(periods)
+                stress_periods.append(periods)
             self.__dict__[f.name] = periods
         for f, periods in named:
             key = f.metadata["fk"].rsplit(".", 1)[-1]
@@ -421,10 +447,17 @@ class Package(Component, ABC):
             given = {n for arrays in periods.values() for n in arrays}
             if unknown := sorted(n for n in given if n.lower() not in allowed):
                 raise ValueError(f"{f.name}: {unknown} not in {key}")
-            if grid and (extra := sorted(set(periods) - stress_periods)):
+            if grid and (
+                extra := sorted(
+                    p
+                    for p in periods
+                    if not any(_stress_active_at(sp, p) for sp in stress_periods)
+                    or _grid_period_has_explicit_clear(stress_periods, p)
+                )
+            ):
                 raise ValueError(
-                    f"{f.name} given in periods {extra} with no stress arrays; "
-                    "a grid package's period is one unit"
+                    f"{f.name} given in periods {extra} with no stress arrays, "
+                    "or a sibling stress field is explicitly cleared there"
                 )
 
     def _set_dim_from_rows(self, dim: str, nrows: int, bound: str | None = None) -> None:
