@@ -981,7 +981,7 @@ class Package(Component, ABC):
             return None
         if nper is None:
             # a grid package's periods are its period blocks, over all fields
-            given = periods
+            given = set(periods)
             if is_grid_package(type(self)):
                 given = {k for g in fields for k in (self._period_dict(g) or {})}
             nper = self.resolve_dims("nper").get("nper") or max(given) + 1
