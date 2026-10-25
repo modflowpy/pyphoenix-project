@@ -1392,7 +1392,7 @@ def test_welg_aux_only_period_other_cells():
     the block's cells, and MF6 would carry q's values to the wrong ones."""
     from flopy4.mf6.gwf import Welg
 
-    with pytest.raises(ValueError, match=r"period 1: aux 'conc' sets cells that differ"):
+    with pytest.raises(ValueError, match=r"period 1: aux 'conc' sets other cells than q"):
         Welg(
             auxiliary=["conc"],
             q={0: np.array([-1.0, FILL_DNODATA])},
@@ -1402,10 +1402,10 @@ def test_welg_aux_only_period_other_cells():
 
 def test_welg_carried_aux_other_cells():
     """q given again in other cells, with AUX carried from before, is
-    rejected: MF6 carries AUX by position in the old list of cells."""
+    rejected: MF6 would carry AUX to the wrong cells."""
     from flopy4.mf6.gwf import Welg
 
-    with pytest.raises(ValueError, match=r"period 1: q sets cells .* aux 'conc' was last given"):
+    with pytest.raises(ValueError, match=r"period 1: q sets other cells than aux 'conc'"):
         Welg(
             auxiliary=["conc"],
             q={0: np.array([-1.0, FILL_DNODATA]), 1: np.array([FILL_DNODATA, -2.0])},
@@ -1425,7 +1425,7 @@ def test_rivg_sibling_other_cells():
     from flopy4.mf6.gwf import Rivg
 
     one = np.array([1.0, FILL_DNODATA])
-    with pytest.raises(ValueError, match=r"period 1: stage sets cells .* cond was last given"):
+    with pytest.raises(ValueError, match=r"period 1: stage sets other cells than cond"):
         Rivg(stage={0: one, 1: np.ones(2)}, cond={0: one}, rbot={0: one, 1: np.ones(2)})
     with pytest.raises(ValueError, match=r"period 0: cond has no value in some of the cells"):
         Rivg(stage={0: np.ones(2)}, cond={0: one}, rbot={0: np.ones(2)})

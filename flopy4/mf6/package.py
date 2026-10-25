@@ -388,8 +388,7 @@ class Package(Component, ABC):
         is split by period (see ``flopy4.mf6.period_arrays``). In a grid
         package, a period with no stress in any cell is stored as ``None``,
         and aux can only be given in a period the stress array is active
-        in, including later periods it fills forward into. A grid package's
-        periods must also read as MF6 reads them (see
+        in, including later periods it fills forward into (see also
         `flopy4.mf6.period_arrays.check_grid_periods`)."""
         grid = is_grid_package(type(self))
         # one {kper: array-or-None} dict per non-fk stress field (RIVG has
@@ -968,9 +967,7 @@ class Package(Component, ABC):
         With ``fill_forward`` (the default), each period holds the values in
         effect then. Without it, periods the field doesn't give are filled
         with ``FILL_DNODATA`` (floats) or ``FILL_INT64`` (integers). Each
-        field fills forward on its own, in a grid package too, as MF6's
-        loader carries an array a period block leaves out (see
-        ``flopy4.mf6.period_arrays``).
+        field fills forward on its own, in grid packages too.
 
         Dynamically named arrays (aux) give ``{name: (nper, ...)}``. ``nper``
         defaults to the simulation's, else to one past the last given period.
