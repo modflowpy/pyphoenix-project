@@ -177,7 +177,6 @@ class StructuredGrid(LegacyStructuredGrid):
 
         if (botm := kwargs.get("botm", None)) is not None:
             if isinstance(botm, (list, tuple)) and all(isinstance(b, Scalar) for b in botm):
-                nlay = kwargs.get("nlay", len(botm))
                 nrow = kwargs.get("nrow", 1)
                 ncol = kwargs.get("ncol", 1)
                 kwargs["botm"] = np.array([np.full((nrow, ncol), float(b)) for b in botm])
@@ -930,7 +929,6 @@ class VertexGrid(LegacyVertexGrid):
 
         if (botm := kwargs.get("botm", None)) is not None:
             if isinstance(botm, (list, tuple)) and all(isinstance(b, Scalar) for b in botm):
-                nlay = kwargs.get("nlay", len(botm))
                 ncpl = kwargs.get("ncpl", None)
                 kwargs["botm"] = np.array([np.full((ncpl,), float(b)) for b in botm])
 
