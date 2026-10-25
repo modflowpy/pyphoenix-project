@@ -1342,21 +1342,27 @@ def test_welg_cleared_period_round_trip():
     )
 
 
-def test_drng_partly_cleared_period_writes_dnodata():
-    """A cleared (None) array in a period other arrays are given in is
-    written as DNODATA, a constant."""
-    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+def test_drng_partly_cleared_period():
+    """Clearing one stress field (None) in a period another is given in is
+    rejected, as is giving a later period active cells without the cleared
+    field: MF6 can't clear one field, and would use its old values."""
     from flopy4.mf6.gwf import Drng
 
-    drng = Drng(
-        elev={0: np.array([1.0, 2.0, 3.0]), 1: None},
-        cond={0: np.array([10.0, 10.0, 10.0]), 1: np.array([5.0, FILL_DNODATA, 5.0])},
+    with pytest.raises(ValueError, match=r"period 1: elev cleared \(None\) but cond given"):
+        Drng(
+            elev={0: np.array([1.0, 2.0, 3.0]), 1: None},
+            cond={0: np.array([10.0, 10.0, 10.0]), 1: np.array([5.0, FILL_DNODATA, 5.0])},
+        )
+    with pytest.raises(ValueError, match=r"period 2: cond cleared earlier"):
+        Drng(
+            elev={0: np.ones(3), 1: None, 2: np.ones(3)},
+            cond={0: np.ones(3), 1: None},
+        )
+    # cleared together, then both given again, it's fine
+    Drng(
+        elev={0: np.ones(3), 1: None, 2: np.ones(3)},
+        cond={0: np.ones(3), 1: None, 2: np.ones(3)},
     )
-    assert drng.elev[1] is None
-    text = dumps(unstructure_component(drng)).upper()
-    period2 = text.split("BEGIN PERIOD 2")[1].split("END PERIOD")[0]
-    assert "ELEV" in period2 and "CONSTANT 3" in period2
-    assert "COND" in period2
 
 
 def test_welg_aux_period_without_stress():

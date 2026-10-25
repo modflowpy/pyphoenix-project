@@ -12,9 +12,10 @@ How a period fills forward depends on the package:
 - Grid packages (CHDG, WELG, ...; those with a ``readarraygrid`` option)
   do too, as MF6's loader does, but MF6 keeps a period's values only at its
   active cells, so a filled-forward array must match them (``check_grid_periods``).
-  A ``None`` period, ``q={3: None}``, clears that field, and every boundary
-  if each stress field is cleared, as an empty period block does. An array
-  that's entirely ``FILL_DNODATA`` means the same, and is stored as
+  A ``None`` period, ``q={3: None}``, clears every boundary, as an empty
+  period block does, so each stress field given in that period must be
+  ``None``, and given again before any later period with active cells. An
+  array that's entirely ``FILL_DNODATA`` means the same, and is stored as
   ``None``. (The DFNs say stress arrays are required in each period block
   and only aux fills forward; flopy4 follows the loader for now.)
 
@@ -100,21 +101,38 @@ def check_grid_periods(
     then aux) with a value in any cell sets the active cells, and MF6 keeps
     values only there. So each other array in the block needs a value in every
     active cell, and an array filled forward from an earlier block needs the same
-    active cells it was last given with. Cleared (None) fields aren't checked
-    until given again, nor are blocks with dask arrays.
+    active cells it was last given with. A clear (None) must clear every
+    stress field given in its block, and a cleared field must be given again
+    before a later block with active cells. Blocks with dask arrays aren't
+    checked.
     """
     last: dict[str, np.ndarray] = {}  # active cells each array was last given with
+    cleared: set[str] = set()  # stress fields cleared and not given since
     for kper in sorted({k for p in stress.values() for k in p} | set(aux or {})):
         block = {n: p[kper] for n, p in stress.items() if kper in p}
         block |= {f"aux {n!r}": a for n, a in (aux or {}).get(kper, {}).items()}
         for name in block:
             last.pop(name, None)
+        stress_given = {n for n in stress if kper in stress[n]}
+        nones = {n for n in stress_given if block[n] is None}
+        if nones and nones != stress_given:
+            raise ValueError(
+                f"period {kper}: {', '.join(sorted(nones))} cleared (None) but "
+                f"{', '.join(sorted(stress_given - nones))} given; MF6 can't clear "
+                "one field, so clear all of them or give each an array"
+            )
+        cleared = (cleared - stress_given) | nones
         given = {n: a != FILL_DNODATA for n, a in block.items() if a is not None}
         if not all(isinstance(h, np.ndarray) for h in given.values()):
             continue
         first, active = next(((n, h) for n, h in given.items() if h.any()), (None, None))
         if active is None:
             continue
+        if cleared:
+            raise ValueError(
+                f"period {kper}: {', '.join(sorted(cleared))} cleared earlier and "
+                "not given again; MF6 would fill its old values forward"
+            )
         for name, has in given.items():
             has, act = np.broadcast_arrays(has, active)
             if not has[act].all():
