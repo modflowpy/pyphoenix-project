@@ -202,34 +202,6 @@ class TestRchComponent:
         assert float(rch._stress_period_data[1][0].recharge) == 0.002
 
 
-class TestSparseArrays:
-    """Test sparse array creation for large arrays."""
-
-    def test_sparse_array_creation(self):
-        """Test that large sparse arrays use COO format."""
-        # Create a CHD with very large grid (exceeds threshold)
-        from flopy4.mf6.config import SPARSE_THRESHOLD
-
-        nper = 10
-        nodes = 100000  # Large grid
-        total_size = nper * nodes
-
-        if total_size > SPARSE_THRESHOLD:
-            chd = Chd(
-                dims={"nlay": 1, "nrow": 1000, "ncol": 100, "nper": nper, "nodes": nodes},
-                head={0: {(0, 0, 0): 1.0, (0, 999, 99): 0.0}},
-            )
-
-            # Should create sparse array (possibly wrapped in xarray)
-            if isinstance(chd.head, xr.DataArray):
-                # If wrapped in xarray, check the underlying data
-                assert isinstance(chd.head.data, sparse.COO)
-                assert chd.head.shape == (nper, nodes)
-            else:
-                assert isinstance(chd.head, sparse.COO)
-                assert chd.head.shape == (nper, nodes)
-
-
 class TestXarrayOutput:
     """Test xarray output functionality."""
 

@@ -224,10 +224,6 @@ class TypedTransformer(Transformer):
             # It's a tree, extract the token value
             return str(value["children"][0]) if hasattr(value, "children") else str(value)
 
-    def simple_string(self, items: list[Any]) -> str:
-        """Handle simple string (unquoted or quoted word)."""
-        return str(items[0])
-
     def word(self, items: list[Token]) -> str:
         """Handle word token."""
         return unquote(items[0])
