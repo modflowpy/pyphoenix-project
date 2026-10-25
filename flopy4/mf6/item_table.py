@@ -364,6 +364,12 @@ class ItemTable(MutableSequence):
             if meta.get("_keyword") or meta.get("direction") or meta.get("child"):
                 return None
             if col is None:
+                if is_cellid(f) and f.metadata.get("allow_zero"):
+                    # every row's cellid is None; still needs a token
+                    # (MF6's "NONE"), but this path has no grid width to
+                    # write zeros with -- fall back to the row path, which
+                    # takes one
+                    return None
                 if (default := _default(f)) is None or default == ():
                     continue
                 return None
