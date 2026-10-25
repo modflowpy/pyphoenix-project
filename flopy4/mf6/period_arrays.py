@@ -11,12 +11,12 @@ How a period fills forward depends on the package:
   own until it's given again.
 - Grid packages (CHDG, WELG, ...; those with a ``readarraygrid`` option)
   do too, as MF6's loader does, but MF6 keeps a period's values only at its
-  active cells, so a carried array must match them (``check_grid_periods``).
+  active cells, so a filled-forward array must match them (``check_grid_periods``).
   A ``None`` period, ``q={3: None}``, clears that field, and every boundary
   if each stress field is cleared, as an empty period block does. An array
   that's entirely ``FILL_DNODATA`` means the same, and is stored as
   ``None``. (The DFNs say stress arrays are required in each period block
-  and only aux carries forward; flopy4 follows the loader for now.)
+  and only aux fills forward; flopy4 follows the loader for now.)
 
 In layer-array packages a period's value can instead be a time-array
 series, by name (`TimeArraySeriesRef`), whose arrays MF6 interpolates in
@@ -99,7 +99,7 @@ def check_grid_periods(
     In each period block, the first array written (stress fields as declared,
     then aux) with a value in any cell sets the active cells, and MF6 keeps
     values only there. So each other array in the block needs a value in every
-    active cell, and an array carried from an earlier block needs the same
+    active cell, and an array filled forward from an earlier block needs the same
     active cells it was last given with. Cleared (None) fields aren't checked
     until given again, nor are blocks with dask arrays.
     """
@@ -127,8 +127,8 @@ def check_grid_periods(
             if not np.array_equal(cells, act):
                 raise ValueError(
                     f"period {kper}: {first} sets other cells than {name} was "
-                    f"last given with, so MF6 would carry {name} to the wrong "
-                    f"cells; give {name} again in period {kper}"
+                    f"last given with, so MF6 would fill {name} forward to the "
+                    f"wrong cells; give {name} again in period {kper}"
                 )
         last |= dict.fromkeys(given, active)
 

@@ -1361,7 +1361,7 @@ def test_drng_partly_cleared_period_writes_dnodata():
 
 def test_welg_aux_period_without_stress():
     """AUX before the stress array is ever given is invalid -- fill-forward
-    only carries a value into later periods, not earlier ones."""
+    only fills a value into later periods, not earlier ones."""
     from flopy4.mf6.gwf import Welg
 
     with pytest.raises(ValueError, match=r"periods \[0\] with no stress arrays"):
@@ -1389,7 +1389,7 @@ def test_welg_aux_period_with_fill_forward_stress():
 
 def test_welg_aux_only_period_other_cells():
     """An AUX-only period whose cells differ from q's is rejected: AUX sets
-    the block's cells, and MF6 would carry q's values to the wrong ones."""
+    the block's cells, and MF6 would fill q forward to the wrong ones."""
     from flopy4.mf6.gwf import Welg
 
     with pytest.raises(ValueError, match=r"period 1: aux 'conc' sets other cells than q"):
@@ -1400,9 +1400,9 @@ def test_welg_aux_only_period_other_cells():
         )
 
 
-def test_welg_carried_aux_other_cells():
-    """q given again in other cells, with AUX carried from before, is
-    rejected: MF6 would carry AUX to the wrong cells."""
+def test_welg_filled_forward_aux_other_cells():
+    """q given again in other cells, with AUX filled forward from before,
+    is rejected: MF6 would fill AUX forward to the wrong cells."""
     from flopy4.mf6.gwf import Welg
 
     with pytest.raises(ValueError, match=r"period 1: q sets other cells than aux 'conc'"):
@@ -1420,8 +1420,8 @@ def test_welg_carried_aux_other_cells():
 
 
 def test_rivg_sibling_other_cells():
-    """A stress field given in other cells than a sibling carried from
-    before is rejected, as is one missing a value in the block's cells."""
+    """A stress field given in other cells than a sibling filled forward
+    from before is rejected, as is one missing a value in the block's cells."""
     from flopy4.mf6.gwf import Rivg
 
     one = np.array([1.0, FILL_DNODATA])
@@ -1440,7 +1440,7 @@ def test_rivg_aux_period_multi_field_order_independent():
     that, different, case)."""
     from flopy4.mf6.gwf import Rivg
 
-    # cond carries forward from period 0 in both cases; only which of
+    # cond fills forward from period 0 in both cases; only which of
     # stage/rbot is given fresh vs. left silent at period 1 is swapped
     stage_restates = Rivg(
         auxiliary=["conc"],
