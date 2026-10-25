@@ -1335,10 +1335,97 @@ def test_drng_partly_cleared_period_writes_dnodata():
 
 
 def test_welg_aux_period_without_stress():
+    """AUX before the stress array is ever given is invalid -- fill-forward
+    only carries a value into later periods, not earlier ones."""
     from flopy4.mf6.gwf import Welg
 
+    with pytest.raises(ValueError, match=r"periods \[0\] with no stress arrays"):
+        Welg(auxiliary=["conc"], q={1: np.ones(2)}, aux={0: {"conc": np.ones(2)}})
+
+
+def test_welg_aux_period_with_fill_forward_stress():
+    """AUX in a later period that doesn't repeat the stress array is valid
+    -- it stays active via fill-forward until cleared or replaced. AUX ends
+    up the only field in that period's block, making it the one that
+    (re-)establishes NBOUND there; its pattern here matches `q`'s own
+    active cell, which keeps that re-derivation correct. A mismatched AUX
+    pattern in that position is the separate, unvalidated hazard noted in
+    `period_arrays`'s module docstring, not exercised here."""
+    from flopy4.mf6.gwf import Welg
+
+    welg = Welg(
+        auxiliary=["conc"],
+        q={0: np.array([-1.0, FILL_DNODATA])},
+        aux={1: {"conc": np.array([2.0, FILL_DNODATA])}},
+    )
+    assert 1 in welg.aux
+
+
+def test_rivg_aux_period_multi_field_order_independent():
+    """A grid package with several stress fields (RIVG's stage/cond/rbot)
+    must give the same answer regardless of which field is given a fresh
+    value at a restated period and which stays silent (not cleared) --
+    not depend on field declaration order. No field is ever explicitly
+    cleared here (see `test_rivg_aux_period_sibling_explicit_clear` for
+    that, different, case)."""
+    from flopy4.mf6.gwf import Rivg
+
+    # cond carries forward from period 0 in both cases; only which of
+    # stage/rbot is given fresh vs. left silent at period 1 is swapped
+    stage_restates = Rivg(
+        auxiliary=["conc"],
+        stage={0: np.ones(2), 1: np.full(2, 2.0)},
+        cond={0: np.ones(2)},
+        rbot={0: np.ones(2)},
+        aux={1: {"conc": np.ones(2)}},
+    )
+    rbot_restates = Rivg(
+        auxiliary=["conc"],
+        stage={0: np.ones(2)},
+        cond={0: np.ones(2)},
+        rbot={0: np.ones(2), 1: np.full(2, 2.0)},
+        aux={1: {"conc": np.ones(2)}},
+    )
+    assert 1 in stage_restates.aux
+    assert 1 in rbot_restates.aux
+
+
+def test_rivg_aux_period_without_any_active_stress():
+    """AUX is still rejected when every stress field is inactive at that
+    period -- the multi-field union doesn't become unconditionally
+    permissive."""
+    from flopy4.mf6.gwf import Rivg
+
     with pytest.raises(ValueError, match=r"periods \[1\] with no stress arrays"):
-        Welg(auxiliary=["conc"], q={0: np.ones(2)}, aux={1: {"conc": np.ones(2)}})
+        Rivg(
+            auxiliary=["conc"],
+            stage={0: np.ones(2), 1: None},
+            cond={0: np.ones(2), 1: None},
+            rbot={0: np.ones(2), 1: None},
+            aux={1: {"conc": np.ones(2)}},
+        )
+
+
+def test_rivg_aux_period_sibling_explicit_clear():
+    """AUX is rejected at a period where a sibling field (stage/rbot) is
+    explicitly cleared, even though another field (cond) has a real,
+    persisting value: an explicit clear of whichever field is read first
+    zeroes NBOUND for the whole package, not just that field, and which
+    field is read first isn't tracked here, so any explicit clear in the
+    block is conservatively disqualifying (see
+    `_grid_period_has_explicit_clear`). Not the same as
+    `test_rivg_aux_period_multi_field_order_independent`, where nothing
+    is ever explicitly cleared."""
+    from flopy4.mf6.gwf import Rivg
+
+    with pytest.raises(ValueError, match=r"periods \[1\] with no stress arrays"):
+        Rivg(
+            auxiliary=["conc"],
+            stage={0: np.ones(2), 1: None, 2: np.ones(2)},
+            cond={0: np.ones(2)},
+            rbot={0: np.ones(2), 1: None, 2: np.ones(2)},
+            aux={1: {"conc": np.ones(2)}},
+        )
 
 
 def test_rcha_aux_name_collision():
