@@ -1374,8 +1374,7 @@ def test_welg_aux_period_with_fill_forward_stress():
     up the only field in that period's block, making it the one that
     (re-)establishes NBOUND there; its pattern here matches `q`'s own
     active cell, which keeps that re-derivation correct. A mismatched AUX
-    pattern in that position is the separate, unvalidated hazard noted in
-    `period_arrays`'s module docstring, not exercised here."""
+    pattern there is rejected (`test_welg_aux_only_period_other_cells`)."""
     from flopy4.mf6.gwf import Welg
 
     welg = Welg(
@@ -1384,6 +1383,52 @@ def test_welg_aux_period_with_fill_forward_stress():
         aux={1: {"conc": np.array([2.0, FILL_DNODATA])}},
     )
     assert 1 in welg.aux
+    q = welg.period_array("q", nper=2)
+    np.testing.assert_array_equal(q[1], [-1.0, FILL_DNODATA])
+
+
+def test_welg_aux_only_period_other_cells():
+    """An AUX-only period whose cells differ from q's is rejected: AUX sets
+    the block's cells, and MF6 would carry q's values to the wrong ones."""
+    from flopy4.mf6.gwf import Welg
+
+    with pytest.raises(ValueError, match=r"period 1: aux 'conc' sets cells that differ"):
+        Welg(
+            auxiliary=["conc"],
+            q={0: np.array([-1.0, FILL_DNODATA])},
+            aux={1: {"conc": np.ones(2)}},
+        )
+
+
+def test_welg_carried_aux_other_cells():
+    """q given again in other cells, with AUX carried from before, is
+    rejected: MF6 carries AUX by position in the old list of cells."""
+    from flopy4.mf6.gwf import Welg
+
+    with pytest.raises(ValueError, match=r"period 1: q sets cells .* aux 'conc' was last given"):
+        Welg(
+            auxiliary=["conc"],
+            q={0: np.array([-1.0, FILL_DNODATA]), 1: np.array([FILL_DNODATA, -2.0])},
+            aux={0: {"conc": np.array([5.0, FILL_DNODATA])}},
+        )
+    # given again with q, it's fine
+    Welg(
+        auxiliary=["conc"],
+        q={0: np.array([-1.0, FILL_DNODATA]), 1: np.array([FILL_DNODATA, -2.0])},
+        aux={0: {"conc": np.array([5.0, FILL_DNODATA])}, 1: {"conc": np.ones(2)}},
+    )
+
+
+def test_rivg_sibling_other_cells():
+    """A stress field given in other cells than a sibling carried from
+    before is rejected, as is one missing a value in the block's cells."""
+    from flopy4.mf6.gwf import Rivg
+
+    one = np.array([1.0, FILL_DNODATA])
+    with pytest.raises(ValueError, match=r"period 1: stage sets cells .* cond was last given"):
+        Rivg(stage={0: one, 1: np.ones(2)}, cond={0: one}, rbot={0: one, 1: np.ones(2)})
+    with pytest.raises(ValueError, match=r"period 0: cond has no value in some of the cells"):
+        Rivg(stage={0: np.ones(2)}, cond={0: one}, rbot={0: np.ones(2)})
 
 
 def test_rivg_aux_period_multi_field_order_independent():

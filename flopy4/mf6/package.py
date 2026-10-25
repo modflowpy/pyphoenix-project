@@ -34,6 +34,7 @@ from flopy4.mf6.item import (
 from flopy4.mf6.item_table import ItemTable
 from flopy4.mf6.load_context import LoadContext
 from flopy4.mf6.period_arrays import (
+    check_grid_periods,
     dense,
     is_cleared,
     is_grid_package,
@@ -387,12 +388,15 @@ class Package(Component, ABC):
         is split by period (see ``flopy4.mf6.period_arrays``). In a grid
         package, a period with no stress in any cell is stored as ``None``,
         and aux can only be given in a period the stress array is active
-        in, including later periods it fills forward into."""
+        in, including later periods it fills forward into. A grid package's
+        periods must also read as MF6 reads them (see
+        `flopy4.mf6.period_arrays.check_grid_periods`)."""
         grid = is_grid_package(type(self))
         # one {kper: array-or-None} dict per non-fk stress field (RIVG has
         # several) -- kept separate, not merged, so a period counts as
         # active if any field is, not whichever field was declared last
         stress_periods: list[dict[int, Any]] = []
+        stress_by_name: dict[str, dict[int, Any]] = {}
         named: list = []
         for f in fields:
             if not f.metadata.get("fill_forward") or item_list_type(f.type) is not None:
@@ -439,6 +443,7 @@ class Package(Component, ABC):
             else:
                 periods = {k: _normalize(a, k) for k, a in (to_period_dict(value) or {}).items()}
                 stress_periods.append(periods)
+                stress_by_name[f.name] = periods
             self.__dict__[f.name] = periods
         for f, periods in named:
             key = f.metadata["fk"].rsplit(".", 1)[-1]
@@ -459,6 +464,8 @@ class Package(Component, ABC):
                     f"{f.name} given in periods {extra} with no stress arrays, "
                     "or a sibling stress field is explicitly cleared there"
                 )
+        if grid:
+            check_grid_periods(stress_by_name, named[0][1] if named else None)
 
     def _set_dim_from_rows(self, dim: str, nrows: int, bound: str | None = None) -> None:
         declared = getattr(self, dim)
@@ -960,9 +967,10 @@ class Package(Component, ABC):
 
         With ``fill_forward`` (the default), each period holds the values in
         effect then. Without it, periods the field doesn't give are filled
-        with ``FILL_DNODATA`` (floats) or ``FILL_INT64`` (integers). In a grid
-        package a given period replaces the previous one as a whole, so a
-        field missing from it is filled, not carried.
+        with ``FILL_DNODATA`` (floats) or ``FILL_INT64`` (integers). Each
+        field fills forward on its own, in a grid package too, as MF6's
+        loader carries an array a period block leaves out (see
+        ``flopy4.mf6.period_arrays``).
 
         Dynamically named arrays (aux) give ``{name: (nper, ...)}``. ``nper``
         defaults to the simulation's, else to one past the last given period.
@@ -974,22 +982,22 @@ class Package(Component, ABC):
         periods = self._period_dict(f)
         if not periods:
             return None
-        given = None
-        if is_grid_package(type(self)):
-            given = sorted({k for g in fields for k in (self._period_dict(g) or {})})
         if nper is None:
-            nper = self.resolve_dims("nper").get("nper") or max(given or periods) + 1
+            # a grid package's periods are its period blocks, over all fields
+            given = periods
+            if is_grid_package(type(self)):
+                given = {k for g in fields for k in (self._period_dict(g) or {})}
+            nper = self.resolve_dims("nper").get("nper") or max(given) + 1
         shape = period_shape(self, f)
         if not f.metadata.get("fk"):
-            return dense(periods, nper, fill_forward, given, shape)
+            return dense(periods, nper, fill_forward, shape=shape)
         names = list(dict.fromkeys(n for arrays in periods.values() for n in arrays))
         return {
             n: dense(
                 {k: arrays[n] for k, arrays in periods.items() if n in arrays},
                 nper,
                 fill_forward,
-                given,
-                shape,
+                shape=shape,
             )
             for n in names
         }

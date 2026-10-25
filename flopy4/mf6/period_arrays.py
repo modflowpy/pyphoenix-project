@@ -7,14 +7,23 @@ the same way, ``aux[kper][name]``.
 
 How a period fills forward depends on the package:
 
-- Grid packages (CHDG, WELG, ...; those with a ``readarraygrid`` option)
-  read a period as one unit. Every period block resets the boundary set, so
-  a field missing from a period that's given is empty, not filled forward. A
-  ``None`` period, ``q={3: None}``, is given with no stress: it clears every
-  boundary, as an empty period block does. An array that's entirely
-  ``FILL_DNODATA`` means the same, and is stored as ``None``.
 - Layer-array packages (RCHA, EVTA, SPCA) fill each array forward on its
-  own until it's given again.
+  own until it's given again. Each column has its own boundary, so a value
+  carried forward stays with its cell.
+- Grid packages (CHDG, WELG, ...; those with a ``readarraygrid`` option)
+  fill each array forward on its own too, as MF6's loader does, but their
+  boundaries are a packed list each period block rebuilds from its first
+  array, and an array a block leaves out keeps its values in the order of
+  the list it was last read with. So a value carried forward only stays
+  with its cell if the block's cells are the ones it was last read with.
+  ``check_grid_periods`` checks that, and that each array read after the
+  first has a value in every cell the first sets. A ``None`` period,
+  ``q={3: None}``, is given with no stress: it clears that field, and
+  every boundary if each stress field is cleared, as an empty period block
+  does. An array that's entirely ``FILL_DNODATA`` means the same, and is
+  stored as ``None``. (MF6's DFNs say a grid package's stress arrays are
+  required in each period block, and its aux arrays carry forward; flopy4
+  follows what the loader does instead, for now.)
 
 In layer-array packages a period's value can instead be a time-array
 series, by name (`TimeArraySeriesRef`), whose arrays MF6 interpolates in
@@ -89,6 +98,84 @@ def split_tas(periods: Mapping[int, Any]) -> tuple[dict[int, Any], dict[int, Any
     return arrays, refs
 
 
+def _cells(arr: Any) -> Optional[np.ndarray]:
+    """Where an array has a value (isn't ``FILL_DNODATA``), or None if that
+    can't be told without computing it (dask) or it isn't an array."""
+    if not isinstance(arr, np.ndarray):
+        return None
+    return np.asarray(arr != FILL_DNODATA)
+
+
+def _same_cells(a: np.ndarray, b: np.ndarray) -> bool:
+    shape = np.broadcast_shapes(a.shape, b.shape)
+    return np.array_equal(np.broadcast_to(a, shape), np.broadcast_to(b, shape))
+
+
+def _covers(arr: np.ndarray, cells: np.ndarray) -> bool:
+    shape = np.broadcast_shapes(arr.shape, cells.shape)
+    return bool(np.broadcast_to(arr, shape)[np.broadcast_to(cells, shape)].all())
+
+
+def check_grid_periods(
+    stress: Mapping[str, Mapping[int, Any]], aux: Optional[Mapping[int, Mapping[str, Any]]]
+) -> None:
+    """Check a grid package's periods read as MF6's grid-array loader
+    (``GridArrayLoadType``, Mf6FileGridArray.f90) reads them.
+
+    The loader keeps one packed list of boundaries. Each period block
+    rebuilds it from the first array read there (in the order written: the
+    stress fields as declared, then aux) with a value in any cell; arrays
+    read after that are taken at those cells only. An array a block leaves
+    out isn't read, so it keeps the values it had, in the order of the
+    list as it was when it was last read. So:
+
+    - an array read after the first must have a value in each of the
+      block's cells, or ``FILL_DNODATA`` becomes the value there, and
+    - an array a block leaves out must have been last read with the same
+      cells the block has, or its values land on the wrong cells.
+
+    A period a field is cleared in (None) isn't checked for that field, nor
+    is a field after it's cleared, until it's given again. Arrays that
+    aren't numpy (dask) aren't checked, nor are their periods.
+    """
+    aux = aux or {}
+    # each array's cells when it was last read: its values' order
+    read_at: dict[str, np.ndarray] = {}
+    active: dict[str, bool] = {}
+    for kper in sorted({k for p in stress.values() for k in p} | set(aux)):
+        block = [(n, p[kper]) for n, p in stress.items() if kper in p]
+        block += [(f"aux {n!r}", a) for n, a in aux.get(kper, {}).items()]
+        for name, arr in block:
+            active[name] = arr is not None
+        given = [(n, a, _cells(a)) for n, a in block if a is not None]
+        if any(c is None for _, _, c in given):
+            for name, _, _ in given:
+                read_at.pop(name, None)
+            continue
+        first = next(((n, c) for n, _, c in given if c.any()), None)
+        if first is None:
+            continue
+        first_name, cells = first
+        for name, arr, _ in given:
+            if name != first_name and not _covers(arr != FILL_DNODATA, cells):
+                raise ValueError(
+                    f"period {kper}: {name} has no value in some of the cells "
+                    f"{first_name} sets there; MF6 would take FILL_DNODATA as "
+                    "the value"
+                )
+        names = {n for n, _, _ in given}
+        for name, prev in read_at.items():
+            if name not in names and active.get(name) and not _same_cells(prev, cells):
+                raise ValueError(
+                    f"period {kper}: {first_name} sets cells that differ from "
+                    f"those {name} was last given with, and MF6 would carry "
+                    f"{name}'s values to the wrong cells; give {name} again in "
+                    f"period {kper}, or give {first_name} those same cells"
+                )
+        for name in names:
+            read_at[name] = cells
+
+
 def split_periods(value: Any) -> dict[int, Any]:
     """Split a dense ``(nper, ...)`` array into ``{kper: array}``.
 
@@ -151,7 +238,6 @@ def dense(
     periods: Mapping[int, Any],
     nper: int,
     fill_forward: bool = True,
-    given: Optional[list[int]] = None,
     shape: Optional[tuple[int, ...]] = None,
 ) -> np.ndarray:
     """Stack ``{kper: array}`` into a dense ``(nper, ...)`` array.
@@ -162,11 +248,8 @@ def dense(
 
     A period missing from ``periods`` holds the last value at or before it
     (``fill_forward``), or a fill value: ``FILL_DNODATA`` for floats and
-    ``FILL_INT64`` for integers. With ``given`` (a grid package's periods,
-    over all its fields), a period that's given but missing from ``periods``
-    gets the fill value instead: a grid period block replaces the whole period.
-    A ``None`` (cleared) period is filled too. Periods past ``nper`` are
-    dropped, with a warning.
+    ``FILL_INT64`` for integers. A ``None`` (cleared) period is filled too.
+    Periods past ``nper`` are dropped, with a warning.
     """
     if not periods:
         raise ValueError("no periods to stack")
@@ -187,7 +270,7 @@ def dense(
         raise ValueError("every period is one value, so no array gives the shape")
     fill = _fill_value(first)
     out = np.full((nper, *shape), fill, dtype=first.dtype)
-    starts = sorted(set(given or ()) | set(periods))
+    starts = sorted(periods)
     for i, kper in enumerate(starts):
         if kper >= nper:
             break

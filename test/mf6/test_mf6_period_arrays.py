@@ -73,12 +73,6 @@ def test_dense_without_fill_forward():
     np.testing.assert_array_equal(out, [[FILL_INT64] * 2, [1, 2], [FILL_INT64] * 2])
 
 
-def test_dense_given_period_replaces_whole_period():
-    # a grid period given (by another field) without this field is empty
-    out = dense({0: np.array([1.0])}, nper=4, given=[0, 2])
-    np.testing.assert_array_equal(out.ravel(), [1.0, 1.0, NODATA, NODATA])
-
-
 def test_welg_period_array_dense_input():
     q = np.full((3, 4), NODATA)
     q[0] = [NODATA, -1.0, NODATA, NODATA]
@@ -124,14 +118,15 @@ def test_dense_every_period_cleared():
         dense({0: None, 1: None}, nper=2)
 
 
-def test_welg_aux_missing_from_given_period_is_empty():
+def test_welg_aux_missing_from_given_period_carries():
+    # as MF6's loader carries an array a period block leaves out
     welg = Welg(
         auxiliary=["conc"],
-        q={0: np.array([-1.0, NODATA]), 1: np.array([NODATA, -2.0])},
+        q={0: np.array([-1.0, NODATA]), 1: np.array([-2.0, NODATA])},
         aux={0: {"conc": np.array([5.0, NODATA])}},
     )
     conc = welg.period_array("aux", nper=3)["conc"]
-    np.testing.assert_array_equal(conc[:, 0], [5.0, NODATA, NODATA])
+    np.testing.assert_array_equal(conc[:, 0], [5.0, 5.0, 5.0])
 
 
 def test_rcha_arrays_fill_forward_separately():
