@@ -1005,6 +1005,31 @@ def test_sfr_unconnected_reach_round_trip():
     assert structure_component(raw, Sfr, context=context).packagedata == sfr.packagedata
 
 
+def test_sfr_all_unconnected_reaches_round_trip():
+    """Every reach unconnected (no row has a real cellid, unlike
+    `test_sfr_unconnected_reach_round_trip`) is the case ItemTable's
+    columnar fast path used to drop the cellid column entirely, shifting
+    every later token left by one. A parent grid (not just another row's
+    cellid) is needed to know the width to write zeros with here."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Dis, Gwf, Sfr
+
+    reach = (1.0, 1.0, 1e-3, 0.0, 0.1, 0.0, 0.03)
+    gwf = Gwf(dis=Dis(nlay=1, nrow=1, ncol=1, top=1.0, botm=0.0))
+    sfr = Sfr(
+        parent=gwf,
+        packagedata=[(0, None, *reach, 0, 1.0, 0), (1, None, *reach, 0, 1.0, 0)],
+        connectiondata=[(0, ()), (1, ())],
+    )
+    raw = loads(dumps(unstructure_component(sfr)))
+    assert raw["PACKAGEDATA"][0][1:4] == [0, 0, 0]
+    assert raw["PACKAGEDATA"][1][1:4] == [0, 0, 0]
+    context = LoadContext(dims={"nlay": 1, "nrow": 1, "ncol": 1})
+    sfr2 = structure_component(raw, Sfr, context=context)
+    assert sfr2.packagedata == sfr.packagedata
+
+
 def test_cellid_no_cell_needs_allow_zero():
     from flopy4.mf6.gwf import Chd
 
