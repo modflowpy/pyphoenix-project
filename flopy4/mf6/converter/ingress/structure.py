@@ -19,11 +19,17 @@ from flopy4.mf6.component import Component, get_ftype
 from flopy4.mf6.item import (
     Item,
     RowContext,
+    _is_one_cellid,
+    _may_be_absent,
+    _plannable,
     conditional_fields,
     dim_lookup,
+    inline_dim,
+    is_cellid,
     item_list_type,
     item_list_words,
     ncelldim_from_dims,
+    package_sized_fields,
     parse_union_items,
     sized_by,
 )
@@ -157,15 +163,101 @@ def _read_open_close_values(vrow: list, context: LoadContext, dtype) -> np.ndarr
     return np.array(text.split(), dtype=dtype)
 
 
-def _resolve_open_close_rows(rows: list, context: LoadContext) -> list:
+def _binary_list_row_width(
+    item_cls: "type[Item]",
+    sizes: "Mapping[str, int] | None",
+    enabled: "frozenset[str]" = frozenset(),
+) -> "int | None":
+    """The trailing (non-cellid) value count for one binary list row of
+    `item_cls` -- its own plain fields, one each, plus any package-sized
+    one's (aux) width from `sizes` -- or None if its row layout isn't
+    simple and fixed enough for MF6's binary list reader
+    (``ListReaderModule%read_binary``) to support at all: a union, a
+    record, a flag/keyword, a file-child column, or a column counted by
+    another row's own field (DISV's icvert) rather than the package.
+    Boundnames are never read from a binary file (not even checked
+    against ``inamedbound``, per the Fortran source) -- skipped here too,
+    left at their default. A `when`-gated field (EVT's ``petm0``)
+    contributes nothing when its option is off; a package-sized field
+    (aux) whose dimension doesn't resolve (no ``AUXILIARY`` given)
+    contributes 0 the same way, as long as it may be absent, rather than
+    being rejected.
+    """
+    if not _plannable(item_cls):  # type: ignore[arg-type]  # lru_cache wants Hashable
+        return None
+    sized = set(package_sized_fields(item_cls))
+    width = 0
+    seen_cellid = False
+    for f in item_cls.fields():
+        if f.name == "boundname":
+            continue
+        if (when := f.metadata.get("when")) and when not in enabled:
+            continue  # option off, field isn't in the row at all
+        if is_cellid(f):
+            if not _is_one_cellid(f) or seen_cellid:
+                return None
+            seen_cellid = True
+            continue
+        if (dim := inline_dim(f)) is not None:
+            if f not in sized:
+                return None  # counted by another row's own field, not the package
+            n = (sizes or {}).get(dim)
+            if n is None:
+                if not _may_be_absent(f):
+                    return None
+                n = 0  # nothing sizes it (e.g. no AUXILIARY given) -- it's just not there
+            width += n
+            continue
+        if f.metadata.get("child") or f.metadata.get("_keyword") or f.metadata.get("tagged"):
+            return None
+        width += 1
+    return width if seen_cellid else None
+
+
+def _read_binary_list_rows(path: Path, ncelldim: int, width: int) -> list[list]:
+    """Read MF6's binary list format (``ListReaderModule%read_binary``,
+    ``src/Utilities/ListReader.f90``): stream/unformatted (``OpenSpec.f90``),
+    so no record markers -- each row is the cellid's components as 4-byte
+    ints (1-based, as the file gives them), then `width` 8-byte doubles
+    (the row's own fields, then aux, in that order), read until EOF. No
+    header to skip, unlike the binary-array format
+    (`_BINARY_ARRAY_HEADER`).
+    """
+    row_bytes = ncelldim * 4 + width * 8
+    data = path.read_bytes()
+    if row_bytes == 0 or len(data) % row_bytes != 0:
+        raise ValueError(
+            f"{path}: {len(data)} bytes isn't a whole number of {row_bytes}-byte "
+            f"binary list rows ({ncelldim} cellid value(s), {width} other value(s))"
+        )
+    rows = []
+    for start in range(0, len(data), row_bytes):
+        cellid = np.frombuffer(data, dtype="<i4", count=ncelldim, offset=start)
+        values = np.frombuffer(data, dtype="<f8", count=width, offset=start + ncelldim * 4)
+        rows.append([*cellid.tolist(), *values.tolist()])
+    return rows
+
+
+def _resolve_open_close_rows(
+    rows: list,
+    context: LoadContext,
+    item_cls: "type[Item] | tuple[type[Item], ...] | None" = None,
+    sizes: "Mapping[str, int] | None" = None,
+    enabled: "frozenset[str]" = frozenset(),
+) -> list:
     """A block's row data can itself be OPEN/CLOSE-redirected
     to an external file instead of written inline -- MF6 syntax:
-    ``BEGIN PERIOD 1 / OPEN/CLOSE <fname> / END PERIOD 1``. Same keyword as
-    griddata's OPEN/CLOSE control record, but a different mechanism: the
-    referenced file holds list rows, not a flat numeric array, so it's
-    parsed the same way an inline block's own content would be (wrapped in
-    a synthetic block and passed back through the block/token grammar) rather
-    than through `_read_open_close_values`.
+    ``BEGIN PERIOD 1 / OPEN/CLOSE <fname> [(BINARY)] / END PERIOD 1``. Same
+    keyword as griddata's OPEN/CLOSE control record, but a different
+    mechanism: an ASCII-referenced file holds list rows, not a flat
+    numeric array, so it's parsed the same way an inline block's own
+    content would be (wrapped in a synthetic block and passed back
+    through the block/token grammar) rather than through
+    `_read_open_close_values`. A binary-referenced file is decoded
+    directly into the same row-of-tokens shape instead (see
+    `_read_binary_list_rows`), which needs `item_cls` (a single class,
+    not a union), `sizes`, and `enabled` to know its row layout -- see
+    `_binary_list_row_width`.
 
     Detects that shape -- a block whose *only* content is one OPEN/CLOSE
     row -- and returns the referenced file's rows in its place; otherwise
@@ -179,6 +271,22 @@ def _resolve_open_close_rows(rows: list, context: LoadContext) -> list:
     if len(row) < 2:
         raise ValueError("OPEN/CLOSE control record missing a filename")
     path = context.resolve(_strip_quotes(str(row[1])))
+
+    if any(str(t).upper() in ("BINARY", "(BINARY)") for t in row[2:]):
+        if item_cls is None or isinstance(item_cls, tuple):
+            raise ValueError(f"{path}: flopy4 doesn't support binary list input here")
+        ncelldim = context.ncelldim(item_cls)
+        if not isinstance(ncelldim, int):
+            raise ValueError(
+                f"{path}: flopy4 doesn't support binary list input for "
+                f"{item_cls.__name__} without a single, known cellid width"
+            )
+        if (width := _binary_list_row_width(item_cls, sizes, enabled)) is None:
+            raise ValueError(
+                f"{path}: flopy4 doesn't support binary list input for "
+                f"{item_cls.__name__}'s row layout"
+            )
+        return _read_binary_list_rows(path, ncelldim, width)
 
     from flopy4.mf6.codec.reader import loads as _codec_loads
 
@@ -1141,7 +1249,7 @@ def structure_component(
         rows = raw_lower.get(block_name, [])
         if not rows:
             continue
-        rows = _resolve_open_close_rows(rows, context)
+        rows = _resolve_open_close_rows(rows, context, item_cls, sizes, enabled)
         row_list = _parse_rows(
             rows,
             item_cls,
@@ -1166,7 +1274,7 @@ def structure_component(
             prefix, *header = raw_name.split()
             if prefix.lower() != block_name or not header:
                 continue
-            rows = _resolve_open_close_rows(rows, context)
+            rows = _resolve_open_close_rows(rows, context, item_cls, sizes, enabled)
             items = _parse_rows(
                 rows,
                 item_cls,
@@ -1202,7 +1310,7 @@ def structure_component(
                     # an empty period block turns off every boundary
                     spd[kper] = []
                     continue
-                rows = _resolve_open_close_rows(rows, context)
+                rows = _resolve_open_close_rows(rows, context, period_item_cls, sizes, enabled)
                 row_list = _parse_rows(
                     rows,
                     period_item_cls,
