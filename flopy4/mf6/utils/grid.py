@@ -1386,6 +1386,38 @@ def to_local(x, y, xorigin=None, yorigin=None, angrot=None):
     return x, y
 
 
+def get_nn(cellid, **kwargs) -> int:
+    """
+    Convert a cell ID tuple to a flat node number (0-based).
+
+    Parameters
+    ----------
+    cellid : tuple
+        - 1-element: (node,) — unstructured or DISV node number
+        - 2-element: (layer, cell) — DISV (k, j)
+        - 3-element: (layer, row, col) — DIS (k, i, j)
+    **kwargs
+        Dimension sizes: ``ncpl`` for DISV, ``nrow``/``ncol`` for DIS.
+
+    Returns
+    -------
+    int
+        0-based flat node index.
+    """
+    ndim = len(cellid)
+    match ndim:
+        case 1:
+            return cellid[0]
+        case 2:
+            k, j = cellid
+            return k * kwargs["ncpl"] + j
+        case 3:
+            k, i, j = cellid
+            return k * kwargs["nrow"] * kwargs["ncol"] + i * kwargs["ncol"] + j
+        case _:
+            raise ValueError(f"Invalid cellid: {cellid}")
+
+
 def structured_centers(delr, delc, xorigin=None, yorigin=None, angrot=None) -> dict[str, Any]:
     """A structured grid's cell centres in its CRS: ``x`` on ``col`` and
     ``y`` on ``row``. Unrotated, they're world coordinates, offset by the
