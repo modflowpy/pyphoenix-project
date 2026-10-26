@@ -1386,6 +1386,45 @@ def to_local(x, y, xorigin=None, yorigin=None, angrot=None):
     return x, y
 
 
+def get_nn(cellid, **dims) -> int | np.ndarray:
+    """
+    Convert a cell ID (or many) to a flat node number (0-based).
+
+    Parameters
+    ----------
+    cellid : tuple or array-like
+        One cell ID, or an ``(n, width)`` array of them:
+        - 1-element: (node,) — node number (DISU, or any grid)
+        - 2-element: (layer, cell) — DISV (k, j)
+        - 3-element: (layer, row, col) — DIS (k, i, j)
+    **dims
+        Dimension sizes by their DFN names: ``nodes`` for DISU, ``nlay``
+        and ``ncpl`` for DISV, ``nlay``/``nrow``/``ncol`` for DIS. Others
+        are ignored, so a grid's ``dims`` can be passed as is.
+
+    Returns
+    -------
+    int or np.ndarray
+        0-based flat node index, or an array of them for many cell IDs.
+
+    Raises
+    ------
+    ValueError
+        If the cell ID isn't 1-3 elements, or is out of range.
+    """
+    cellid = np.asarray(cellid)
+    width = cellid.shape[-1] if cellid.ndim else 0
+    names = {1: ("nodes",), 2: ("nlay", "ncpl"), 3: ("nlay", "nrow", "ncol")}.get(width)
+    if names is None:
+        raise ValueError(f"Invalid cellid: {cellid.tolist()}")
+    missing = [n for n in names if n not in dims]
+    if missing:
+        raise ValueError(f"cellid {cellid.tolist()} needs dims {missing}")
+    shape = tuple(int(dims[n]) for n in names)
+    nn = np.ravel_multi_index(tuple(np.moveaxis(cellid, -1, 0)), shape)
+    return int(nn) if cellid.ndim == 1 else nn
+
+
 def structured_centers(delr, delc, xorigin=None, yorigin=None, angrot=None) -> dict[str, Any]:
     """A structured grid's cell centres in its CRS: ``x`` on ``col`` and
     ``y`` on ``row``. Unrotated, they're world coordinates, offset by the

@@ -12,7 +12,6 @@ from flopy4.mf6.utils.vertical import z_coords
 __all__ = [
     "StructuredGridWrapper",
     "read_binary_grid_file",
-    "get_nn",
 ]
 
 
@@ -263,35 +262,3 @@ def _read_disv_grb(grb) -> dict[str, Any]:
         "face_dimension": facedim,
         "crs": crs,
     }
-
-
-def get_nn(cellid, **kwargs) -> int:
-    """
-    Convert a cell ID tuple to a flat node number (0-based).
-
-    Parameters
-    ----------
-    cellid : tuple
-        - 1-element: (node,) — unstructured or DISV node number
-        - 2-element: (layer, cell) — DISV (k, j)
-        - 3-element: (layer, row, col) — DIS (k, i, j)
-    **kwargs
-        Dimension sizes: ``ncpl`` for DISV, ``nrow``/``ncol`` for DIS.
-
-    Returns
-    -------
-    int
-        0-based flat node index.
-    """
-    ndim = len(cellid)
-    match ndim:
-        case 1:
-            return cellid[0]
-        case 2:
-            k, j = cellid
-            return k * kwargs["ncpl"] + j
-        case 3:
-            k, i, j = cellid
-            return k * kwargs["nrow"] * kwargs["ncol"] + i * kwargs["ncol"] + j
-        case _:
-            raise ValueError(f"Invalid cellid: {cellid}")
