@@ -821,6 +821,38 @@ def test_typed_loads_tas_time_array(body, control):
     }
 
 
+def test_typed_loads_fortran_reals():
+    """A real in a form only Fortran takes -- a D exponent, or a signed
+    exponent with no letter -- reads where the value is a real, as MF6
+    reads it."""
+    from flopy4.mf6.codec.reader import loads_typed
+
+    result = loads_typed("BEGIN nonlinear\n  outer_dvclose 1.0-6\nEND nonlinear\n", "sln-ims")
+    assert result["nonlinear"]["outer_dvclose"] == 1e-6
+    result = loads_typed(
+        "BEGIN griddata\n  k\n  INTERNAL FACTOR 1d0\n    1.0+1 2 3\n"
+        "  k33\n    CONSTANT 2.5D-1\nEND griddata\n",
+        "gwf-npf",
+    )
+    assert result["griddata"]["k"]["control"]["factor"] == 1.0
+    assert result["griddata"]["k"]["data"].values.tolist() == [10.0, 2.0, 3.0]
+    assert result["griddata"]["k33"]["control"]["value"] == 0.25
+
+
+def test_typed_loads_fortran_real_forms_in_list_rows_as_words():
+    """A list row's values are untyped tokens, so a boundname like 1-2
+    stays a word; structuring reads a real column's (see fortran_float)."""
+    from flopy4.mf6.codec.reader import loads_typed
+
+    result = loads_typed(
+        "BEGIN options\n  boundnames\nEND options\n"
+        "BEGIN dimensions\n  maxbound 1\nEND dimensions\n"
+        "BEGIN period 1\n  1 1 1 1.0+1 1-2\nEND period\n",
+        "gwf-chd",
+    )
+    assert result["period 1"]["stress_period_data"] == [[1, 1, 1, "1.0+1", "1-2"]]
+
+
 def test_typed_loads_iso_datetime():
     from flopy4.mf6.codec.reader import loads_typed
 

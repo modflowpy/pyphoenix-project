@@ -409,3 +409,21 @@ scripts. Both are easy to reconstruct from `benchmarks/_ops.py`:
   `materialize_*(load_*(ws))` best-of-3 per loader;
 - the coverage check matches packages by filename and compares
   `MFArray.has_data()` with the flopy4 attribute.
+
+## In CI
+
+- **Weekly** (`.github/workflows/benchmark.yml`, Mondays, or by hand):
+  the `standard` and `large` tiers on `ubuntu-latest`. The job summary has
+  the runner's CPU and the `bench-report` Markdown; the run JSON and report
+  are kept 90 days as an artifact. `benchmarks/history.py` turns the runs
+  into history entries (flopy4's time per tier and operation, the ratio
+  flopy4 / flopy3, the cold start), which `github-action-benchmark` keeps
+  on the `bench-data` branch. The ratio is the number to watch: both
+  libraries run on the same runner, so it moves less than a time does
+  from one runner to the next. Alerts are at 130% and never fail the job.
+  Only scheduled runs, or manual ones on `develop` with `record`, add to
+  the history.
+- **On every push and PR** (`ci.yml`, `bench-smoke`): the smoke tier,
+  timed but not kept, so a broken benchmark shows up before the weekly
+  run. `--benchmark-disable` won't do for this: `benchmarks/conftest.py`
+  skips every benchmark under it.

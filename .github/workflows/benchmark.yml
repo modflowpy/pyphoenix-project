@@ -1,0 +1,120 @@
+name: Benchmarks
+# Load/write benchmarks, flopy4 vs. flopy3 (benchmarks/; see
+# docs/dev/load-benchmarks.md). Weekly, or by hand; never on push, since
+# a shared runner's timings are too noisy to gate a change on.
+#
+# The history lives on the `bench-data` branch (github-action-benchmark).
+# Make it once before the first recording run:
+#   git switch --orphan bench-data && git commit --allow-empty -m "benchmark history" && git push origin bench-data
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Mondays, 06:00 UTC
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch, tag or commit to benchmark (default: the one dispatched from)'
+        required: false
+        default: ''
+      tiers:
+        description: 'Tiers to run, space-separated (smoke, standard, large)'
+        required: false
+        default: 'standard large'
+      record:
+        description: 'Add the results to the history (only for develop)'
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  bench:
+    name: Benchmark
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: write  # to push the history
+    env:
+      TIERS: ${{ inputs.tiers || 'standard large' }}
+      # schedule runs on develop (the default branch); a manual run records
+      # only if asked to, and only from develop, so the history is one line
+      RECORD: ${{ github.event_name == 'schedule' || (inputs.record && inputs.ref == '' && github.ref == 'refs/heads/develop') }}
+    steps:
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Setup pixi
+        uses: prefix-dev/setup-pixi@v0.9.6
+        with:
+          pixi-version: v0.72.0
+          environments: dev
+          activate-environment: true
+
+      # models (the large tier's are ~300 MB) and DFNs; keyed on the tiers'
+      # models, so a change to the tiers downloads only what's new
+      - name: Cache models and DFNs
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/modflow-devtools
+          key: modflow-devtools-${{ runner.os }}-${{ hashFiles('benchmarks/models.toml') }}
+          restore-keys: modflow-devtools-${{ runner.os }}-
+
+      - name: Sync devtools
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          pixi run mf dfns sync
+          pixi run mf models sync || echo "::warning::models registry sync failed"
+
+      - name: Show machine
+        run: |
+          lscpu | grep -E 'Model name|^CPU\(s\)'
+          echo "**Runner:** $(lscpu | sed -n 's/^Model name: *//p'), $(nproc) CPUs" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Run benchmarks
+        run: |
+          mkdir -p bench-out
+          for tier in $TIERS; do
+            pixi run -e dev bench --bench-tier "$tier" --benchmark-json "bench-out/$tier.json"
+          done
+
+      - name: Report
+        if: always()
+        run: |
+          shopt -s nullglob
+          runs=(bench-out/*.json)
+          if [ ${#runs[@]} -eq 0 ]; then exit 0; fi
+          pixi run -e dev python benchmarks/report.py "${runs[@]}" -o bench-out/report.md
+          cat bench-out/report.md >> "$GITHUB_STEP_SUMMARY"
+          pixi run -e dev python benchmarks/history.py "${runs[@]}" -o bench-out/history.json
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmarks-${{ github.run_id }}
+          path: bench-out/
+          retention-days: 90
+
+      # Alerts are generous, since runners vary, and never fail the job:
+      # only a benchmark error does.
+      - name: Compare with history
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: flopy4 benchmarks
+          tool: customSmallerIsBetter
+          output-file-path: bench-out/history.json
+          gh-pages-branch: bench-data
+          benchmark-data-dir-path: .
+          github-token: ${{ github.token }}
+          auto-push: ${{ env.RECORD == 'true' }}
+          save-data-file: ${{ env.RECORD == 'true' }}
+          alert-threshold: '130%'
+          comment-on-alert: false
+          fail-on-alert: false
+          summary-always: true

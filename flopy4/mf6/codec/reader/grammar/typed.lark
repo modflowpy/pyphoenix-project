@@ -5,7 +5,7 @@
 // bare newline whenever the following line is indented.
 
 integer: SIGNED_INT | INT
-double: SIGNED_NUMBER | NUMBER
+double: SIGNED_NUMBER | NUMBER | FORTRAN_REAL
 number: SIGNED_NUMBER | NUMBER
 // A block header's period number (or utl-tas's time). Not `number`: its
 // reduce state merges with record rows' (see BARE_WORD), so the contextual
@@ -72,10 +72,14 @@ _token: word | number
 // them), as one token, so big files don't take a token per value. A line it
 // can't take whole lexes as a `record` or `_data_line` (basic.lark's `line`).
 // Not to be confused with NUMBER, one number.
+// A number may have a repeat count (`3*7`, three 7s), as MF6 reads an
+// array's values; `array_values` expands it (a list's rows can't have one).
+// The count is taken as a number's integer part, so its digits are only
+// scanned once.
 // A `record` that's one of these is all its rows. Possessive throughout:
 // a number's always followed by a separator or newline, so backtracking
 // into one can't match differently, and it's a third faster on big arrays.
-NUMBERS.3: /(?:[ \t,]*+[+-]?+(?:\d++(?:\.\d*+)?+|\.\d++)(?:[eEdD][+-]?+\d++)?+(?:[ \t,]++[+-]?+(?:\d++(?:\.\d*+)?+|\.\d++)(?:[eEdD][+-]?+\d++)?+)*+[ \t,]*+\r?\n(?:[ \t,]*+(?:[#!][^\n]*+)?\r?\n)*+)++/
+NUMBERS.3: /(?:[ \t,]*+[+-]?+(?:\d++(?:\*[+-]?+(?:\d++(?:\.\d*+)?+|\.\d++)|\.\d*+)?+|\.\d++)(?:[eEdD][+-]?+\d++)?+(?:[ \t,]++[+-]?+(?:\d++(?:\*[+-]?+(?:\d++(?:\.\d*+)?+|\.\d++)|\.\d*+)?+|\.\d++)(?:[eEdD][+-]?+\d++)?+)*+[ \t,]*+\r?\n(?:[ \t,]*+(?:[#!][^\n]*+)?\r?\n)*+)++/
 // Consecutive lines of plain words and numbers (plus blank and
 // comment-only lines after them), as one token, like NUMBERS for rows
 // that aren't only numbers (SFR's `1 inflow 0.0`). A word is a BARE_WORD
@@ -126,3 +130,9 @@ INT: /\d+(?![^\s,#!])/
 SIGNED_INT: /[+-]\d+(?![^\s,#!])/
 NUMBER: /(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?(?![^\s,#!])/
 SIGNED_NUMBER: /[+-](\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?(?![^\s,#!])/
+// A real in a form only Fortran takes, as MF6 reads any real: a D exponent,
+// or a signed exponent with no letter (`1.0+1` = 10.0). Only a `double`
+// takes one, where the value is a real: in a list row's `token`, a boundname
+// like `1-2` stays a word, and structuring reads a real column's value (see
+// `fortran_float`).
+FORTRAN_REAL: /[+-]?(\d+(\.\d*)?|\.\d+)([dD][+-]?\d+|[+-]\d+)(?![^\s,#!])/

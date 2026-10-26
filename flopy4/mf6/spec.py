@@ -18,6 +18,7 @@ from flopy4.mf6._types import (
     FloatArrayLike,
     IntArrayLike,
     TimeArraySeriesRef,
+    to_double,
     to_ts_value,
     to_ts_values,
 )
@@ -207,6 +208,8 @@ def double(*, time_series: bool = False, **kwargs: Unpack[FieldKwargs]) -> Any:
     """A double. A time series one may name a time series instead."""
     if time_series:
         _ts_converter(kwargs, to_ts_value)
+    else:
+        _convert_first(kwargs, to_double)
     return _field("double", kwargs, time_series=time_series)
 
 

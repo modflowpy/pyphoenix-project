@@ -1,3 +1,4 @@
+import re
 import types
 import typing
 from pathlib import Path
@@ -25,6 +26,28 @@ def parse_number(value: str) -> int | float:
             return int(value)
     except ValueError:
         return float(value)
+
+
+# A real with a signed exponent but no letter, e.g. ``1.0+1`` (= 10.0).
+_BARE_EXPONENT = re.compile(r"([+-]?(?:\d+\.?\d*|\.\d+))([+-]\d+)")
+_D_EXPONENT = str.maketrans("dD", "ee")
+
+
+def fortran_float(value: str) -> float:
+    """A real as Fortran reads one (an ``F`` edit descriptor's input), as
+    MF6 reads every real: also with a ``D`` exponent, or a signed exponent
+    with no letter (``1.0+1`` = 10.0, as Fortran writes a three-digit
+    exponent: ``0.1234+100``)."""
+    try:
+        return float(value)
+    except ValueError:
+        pass
+    if m := _BARE_EXPONENT.fullmatch(value):
+        return float(f"{m[1]}e{m[2]}")
+    try:
+        return float(value.translate(_D_EXPONENT))
+    except ValueError:
+        raise ValueError(f"could not convert string to float: {value!r}") from None
 
 
 def is_union(obj):

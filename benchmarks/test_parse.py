@@ -17,6 +17,8 @@ failing loudly if any listed file no longer parses.
 Benchmarks (each parametrized by parser, ``basic`` or ``typed``):
 
 - `test_parse` -- Lark lex + parse only; where a grammar change shows up.
+  The basic parser transforms as it parses (from bytes, as a load
+  does), so for it this is parse + transform.
 - `test_parse_transform` -- parse plus the Lark transformer, i.e.
   ``loads_basic`` / ``loads_typed``.
 - `test_typed_grammar_build` -- cold construction of the typed parsers,
@@ -51,7 +53,7 @@ class Corpus(NamedTuple):
 def corpus(request, tmp_path_factory) -> Corpus:
     from modflow_devtools.models import copy_to
 
-    from flopy4.mf6.codec.reader import BASIC_PARSER, loads_basic, loads_typed
+    from flopy4.mf6.codec.reader import loads_basic, loads_typed
     from flopy4.mf6.codec.reader.parser import get_typed_parser
 
     manifest: Path | None = request.config.getoption("bench_parse_manifest")
@@ -78,7 +80,6 @@ def corpus(request, tmp_path_factory) -> Corpus:
                         continue
                     text = path.read_text()
                     try:
-                        BASIC_PARSER.parse(text)
                         get_typed_parser(dfn_name).parse(text)
                         loads_basic(text)
                         loads_typed(text, dfn_name)
@@ -100,10 +101,10 @@ def corpus(request, tmp_path_factory) -> Corpus:
 
 
 def _parse_basic(corpus: Corpus) -> None:
-    from flopy4.mf6.codec.reader import BASIC_PARSER
+    from flopy4.mf6.codec.reader import _parse_basic as parse
 
     for _, text in corpus.files:
-        BASIC_PARSER.parse(text)
+        parse(text.encode(), "utf-8")
 
 
 def _parse_typed(corpus: Corpus) -> None:
