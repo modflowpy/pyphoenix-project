@@ -7,14 +7,17 @@ the same way, ``aux[kper][name]``.
 
 How a period fills forward depends on the package:
 
-- Grid packages (CHDG, WELG, ...; those with a ``readarraygrid`` option)
-  read a period as one unit. Every period block resets the boundary set, so
-  a field missing from a period that's given is empty, not filled forward. A
-  ``None`` period, ``q={3: None}``, is given with no stress: it clears every
-  boundary, as an empty period block does. An array that's entirely
-  ``FILL_DNODATA`` means the same, and is stored as ``None``.
 - Layer-array packages (RCHA, EVTA, SPCA) fill each array forward on its
   own until it's given again.
+- Grid packages (CHDG, WELG, ...; those with a ``readarraygrid`` option)
+  do too, as MF6's loader does, but MF6 keeps a period's values only at its
+  active cells, so a filled-forward array must match them (``check_grid_periods``).
+  A ``None`` period, ``q={3: None}``, clears every boundary, as an empty
+  period block does, so each stress field given in that period must be
+  ``None``, and given again before any later period with active cells. An
+  array that's entirely ``FILL_DNODATA`` means the same, and is stored as
+  ``None``. (The DFNs say stress arrays are required in each period block
+  and only aux fills forward; flopy4 follows the loader for now.)
 
 In layer-array packages a period's value can instead be a time-array
 series, by name (`TimeArraySeriesRef`), whose arrays MF6 interpolates in
@@ -89,6 +92,65 @@ def split_tas(periods: Mapping[int, Any]) -> tuple[dict[int, Any], dict[int, Any
     return arrays, refs
 
 
+def check_grid_periods(
+    stress: Mapping[str, Mapping[int, Any]], aux: Optional[Mapping[int, Mapping[str, Any]]]
+) -> None:
+    """Check a grid package's periods read as MF6's grid-array loader reads them.
+
+    In each period block, the first array written (stress fields as declared,
+    then aux) with a value in any cell sets the active cells, and MF6 keeps
+    values only there. So each other array in the block needs a value in every
+    active cell, and an array filled forward from an earlier block needs the same
+    active cells it was last given with. A clear (None) must clear every
+    stress field given in its block, and a cleared field must be given again
+    before a later block with active cells. Blocks with dask arrays aren't
+    checked.
+    """
+    last: dict[str, np.ndarray] = {}  # active cells each array was last given with
+    cleared: set[str] = set()  # stress fields cleared and not given since
+    for kper in sorted({k for p in stress.values() for k in p} | set(aux or {})):
+        block = {n: p[kper] for n, p in stress.items() if kper in p}
+        block |= {f"aux {n!r}": a for n, a in (aux or {}).get(kper, {}).items()}
+        for name in block:
+            last.pop(name, None)
+        stress_given = {n for n in stress if kper in stress[n]}
+        nones = {n for n in stress_given if block[n] is None}
+        if nones and nones != stress_given:
+            raise ValueError(
+                f"period {kper}: {', '.join(sorted(nones))} cleared (None) but "
+                f"{', '.join(sorted(stress_given - nones))} given; MF6 can't clear "
+                "one field, so clear all of them or give each an array"
+            )
+        cleared = (cleared - stress_given) | nones
+        given = {n: a != FILL_DNODATA for n, a in block.items() if a is not None}
+        if not all(isinstance(h, np.ndarray) for h in given.values()):
+            continue
+        first, active = next(((n, h) for n, h in given.items() if h.any()), (None, None))
+        if active is None:
+            continue
+        if cleared:
+            raise ValueError(
+                f"period {kper}: {', '.join(sorted(cleared))} cleared earlier and "
+                "not given again; MF6 would fill its old values forward"
+            )
+        for name, has in given.items():
+            has, act = np.broadcast_arrays(has, active)
+            if not has[act].all():
+                raise ValueError(
+                    f"period {kper}: {name} has no value in some of the cells "
+                    f"{first} sets; MF6 would read FILL_DNODATA there"
+                )
+        for name, cells in last.items():
+            cells, act = np.broadcast_arrays(cells, active)
+            if not np.array_equal(cells, act):
+                raise ValueError(
+                    f"period {kper}: {first} sets other cells than {name} was "
+                    f"last given with, so MF6 would fill {name} forward to the "
+                    f"wrong cells; give {name} again in period {kper}"
+                )
+        last |= dict.fromkeys(given, active)
+
+
 def split_periods(value: Any) -> dict[int, Any]:
     """Split a dense ``(nper, ...)`` array into ``{kper: array}``.
 
@@ -151,7 +213,6 @@ def dense(
     periods: Mapping[int, Any],
     nper: int,
     fill_forward: bool = True,
-    given: Optional[list[int]] = None,
     shape: Optional[tuple[int, ...]] = None,
 ) -> np.ndarray:
     """Stack ``{kper: array}`` into a dense ``(nper, ...)`` array.
@@ -162,11 +223,8 @@ def dense(
 
     A period missing from ``periods`` holds the last value at or before it
     (``fill_forward``), or a fill value: ``FILL_DNODATA`` for floats and
-    ``FILL_INT64`` for integers. With ``given`` (a grid package's periods,
-    over all its fields), a period that's given but missing from ``periods``
-    gets the fill value instead: a grid period block replaces the whole period.
-    A ``None`` (cleared) period is filled too. Periods past ``nper`` are
-    dropped, with a warning.
+    ``FILL_INT64`` for integers. A ``None`` (cleared) period is filled too.
+    Periods past ``nper`` are dropped, with a warning.
     """
     if not periods:
         raise ValueError("no periods to stack")
@@ -187,7 +245,7 @@ def dense(
         raise ValueError("every period is one value, so no array gives the shape")
     fill = _fill_value(first)
     out = np.full((nper, *shape), fill, dtype=first.dtype)
-    starts = sorted(set(given or ()) | set(periods))
+    starts = sorted(periods)
     for i, kper in enumerate(starts):
         if kper >= nper:
             break

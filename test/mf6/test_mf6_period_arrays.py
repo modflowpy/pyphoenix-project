@@ -60,7 +60,7 @@ def test_to_named_period_dict_by_period_form():
     np.testing.assert_array_equal(periods[2]["conc"], [1.0])
 
 
-def test_dense_carries_forward():
+def test_dense_fills_forward():
     out = dense({1: np.array([1.0, 2.0]), 3: np.array([3.0, 4.0])}, nper=5)
     np.testing.assert_array_equal(out[0], [NODATA, NODATA])
     np.testing.assert_array_equal(out[1:3], [[1.0, 2.0]] * 2)
@@ -71,12 +71,6 @@ def test_dense_without_fill_forward():
     out = dense({1: np.array([1, 2])}, nper=3, fill_forward=False)
     assert out.dtype == np.int64
     np.testing.assert_array_equal(out, [[FILL_INT64] * 2, [1, 2], [FILL_INT64] * 2])
-
-
-def test_dense_given_period_replaces_whole_period():
-    # a grid period given (by another field) without this field is empty
-    out = dense({0: np.array([1.0])}, nper=4, given=[0, 2])
-    np.testing.assert_array_equal(out.ravel(), [1.0, 1.0, NODATA, NODATA])
 
 
 def test_welg_period_array_dense_input():
@@ -106,7 +100,7 @@ def test_welg_all_nodata_period_stored_as_none():
 
 
 def test_dense_input_cleared_period_is_none():
-    """In the dense form, an all-DNODATA period isn't given (it carries
+    """In the dense form, an all-DNODATA period isn't given (it fills
     forward); a grid package stores only the periods it's given."""
     welg = Welg(q=np.array([[-1.0, NODATA], [NODATA, NODATA], [NODATA, -2.0]]))
     assert list(welg.q) == [0, 2]
@@ -124,14 +118,15 @@ def test_dense_every_period_cleared():
         dense({0: None, 1: None}, nper=2)
 
 
-def test_welg_aux_missing_from_given_period_is_empty():
+def test_welg_aux_missing_from_given_period_fills_forward():
+    # as MF6's loader fills forward an array a period block leaves out
     welg = Welg(
         auxiliary=["conc"],
-        q={0: np.array([-1.0, NODATA]), 1: np.array([NODATA, -2.0])},
+        q={0: np.array([-1.0, NODATA]), 1: np.array([-2.0, NODATA])},
         aux={0: {"conc": np.array([5.0, NODATA])}},
     )
     conc = welg.period_array("aux", nper=3)["conc"]
-    np.testing.assert_array_equal(conc[:, 0], [5.0, NODATA, NODATA])
+    np.testing.assert_array_equal(conc[:, 0], [5.0, 5.0, 5.0])
 
 
 def test_rcha_arrays_fill_forward_separately():
@@ -168,7 +163,7 @@ def test_welg_xarray_round_trip_keeps_periods():
     assert loaded.q[2] is None
 
 
-def test_rcha_to_dataarray_carries_forward():
+def test_rcha_to_dataarray_fills_forward():
     rcha = Rcha(recharge={0: np.array([0.1, 0.2]), 2: np.array([0.3, 0.4])})
     da = rcha.to_dataarray("recharge")
     assert da.dims == ("per", "node")
