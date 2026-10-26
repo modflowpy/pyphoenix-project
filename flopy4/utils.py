@@ -18,8 +18,7 @@ def empty_if_none(value: Any) -> dict:
 
 
 def parse_number(value: str) -> int | float:
-    """An int if the string is one, else a real as Fortran reads one
-    (see `fortran_float`)."""
+    """An int if the string is one, else a float (see `fortran_float`)."""
     if "." in value or "e" in value or "E" in value:
         return fortran_float(value)
     try:
@@ -35,10 +34,8 @@ D_EXPONENT = str.maketrans("dD", "ee")
 
 
 def fortran_float(value: str) -> float:
-    """A real as Fortran reads one (an ``F`` edit descriptor's input), as
-    MF6 reads every real: also with a ``D`` exponent, or a signed exponent
-    with no letter (``1.0+1`` = 10.0, as Fortran writes a three-digit
-    exponent: ``0.1234+100``)."""
+    """A real as Fortran reads one: also with a ``D`` exponent, or a
+    signed exponent with no letter (``1.0+1`` = 10.0)."""
     try:
         return float(value)
     except ValueError:

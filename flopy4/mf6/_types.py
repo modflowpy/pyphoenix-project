@@ -75,8 +75,8 @@ class TimeSeriesRef:
 
 def to_ts_value(v: Any) -> Any:
     """attrs converter for a time-series column: a name (a string that
-    isn't a number) to a `TimeSeriesRef`, a numeric string (as MF6 reads
-    one: see `fortran_float`) to a float, anything else as is."""
+    isn't a number) to a `TimeSeriesRef`, a numeric string to a float,
+    anything else as is."""
     if not isinstance(v, str):
         return v
     try:
@@ -86,8 +86,8 @@ def to_ts_value(v: Any) -> Any:
 
 
 def to_double(v: Any) -> Any:
-    """attrs converter for a double: a numeric string (as MF6 reads one:
-    see `fortran_float`) to a float, anything else as is."""
+    """attrs converter for a double: a numeric string to a float,
+    anything else as is."""
     if not isinstance(v, str):
         return v
     try:

@@ -1,16 +1,10 @@
-"""Benchmark runs to history entries, for the weekly benchmark job.
-
-Writes the entries ``github-action-benchmark`` keeps a history of (its
-``customSmallerIsBetter`` format), from saved timing runs::
+"""Benchmark runs to ``github-action-benchmark`` entries
+(``customSmallerIsBetter``)::
 
     python benchmarks/history.py RUN [RUN ...] -o OUT
 
-Per tier, for each whole-tier operation (load, load + materialize,
-write): flopy4's time, and the ratio flopy4 / flopy3. And the cold start's.
-The ratio is the headline: both libraries run on the same runner in the
-same job, so it's steadier than a time across runners. It's flopy4 /
-flopy3, not the report's flopy3 / flopy4, so that smaller is better, as
-the history's alerts assume.
+Per tier and operation: flopy4's time and the ratio flopy4 / flopy3
+(inverted from the report's, so smaller is better). Plus the cold start.
 """
 
 from __future__ import annotations

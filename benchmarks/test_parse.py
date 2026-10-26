@@ -17,8 +17,7 @@ failing loudly if any listed file no longer parses.
 Benchmarks (each parametrized by parser, ``basic`` or ``typed``):
 
 - `test_parse` -- Lark lex + parse only; where a grammar change shows up.
-  The basic parser transforms as it parses (from bytes, as a load
-  does), so for it this is parse + transform.
+  The basic parser transforms as it parses, so for it this includes that.
 - `test_parse_transform` -- parse plus the Lark transformer, i.e.
   ``loads_basic`` / ``loads_typed``.
 - `test_typed_grammar_build` -- cold construction of the typed parsers,

@@ -1,11 +1,5 @@
 name: Benchmarks
-# Load/write benchmarks, flopy4 vs. flopy3 (benchmarks/; see
-# docs/dev/load-benchmarks.md). Weekly, or by hand; never on push, since
-# a shared runner's timings are too noisy to gate a change on.
-#
-# The history lives on the `bench-data` branch (github-action-benchmark).
-# Make it once before the first recording run:
-#   git switch --orphan bench-data && git commit --allow-empty -m "benchmark history" && git push origin bench-data
+# History is kept on the bench-data branch (see docs/dev/load-benchmarks.md)
 on:
   schedule:
     - cron: '0 6 * * 1'  # Mondays, 06:00 UTC
@@ -38,8 +32,6 @@ jobs:
       contents: write  # to push the history
     env:
       TIERS: ${{ inputs.tiers || 'standard large' }}
-      # schedule runs on develop (the default branch); a manual run records
-      # only if asked to, and only from develop, so the history is one line
       RECORD: ${{ github.event_name == 'schedule' || (inputs.record && inputs.ref == '' && github.ref == 'refs/heads/develop') }}
     steps:
 
@@ -55,8 +47,6 @@ jobs:
           environments: dev
           activate-environment: true
 
-      # models (the large tier's are ~300 MB) and DFNs; keyed on the tiers'
-      # models, so a change to the tiers downloads only what's new
       - name: Cache models and DFNs
         uses: actions/cache@v4
         with:
@@ -101,8 +91,6 @@ jobs:
           path: bench-out/
           retention-days: 90
 
-      # Alerts are generous, since runners vary, and never fail the job:
-      # only a benchmark error does.
       - name: Compare with history
         uses: benchmark-action/github-action-benchmark@v1
         with:

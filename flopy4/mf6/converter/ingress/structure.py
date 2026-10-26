@@ -118,13 +118,8 @@ def _strip_quotes(fname: str) -> str:
 
 
 def _read_open_close_values(vrow: list, context: LoadContext, dtype, length: int) -> np.ndarray:
-    """Read an ``OPEN/CLOSE <fname> [(BINARY)] [FACTOR <f>] [IPRN <i>]``
-    griddata control record's referenced file: its first ``length``
-    values, as MF6 reads them.
-
-    The file's read by `external.read_array_file`. FACTOR is applied by
-    the caller, `_read_control_record`.
-    """
+    """The first ``length`` values of an ``OPEN/CLOSE`` control record's
+    file. FACTOR is applied by the caller."""
     tokens = [str(t) for t in vrow[1:]]
     if not tokens:
         raise ValueError("OPEN/CLOSE control record missing a filename")
@@ -217,10 +212,9 @@ def _resolve_open_close_rows(
     keyword as griddata's OPEN/CLOSE control record, but a different
     mechanism: an ASCII-referenced file holds list rows, not a flat
     numeric array, so it's parsed as an inline block's own content would
-    be (`external.read_list_file`) rather than through
-    `_read_open_close_values`. A binary-referenced file is decoded
-    directly into the same row-of-tokens shape instead (see
-    `external.read_binary_list_file`), which needs `item_cls` (a single class,
+    be rather than through `_read_open_close_values`. A binary-referenced
+    file is decoded directly into the same row-of-tokens shape instead,
+    which needs `item_cls` (a single class,
     not a union), `sizes`, and `enabled` to know its row layout -- see
     `_binary_list_row_spec`.
 
@@ -274,7 +268,7 @@ def _numeric_prefix(row: list) -> list:
     for tok in row:
         if not isinstance(tok, (int, float)):
             try:
-                fortran_float(tok)  # e.g. 1.0+1, which isn't a token's number
+                fortran_float(tok)  # e.g. 1.0+1
             except (TypeError, ValueError):
                 break
         out.append(tok)
@@ -359,11 +353,8 @@ def _read_control_record(
     row index to resume from. INTERNAL's (and a bare, keyword-less data
     row's) values commonly wrap across multiple physical lines for a large
     array -- each is one row here -- so both keep consuming rows until
-    ``length`` values are collected, rather than assuming exactly one row,
-    and stop at a row that has no numbers (the next field's, or control
-    record), too few values being an error, as in MF6. Values are read as
-    MF6 reads them, inline or from a file: see `array_values`. ``name``,
-    the array's field, is for errors.
+    ``length`` values are collected, rather than assuming exactly one row.
+    ``name`` prefixes errors.
     """
     vrow = rows[i]
     kind = _leading_word(vrow)

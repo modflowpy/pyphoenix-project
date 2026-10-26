@@ -7,12 +7,7 @@ from lark.lexer import BasicLexer, ContextualLexer, LexerState, LexerThread, Lin
 
 _LALR = "lalr"
 _GRAMMAR_MODULE = Path(__file__).parent / "grammar"
-# Lark's analysis of each grammar, kept between processes (a typed grammar
-# builds in ~40 ms, loads in ~5), beside the grammars, as Python keeps
-# bytecode in __pycache__. Lark's own default is the shared temp directory,
-# where another user could leave a pickle for it to load. Lark rebuilds and
-# rewrites one whose grammar, imported grammars, or Lark or Python version
-# changed, and builds without one it can't read or write.
+# Not Lark's default (the shared temp dir), where anyone could plant a pickle.
 _CACHE_DIR = _GRAMMAR_MODULE / "__lark_cache__"
 
 

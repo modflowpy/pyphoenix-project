@@ -122,9 +122,6 @@ jobs:
           pixi run python -m ipykernel install --name flopy4 --user
           pixi run test
 
-  # The smoke tier, timed but not kept, so the benchmarks (run weekly, see
-  # benchmark.yml) can't break unnoticed in between. Not --benchmark-disable:
-  # benchmarks/conftest.py skips them all under it.
   bench-smoke:
     name: Benchmarks (smoke tier)
     needs:

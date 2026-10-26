@@ -158,33 +158,17 @@ def number_values(text: str) -> np.ndarray:
     return array_values(without_comments(text))
 
 
-# A null value in Fortran list-directed input: a comma with only
-# whitespace between it and another comma (or the start: see
-# `_null_value`). Starting with a literal comma, the search skips to
-# commas, many times faster than with `(?:^|,)`.
+# A null value: two commas with only whitespace between them.
 _NULL = re.compile(r",\s*,")
 
 
 def array_values(
     text: str, dtype=np.float64, count: int | None = None, source: object = ""
 ) -> np.ndarray:
-    """An array's values from its text, as MF6 reads an INTERNAL or
-    OPEN/CLOSE text array: Fortran list-directed input
-    (``read(unit, *) (arr(j), j=1, n)`` in ``ArrayReaders.f90`` and IDM's
-    ``ArrayRead/*Reader.f90``). The first ``count`` of them, or all.
-
-    That means values separated by whitespace or commas, across any
-    number of lines; ``D`` exponents and exponents with no letter
-    (``1.0+1``) for reals; repeat counts (``3*7``); a ``/`` ending the
-    read; and anything after the first ``count`` values ignored. Not
-    comments: MF6 rejects them, as it does ``;`` and quotes. (NUMBERS
-    allows comment-only lines; drop them first, with `without_comments`.)
-
-    Errors where MF6 does -- too few values, or a value that isn't a
-    number of ``dtype`` -- and for a null value (``1,,3`` or ``2*``),
-    which MF6 leaves as whatever the array held before. ``source``
-    (a file, or a field) prefixes the error.
-    """
+    """An array's values (the first ``count``, or all), read as MF6 reads
+    them (Fortran list-directed input): repeat counts, ``D`` exponents,
+    ``/`` ending the read. Comments aren't allowed, as in MF6. ``source``
+    prefixes errors."""
     if "/" in text:
         text = text[: text.index("/")]
     integer = np.dtype(dtype).kind in "iu"
@@ -222,8 +206,7 @@ def _prefix(source: object) -> str:
 
 
 def _expand_repeats(tokens: list[str], count: int | None, source: object) -> list[str]:
-    """``tokens`` with each repeat count ``r*c`` written out as ``r``
-    copies of ``c``, up to ``count`` values."""
+    """``tokens`` with each ``r*c`` expanded, up to ``count`` values."""
     out: list[str] = []
     for tok in tokens:
         if count is not None and len(out) >= count:
@@ -241,8 +224,7 @@ def _expand_repeats(tokens: list[str], count: int | None, source: object) -> lis
 
 
 def _fortran_number(token: str, integer: bool, source: object) -> int | float:
-    """A value numpy wouldn't take, read as Fortran does (see
-    `fortran_float`)."""
+    """A value numpy can't parse, read as Fortran does."""
     try:
         return int(token) if integer else fortran_float(token)
     except ValueError:
