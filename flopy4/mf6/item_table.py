@@ -20,7 +20,7 @@ import attrs
 import numpy as np
 
 from flopy4.mf6._types import to_ts_value, to_ts_values
-from flopy4.mf6.codec.reader.transformer.rows import _number, without_comments
+from flopy4.mf6.codec.reader.transformer.rows import without_comments
 from flopy4.mf6.constants import FILL_INT64
 from flopy4.mf6.item import (
     Item,
@@ -36,6 +36,7 @@ from flopy4.mf6.item import (
     number_kind,
 )
 from flopy4.spec import is_array
+from flopy4.utils import parse_number
 
 
 def _default(f: attrs.Attribute) -> Any:
@@ -543,7 +544,7 @@ def _columns(
     """Rows' fields as columns, laid out by the first row (see
     `item._spans`), or None if a field doesn't convert by column."""
     try:
-        spans = _spans(item_cls, [_number(v) for v in first], context)
+        spans = _spans(item_cls, [parse_number(v) for v in first], context)
     except ValueError:  # no layout: `Item.from_rows` says so
         return None
     if spans is None:

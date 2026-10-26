@@ -7,7 +7,7 @@ from typing import NamedTuple
 
 import numpy as np
 
-from flopy4.utils import fortran_float
+from flopy4.utils import D_EXPONENT, fortran_float, parse_number
 
 
 class Span(NamedTuple):
@@ -55,7 +55,7 @@ class NumberRows(Sequence):
             # blank and comment-only lines aren't rows. (A comment's text
             # may have changed in `text` -- it's skipped.)
             self._rows = [
-                [_number(v) for v in values]
+                [parse_number(v) for v in values]
                 for line in self.text.split("\n")
                 if (values := line.split()) and values[0][0] not in "#!"
             ]
@@ -135,13 +135,6 @@ def parts(rows: Sequence) -> list:
     return list(rows)
 
 
-def _number(value: str) -> int | float:
-    """`parse_number` for a value NUMBERS took, `D`s already `E`."""
-    if "." in value or "e" in value or "E" in value:
-        return float(value)
-    return int(value)
-
-
 def without_comments(text: str) -> str:
     """The text without its comment-only lines (NUMBERS allows them)."""
     if "#" not in text and "!" not in text:
@@ -161,7 +154,6 @@ def number_values(text: str) -> np.ndarray:
 # `_null_value`). Starting with a literal comma, the search skips to
 # commas, many times faster than with `(?:^|,)`.
 _NULL = re.compile(r",\s*,")
-_D_EXPONENT = str.maketrans("dD", "ee")
 
 
 def array_values(
@@ -188,7 +180,7 @@ def array_values(
         text = text[: text.index("/")]
     integer = np.dtype(dtype).kind in "iu"
     if not integer and ("d" in text or "D" in text):
-        text = text.translate(_D_EXPONENT)
+        text = text.translate(D_EXPONENT)
     if "," in text:
         if (at := _null_value(text)) and (count is None or at <= count):
             raise ValueError(f"{_prefix(source)}null value (empty between commas) at value {at}")

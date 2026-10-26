@@ -18,7 +18,7 @@ _NUMBER = re.compile(r"[+-]?(\d+(\.\d*)?|\.\d+)([eEdD][+-]?\d+)?")
 def _value(value: str) -> str | int | float:
     """A token's value: a number if it's one, else the word."""
     if _NUMBER.fullmatch(value):
-        return parse_number(value.replace("d", "e").replace("D", "E"))
+        return parse_number(value)
     return value
 
 
