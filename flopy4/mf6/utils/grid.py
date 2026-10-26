@@ -1386,36 +1386,43 @@ def to_local(x, y, xorigin=None, yorigin=None, angrot=None):
     return x, y
 
 
-def get_nn(cellid, **kwargs) -> int:
+def get_nn(cellid, **dims) -> int | np.ndarray:
     """
-    Convert a cell ID tuple to a flat node number (0-based).
+    Convert a cell ID (or many) to a flat node number (0-based).
 
     Parameters
     ----------
-    cellid : tuple
-        - 1-element: (node,) — unstructured or DISV node number
+    cellid : tuple or array-like
+        One cell ID, or an ``(n, width)`` array of them:
+        - 1-element: (node,) — node number (DISU, or any grid)
         - 2-element: (layer, cell) — DISV (k, j)
         - 3-element: (layer, row, col) — DIS (k, i, j)
-    **kwargs
-        Dimension sizes: ``ncpl`` for DISV, ``nrow``/``ncol`` for DIS.
+    **dims
+        Dimension sizes by their DFN names: ``nodes`` for DISU, ``nlay``
+        and ``ncpl`` for DISV, ``nlay``/``nrow``/``ncol`` for DIS. Others
+        are ignored, so a grid's ``dims`` can be passed as is.
 
     Returns
     -------
-    int
-        0-based flat node index.
+    int or np.ndarray
+        0-based flat node index, or an array of them for many cell IDs.
+
+    Raises
+    ------
+    ValueError
+        If the cell ID isn't 1-3 elements, or is out of range.
     """
-    ndim = len(cellid)
-    match ndim:
-        case 1:
-            return cellid[0]
-        case 2:
-            k, j = cellid
-            return k * kwargs["ncpl"] + j
-        case 3:
-            k, i, j = cellid
-            return k * kwargs["nrow"] * kwargs["ncol"] + i * kwargs["ncol"] + j
-        case _:
-            raise ValueError(f"Invalid cellid: {cellid}")
+    cellid = np.asarray(cellid)
+    width = cellid.shape[-1] if cellid.ndim else 0
+    names = {1: ("nodes",), 2: ("nlay", "ncpl"), 3: ("nlay", "nrow", "ncol")}.get(width)
+    if names is None:
+        raise ValueError(f"Invalid cellid: {cellid.tolist()}")
+    missing = [n for n in names if n not in dims]
+    if missing:
+        raise ValueError(f"cellid {cellid.tolist()} needs dims {missing}")
+    shape = tuple(int(dims[n]) for n in names)
+    nn = np.ravel_multi_index(tuple(np.moveaxis(cellid, -1, 0)), shape)
+    return int(nn) if cellid.ndim == 1 else nn
 
 
 def structured_centers(delr, delc, xorigin=None, yorigin=None, angrot=None) -> dict[str, Any]:
