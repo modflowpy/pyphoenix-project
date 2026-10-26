@@ -54,11 +54,20 @@ class NumberRows(Sequence):
         if self._rows is None:
             # blank and comment-only lines aren't rows. (A comment's text
             # may have changed in `text` -- it's skipped.)
-            self._rows = [
-                [parse_number(v) for v in values]
+            lines = [
+                values
                 for line in self.text.split("\n")
                 if (values := line.split()) and values[0][0] not in "#!"
             ]
+            try:
+                self._rows = [[parse_number(v) for v in values] for values in lines]
+            except ValueError:
+                # NUMBERS takes repeat counts, for arrays (see `array_values`)
+                if (tok := next((v for vs in lines for v in vs if "*" in v), None)) is None:
+                    raise
+                raise ValueError(
+                    f"repeat count {tok!r} in a list row: MF6 reads them only in an array's values"
+                ) from None
         return self._rows
 
     def __len__(self) -> int:

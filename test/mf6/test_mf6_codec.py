@@ -179,6 +179,12 @@ def test_loads_repeat_counts_as_number_lines():
     assert array_values(part.raw_text).tolist() == [7, 7, 7, -1.5, -1.5, 1]
 
 
+def test_repeat_count_in_list_row_says_so():
+    # NUMBERS takes it, but MF6 reads repeat counts only in arrays
+    with pytest.raises(ValueError, match=r"repeat count '3\*2.0' in a list row"):
+        NumberRows("1 1 1 3*2.0\n").rows
+
+
 _INTERNAL_DIS = """\
 BEGIN DIMENSIONS
   NLAY 2
