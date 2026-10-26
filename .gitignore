@@ -10,6 +10,7 @@ venv/
 .ruff_cache
 *.egg-info
 **/__pycache__/
+**/__lark_cache__/
 .pixi
 *.egg-info
 temp/

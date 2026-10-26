@@ -9,6 +9,8 @@ from typing import Any, Protocol, TypeAlias, TypeVar
 import attrs
 import numpy as np
 
+from flopy4.utils import fortran_float
+
 _DT = TypeVar("_DT", bound=np.generic, covariant=True)
 
 Scalar: TypeAlias = bool | int | np.integer | float | np.floating | str | PurePath | datetime
@@ -78,9 +80,20 @@ def to_ts_value(v: Any) -> Any:
     if not isinstance(v, str):
         return v
     try:
-        return float(v)
+        return fortran_float(v)
     except ValueError:
         return TimeSeriesRef(v)
+
+
+def to_double(v: Any) -> Any:
+    """attrs converter for a double: a numeric string to a float,
+    anything else as is."""
+    if not isinstance(v, str):
+        return v
+    try:
+        return fortran_float(v)
+    except ValueError:
+        return v
 
 
 def to_ts_values(v: Any) -> Any:

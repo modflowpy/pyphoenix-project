@@ -409,3 +409,14 @@ scripts. Both are easy to reconstruct from `benchmarks/_ops.py`:
   `materialize_*(load_*(ws))` best-of-3 per loader;
 - the coverage check matches packages by filename and compares
   `MFArray.has_data()` with the flopy4 attribute.
+
+## In CI
+
+- **Weekly** (`benchmark.yml`, or by hand): the `standard` and `large`
+  tiers. Results are recorded on the `bench-data` branch by
+  `github-action-benchmark`. Watch the flopy4 / flopy3 ratio, which varies
+  less across runners than raw times.
+  Create the branch once, before the first recording run:
+  `git switch --orphan bench-data && git commit --allow-empty -m "benchmark history" && git push upstream bench-data`.
+- **Every push and PR** (`ci.yml`, `bench-smoke`): the smoke tier, to catch
+  broken benchmarks.

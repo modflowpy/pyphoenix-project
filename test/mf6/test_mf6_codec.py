@@ -1,5 +1,6 @@
 """Test the MF6 input file reading/writing capability."""
 
+import re
 from pathlib import Path
 from pprint import pprint
 
@@ -12,11 +13,14 @@ import xarray as xr
 from flopy4.mf6 import TimeSeriesRef
 from flopy4.mf6.codec import dumps, loads, writer
 from flopy4.mf6.codec.filters import field_type
+from flopy4.mf6.codec.reader.transformer.rows import NumberRows, array_values
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.converter import COMPONENT_CONVERTER
-from flopy4.mf6.gwf import Ghb, Oc
+from flopy4.mf6.gwf import Chd, Dis, Ghb, Npf, Oc
+from flopy4.mf6.ims import Ims
 from flopy4.mf6.load_context import LoadContext
 from flopy4.mf6.utl.obs import Obs
+from flopy4.utils import fortran_float
 
 
 def test_loads_dis_generic_simple():
@@ -99,6 +103,179 @@ END griddata
         [1, 2],
     ]
     assert [type(v) for v in result["griddata"][3]] == [float, float, float, int]
+
+
+# What MF6 reads from an array's text, inline or in a file, checked with
+# gfortran against the list-directed `read(unit, *)` MF6 reads them with.
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("1 2 3 4 5 6", [1, 2, 3, 4, 5, 6]),
+        ("1,2,3,4,5,6", [1, 2, 3, 4, 5, 6]),
+        ("1 , 2 , 3 ,\n4 , 5 , 6", [1, 2, 3, 4, 5, 6]),
+        ("1\t2\t3\n\n4 5 6\n", [1, 2, 3, 4, 5, 6]),
+        ("1d0 2D0 3e0 4E0 5 6", [1, 2, 3, 4, 5, 6]),
+        ("1.0+1 2 3 4 5 2.5-1", [10, 2, 3, 4, 5, 0.25]),
+        ("3*7 3*8", [7, 7, 7, 8, 8, 8]),
+        ("2*1d0 4*2", [1, 1, 2, 2, 2, 2]),
+        ("1 2 3 4 5 6 7 8", [1, 2, 3, 4, 5, 6]),
+        ("1 2 3 4 5 6 row 1", [1, 2, 3, 4, 5, 6]),
+        ("1 2 3 4 5 6 / anything", [1, 2, 3, 4, 5, 6]),
+        (".5 1. -1 +2 nan inf", [0.5, 1, -1, 2, np.nan, np.inf]),
+    ],
+)
+def test_read_text_array(text, expected):
+    values = array_values(text, np.float64, 6)
+    assert values.dtype == np.float64
+    np.testing.assert_array_equal(values, expected)
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("1 2 3 4 5 6", [1, 2, 3, 4, 5, 6]),
+        ("1,2,3 , 4,5,6", [1, 2, 3, 4, 5, 6]),
+        ("3*7 3*-8", [7, 7, 7, -8, -8, -8]),
+        ("1 2 3 4 5 6 abc", [1, 2, 3, 4, 5, 6]),
+    ],
+)
+def test_read_text_array_int(text, expected):
+    values = array_values(text, np.int64, 6)
+    assert values.dtype == np.int64
+    assert values.tolist() == expected
+
+
+@pytest.mark.parametrize(
+    "text, dtype, match",
+    [
+        ("1 2 3", np.float64, "a.txt: expected 6 values, got 3"),
+        ("", np.float64, "expected 6 values, got 0"),
+        ("1 2 3 / 4 5 6", np.float64, "expected 6 values, got 3"),
+        ("1,,3 4 5 6 7", np.float64, "null value .* at value 2"),
+        (",1 2 3 4 5 6", np.float64, "null value .* at value 1"),
+        ("2*7 4*", np.float64, "null values"),
+        ("0*7 6*1", np.float64, "bad repeat count"),
+        ("1 2 3 # c\n4 5 6", np.float64, "not a valid number: '#'"),
+        ("1 2 3 ! c\n4 5 6", np.float64, "not a valid number: '!'"),
+        ("1;2;3;4;5;6", np.float64, "not a valid number"),
+        ("'1' 2 3 4 5 6", np.float64, "not a valid number"),
+        ("1.0 2 3 4 5 6", np.int64, "not a valid integer: '1.0'"),
+        ("1d0 2 3 4 5 6", np.int64, "not a valid integer: '1d0'"),
+    ],
+)
+def test_read_text_array_errors(text, dtype, match):
+    with pytest.raises(ValueError, match=match):
+        array_values(text, dtype, 6, source="a.txt")
+
+
+def test_array_values_without_count():
+    np.testing.assert_array_equal(array_values("1, 2*3d0\n4"), [1, 3, 3, 4])
+
+
+def test_loads_repeat_counts_as_number_lines():
+    # MF6 reads `r*c` in an array's values, so NUMBERS takes it.
+    result = loads("BEGIN griddata\n  botm\n  INTERNAL\n    3*7 2*-1.5 1\nEND griddata\n")
+    (part,) = [p for p in result["griddata"].parts if isinstance(p, NumberRows)]
+    assert array_values(part.raw_text).tolist() == [7, 7, 7, -1.5, -1.5, 1]
+
+
+def test_repeat_count_in_list_row_says_so():
+    # NUMBERS takes it, but MF6 reads repeat counts only in arrays
+    with pytest.raises(ValueError, match=r"repeat count '3\*2.0' in a list row"):
+        NumberRows("1 1 1 3*2.0\n").rows
+
+
+_INTERNAL_DIS = """\
+BEGIN DIMENSIONS
+  NLAY 2
+  NROW 1
+  NCOL 3
+END DIMENSIONS
+BEGIN GRIDDATA
+  DELR
+    CONSTANT 1.0
+  DELC
+    CONSTANT 1.0
+  TOP
+    CONSTANT 0.0
+  BOTM
+    INTERNAL FACTOR 2
+      {botm}
+  IDOMAIN
+    INTERNAL
+      {idomain}
+END GRIDDATA
+"""
+
+
+def test_load_internal_as_mf6_reads_it(tmp_path):
+    """Inline arrays read as MF6 reads them, as files do."""
+    path = tmp_path / "m.dis"
+    path.write_text(_INTERNAL_DIS.format(botm="-1d0, 2*-2.5D0\n      3*-3 -4", idomain="6*1"))
+    dis = Dis.load(path, context=LoadContext(workspace=tmp_path))
+    assert np.ravel(dis.botm).tolist() == [-2.0, -5.0, -5.0, -6.0, -6.0, -6.0]
+    assert np.ravel(dis.idomain).tolist() == [1] * 6
+
+
+@pytest.mark.parametrize(
+    "botm, idomain, match",
+    [
+        ("-1 -2 -3", "6*1", "botm: expected 6 values, got 3"),
+        ("6*-1", "1 1 1", "idomain: expected 6 values, got 3"),
+        ("6*-1", "1 1 1 1 1 1.5", "idomain: not a valid integer: '1.5'"),
+        ("-1,,-2 -3 -4 -5 -6", "6*1", "botm: null value"),
+    ],
+)
+def test_load_internal_errors(tmp_path, botm, idomain, match):
+    path = tmp_path / "m.dis"
+    path.write_text(_INTERNAL_DIS.format(botm=botm, idomain=idomain))
+    with pytest.raises(ValueError, match=match):
+        Dis.load(path, context=LoadContext(workspace=tmp_path))
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("1.5", 1.5),
+        ("1d0", 1.0),
+        ("2.5D-1", 0.25),
+        ("1.0+1", 10.0),
+        ("-.5-2", -0.005),
+        ("1-2", 0.01),
+        ("0.1234+100", 0.1234e100),
+    ],
+)
+def test_fortran_float(text, expected):
+    assert fortran_float(text) == expected
+
+
+@pytest.mark.parametrize("text", ["abc", "1.0+", "1-2-3", "1e", "row"])
+def test_fortran_float_invalid(text):
+    with pytest.raises(ValueError, match=re.escape(repr(text))):
+        fortran_float(text)
+
+
+_BARE_DIMS = {"nlay": 1, "nrow": 1, "ncol": 3, "nodes": 3, "ncpl": 3}
+
+
+def test_load_bare_exponents(tmp_path):
+    """A real with a signed exponent and no letter reads as MF6 reads it,
+    wherever a real goes: a scalar, an array, a list's column."""
+    context = LoadContext(workspace=tmp_path, dims=_BARE_DIMS)
+    path = tmp_path / "f"
+    path.write_text("BEGIN NONLINEAR\n  OUTER_DVCLOSE 1.0-6\nEND NONLINEAR\n")
+    assert Ims.load(path, context=context).outer_dvclose == 1e-6
+    path.write_text(
+        "BEGIN GRIDDATA\n  K\n  INTERNAL\n    1.0+1 2 3\n  ICELLTYPE\n    CONSTANT 0\n"
+        "END GRIDDATA\n"
+    )
+    assert np.ravel(Npf.load(path, context=context).k).tolist() == [10.0, 2.0, 3.0]
+    path.write_text(
+        "BEGIN DIMENSIONS\n  MAXBOUND 1\nEND DIMENSIONS\n"
+        "BEGIN PERIOD 1\n  1 1 1 1.0+1\nEND PERIOD\n"
+    )
+    (row,) = Chd.load(path, context=context).stress_period_data[0]
+    assert row.head == 10.0
 
 
 def test_loads_records():

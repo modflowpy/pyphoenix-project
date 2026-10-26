@@ -482,6 +482,41 @@ def _sim(workspace: Path) -> Simulation:
     return sim
 
 
+def test_load_open_close_as_mf6_reads_it(tmp_path):
+    """A file MF6 reads, with D exponents, repeat counts and trailing
+    values, loads the same; one with too few values doesn't."""
+    (tmp_path / "botm.txt").write_text("-1d0, 2*-2.5D0\n3*-3 -4 -5\n")
+    (tmp_path / "idomain.txt").write_text("6*1 extra text\n")
+    (tmp_path / "top.txt").write_text("1 2\n")
+    dis_text = textwrap.dedent("""\
+        BEGIN DIMENSIONS
+          NLAY 2
+          NROW 1
+          NCOL 3
+        END DIMENSIONS
+        BEGIN GRIDDATA
+          DELR
+            CONSTANT 1.0
+          DELC
+            CONSTANT 1.0
+          TOP
+            {top}
+          BOTM
+            OPEN/CLOSE botm.txt FACTOR 2
+          IDOMAIN
+            OPEN/CLOSE idomain.txt
+        END GRIDDATA
+    """)
+    (tmp_path / "m.dis").write_text(dis_text.format(top="CONSTANT 0.0"))
+    dis = Dis.load(tmp_path / "m.dis", context=LoadContext(workspace=tmp_path))
+    assert np.ravel(dis.botm).tolist() == [-2.0, -5.0, -5.0, -6.0, -6.0, -6.0]
+    assert np.ravel(dis.idomain).tolist() == [1] * 6
+
+    (tmp_path / "m.dis").write_text(dis_text.format(top="OPEN/CLOSE top.txt"))
+    with pytest.raises(ValueError, match="top.txt: expected 3 values, got 2"):
+        Dis.load(tmp_path / "m.dis", context=LoadContext(workspace=tmp_path))
+
+
 def test_mf6_reads_open_close_arrays(function_tmpdir):
     """MF6 runs a simulation written with every array in a file of its own
     and gets the same heads as from the inline write."""

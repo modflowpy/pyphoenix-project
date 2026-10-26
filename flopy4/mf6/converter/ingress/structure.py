@@ -1,4 +1,3 @@
-import struct
 import warnings
 from abc import ABC
 from collections import Counter
@@ -14,8 +13,15 @@ from modflow_devtools.dfns import dim_value
 from flopy4.dimensions import DimensionProvider
 from flopy4.mf6._types import TimeArraySeriesRef
 from flopy4.mf6.block import block_list_type
-from flopy4.mf6.codec.reader.transformer.rows import BlockRows, NumberRows, parts, row_values
+from flopy4.mf6.codec.reader.transformer.rows import (
+    BlockRows,
+    NumberRows,
+    array_values,
+    parts,
+    without_comments,
+)
 from flopy4.mf6.component import Component, get_ftype
+from flopy4.mf6.external import read_array_file, read_binary_list_file, read_list_file
 from flopy4.mf6.item import (
     Item,
     RowContext,
@@ -42,7 +48,7 @@ from flopy4.mf6.record import Record
 from flopy4.mf6.spec import repeating_array_key_type, to_field_type
 from flopy4.mf6.write_context import ArrayIO, WriteContext, array_hash
 from flopy4.spec import is_array, resolve
-from flopy4.utils import unwrap_optional
+from flopy4.utils import fortran_float, unwrap_optional
 
 
 def _inner_class_type(field_type) -> type[Record] | None:
@@ -99,36 +105,6 @@ def _parse_rows(
     return result or None
 
 
-# One MF6 binary-array record: KSTP, KPER (int4 each), PERTIM, TOTIM
-# (float8 each), TEXT (16-byte label), NCOL, NROW, ILAY (int4 each) -- 52
-# bytes total. Same layout flopy4's own binary head-output reader
-# (`utils/heads_reader.py::read_hds_timestep`, "f.seek(52, 1)  # skip
-# kstp, kper, pertime") already decodes; MF6 has used one binary
-# 2D-array record format for both real and integer arrays since
-# MODFLOW-2005 (u2drel/u2dint), for output and OPEN/CLOSE (BINARY) input
-# alike -- the data portion follows immediately, real arrays
-# double-precision (matching MF6's own double-precision solver and
-# head-output convention) and integer arrays 4-byte. MF6 only logs the
-# header's NCOL/NROW/ILAY (`ArrayReaders.f90::read_binary_header`): it
-# reads as many values as the array holds, so a non-LAYERED 3-D array's
-# file holds every layer after one header.
-_BINARY_ARRAY_HEADER = struct.Struct("<iidd16siii")
-
-
-def _read_binary_array_values(path: Path, dtype) -> np.ndarray:
-    """Read an MF6 binary-array record (a header, then every value after
-    it, as MF6 does) from an OPEN/CLOSE (BINARY)-referenced file. See
-    `_BINARY_ARRAY_HEADER`.
-    """
-    with path.open("rb") as fh:
-        header = fh.read(_BINARY_ARRAY_HEADER.size)
-        if len(header) < _BINARY_ARRAY_HEADER.size:
-            raise ValueError(f"{path}: too short for an MF6 binary-array header")
-        file_dtype = np.dtype("<i4" if dtype == np.int64 else "<f8")
-        values = np.fromfile(fh, dtype=file_dtype)
-    return values.astype(dtype)
-
-
 def _strip_quotes(fname: str) -> str:
     """MF6 (and flopy3's own writer, confirmed against its
     `test_gwf_utl01_binaryinput.py`: writes ``OPEN/CLOSE 'top.bin' ...``)
@@ -141,27 +117,16 @@ def _strip_quotes(fname: str) -> str:
     return fname
 
 
-def _read_open_close_values(vrow: list, context: LoadContext, dtype) -> np.ndarray:
-    """Read an ``OPEN/CLOSE <fname> [(BINARY)] [FACTOR <f>] [IPRN <i>]``
-    griddata control record's referenced file.
-
-    Not seen in the corpus (0/242 models use OPEN/CLOSE ... (BINARY) for
-    an input array) so this path is unverified against a real fixture --
-    based on the binary-array record format flopy4's own head-output
-    reader already relies on, per `_BINARY_ARRAY_HEADER`. Otherwise the
-    referenced file is a plain numeric array, whitespace- or (seen in one
-    fixture family) comma-separated with no spaces at all. FACTOR is
-    applied by the caller, `_read_control_record`.
-    """
+def _read_open_close_values(vrow: list, context: LoadContext, dtype, length: int) -> np.ndarray:
+    """The first ``length`` values of an ``OPEN/CLOSE`` control record's
+    file. FACTOR is applied by the caller."""
     tokens = [str(t) for t in vrow[1:]]
     if not tokens:
         raise ValueError("OPEN/CLOSE control record missing a filename")
     path = context.resolve(_strip_quotes(tokens[0]))
 
-    if any(t.upper() in ("BINARY", "(BINARY)") for t in tokens[1:]):
-        return _read_binary_array_values(path, dtype)
-    text = path.read_text().replace(",", " ")
-    return np.array(text.split(), dtype=dtype)
+    binary = any(t.upper() in ("BINARY", "(BINARY)") for t in tokens[1:])
+    return read_array_file(path, dtype, length, binary=binary)
 
 
 def _binary_list_row_spec(
@@ -234,32 +199,6 @@ def _binary_list_row_spec(
     return spec if seen_cellid else None
 
 
-def _read_binary_list_rows(path: Path, spec: "list[tuple[str, int]]") -> list[list]:
-    """Read MF6's binary list format (``ListReaderModule%read_binary``,
-    ``src/Utilities/ListReader.f90``; IDM's list blocks read the same way,
-    value by value, via ``StructArray%read_from_binary``): stream/
-    unformatted (``OpenSpec.f90``), so no record markers -- each row is
-    `spec`'s pieces back to back (see `_binary_list_row_spec`), read
-    until EOF. No header to skip, unlike the binary-array format
-    (`_BINARY_ARRAY_HEADER`).
-    """
-    row_bytes = sum(np.dtype(dtype).itemsize * n for dtype, n in spec)
-    data = path.read_bytes()
-    if row_bytes == 0 or len(data) % row_bytes != 0:
-        raise ValueError(
-            f"{path}: {len(data)} bytes isn't a whole number of {row_bytes}-byte binary list rows"
-        )
-    rows = []
-    for start in range(0, len(data), row_bytes):
-        row: list = []
-        offset = start
-        for dtype, n in spec:
-            row.extend(np.frombuffer(data, dtype=dtype, count=n, offset=offset).tolist())
-            offset += np.dtype(dtype).itemsize * n
-        rows.append(row)
-    return rows
-
-
 def _resolve_open_close_rows(
     rows: list,
     context: LoadContext,
@@ -272,12 +211,10 @@ def _resolve_open_close_rows(
     ``BEGIN PERIOD 1 / OPEN/CLOSE <fname> [(BINARY)] / END PERIOD 1``. Same
     keyword as griddata's OPEN/CLOSE control record, but a different
     mechanism: an ASCII-referenced file holds list rows, not a flat
-    numeric array, so it's parsed the same way an inline block's own
-    content would be (wrapped in a synthetic block and passed back
-    through the block/token grammar) rather than through
-    `_read_open_close_values`. A binary-referenced file is decoded
-    directly into the same row-of-tokens shape instead (see
-    `_read_binary_list_rows`), which needs `item_cls` (a single class,
+    numeric array, so it's parsed as an inline block's own content would
+    be rather than through `_read_open_close_values`. A binary-referenced
+    file is decoded directly into the same row-of-tokens shape instead,
+    which needs `item_cls` (a single class,
     not a union), `sizes`, and `enabled` to know its row layout -- see
     `_binary_list_row_spec`.
 
@@ -302,13 +239,8 @@ def _resolve_open_close_rows(
                 f"{path}: flopy4 doesn't support binary list input for "
                 f"{item_cls.__name__}'s row layout"
             )
-        return _read_binary_list_rows(path, spec)
-
-    from flopy4.mf6.codec.reader import loads as _codec_loads
-
-    text = path.read_text()
-    wrapped = _codec_loads(f"BEGIN DATA\n{text}\nEND DATA\n")
-    return wrapped.get("DATA", [])
+        return read_binary_list_file(path, spec)
+    return read_list_file(path)
 
 
 _CONTROL_KINDS = frozenset({"CONSTANT", "INTERNAL", "OPEN/CLOSE"})
@@ -336,7 +268,7 @@ def _numeric_prefix(row: list) -> list:
     for tok in row:
         if not isinstance(tok, (int, float)):
             try:
-                float(tok)
+                fortran_float(tok)  # e.g. 1.0+1
             except (TypeError, ValueError):
                 break
         out.append(tok)
@@ -410,7 +342,7 @@ def _record_array_io(
 
 
 def _read_control_record(
-    rows: list, i: int, context: LoadContext, dtype, length: int
+    rows: list, i: int, context: LoadContext, dtype, length: int, name: str = ""
 ) -> "tuple[np.ndarray, int]":
     """Read one CONSTANT/INTERNAL/OPEN-CLOSE array control record starting
     at ``rows[i]`` (a block's `parts`), shared by array blocks (`_parse_array_block`) and
@@ -422,6 +354,7 @@ def _read_control_record(
     row's) values commonly wrap across multiple physical lines for a large
     array -- each is one row here -- so both keep consuming rows until
     ``length`` values are collected, rather than assuming exactly one row.
+    ``name`` prefixes errors.
     """
     vrow = rows[i]
     kind = _leading_word(vrow)
@@ -430,19 +363,25 @@ def _read_control_record(
         return np.full(length, v, dtype=dtype), i + 1
     if kind == "OPEN/CLOSE":
         # read only the values the array needs; a file may hold more
-        return _apply_factor(_read_open_close_values(vrow, context, dtype)[:length], vrow), i + 1
+        return _apply_factor(_read_open_close_values(vrow, context, dtype, length), vrow), i + 1
     j = i + 1 if kind == "INTERNAL" else i
     chunks: list[np.ndarray] = []
     count = 0
     while count < length and j < len(rows):
         part = rows[j]
         if isinstance(part, NumberRows):
-            chunk = row_values(part, dtype)
+            text = without_comments(part.raw_text)
+        elif prefix := _numeric_prefix(part):
+            text = " ".join(map(str, prefix))
         else:
-            chunk = np.array(_numeric_prefix(part), dtype=dtype)
+            break
+        chunk = array_values(text, dtype, source=name)
         chunks.append(chunk)
         count += len(chunk)
         j += 1
+    if count < length:
+        source = f"{name}: " if name else ""
+        raise ValueError(f"{source}expected {length} values, got {count}")
     array = np.concatenate(chunks)[:length] if chunks else np.array([], dtype=dtype)
     if kind == "INTERNAL":
         array = _apply_factor(array, vrow)
@@ -534,7 +473,7 @@ def _parse_array_block(
                 vrow = rows[i]
                 if _leading_word(vrow) not in _CONTROL_KINDS:
                     break
-                value, j = _read_control_record(rows, i, context, dtype, record_len)
+                value, j = _read_control_record(rows, i, context, dtype, record_len, f.name)
                 layer_ios.append(_control_io(vrow, value))
                 layers.append(value)
                 i = j
@@ -552,7 +491,7 @@ def _parse_array_block(
             if i >= len(rows):
                 break
             length = _griddata_flat_length(f, dims, nodes)
-            value, j = _read_control_record(rows, i, context, dtype, length)
+            value, j = _read_control_record(rows, i, context, dtype, length, f.name)
             _record_array_io(arrays, (f.name,), [_control_io(rows[i], value)])
             i = j
             result[f.name] = value
@@ -637,9 +576,9 @@ def _parse_readarray_period_block(
                     vrow = rows[i]
                     if _leading_word(vrow) not in _CONTROL_KINDS:
                         break
-                    _, i = _read_control_record(rows, i, context, np.float64, ncpl)
+                    _, i = _read_control_record(rows, i, context, np.float64, ncpl, key)
             elif i < len(rows):
-                _, i = _read_control_record(rows, i, context, np.float64, ncpl)
+                _, i = _read_control_record(rows, i, context, np.float64, ncpl, key)
             continue
 
         is_int = to_field_type(f.type) == "integer"
@@ -657,7 +596,7 @@ def _parse_readarray_period_block(
                 vrow = rows[i]
                 if _leading_word(vrow) not in _CONTROL_KINDS:
                     break
-                value, j = _read_control_record(rows, i, context, dtype, ncpl)
+                value, j = _read_control_record(rows, i, context, dtype, ncpl, key)
                 layer_ios.append(_control_io(vrow, value))
                 layers.append(value)
                 i = j
@@ -679,7 +618,7 @@ def _parse_readarray_period_block(
                 result[key] = value
             else:
                 size = nlay * ncpl if per_node else ncpl
-                value, j = _read_control_record(rows, i, context, dtype, size)
+                value, j = _read_control_record(rows, i, context, dtype, size, key)
                 _record_array_io(arrays, (key,), [_control_io(rows[i], value)])
                 i = j
                 result[key] = (
@@ -1431,7 +1370,7 @@ def structure_component(
                 for header, rows in sorted(series_rows.items()):
                     if not rows:
                         continue
-                    value, _ = _read_control_record(parts(rows), 0, context, dtype, length)
+                    value, _ = _read_control_record(parts(rows), 0, context, dtype, length, fname)
                     series[header] = value
                 if series:
                     init_key = f.alias if f.alias else fname

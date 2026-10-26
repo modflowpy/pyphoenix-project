@@ -5,7 +5,7 @@
 // bare newline whenever the following line is indented.
 
 integer: SIGNED_INT | INT
-double: SIGNED_NUMBER | NUMBER
+double: SIGNED_NUMBER | NUMBER | FORTRAN_REAL
 number: SIGNED_NUMBER | NUMBER
 // A block header's period number (or utl-tas's time). Not `number`: its
 // reduce state merges with record rows' (see BARE_WORD), so the contextual
@@ -72,10 +72,11 @@ _token: word | number
 // them), as one token, so big files don't take a token per value. A line it
 // can't take whole lexes as a `record` or `_data_line` (basic.lark's `line`).
 // Not to be confused with NUMBER, one number.
+// Numbers may have a repeat count (`3*7`), for arrays.
 // A `record` that's one of these is all its rows. Possessive throughout:
 // a number's always followed by a separator or newline, so backtracking
 // into one can't match differently, and it's a third faster on big arrays.
-NUMBERS.3: /(?:[ \t,]*+[+-]?+(?:\d++(?:\.\d*+)?+|\.\d++)(?:[eEdD][+-]?+\d++)?+(?:[ \t,]++[+-]?+(?:\d++(?:\.\d*+)?+|\.\d++)(?:[eEdD][+-]?+\d++)?+)*+[ \t,]*+\r?\n(?:[ \t,]*+(?:[#!][^\n]*+)?\r?\n)*+)++/
+NUMBERS.3: /(?:[ \t,]*+[+-]?+(?:\d++(?:\*[+-]?+(?:\d++(?:\.\d*+)?+|\.\d++)|\.\d*+)?+|\.\d++)(?:[eEdD][+-]?+\d++)?+(?:[ \t,]++[+-]?+(?:\d++(?:\*[+-]?+(?:\d++(?:\.\d*+)?+|\.\d++)|\.\d*+)?+|\.\d++)(?:[eEdD][+-]?+\d++)?+)*+[ \t,]*+\r?\n(?:[ \t,]*+(?:[#!][^\n]*+)?\r?\n)*+)++/
 // Consecutive lines of plain words and numbers (plus blank and
 // comment-only lines after them), as one token, like NUMBERS for rows
 // that aren't only numbers (SFR's `1 inflow 0.0`). A word is a BARE_WORD
@@ -126,3 +127,6 @@ INT: /\d+(?![^\s,#!])/
 SIGNED_INT: /[+-]\d+(?![^\s,#!])/
 NUMBER: /(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?(?![^\s,#!])/
 SIGNED_NUMBER: /[+-](\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?(?![^\s,#!])/
+// A real only Fortran reads: a D exponent, or no exponent letter (`1.0+1`).
+// Only `double` takes it, so a boundname like `1-2` stays a word.
+FORTRAN_REAL: /[+-]?(\d+(\.\d*)?|\.\d+)([dD][+-]?\d+|[+-]\d+)(?![^\s,#!])/

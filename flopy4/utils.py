@@ -1,3 +1,4 @@
+import re
 import types
 import typing
 from pathlib import Path
@@ -17,14 +18,34 @@ def empty_if_none(value: Any) -> dict:
 
 
 def parse_number(value: str) -> int | float:
-    """Parse a string into int or float based on its content."""
+    """An int if the string is one, else a float (see `fortran_float`)."""
+    if "." in value or "e" in value or "E" in value:
+        return fortran_float(value)
     try:
-        if "." in value or "e" in value.lower():
-            return float(value)
-        else:
-            return int(value)
+        return int(value)
     except ValueError:
+        return fortran_float(value)
+
+
+# A real with a signed exponent but no letter, e.g. ``1.0+1`` (= 10.0).
+_BARE_EXPONENT = re.compile(r"([+-]?(?:\d+\.?\d*|\.\d+))([+-]\d+)")
+# ``D`` exponents as ``E``, for `str.translate`.
+D_EXPONENT = str.maketrans("dD", "ee")
+
+
+def fortran_float(value: str) -> float:
+    """A real as Fortran reads one: also with a ``D`` exponent, or a
+    signed exponent with no letter (``1.0+1`` = 10.0)."""
+    try:
         return float(value)
+    except ValueError:
+        pass
+    if m := _BARE_EXPONENT.fullmatch(value):
+        return float(f"{m[1]}e{m[2]}")
+    try:
+        return float(value.translate(D_EXPONENT))
+    except ValueError:
+        raise ValueError(f"could not convert string to float: {value!r}") from None
 
 
 def is_union(obj):

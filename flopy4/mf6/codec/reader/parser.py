@@ -1,3 +1,4 @@
+import sys
 from functools import lru_cache
 from pathlib import Path
 
@@ -6,6 +7,17 @@ from lark.lexer import BasicLexer, ContextualLexer, LexerState, LexerThread, Lin
 
 _LALR = "lalr"
 _GRAMMAR_MODULE = Path(__file__).parent / "grammar"
+# Not Lark's default (the shared temp dir), where anyone could plant a pickle.
+_CACHE_DIR = _GRAMMAR_MODULE / "__lark_cache__"
+
+
+def _cache(name: str) -> str | bool:
+    """Where to cache grammar ``name``'s analysis, or False if nowhere."""
+    try:
+        _CACHE_DIR.mkdir(exist_ok=True)
+    except OSError:
+        return False
+    return str(_CACHE_DIR / f"{name}.py{sys.version_info[0]}{sys.version_info[1]}.cache")
 
 
 class _Text:
@@ -63,7 +75,7 @@ def get_basic_parser(transformer: Transformer | None = None, use_bytes: bool = F
         return Lark(
             f.read(),
             parser=_LALR,
-            debug=True,
+            cache=_cache("basic-bytes" if use_bytes else "basic"),
             import_paths=[str(_GRAMMAR_MODULE)],
             transformer=transformer,
             use_bytes=use_bytes,
@@ -84,6 +96,6 @@ def get_typed_parser(name: str) -> Lark:
         return Lark(
             f.read(),
             parser=_LALR,
-            debug=True,
+            cache=_cache(name),
             import_paths=[str(_GRAMMAR_MODULE)],
         )

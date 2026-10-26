@@ -8,7 +8,7 @@ from lark import Token, Transformer
 
 from flopy4.mf6.codec.reader.grammar.names import parse_rule_name
 from flopy4.mf6.codec.reader.transformer.rows import NumberRows, number_values
-from flopy4.utils import parse_number
+from flopy4.utils import fortran_float, parse_number
 
 
 class _Element(tuple):
@@ -236,7 +236,7 @@ class TypedTransformer(Transformer):
         return int(items[0])
 
     def double(self, items: list[Any]) -> float:
-        return float(items[0])
+        return fortran_float(items[0])
 
     def number(self, items: list[Any]) -> int | float:
         """Handle generic number (could be int or float)."""

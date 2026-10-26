@@ -122,6 +122,34 @@ jobs:
           pixi run python -m ipykernel install --name flopy4 --user
           pixi run test
 
+  bench-smoke:
+    name: Benchmarks (smoke tier)
+    needs:
+      - build
+      - lint
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup pixi
+        uses: prefix-dev/setup-pixi@v0.9.6
+        with:
+          pixi-version: v0.72.0
+          environments: dev
+          activate-environment: true
+
+      - name: Sync devtools
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          pixi run mf dfns sync
+          pixi run mf models sync || echo "::warning::models registry sync failed"
+
+      - name: Run benchmarks
+        run: pixi run -e dev pytest benchmarks --benchmark-enable --bench-tier smoke
+
   test-mf6-release:
     name: Test (latest MF6 release)
     needs:
