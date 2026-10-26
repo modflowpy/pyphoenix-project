@@ -1,5 +1,6 @@
-"""Writing arrays to files of their own, for OPEN/CLOSE control records,
-text or binary."""
+"""Arrays' and lists' files of their own, for OPEN/CLOSE control records,
+text or binary: writing them, and reading them as MF6 does. What to read
+(a file's path, how many values) is the loader's to work out."""
 
 import os
 import struct
@@ -12,8 +13,10 @@ from typing import Any
 
 import attrs
 import numpy as np
+import numpy.typing as npt
 import xarray as xr
 
+from flopy4.mf6.codec.reader.transformer.rows import array_values
 from flopy4.mf6.codec.writer.filters import array2chunks, array2string
 from flopy4.mf6.write_context import ArrayFormat, WriteContext, array_hash
 
@@ -281,7 +284,7 @@ def _file_format(
         fmt = context.array_format
         threshold = context.binary_threshold
         if fmt == "binary" and threshold is not None:
-            if values.size * _binary_dtype(values).itemsize <= threshold:
+            if values.size * _binary_dtype(values.dtype).itemsize <= threshold:
                 fmt = None
     if fmt is None and has_path:
         fmt = "open/close"
@@ -344,16 +347,25 @@ def _write_file(path: Path, values: xr.DataArray, context: WriteContext) -> None
                 f.write(array2string(chunk, context.float_precision) + "\n")
 
 
-# MF6's binary array header: KSTP, KPER, PERTIM, TOTIM, TEXT, and three
-# sizes MF6 only logs (`ArrayReaders.f90::read_binary_header`); it reads
-# as many values as the array holds after it and checks the file is
-# exactly that big.
+# One MF6 binary-array record: KSTP, KPER (int4 each), PERTIM, TOTIM
+# (float8 each), TEXT (16-byte label), NCOL, NROW, ILAY (int4 each) -- 52
+# bytes total. Same layout flopy4's own binary head-output reader
+# (`utils/heads_reader.py::read_hds_timestep`, "f.seek(52, 1)  # skip
+# kstp, kper, pertime") already decodes; MF6 has used one binary
+# 2D-array record format for both real and integer arrays since
+# MODFLOW-2005 (u2drel/u2dint), for output and OPEN/CLOSE (BINARY) input
+# alike -- the data portion follows immediately, real arrays
+# double-precision (matching MF6's own double-precision solver and
+# head-output convention) and integer arrays 4-byte. MF6 only logs the
+# header's NCOL/NROW/ILAY (`ArrayReaders.f90::read_binary_header`): it
+# reads as many values as the array holds, so a non-LAYERED 3-D array's
+# file holds every layer after one header.
 _BINARY_HEADER = struct.Struct("<iidd16siii")
 
 
-def _binary_dtype(values: xr.DataArray) -> np.dtype:
+def _binary_dtype(dtype: npt.DTypeLike) -> np.dtype:
     """MF6 reads binary integer arrays as 4-byte, real ones as 8-byte."""
-    return np.dtype("<i4" if np.issubdtype(values.dtype, np.integer) else "<f8")
+    return np.dtype("<i4" if np.issubdtype(dtype, np.integer) else "<f8")
 
 
 def _write_binary_file(path: Path, values: xr.DataArray, key: str, layer: int | None) -> None:
@@ -366,4 +378,63 @@ def _write_binary_file(path: Path, values: xr.DataArray, key: str, layer: int | 
     header = _BINARY_HEADER.pack(1, 1, 1.0, 1.0, text, shape[2], shape[1], ilay)
     with path.open("wb") as f:
         f.write(header)
-        f.write(np.ascontiguousarray(values, dtype=_binary_dtype(values)).tobytes())
+        f.write(np.ascontiguousarray(values, dtype=_binary_dtype(values.dtype)).tobytes())
+
+
+# --- reading ---------------------------------------------------------------
+
+
+def read_array_file(
+    path: Path, dtype: npt.DTypeLike, count: int, binary: bool = False
+) -> np.ndarray:
+    """An OPEN/CLOSE array file's first ``count`` values, as MF6 reads
+    them: a text file's as list-directed input (see `array_values`), a
+    binary one's after its header (see `_BINARY_HEADER`).
+
+    No model in the corpus has a binary input array, so the binary path
+    is checked only against flopy4's own writer and MF6's source.
+    """
+    if not binary:
+        return array_values(path.read_text(), dtype, count, source=path)
+    with path.open("rb") as fh:
+        header = fh.read(_BINARY_HEADER.size)
+        if len(header) < _BINARY_HEADER.size:
+            raise ValueError(f"{path}: too short for an MF6 binary-array header")
+        values = np.fromfile(fh, dtype=_binary_dtype(dtype))
+    if len(values) < count:
+        raise ValueError(f"{path}: expected {count} values, got {len(values)}")
+    return values[:count].astype(dtype)
+
+
+def read_list_file(path: Path) -> list:
+    """An OPEN/CLOSE list file's rows, parsed as an inline block's would
+    be."""
+    from flopy4.mf6.codec.reader import loads
+
+    return loads(f"BEGIN DATA\n{path.read_text()}\nEND DATA\n").get("DATA", [])
+
+
+def read_binary_list_file(path: Path, spec: "list[tuple[str, int]]") -> list[list]:
+    """Read MF6's binary list format (``ListReaderModule%read_binary``,
+    ``src/Utilities/ListReader.f90``; IDM's list blocks read the same way,
+    value by value, via ``StructArray%read_from_binary``): stream/
+    unformatted (``OpenSpec.f90``), so no record markers -- each row is
+    `spec`'s pieces back to back (the loader's `_binary_list_row_spec`), read
+    until EOF. No header to skip, unlike the binary-array format
+    (`_BINARY_HEADER`).
+    """
+    row_bytes = sum(np.dtype(dtype).itemsize * n for dtype, n in spec)
+    data = path.read_bytes()
+    if row_bytes == 0 or len(data) % row_bytes != 0:
+        raise ValueError(
+            f"{path}: {len(data)} bytes isn't a whole number of {row_bytes}-byte binary list rows"
+        )
+    rows = []
+    for start in range(0, len(data), row_bytes):
+        row: list = []
+        offset = start
+        for dtype, n in spec:
+            row.extend(np.frombuffer(data, dtype=dtype, count=n, offset=offset).tolist())
+            offset += np.dtype(dtype).itemsize * n
+        rows.append(row)
+    return rows

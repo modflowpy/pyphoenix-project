@@ -1,4 +1,3 @@
-import struct
 import warnings
 from abc import ABC
 from collections import Counter
@@ -22,6 +21,7 @@ from flopy4.mf6.codec.reader.transformer.rows import (
     without_comments,
 )
 from flopy4.mf6.component import Component, get_ftype
+from flopy4.mf6.external import read_array_file, read_binary_list_file, read_list_file
 from flopy4.mf6.item import (
     Item,
     RowContext,
@@ -105,36 +105,6 @@ def _parse_rows(
     return result or None
 
 
-# One MF6 binary-array record: KSTP, KPER (int4 each), PERTIM, TOTIM
-# (float8 each), TEXT (16-byte label), NCOL, NROW, ILAY (int4 each) -- 52
-# bytes total. Same layout flopy4's own binary head-output reader
-# (`utils/heads_reader.py::read_hds_timestep`, "f.seek(52, 1)  # skip
-# kstp, kper, pertime") already decodes; MF6 has used one binary
-# 2D-array record format for both real and integer arrays since
-# MODFLOW-2005 (u2drel/u2dint), for output and OPEN/CLOSE (BINARY) input
-# alike -- the data portion follows immediately, real arrays
-# double-precision (matching MF6's own double-precision solver and
-# head-output convention) and integer arrays 4-byte. MF6 only logs the
-# header's NCOL/NROW/ILAY (`ArrayReaders.f90::read_binary_header`): it
-# reads as many values as the array holds, so a non-LAYERED 3-D array's
-# file holds every layer after one header.
-_BINARY_ARRAY_HEADER = struct.Struct("<iidd16siii")
-
-
-def _read_binary_array_values(path: Path, dtype) -> np.ndarray:
-    """Read an MF6 binary-array record (a header, then every value after
-    it, as MF6 does) from an OPEN/CLOSE (BINARY)-referenced file. See
-    `_BINARY_ARRAY_HEADER`.
-    """
-    with path.open("rb") as fh:
-        header = fh.read(_BINARY_ARRAY_HEADER.size)
-        if len(header) < _BINARY_ARRAY_HEADER.size:
-            raise ValueError(f"{path}: too short for an MF6 binary-array header")
-        file_dtype = np.dtype("<i4" if dtype == np.int64 else "<f8")
-        values = np.fromfile(fh, dtype=file_dtype)
-    return values.astype(dtype)
-
-
 def _strip_quotes(fname: str) -> str:
     """MF6 (and flopy3's own writer, confirmed against its
     `test_gwf_utl01_binaryinput.py`: writes ``OPEN/CLOSE 'top.bin' ...``)
@@ -152,25 +122,16 @@ def _read_open_close_values(vrow: list, context: LoadContext, dtype, length: int
     griddata control record's referenced file: its first ``length``
     values, as MF6 reads them.
 
-    Not seen in the corpus (0/242 models use OPEN/CLOSE ... (BINARY) for
-    an input array) so the binary path is unverified against a real
-    fixture -- based on the binary-array record format flopy4's own
-    head-output reader already relies on, per `_BINARY_ARRAY_HEADER`.
-    Otherwise the referenced file is a text array: see
-    `array_values`. FACTOR is applied by the caller,
-    `_read_control_record`.
+    The file's read by `external.read_array_file`. FACTOR is applied by
+    the caller, `_read_control_record`.
     """
     tokens = [str(t) for t in vrow[1:]]
     if not tokens:
         raise ValueError("OPEN/CLOSE control record missing a filename")
     path = context.resolve(_strip_quotes(tokens[0]))
 
-    if any(t.upper() in ("BINARY", "(BINARY)") for t in tokens[1:]):
-        values = _read_binary_array_values(path, dtype)
-        if len(values) < length:
-            raise ValueError(f"{path}: expected {length} values, got {len(values)}")
-        return values[:length]
-    return array_values(path.read_text(), dtype, length, source=path)
+    binary = any(t.upper() in ("BINARY", "(BINARY)") for t in tokens[1:])
+    return read_array_file(path, dtype, length, binary=binary)
 
 
 def _binary_list_row_spec(
@@ -243,32 +204,6 @@ def _binary_list_row_spec(
     return spec if seen_cellid else None
 
 
-def _read_binary_list_rows(path: Path, spec: "list[tuple[str, int]]") -> list[list]:
-    """Read MF6's binary list format (``ListReaderModule%read_binary``,
-    ``src/Utilities/ListReader.f90``; IDM's list blocks read the same way,
-    value by value, via ``StructArray%read_from_binary``): stream/
-    unformatted (``OpenSpec.f90``), so no record markers -- each row is
-    `spec`'s pieces back to back (see `_binary_list_row_spec`), read
-    until EOF. No header to skip, unlike the binary-array format
-    (`_BINARY_ARRAY_HEADER`).
-    """
-    row_bytes = sum(np.dtype(dtype).itemsize * n for dtype, n in spec)
-    data = path.read_bytes()
-    if row_bytes == 0 or len(data) % row_bytes != 0:
-        raise ValueError(
-            f"{path}: {len(data)} bytes isn't a whole number of {row_bytes}-byte binary list rows"
-        )
-    rows = []
-    for start in range(0, len(data), row_bytes):
-        row: list = []
-        offset = start
-        for dtype, n in spec:
-            row.extend(np.frombuffer(data, dtype=dtype, count=n, offset=offset).tolist())
-            offset += np.dtype(dtype).itemsize * n
-        rows.append(row)
-    return rows
-
-
 def _resolve_open_close_rows(
     rows: list,
     context: LoadContext,
@@ -281,12 +216,11 @@ def _resolve_open_close_rows(
     ``BEGIN PERIOD 1 / OPEN/CLOSE <fname> [(BINARY)] / END PERIOD 1``. Same
     keyword as griddata's OPEN/CLOSE control record, but a different
     mechanism: an ASCII-referenced file holds list rows, not a flat
-    numeric array, so it's parsed the same way an inline block's own
-    content would be (wrapped in a synthetic block and passed back
-    through the block/token grammar) rather than through
+    numeric array, so it's parsed as an inline block's own content would
+    be (`external.read_list_file`) rather than through
     `_read_open_close_values`. A binary-referenced file is decoded
     directly into the same row-of-tokens shape instead (see
-    `_read_binary_list_rows`), which needs `item_cls` (a single class,
+    `external.read_binary_list_file`), which needs `item_cls` (a single class,
     not a union), `sizes`, and `enabled` to know its row layout -- see
     `_binary_list_row_spec`.
 
@@ -311,13 +245,8 @@ def _resolve_open_close_rows(
                 f"{path}: flopy4 doesn't support binary list input for "
                 f"{item_cls.__name__}'s row layout"
             )
-        return _read_binary_list_rows(path, spec)
-
-    from flopy4.mf6.codec.reader import loads as _codec_loads
-
-    text = path.read_text()
-    wrapped = _codec_loads(f"BEGIN DATA\n{text}\nEND DATA\n")
-    return wrapped.get("DATA", [])
+        return read_binary_list_file(path, spec)
+    return read_list_file(path)
 
 
 _CONTROL_KINDS = frozenset({"CONSTANT", "INTERNAL", "OPEN/CLOSE"})
