@@ -4369,6 +4369,30 @@ def test_binary_list_row_spec_two_cellids_and_an_integer_field():
     ]
 
 
+def test_binary_list_row_spec_rejects_boundnames():
+    """With BOUNDNAMES on, the row has a text column, which MF6's binary
+    list reader stops on."""
+    from flopy4.mf6.converter.ingress.structure import _binary_list_row_spec
+    from flopy4.mf6.gwf import Chd
+
+    context = LoadContext(dims={"nlay": 1, "nrow": 1, "ncol": 1})
+    assert (
+        _binary_list_row_spec(Chd.StressPeriodData, context, {}, frozenset({"boundnames"})) is None
+    )
+
+
+def test_read_binary_list_file_drops_partial_row(tmp_path):
+    from flopy4.mf6.external import read_binary_list_file
+
+    spec = [("<i4", 3), ("<f8", 1)]
+    dtype = np.dtype([("cellid", "<i4", (3,)), ("head", "<f8")])
+    records = np.array([((1, 1, 1), 1.0), ((1, 1, 2), 2.0)], dtype=dtype)
+    path = tmp_path / "chd.bin"
+    path.write_bytes(records.tobytes() + b"\x00" * 5)
+
+    assert read_binary_list_file(path, spec) == [[1, 1, 1, 1.0], [1, 1, 2, 2.0]]
+
+
 def test_wel_period_roundtrip():
     """structure_component reconstructs WEL q values from loads(dumps(...))."""
     from flopy4.mf6.converter.egress.unstructure import unstructure_component

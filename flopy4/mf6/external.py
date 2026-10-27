@@ -398,19 +398,10 @@ def read_list_file(path: Path) -> list:
 
 def read_binary_list_file(path: Path, spec: "list[tuple[str, int]]") -> list[list]:
     """A binary OPEN/CLOSE list file's rows: each `spec`'s pieces back to
-    back, until EOF, with no header (``ListReader.f90``)."""
-    row_bytes = sum(np.dtype(dtype).itemsize * n for dtype, n in spec)
+    back, until EOF, with no header. A partial last row is dropped, as
+    IDM's ``StructArray%read_from_binary`` drops it."""
+    dtype = np.dtype([(f"f{i}", piece, (n,)) for i, (piece, n) in enumerate(spec)])
     data = path.read_bytes()
-    if row_bytes == 0 or len(data) % row_bytes != 0:
-        raise ValueError(
-            f"{path}: {len(data)} bytes isn't a whole number of {row_bytes}-byte binary list rows"
-        )
-    rows = []
-    for start in range(0, len(data), row_bytes):
-        row: list = []
-        offset = start
-        for dtype, n in spec:
-            row.extend(np.frombuffer(data, dtype=dtype, count=n, offset=offset).tolist())
-            offset += np.dtype(dtype).itemsize * n
-        rows.append(row)
-    return rows
+    records = np.frombuffer(data, dtype=dtype, count=len(data) // dtype.itemsize)
+    columns = [records[name].tolist() for name in dtype.names or ()]
+    return [[v for piece in pieces for v in piece] for pieces in zip(*columns)]

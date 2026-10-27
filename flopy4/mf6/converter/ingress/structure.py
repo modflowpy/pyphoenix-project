@@ -25,18 +25,15 @@ from flopy4.mf6.external import read_array_file, read_binary_list_file, read_lis
 from flopy4.mf6.item import (
     Item,
     RowContext,
-    _is_one_cellid,
     _may_be_absent,
-    _plannable,
+    _slots,
     conditional_fields,
     dim_lookup,
     inline_dim,
-    is_cellid,
     item_list_type,
     item_list_words,
     ncelldim_from_dims,
     number_kind,
-    package_sized_fields,
     parse_union_items,
     sized_by,
 )
@@ -135,68 +132,50 @@ def _binary_list_row_spec(
     sizes: "Mapping[str, int] | None",
     enabled: "frozenset[str]" = frozenset(),
 ) -> "list[tuple[str, int]] | None":
-    """One binary list row of `item_cls` as a sequence of (numpy dtype,
-    element count) pieces to read in order -- a cellid's components as
-    4-byte ints (one piece per cellid field, its own width; exchange data
-    has two, one per connected model), each other field as 4 bytes
-    (``number_kind`` "index"/"int") or 8 (anything else) its own, and any
-    package-sized field's (aux) as 8-byte doubles from `sizes`. None if
-    the row layout isn't simple and fixed enough for MF6's binary list
-    reader (``ListReaderModule%read_binary``, or IDM's
-    ``StructArray%read_from_binary`` for exchange data) to support at
-    all: a union, a record, a flag/keyword, a file-child column, or a
-    column counted by another row's own field (DISV's icvert) rather
-    than the package.
+    """One binary list row of `item_cls` as (numpy dtype, element count)
+    pieces to read in order, one per column, by the row's slots (as the
+    text reader lays rows out): a cellid as its grid's width of 4-byte
+    ints, a package-sized array (aux) as `sizes` says, a plain value as
+    one. Ints and indexes are 4 bytes, floats 8, as IDM's
+    ``StructArray%read_from_binary`` reads its columns.
 
-    Boundnames are never read from a binary file (not even checked
-    against ``inamedbound``, per the Fortran source) -- skipped here
-    too, left at their default. A `when`-gated field (EVT's ``petm0``)
-    contributes nothing when its option is off; a package-sized field
-    (aux) whose dimension doesn't resolve (no ``AUXILIARY`` given)
-    contributes nothing the same way, as long as it may be absent,
-    rather than being rejected.
+    None if MF6 can't read the row from binary either: a text column
+    (MF6 stops on one -- a boundname, once BOUNDNAMES puts it in the
+    row), a keyword or flag, a union, or an array whose length isn't
+    fixed by the package (DISV's icvert). A `when`-gated column whose
+    option is off isn't in the row, nor is an optional package-sized
+    one nothing sizes (aux, without AUXILIARY).
     """
-    if not _plannable(item_cls):  # type: ignore[arg-type]  # lru_cache wants Hashable
-        return None
     ncelldim = context.ncelldim(item_cls)
-    sized = set(package_sized_fields(item_cls))
     spec: list[tuple[str, int]] = []
-    seen_cellid = False
-    for f in item_cls.fields():
-        if f.name == "boundname":
-            continue
-        if (when := f.metadata.get("when")) and when not in enabled:
+    for slot in _slots(item_cls, True):  # type: ignore[arg-type]  # lru_cache wants Hashable
+        f = slot.field
+        if f is not None and (when := f.metadata.get("when")) and when not in enabled:
             continue  # option off, field isn't in the row at all
-        if is_cellid(f):
-            if not _is_one_cellid(f):
-                return None
-            cell_width: int | None = (
-                ncelldim
-                if isinstance(ncelldim, int)
-                else ncelldim.get(f.name)
-                if isinstance(ncelldim, Mapping)
-                else None
-            )
-            if cell_width is None:
-                return None
-            spec.append(("<i4", cell_width))
-            seen_cellid = True
-            continue
-        if (dim := inline_dim(f)) is not None:
-            if f not in sized:
-                return None  # counted by another row's own field, not the package
-            n = (sizes or {}).get(dim)
-            if n is None:
-                if not _may_be_absent(f):
-                    return None
-                n = 0  # nothing sizes it (e.g. no AUXILIARY given) -- it's just not there
-            if n:
-                spec.append(("<f8", n))
-            continue
-        if f.metadata.get("child") or f.metadata.get("_keyword") or f.metadata.get("tagged"):
+        if slot.kind not in ("cellid", "sized", "value") or f.metadata.get("_keyword"):
             return None
-        spec.append(("<i4" if number_kind(f) in ("index", "int") else "<f8", 1))
-    return spec if seen_cellid else None
+        if (dtype := _BINARY_LIST_DTYPES.get(number_kind(f))) is None:
+            return None
+        n: int | None = 1
+        if slot.kind == "cellid":
+            n = ncelldim.get(f.name) if isinstance(ncelldim, Mapping) else ncelldim
+        elif slot.kind == "sized":
+            n = (sizes or {}).get(inline_dim(f) or "")
+            if n is None and _may_be_absent(f):
+                n = 0  # nothing sizes it (e.g. no AUXILIARY given) -- it's just not there
+        if n is None:
+            return None
+        if n:
+            spec.append((dtype, n))
+    return spec or None
+
+
+_BINARY_LIST_DTYPES: dict[str | None, str] = {
+    "index": "<i4",
+    "int": "<i4",
+    "float": "<f8",
+    "series": "<f8",
+}
 
 
 def _resolve_open_close_rows(
