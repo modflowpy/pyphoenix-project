@@ -12,7 +12,7 @@
 #
 # - array: big gridded arrays
 # - list: big stress-period lists
-# - openclose: data in OPEN/CLOSE files
+# - external: data in external (OPEN/CLOSE) files
 # - exg: exchanges between models
 # - sfr, lak: package-specific cases
 
@@ -21,12 +21,13 @@ name = "mf6/test/test001a_Tharmonic"
 tier = "smoke"
 tags = []
 
-# an OPEN/CLOSE list. Not test006_gwf3_disv_ext: flopy3 doesn't read its
-# OPEN/CLOSE dimensions block (nlay comes back None), so it fails equal work.
+# an external (OPEN/CLOSE) list. Not test006_gwf3_disv_ext: flopy3 doesn't
+# read its external dimensions block (nlay comes back None), so it fails
+# equal work.
 [[model]]
 name = "mf6/test/test001a_Tharmonic_extlist"
 tier = "smoke"
-tags = ["openclose"]
+tags = ["external"]
 
 [[model]]
 name = "mf6/test/test028_sfr"
@@ -51,18 +52,18 @@ tags = []
 [[model]]
 name = "mf6/test/test019_VilhelmsenGF"
 tier = "standard"
-tags = ["openclose"]
+tags = ["external"]
 
 [[model]]
 name = "mf6/test/test033_wtdecay"
 tier = "standard"
-tags = ["openclose"]
+tags = ["external"]
 
 # test_load.py's COLD_MODEL
 [[model]]
 name = "mf6/test/test050_circle_island"
 tier = "standard"
-tags = ["openclose"]
+tags = ["external"]
 
 [[model]]
 name = "mf6/large/test1000_751x751"
