@@ -34,6 +34,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import NamedTuple
 
+from _models import TIERS
+
 STORAGE = Path(__file__).parents[1] / ".benchmarks"
 MEMORY = STORAGE / "memory"
 LIBRARIES = ("flopy3", "flopy4")
@@ -152,6 +154,32 @@ def runs_table(runs: list[Run]) -> list[str]:
 
 # --- report ---
 
+# what each tier holds; a model in several tiers' runs is listed under the
+# first of its tiers here
+TIER_CONTENTS = {
+    "smoke": "a few small models",
+    "standard": "the smoke models, plus mid-size ones",
+    "large": "big models only, none of smoke's or standard's",
+    "full": "the `models-full.txt` manifest",
+}
+
+# what the models with each `models.toml` tag have in common
+GROUPS = {
+    "array": "large gridded arrays",
+    "list": "large stress-period lists",
+    "external": "data in external files",
+    "exg": "exchanges between models",
+    "sfr": "an SFR package",
+    "lak": "a LAK package",
+}
+RENAMED_TAGS = {"openclose": "external"}  # in runs saved before the rename
+
+OPS = {"load": "load", "load-materialize": "load + materialize", "write": "write"}
+
+
+def tier_rank(tier: str) -> int:
+    return list(TIER_CONTENTS).index(tier) if tier in TIER_CONTENTS else len(TIER_CONTENTS)
+
 
 class Results(NamedTuple):
     # (op, model, library) -> minimum seconds, or peak bytes
@@ -160,9 +188,10 @@ class Results(NamedTuple):
     # op -> tier -> library -> (minimum seconds, extra_info), for whole tiers
     totals: dict[str, dict[str, dict[str, tuple[float, dict]]]]
     written: dict[tuple[str, str], int]  # (model, library) -> bytes written
-    models: dict[str, dict]  # model -> {"tags", "n_bytes"}
-    cold: dict[str, tuple[float, dict]]  # library -> (wall, extra_info)
-    parse: dict[str, dict[str, float]]  # group -> parser -> minimum seconds
+    models: dict[str, dict]  # model -> {"tags", "n_bytes", "tier"}
+    cold: dict[str, tuple[float, dict]]  # library -> (wall, extra_info + tier)
+    # group -> tier -> parser -> (minimum seconds, extra_info)
+    parse: dict[str, dict[str, dict[str, tuple[float, dict]]]]
     imports: dict[str, dict]  # library -> {"peak_memory", "rss"}
     scenarios: dict[str, dict[str, dict]]  # group -> variant -> stats
 
@@ -175,10 +204,18 @@ def collect(runs: list[Run]) -> Results:
         {},
         {},
         {},
-        defaultdict(dict),
+        defaultdict(lambda: defaultdict(dict)),
         {},
         defaultdict(dict),
     )
+
+    def add_model(model: str, tags: list[str], n_bytes: int, tier: str) -> None:
+        old = res.models.get(model)
+        if old and tier_rank(old["tier"]) <= tier_rank(tier):
+            tier = old["tier"]
+        tags = [RENAMED_TAGS.get(t, t) for t in tags]
+        res.models[model] = {"tags": tags, "n_bytes": n_bytes, "tier": tier}
+
     for run in sorted(runs, key=lambda r: r.datetime):  # newer runs win
         for b in run.data["benchmarks"]:
             if run.kind == "memory":
@@ -187,7 +224,7 @@ def collect(runs: list[Run]) -> Results:
                     continue
                 key = (b["op"], b["model"], b["library"])
                 res.peaks[key] = b["peak_memory"]
-                res.models[b["model"]] = {"tags": b["tags"], "n_bytes": b["n_bytes"]}
+                add_model(b["model"], b["tags"], b["n_bytes"], run.tier)
                 continue
             group, params, info = b["group"], b.get("params") or {}, b["extra_info"]
             if b["fullname"].startswith(PROFILE):
@@ -196,15 +233,15 @@ def collect(runs: list[Run]) -> Results:
                 continue
             t = b["stats"]["min"]
             if "parser" in params or group == "typed-grammar-build":
-                res.parse[group][params.get("parser", "typed")] = t
+                res.parse[group][run.tier][params.get("parser", "typed")] = (t, info)
                 continue
             library = params["library"]
             if group == "load-cold":
-                res.cold[library] = (t, info)
+                res.cold[library] = (t, info | {"tier": run.tier})
             elif ":" in group:  # per model
                 op, model = group.split(":")[0], info["model"]
                 res.times[op, model, library] = t
-                res.models[model] = {"tags": info["tags"], "n_bytes": info["n_bytes"]}
+                add_model(model, info["tags"], info["n_bytes"], run.tier)
                 if "n_bytes_written" in info:
                     res.written[model, library] = info["n_bytes_written"]
             else:
@@ -218,96 +255,59 @@ def by_library(d: dict, op: str, model: str) -> tuple:
 
 def report(runs: list[Run]) -> str:
     res = collect(runs)
+    models = sorted(
+        res.models, key=lambda m: (tier_rank(res.models[m]["tier"]), res.models[m]["n_bytes"])
+    )
     out = ["# flopy4 vs. flopy3 benchmarks", ""]
     out += runs_table(runs)
     out += [
         "",
-        "Times are the minimum over rounds, in seconds; memory is peak heap",
-        "use in MiB (memray). Ratios are flopy3 / flopy4: above 1, flopy4 is",
-        "faster or smaller.",
+        "Times are the minimum over rounds, in seconds. Memory is peak heap",
+        "use in MiB, measured with memray. Each × column is flopy3 / flopy4,",
+        "so above 1 means flopy4 is faster or uses less memory.",
     ]
+    out += tiers_section(res, runs)
 
-    if res.totals:
-        out += ["", "## Totals", "", "Every model of the tier, in one benchmark.", ""]
-        rows = []
-        for op in ("load", "load-materialize", "write"):
-            for tier, libs in res.totals.get(op, {}).items():
-                (t3, i3), (t4, _) = libs.get("flopy3", (None, {})), libs.get("flopy4", (None, {}))
-                rows.append(
-                    [
-                        op,
-                        tier,
-                        str(i3.get("n_models", "")),
-                        mb(i3.get("n_bytes")),
-                        secs(t3),
-                        secs(t4),
-                        ratio(t3, t4),
-                    ]
-                )
-        header = ["benchmark", "models", "n", "input MB", "flopy3", "flopy4", "×"]
-        out += table(header, rows, right=2)
-
-    models = sorted(res.models, key=lambda m: res.models[m]["n_bytes"])
-    if models:
-        out += ["", "## Per model", ""]
-        if res.times:
-            out += [
-                "Load + materialize (the fair comparison: flopy3 reads `OPEN/CLOSE`",
-                "arrays only on access) and write, in seconds; bytes written in MB.",
-                "",
-            ]
-            rows = []
-            for m in models:
-                lm, w = (
-                    by_library(res.times, "load-materialize", m),
-                    by_library(res.times, "write", m),
-                )
-                if not any(lm + w):
-                    continue
-                rows.append(
-                    [
-                        short(m),
-                        ", ".join(res.models[m]["tags"]),
-                        mb(res.models[m]["n_bytes"]),
-                        secs(lm[0]),
-                        secs(lm[1]),
-                        ratio(*lm),
-                        secs(w[0]),
-                        secs(w[1]),
-                        ratio(*w),
-                        pair(*(mb(res.written.get((m, lib))) for lib in LIBRARIES)),
-                    ]
-                )
-            header = [
-                "model",
-                "tags",
-                "input MB",
-                "load+mat flopy3",
-                "flopy4",
-                "×",
-                "write flopy3",
-                "flopy4",
-                "×",
-                "written flopy3 / flopy4",
-            ]
-            out += table(header, rows, right=2)
-        if res.peaks:
-            out += ["", "Peak memory in MiB, flopy3 / flopy4, and the ratio:", ""]
-            ops = ("load", "load-materialize", "write")
-            rows = []
-            for m in models:
-                cells = [short(m), ", ".join(res.models[m]["tags"]), mb(res.models[m]["n_bytes"])]
-                for op in ops:
-                    p = by_library(res.peaks, op, m)
-                    cells += [pair(*map(mib, p)), ratio(*p)]
-                if any(cells[3:]):
-                    rows.append(cells)
-            header = ["model", "tags", "input MB"]
-            for op in ops:
-                header += [op, "×"]
-            out += table(header, rows, right=2)
-
-        out += by_tag(res, models)
+    out += op_section(
+        res,
+        models,
+        "load",
+        [
+            "Loading each simulation, without accessing its data afterward.",
+            "The two libraries don't do the same work here. flopy4 reads every",
+            "input file at load. flopy3 reads external array files (`OPEN/CLOSE`)",
+            "only when their data is accessed, and again on every access, since it",
+            "doesn't cache them. So on models with external arrays, flopy3 has",
+            "done less work by the end of a load; see load + materialize for the",
+            "like-for-like comparison.",
+        ],
+    )
+    out += op_section(
+        res,
+        models,
+        "load-materialize",
+        [
+            "Loading each simulation, then accessing every array and list and",
+            "summing its values, so both libraries have read all of the input.",
+            "This is the like-for-like comparison of reading: a model is only",
+            "benchmarked if both libraries, by the end, opened exactly the same",
+            "files (see `docs/dev/load-benchmarks.md`).",
+        ],
+    )
+    out += op_section(
+        res,
+        models,
+        "write",
+        [
+            "Writing an already-loaded simulation to an empty directory (the",
+            "load isn't timed). flopy3 writes roughly twice the bytes for the",
+            "same data, since it pads every value, so part of the difference is",
+            "output size. flopy3 also reads its external array files again to",
+            "write them, which is left in, since a flopy3 user pays for it too.",
+        ],
+    )
+    out += memory_section(res, models)
+    out += groups_section(res, models)
 
     if res.imports:
         out += ["", "## Import", ""]
@@ -324,12 +324,13 @@ def report(runs: list[Run]) -> str:
         out += table(["library", "heap peak MiB", "RSS growth MiB"], rows)
 
     if res.cold:
-        model = next(iter(res.cold.values()))[1].get("model", "")
+        info = next(iter(res.cold.values()))[1]
         out += ["", "## Cold start", ""]
         out += [
-            f"A fresh interpreter: import, then load + materialize `{short(model)}`.",
-            "Wall time is the minimum over rounds; the split is the child's own,",
-            "from its last round.",
+            "A fresh interpreter: import the library, then load + materialize",
+            f"`{short(info.get('model', ''))}` (from the {info['tier']} tier's run).",
+            "Wall time is the minimum over rounds; the split is measured inside",
+            "the interpreter, in its last round.",
             "",
         ]
         rows = []
@@ -340,13 +341,7 @@ def report(runs: list[Run]) -> str:
                 rows.append([lib, secs(t), *parts])
         out += table(["library", "wall", "import", "load", "materialize"], rows)
 
-    if res.parse:
-        out += ["", "## Parse stage, basic vs. typed", ""]
-        rows = []
-        for group, ts in res.parse.items():
-            basic, typed = ts.get("basic"), ts.get("typed")
-            rows.append([group, secs(basic), secs(typed), ratio(typed, basic)])
-        out += table(["benchmark", "basic", "typed", "typed / basic"], rows)
+    out += parse_section(res)
 
     if res.scenarios:
         out += ["", "## Profiling scenarios", ""]
@@ -361,41 +356,199 @@ def report(runs: list[Run]) -> str:
     return "\n".join(out) + "\n"
 
 
-def by_tag(res: Results, models: list[str]) -> list[str]:
-    """Geometric-mean ratios over the models with each tag."""
-    tags = sorted({t for m in models for t in res.models[m]["tags"]})
+def tiers_section(res: Results, runs: list[Run]) -> list[str]:
+    tiers = sorted({r.tier for r in runs if r.tier != "profile"}, key=tier_rank)
+    if not tiers:
+        return []
+    rows = []
+    for tier in tiers:
+        info = next(
+            (
+                libs[lib][1]
+                for libs in (o.get(tier, {}) for o in res.totals.values())
+                for lib in libs
+            ),
+            None,
+        )
+        if info:
+            n, size = info.get("n_models"), info.get("n_bytes")
+        else:  # memory runs only
+            members = [m for m in res.models if res.models[m]["tier"] in TIERS.get(tier, (tier,))]
+            n, size = len(members), sum(res.models[m]["n_bytes"] for m in members)
+        rows.append([tier, TIER_CONTENTS.get(tier, ""), str(n or ""), mb(size)])
+    out = ["", "The models come in tiers, from `benchmarks/models.toml`:", ""]
+    out += table(["tier", "contents", "models", "input MB"], rows, right=2)
+    out += [
+        "",
+        "Timings come for whole tiers, each tier timed as one benchmark,",
+        "and for single models, labeled with the tier they belong to.",
+    ]
+    return out
+
+
+def op_section(res: Results, models: list[str], op: str, blurb: list[str]) -> list[str]:
+    totals = res.totals.get(op, {})
+    members = [m for m in models if any(by_library(res.times, op, m))]
+    if not totals and not members:
+        return []
+    out = ["", f"## {OPS[op].capitalize()}", "", *blurb]
+    if totals:
+        rows = []
+        for tier in sorted(totals, key=tier_rank):
+            libs = totals[tier]
+            (t3, i3), (t4, _) = libs.get("flopy3", (None, {})), libs.get("flopy4", (None, {}))
+            rows.append(
+                [
+                    tier,
+                    str(i3.get("n_models", "")),
+                    mb(i3.get("n_bytes")),
+                    secs(t3),
+                    secs(t4),
+                    ratio(t3, t4),
+                ]
+            )
+        out += ["", "Whole tiers:", ""]
+        out += table(["tier", "models", "input MB", "flopy3", "flopy4", "×"], rows, right=1)
+    if members:
+        written = op == "write" and res.written
+        rows = []
+        for m in members:
+            t = by_library(res.times, op, m)
+            cells = [*model_cells(res, m), secs(t[0]), secs(t[1]), ratio(*t)]
+            if written:
+                cells += [mb(res.written.get((m, lib))) for lib in LIBRARIES]
+            rows.append(cells)
+        header = ["model", "tier", "group", "input MB", "flopy3", "flopy4", "×"]
+        if written:
+            header += ["MB written, flopy3", "flopy4"]
+        out += ["", "Single models:", ""]
+        out += table(header, rows, right=3)
+    return out
+
+
+def model_cells(res: Results, model: str) -> list[str]:
+    m = res.models[model]
+    return [short(model), m["tier"], ", ".join(m["tags"]), mb(m["n_bytes"])]
+
+
+def memory_section(res: Results, models: list[str]) -> list[str]:
+    if not res.peaks:
+        return []
+    notes = {
+        "load": "The loaded simulation is kept, so this is at least its footprint.",
+        "load-materialize": (
+            "Includes what flopy3 reads from external array files on access,"
+            " though it doesn't keep it."
+        ),
+        "write": "Writing an already-loaded simulation.",
+    }
+    out = ["", "## Peak memory", ""]
+    out += [
+        "Peak heap use per model, in MiB, from a memray session of its own",
+        "(`bench-memory`). Each peak is what the operation allocated, numpy",
+        "and pandas included, but not the interpreter or the imports.",
+    ]
+    for op, name in OPS.items():
+        rows = []
+        for m in models:
+            p = by_library(res.peaks, op, m)
+            if any(p):
+                rows.append([*model_cells(res, m), mib(p[0]), mib(p[1]), ratio(*p)])
+        if rows:
+            out += ["", f"### {name.capitalize()}", "", notes[op], ""]
+            header = ["model", "tier", "group", "input MB", "flopy3", "flopy4", "×"]
+            out += table(header, rows, right=3)
+    return out
+
+
+def groups_section(res: Results, models: list[str]) -> list[str]:
+    """Geometric-mean ratios over the models in each group (tag)."""
     columns = [
-        ("load+mat time", res.times, "load-materialize"),
+        ("load + materialize time", res.times, "load-materialize"),
         ("write time", res.times, "write"),
-        ("load+mat memory", res.peaks, "load-materialize"),
+        ("load + materialize memory", res.peaks, "load-materialize"),
         ("write memory", res.peaks, "write"),
     ]
     columns = [c for c in columns if any(k[0] == c[2] for k in c[1])]
     if not columns:
         return []
+    tags = sorted({t for m in models for t in res.models[m]["tags"]})
     rows = []
-    for tag in ["all", "untagged", *tags]:
+    for tag in ["all", *tags, "none"]:
         if tag == "all":
-            members = models
-        elif tag == "untagged":
+            members, what = models, "every model"
+        elif tag == "none":
             members = [m for m in models if not res.models[m]["tags"]]
+            what = "models in no group"
         else:
             members = [m for m in models if tag in res.models[m]["tags"]]
+            what = GROUPS.get(tag, "")
         if not members:
             continue
-        cells = [tag, str(len(members))]
+        tiers = sorted({res.models[m]["tier"] for m in members}, key=tier_rank)
+        cells = [tag, what, ", ".join(tiers), str(len(members))]
         for _, d, op in columns:
             pairs = [by_library(d, op, m) for m in members]
             g = geomean([a / b for a, b in pairs if a and b])
             cells.append("" if g is None else f"{g:.2f}")
         rows.append(cells)
-    out = ["", "## By tag", ""]
+    out = ["", "## Model groups", ""]
     out += [
-        "Geometric mean of the per-model ratios (flopy3 / flopy4) over the",
-        "models with each tag (see `benchmarks/models.toml`).",
+        "The models are grouped by what they have in common, mostly what",
+        "dominates their input, with tags in `benchmarks/models.toml`. A model",
+        "can be in more than one group, or none. Each cell is the geometric",
+        "mean of the group's single-model × values, over every tier in this",
+        "report; for a one-model group, it's just that model's.",
         "",
     ]
-    return out + table(["tag", "models", *(c[0] for c in columns)], rows)
+    header = ["group", "models with", "tiers", "models", *(c[0] for c in columns)]
+    return out + table(header, rows, right=3)
+
+
+def parse_section(res: Results) -> list[str]:
+    if not res.parse:
+        return []
+    labels = {
+        "parse": "parse",
+        "parse-transform": "parse + transform",
+        "typed-grammar-build": "typed grammar build",
+    }
+    rows = []
+    for group in res.parse:
+        for tier in sorted(res.parse[group], key=tier_rank):
+            ts = res.parse[group][tier]
+            basic, typed = (ts.get(p, (None, {}))[0] for p in ("basic", "typed"))
+            info = next(iter(ts.values()))[1]
+            rows.append(
+                [
+                    labels.get(group, group),
+                    tier,
+                    str(info.get("n_files", "")),
+                    mb(info.get("n_bytes")),
+                    secs(basic),
+                    secs(typed),
+                    ratio(typed, basic),
+                ]
+            )
+    out = ["", "## Lark parser, basic vs. typed", ""]
+    out += [
+        "flopy4 only. flopy4 has two Lark grammars for MF6 input: the basic",
+        "one, which loading uses, and the typed one, generated from the DFNs,",
+        "which loading doesn't use yet. Each benchmark runs over every package",
+        "file of the tier's models that both grammars accept, read into memory",
+        "beforehand, so no file I/O is timed. The last column is typed / basic,",
+        "so above 1 means the typed parser is slower.",
+        "",
+        "- **parse**: lexing and parsing only. The basic parser transforms as",
+        "  it parses, so for it this includes the transform.",
+        "- **parse + transform**: parsing, then turning the parse tree into",
+        "  Python values (`loads_basic` / `loads_typed`).",
+        "- **typed grammar build**: building the typed parsers, which happens",
+        "  once per process and isn't in the other two.",
+        "",
+    ]
+    header = ["stage", "tier", "files", "input MB", "basic", "typed", "typed / basic"]
+    return out + table(header, rows, right=2)
 
 
 # --- comparison ---
