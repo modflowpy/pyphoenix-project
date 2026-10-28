@@ -13,6 +13,7 @@ def _cmd_sync(args: argparse.Namespace) -> None:
         args.release_id,
         mf6_version=args.mf6_version,
         all_packages=args.all_packages,
+        developmode=args.developmode,
         install=args.install,
         bindir=args.bindir,
         force=args.force,
@@ -120,6 +121,12 @@ def main() -> None:
         dest="all_packages",
         help="Generate all packages, including ones not yet on disk. "
         "By default sync only updates already-generated files.",
+    )
+    sync_p.add_argument(
+        "--developmode",
+        action="store_true",
+        help="Include developmode fields (e.g. dev_* options), which MF6 "
+        "release builds don't accept. Omitted by default.",
     )
     sync_p.add_argument(
         "--force",

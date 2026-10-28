@@ -444,6 +444,7 @@ def sync(
     exe: str | PathLike | None = None,
     mf6_version: str | None = None,
     all_packages: bool = False,
+    developmode: bool = False,
     install: bool = False,
     bindir: str | PathLike | None = None,
     force: bool = False,
@@ -477,6 +478,9 @@ def sync(
     all_packages :
         Generate every component, including ones with no module yet. By
         default only existing modules are regenerated.
+    developmode :
+        Include fields the DFNs mark ``developmode``, such as the
+        ``dev_*`` options. Off by default, as in an MF6 release build.
     install :
         Also install the MF6 binary for a remote source, before changing
         any classes: the release for a tag, the latest nightly build for
@@ -593,6 +597,7 @@ def sync(
             dfns=dfns,
             outdir=outdir,
             stage=stage,
+            developmode=developmode,
             skip=_SKIP,
             makedirs=all_packages,
             existing_only=not all_packages,

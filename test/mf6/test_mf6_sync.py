@@ -172,6 +172,13 @@ def test_resync_is_stable(dfn_path, outdir):
     assert _snapshot(outdir) == before
 
 
+@pytest.mark.parametrize("developmode", [False, True])
+def test_developmode(dfn_path, outdir, developmode):
+    """Developmode fields are generated only if asked for."""
+    sync(dfn_path, mf6_version="6.9.0", developmode=developmode, outdir=outdir)
+    assert ("dev_" in (outdir / "gwf" / "npf.py").read_text()) == developmode
+
+
 def test_orphan_removed(dfn_path, outdir):
     """A generated module the contract doesn't list, with no DFN, goes."""
     orphan = outdir / "gwf" / "zzz.py"
@@ -569,7 +576,18 @@ def test_cli_wraps_sync(monkeypatch, tmp_path, capsys):
 
     monkeypatch.setattr("flopy4.mf6._sync.sync", fake_sync)
     monkeypatch.setattr(
-        sys, "argv", ["flopy4", "mf6", "sync", "6.6.0", "--all-packages", "--force", "--install"]
+        sys,
+        "argv",
+        [
+            "flopy4",
+            "mf6",
+            "sync",
+            "6.6.0",
+            "--all-packages",
+            "--developmode",
+            "--force",
+            "--install",
+        ],
     )
     cli.main()
     assert calls == [
@@ -578,6 +596,7 @@ def test_cli_wraps_sync(monkeypatch, tmp_path, capsys):
             {
                 "mf6_version": None,
                 "all_packages": True,
+                "developmode": True,
                 "install": True,
                 "bindir": None,
                 "force": True,
