@@ -289,6 +289,16 @@ def quote_if_needed(value: Scalar) -> str:
     raise ValueError(f"MF6 can't represent a value with both quote types: {value!r}")
 
 
+def list_file_record(value: Sequence) -> str:
+    """The OPEN/CLOSE record for a list `write_external_lists` wrote to a
+    file, with `` (BINARY)`` if it wrote it binary; else empty."""
+    path = getattr(value, "open_close", None)
+    if path is None:
+        return ""
+    binary = " (BINARY)" if getattr(value, "open_close_binary", False) else ""
+    return f"OPEN/CLOSE {quote_if_needed(path)}{binary}"
+
+
 def data2lines(value: Sequence, inset: str = " ") -> str:
     """
     Pre-format list data rows to a single newline-joined string.

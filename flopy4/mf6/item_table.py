@@ -10,10 +10,13 @@ to the next (see `converter.ingress.structure._parse_rows`):
 Big blocks are almost always numbers only, so most rows never become
 Python objects until they're used."""
 
+import copy
 import io
 import operator
-from collections.abc import Iterable, Iterator, MutableSequence
+from collections.abc import Callable, Iterable, Iterator, Mapping, MutableSequence, Sequence
 from functools import lru_cache
+from itertools import islice
+from pathlib import PurePosixPath
 from typing import Any
 
 import attrs
@@ -31,10 +34,13 @@ from flopy4.mf6.item import (
     _sized_by_field,
     _spans,
     _union_field_arms,
+    binary_row_spec,
+    cellid_widths,
     inline_dim,
     is_cellid,
     number_kind,
 )
+from flopy4.mf6.write_context import list_hash
 from flopy4.spec import is_array
 from flopy4.utils import parse_number
 
@@ -627,3 +633,95 @@ def _read_ragged(item_cls: type[Item], text: str, context: RowContext) -> list |
         for i, item in zip(rows.tolist(), ItemTable(item_cls, columns, len(rows)).to_items()):
             items[i] = item
     return items
+
+
+def list_tokens(
+    row_list: "list | ItemTable", ncelldim: "int | Mapping[str, int] | None" = None
+) -> list:
+    """Convert a list of Item instances to MF6 record tuples via each
+    Item's own to_tokens(), and a list of unions' words (PRP's ALL) to
+    lines of their own. ``ncelldim`` is the grid's, if known, to write a
+    cellid of no cell as zeros (see Item.to_tokens); else each cellid
+    column's, from the rows that give one. A table's rows are its columns'
+    (see `ItemTable.tokens`), when they're all numbers."""
+    if isinstance(row_list, ItemTable) and (tokens := row_list.tokens()) is not None:
+        return tokens
+    widths = ncelldim or cellid_widths([row for row in row_list if not isinstance(row, str)])
+    return [[row] if isinstance(row, str) else row.to_tokens(ncelldim=widths) for row in row_list]
+
+
+class Rows(Sequence):
+    """A block's list rows as tuples (see `list_tokens`), made when
+    read, so a write holds one block's tuples at a time.
+
+    A list that can go to a file of its own (see `write_external_lists`)
+    has its `field`, as its `ListKey` names it, and its `item_cls` and
+    `layout` (a callable giving the package's sizes and options its rows
+    are laid out by, see `binary_row_spec`). Written to a file, it's
+    marked with the file's path, `open_close`, and `open_close_binary`.
+    """
+
+    def __init__(
+        self,
+        ncelldim: int | None = None,
+        field: str | None = None,
+        item_cls: "type[Item] | tuple[type[Item], ...] | None" = None,
+        layout: "Callable[[], tuple[dict[str, int], frozenset[str]]] | None" = None,
+    ) -> None:
+        self._parts: list[list | ItemTable] = []
+        self._ncelldim = ncelldim
+        self.field = field
+        self.item_cls = item_cls
+        self.layout = layout
+        self.open_close: PurePosixPath | None = None
+        self.open_close_binary = False
+        self._hash: str | None = None
+
+    def append(self, row_list: "list | ItemTable") -> None:
+        self._parts.append(row_list)
+        self._hash = None
+
+    def hash(self) -> str:
+        """The rows' `list_hash`."""
+        if self._hash is None:
+            self._hash = list_hash(self)
+        return self._hash
+
+    def binary_spec(self) -> "list[tuple[str, int]] | None":
+        """The rows' layout in a binary file (see `binary_row_spec`), or
+        None if MF6 can't read them from one."""
+        if not isinstance(self.item_cls, type) or self.layout is None:
+            return None
+        ncelldim: "int | dict[str, int] | None" = self._ncelldim
+        if ncelldim is None:
+            ncelldim = {}
+            for part in self._parts:
+                ncelldim = {**cellid_widths(list(islice(part, 100))), **ncelldim}
+        sizes, enabled = self.layout()
+        return binary_row_spec(self.item_cls, ncelldim, sizes, enabled)
+
+    def marked(self, path: PurePosixPath, binary: bool) -> "Rows":
+        """These rows, marked as written to `path`."""
+        rows = copy.copy(self)
+        rows.open_close, rows.open_close_binary = path, binary
+        return rows
+
+    def __iter__(self) -> Iterator:
+        for part in self._parts:
+            yield from list_tokens(part, self._ncelldim)
+
+    def __len__(self) -> int:
+        return sum(len(part) for part in self._parts)
+
+    def __getitem__(self, i):  # type: ignore[override]
+        return list(self)[i]
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Rows):
+            other = list(other)
+        return list(self) == other
+
+    __hash__ = None  # type: ignore[assignment]
+
+    def __repr__(self) -> str:
+        return f"Rows({list(self)!r})"

@@ -25,25 +25,22 @@ from flopy4.mf6.external import read_array_file, read_binary_list_file, read_lis
 from flopy4.mf6.item import (
     Item,
     RowContext,
-    _may_be_absent,
-    _slots,
+    binary_row_spec,
     conditional_fields,
     dim_lookup,
-    inline_dim,
     item_list_type,
     item_list_words,
     ncelldim_from_dims,
-    number_kind,
     parse_union_items,
     sized_by,
 )
-from flopy4.mf6.item_table import ItemTable, read_rows
+from flopy4.mf6.item_table import ItemTable, list_tokens, read_rows
 from flopy4.mf6.load_context import LoadContext
 from flopy4.mf6.package import Package
 from flopy4.mf6.period_arrays import is_grid_package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import repeating_array_key_type, to_field_type
-from flopy4.mf6.write_context import ArrayIO, WriteContext, array_hash
+from flopy4.mf6.write_context import ArrayIO, ListIO, WriteContext, array_hash, list_hash
 from flopy4.spec import is_array, resolve
 from flopy4.utils import fortran_float, unwrap_optional
 
@@ -132,50 +129,9 @@ def _binary_list_row_spec(
     sizes: "Mapping[str, int] | None",
     enabled: "frozenset[str]" = frozenset(),
 ) -> "list[tuple[str, int]] | None":
-    """One binary list row of `item_cls` as (numpy dtype, element count)
-    pieces to read in order, one per column, by the row's slots (as the
-    text reader lays rows out): a cellid as its grid's width of 4-byte
-    ints, a package-sized array (aux) as `sizes` says, a plain value as
-    one. Ints and indexes are 4 bytes, floats 8, as IDM's
-    ``StructArray%read_from_binary`` reads its columns.
-
-    None if MF6 can't read the row from binary either: a text column
-    (MF6 stops on one -- a boundname, once BOUNDNAMES puts it in the
-    row), a keyword or flag, a union, or an array whose length isn't
-    fixed by the package (DISV's icvert). A `when`-gated column whose
-    option is off isn't in the row, nor is an optional package-sized
-    one nothing sizes (aux, without AUXILIARY).
-    """
-    ncelldim = context.ncelldim(item_cls)
-    spec: list[tuple[str, int]] = []
-    for slot in _slots(item_cls, True):  # type: ignore[arg-type]  # lru_cache wants Hashable
-        f = slot.field
-        if f is not None and (when := f.metadata.get("when")) and when not in enabled:
-            continue  # option off, field isn't in the row at all
-        if slot.kind not in ("cellid", "sized", "value") or f.metadata.get("_keyword"):
-            return None
-        if (dtype := _BINARY_LIST_DTYPES.get(number_kind(f))) is None:
-            return None
-        n: int | None = 1
-        if slot.kind == "cellid":
-            n = ncelldim.get(f.name) if isinstance(ncelldim, Mapping) else ncelldim
-        elif slot.kind == "sized":
-            n = (sizes or {}).get(inline_dim(f) or "")
-            if n is None and _may_be_absent(f):
-                n = 0  # nothing sizes it (e.g. no AUXILIARY given) -- it's just not there
-        if n is None:
-            return None
-        if n:
-            spec.append((dtype, n))
-    return spec or None
-
-
-_BINARY_LIST_DTYPES: dict[str | None, str] = {
-    "index": "<i4",
-    "int": "<i4",
-    "float": "<f8",
-    "series": "<f8",
-}
+    """`binary_row_spec` for `item_cls`, its cellids as wide as the
+    context's grid's."""
+    return binary_row_spec(item_cls, context.ncelldim(item_cls), sizes, enabled)
 
 
 def _resolve_open_close_rows(
@@ -201,11 +157,8 @@ def _resolve_open_close_rows(
     row -- and returns the referenced file's rows in its place; otherwise
     returns `rows` unchanged.
     """
-    if isinstance(rows, (NumberRows, BlockRows)):
-        return rows  # has numbers (and counting them would read them)
-    if len(rows) != 1 or not rows[0] or str(rows[0][0]).upper() != "OPEN/CLOSE":
+    if (row := _open_close_row(rows)) is None:
         return rows
-    row = rows[0]
     if len(row) < 2:
         raise ValueError("OPEN/CLOSE control record missing a filename")
     path = context.resolve(_strip_quotes(str(row[1])))
@@ -220,6 +173,41 @@ def _resolve_open_close_rows(
             )
         return read_binary_list_file(path, spec)
     return read_list_file(path)
+
+
+def _open_close_row(rows: list) -> list | None:
+    """A block's only row, if it's an OPEN/CLOSE record, else None."""
+    if isinstance(rows, (NumberRows, BlockRows)):
+        return None  # has numbers (and counting them would read them)
+    if len(rows) != 1 or not rows[0] or str(rows[0][0]).upper() != "OPEN/CLOSE":
+        return None
+    return rows[0]
+
+
+def _list_io(
+    rows: list,
+    row_list: "list | ItemTable | None",
+    item_cls: "type[Item] | tuple[type[Item], ...]",
+    context: LoadContext,
+) -> ListIO | None:
+    """How a block (its `rows`) wrote its list, if to a file, to write it
+    back the same way: the file, as written (relative to the simulation
+    directory), whether binary, and the hash of the list read from it,
+    `row_list`. None for a list in its block."""
+    if (row := _open_close_row(rows)) is None or len(row) < 2 or row_list is None:
+        return None
+    binary = any(str(t).upper() in ("BINARY", "(BINARY)") for t in row[2:])
+    ncelldim = context.ncelldim(item_cls) if isinstance(item_cls, type) else None
+    return ListIO(
+        path=Path(_strip_quotes(str(row[1]))),
+        format="binary" if binary else "open/close",
+        hash=list_hash(list_tokens(row_list, ncelldim)),
+    )
+
+
+def _list_key(f: attrs.Attribute) -> str:
+    """A list field's name in a `ListKey`, as the writer names it."""
+    return f.alias if (f.alias and f.name.startswith("_")) else f.name
 
 
 _CONTROL_KINDS = frozenset({"CONSTANT", "INTERNAL", "OPEN/CLOSE"})
@@ -1038,9 +1026,10 @@ def structure_component(
     if isinstance(getattr(cls, "maxbound", None), property):
         known_blocks.add("dimensions")  # computed maxbound, see unstructure.py
     kwargs: dict[str, Any] = {}
-    # how the file wrote each array, by `ArrayKey`, for the instance's
-    # write_context
+    # how the file wrote each array, by `ArrayKey`, and list, by `ListKey`,
+    # for the instance's write_context
     array_ios: dict = {}
+    list_ios: dict = {}
     for block_name, rows in raw_lower.items():
         if not rows:
             continue
@@ -1180,10 +1169,10 @@ def structure_component(
 
     # ── Pass 2: block Item-list fields (packagedata, partitions …) ──────────
     for block_name, (f, item_cls) in block_item_fields.items():
-        rows = raw_lower.get(block_name, [])
-        if not rows:
+        block_rows = raw_lower.get(block_name, [])
+        if not block_rows:
             continue
-        rows = _resolve_open_close_rows(rows, context, item_cls, sizes, enabled)
+        rows = _resolve_open_close_rows(block_rows, context, item_cls, sizes, enabled)
         row_list = _parse_rows(
             rows,
             item_cls,
@@ -1198,6 +1187,8 @@ def structure_component(
         if row_list is not None:
             init_key = f.alias if (f.alias and not f.alias.startswith("_")) else f.name
             kwargs[init_key] = row_list
+        if (list_io := _list_io(block_rows, row_list, item_cls, rows_context)) is not None:
+            list_ios[_list_key(f)] = list_io
 
     # ── Pass 2b: blocks repeating under a record header ──────────────────────
     # Read from `raw`, not `raw_lower`: the header keeps its case (a file name).
@@ -1239,12 +1230,14 @@ def structure_component(
         if period_field is not None:
             assert period_item_cls is not None  # set together with period_field above
             spd: dict[int, list | ItemTable] = {}
-            for kper, rows in sorted(kper_rows.items()):
-                if not rows:
+            for kper, block_rows in sorted(kper_rows.items()):
+                if not block_rows:
                     # an empty period block turns off every boundary
                     spd[kper] = []
                     continue
-                rows = _resolve_open_close_rows(rows, context, period_item_cls, sizes, enabled)
+                rows = _resolve_open_close_rows(
+                    block_rows, context, period_item_cls, sizes, enabled
+                )
                 row_list = _parse_rows(
                     rows,
                     period_item_cls,
@@ -1258,6 +1251,9 @@ def structure_component(
                 )
                 if row_list is not None:
                     spd[kper] = row_list
+                list_io = _list_io(block_rows, row_list, period_item_cls, rows_context)
+                if list_io is not None:
+                    list_ios[(_list_key(period_field), kper)] = list_io
             if spd:
                 # Use the alias (stress_period_data) as the init kwarg
                 init_key = period_field.alias if period_field.alias else period_field.name
@@ -1372,8 +1368,8 @@ def structure_component(
     kwargs.update(binding_kwargs)
     if name is not None:
         kwargs["name"] = name
-    if array_ios:
-        # write the arrays back the way the file wrote them
-        kwargs["write_context"] = WriteContext(arrays=array_ios)
+    if array_ios or list_ios:
+        # write the arrays and lists back the way the file wrote them
+        kwargs["write_context"] = WriteContext(arrays=array_ios, lists=list_ios)
 
     return cls(**kwargs)

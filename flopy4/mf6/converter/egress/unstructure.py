@@ -1,12 +1,13 @@
-from collections.abc import Iterable, Iterator, Mapping, Sequence
+from collections.abc import Iterable, Mapping
 from datetime import datetime
-from functools import cache
+from functools import cache, partial
 from pathlib import Path
 from typing import Any
 
 import attrs
 import numpy as np
 import xarray as xr
+from modflow_devtools.dfns import dim_value
 
 from flopy4._imports import isinstance_of
 from flopy4.attrs_xarray import child_field_candidates
@@ -17,8 +18,8 @@ from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.context import Context
 from flopy4.mf6.converter.binding import Binding
 from flopy4.mf6.dims_provider_methods import DimsProviderMethods
-from flopy4.mf6.item import Item, cellid_widths, item_list_type
-from flopy4.mf6.item_table import ItemTable
+from flopy4.mf6.item import Item, conditional_fields, dim_lookup, item_list_type, sized_by
+from flopy4.mf6.item_table import ItemTable, Rows
 from flopy4.mf6.package import Package
 from flopy4.mf6.period_arrays import is_cleared, is_grid_package
 from flopy4.mf6.record import Record, record_type
@@ -146,51 +147,6 @@ def _period_dataarray(
     return _mark_netcdf(_grid_shaped(value, meta, nlay, layer), meta)
 
 
-def _rows_to_tuples(row_list: "list | ItemTable", ncelldim: int | None = None) -> list:
-    """Convert a list of Item instances to MF6 record tuples via each
-    Item's own to_tokens(), and a list of unions' words (PRP's ALL) to
-    lines of their own. ``ncelldim`` is the grid's, if known, to write a
-    cellid of no cell as zeros (see Item.to_tokens); else each cellid
-    column's, from the rows that give one. A table's rows are its columns'
-    (see `ItemTable.tokens`), when they're all numbers."""
-    if isinstance(row_list, ItemTable) and (tokens := row_list.tokens()) is not None:
-        return tokens
-    widths = ncelldim or cellid_widths([row for row in row_list if not isinstance(row, str)])
-    return [[row] if isinstance(row, str) else row.to_tokens(ncelldim=widths) for row in row_list]
-
-
-class Rows(Sequence):
-    """A block's list rows as tuples (see `_rows_to_tuples`), made when
-    read, so a write holds one block's tuples at a time."""
-
-    def __init__(self, ncelldim: int | None = None) -> None:
-        self._parts: list[list | ItemTable] = []
-        self._ncelldim = ncelldim
-
-    def append(self, row_list: "list | ItemTable") -> None:
-        self._parts.append(row_list)
-
-    def __iter__(self) -> Iterator:
-        for part in self._parts:
-            yield from _rows_to_tuples(part, self._ncelldim)
-
-    def __len__(self) -> int:
-        return sum(len(part) for part in self._parts)
-
-    def __getitem__(self, i):  # type: ignore[override]
-        return list(self)[i]
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, Rows):
-            other = list(other)
-        return list(self) == other
-
-    __hash__ = None  # type: ignore[assignment]
-
-    def __repr__(self) -> str:
-        return f"Rows({list(self)!r})"
-
-
 def materialize(data: Any) -> Any:
     """``data`` with its `Rows` made lists, for a writer that walks the
     containers itself (JSON, TOML)."""
@@ -201,10 +157,37 @@ def materialize(data: Any) -> Any:
     return data
 
 
-def _rows(row_list: "list | ItemTable", ncelldim: int | None) -> Rows:
-    rows = Rows(ncelldim)
+def _rows(row_list: "list | ItemTable", ncelldim: int | None, **kwargs: Any) -> Rows:
+    rows = Rows(ncelldim, **kwargs)
     rows.append(row_list)
     return rows
+
+
+def _list_layout(value: Package, item_cls: "type[Item]") -> tuple[dict[str, int], frozenset[str]]:
+    """The sizes of `item_cls`'s package-sized columns (aux, by
+    AUXILIARY) and the options on that put its conditional ones in its
+    rows (BOUNDNAMES), as `value` sets them."""
+    values: dict[str, Any] = {}
+    for f in attrs.fields(type(value)):  # type: ignore[arg-type]
+        v = getattr(value, f.alias if (f.alias and f.name.startswith("_")) else f.name, None)
+        values[f.name] = v
+        if f.alias:
+            values[f.alias] = v
+    sizes = {}
+    for shape in sized_by(item_cls):
+        if (n := dim_value(shape, lookup=lambda name: dim_lookup(values, name))) is not None:
+            sizes[shape] = n
+    enabled = frozenset(o for o in conditional_fields(item_cls).values() if values.get(o))
+    return sizes, enabled
+
+
+def _list_kwargs(value: Package, name: str, f: attrs.Attribute) -> dict[str, Any]:
+    """A list field's `Rows` arguments, for writing it to a file."""
+    item_cls = item_list_type(f.type)
+    layout = None
+    if isinstance(item_cls, type):
+        layout = partial(_list_layout, value, item_cls)
+    return {"field": name, "item_cls": item_cls, "layout": layout}
 
 
 def _ncelldim(value: Package) -> int | None:
@@ -316,11 +299,12 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
             # list: dict[int, list[Item]]
             if not isinstance(field_value, dict):
                 continue
+            list_kwargs = _list_kwargs(value, attr_name, f)
             for kper, row_list in field_value.items():
                 kper_int = _normalize_kper(kper)
                 if kper_int is None:
                     continue
-                rows = spd_period.setdefault(kper_int, Rows(ncelldim))
+                rows = spd_period.setdefault(kper_int, Rows(ncelldim, **list_kwargs))
                 if isinstance(row_list, (list, ItemTable)):
                     rows.append(row_list)
             continue
@@ -366,7 +350,9 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
             and field_value
             and isinstance(field_value[0], Item)
         ):
-            blocks[block_name][f.name] = _rows(field_value, ncelldim)
+            blocks[block_name][f.name] = _rows(
+                field_value, ncelldim, **_list_kwargs(value, attr_name, f)
+            )
 
         elif isinstance(field_value, list) and field_value and isinstance(field_value[0], tuple):
             blocks[block_name][f.name] = field_value
