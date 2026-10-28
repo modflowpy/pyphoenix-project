@@ -143,18 +143,24 @@
     "END OPTIONS",
     "",
     "BEGIN PERIOD 1",
-    " SAVE BUDGET ALL",
-    " PRINT BUDGET ALL",
-    " SAVE HEAD ALL",
-    " PRINT HEAD ALL",
+    " OPEN/CLOSE uzfp2.oc.per1.ref",
     "END PERIOD 1",
     "",
     "BEGIN PERIOD 2",
-    " PRINT BUDGET LAST",
-    " SAVE BUDGET LAST",
-    " PRINT HEAD LAST",
-    " SAVE HEAD LAST",
+    " OPEN/CLOSE uzfp2.oc.per2.ref",
     "END PERIOD 2"
+  ],
+  "uzfp2.oc.per1.ref": [
+    "SAVE BUDGET ALL",
+    "PRINT BUDGET ALL",
+    "SAVE HEAD ALL",
+    "PRINT HEAD ALL"
+  ],
+  "uzfp2.oc.per2.ref": [
+    "PRINT BUDGET LAST",
+    "SAVE BUDGET LAST",
+    "PRINT HEAD LAST",
+    "SAVE HEAD LAST"
   ],
   "uzfp2.sfr": [
     "BEGIN OPTIONS",
@@ -170,11 +176,11 @@
     "END DIMENSIONS",
     "",
     "BEGIN PACKAGEDATA",
-    "<36 data lines 5b80559b786540a3>",
+    " OPEN/CLOSE uzfp2.sfr.reaches.ref",
     "END PACKAGEDATA",
     "",
     "BEGIN CONNECTIONDATA",
-    "<36 data lines 1629ed2445c8b392>",
+    " OPEN/CLOSE uzfp2.sfr.connect.ref",
     "END CONNECTIONDATA",
     "",
     "BEGIN DIVERSIONS",
@@ -182,8 +188,17 @@
     "END DIVERSIONS",
     "",
     "BEGIN PERIOD 1",
-    "<145 data lines 25584e5eac666bb1>",
+    " OPEN/CLOSE uzfp2.sfr.per1.ref",
     "END PERIOD 1"
+  ],
+  "uzfp2.sfr.connect.ref": [
+    "<36 data lines 609ee1371dfd8727>"
+  ],
+  "uzfp2.sfr.per1.ref": [
+    "<145 data lines 9208939a655f29e5>"
+  ],
+  "uzfp2.sfr.reaches.ref": [
+    "<36 data lines 39575ef8b67a9c20>"
   ],
   "uzfp2.sto": [
     "BEGIN OPTIONS",
@@ -242,7 +257,7 @@
     "END DIMENSIONS",
     "",
     "BEGIN PACKAGEDATA",
-    "<116 data lines 2563d4140e3edb26>",
+    " OPEN/CLOSE uzfp2.uzf.data.ref",
     "END PACKAGEDATA",
     "",
     "BEGIN PERIOD 1",
@@ -250,11 +265,11 @@
     "END PERIOD 1",
     "",
     "BEGIN PERIOD 2",
-    "<116 data lines 7a84207a591aa059>",
+    " OPEN/CLOSE uzfp2.uzf.per2.ref",
     "END PERIOD 2",
     "",
     "BEGIN PERIOD 3",
-    "<116 data lines 6393cb06574ee8a7>",
+    " OPEN/CLOSE uzfp2.uzf.per3.ref",
     "END PERIOD 3",
     "",
     "BEGIN PERIOD 4",
@@ -293,6 +308,9 @@
     "<116 data lines ae6b6d25d6a903ac>",
     "END PERIOD 12"
   ],
+  "uzfp2.uzf.data.ref": [
+    "<116 data lines 25ccdcca69c56e4e>"
+  ],
   "uzfp2.uzf.obs": [
     "BEGIN OPTIONS",
     " DIGITS 8",
@@ -311,6 +329,12 @@
     " UZF-GWD_ONE UZF-GWD UZF_1_1",
     "END CONTINUOUS"
   ],
+  "uzfp2.uzf.per2.ref": [
+    "<116 data lines 6030bb2b38b8ef2d>"
+  ],
+  "uzfp2.uzf.per3.ref": [
+    "<116 data lines 844adcae21ca2352>"
+  ],
   "uzfp2.wel": [
     "BEGIN OPTIONS",
     " PRINT_INPUT",
@@ -322,7 +346,7 @@
     "END DIMENSIONS",
     "",
     "BEGIN PERIOD 1",
-    "<10 data lines f40eb6bf4a74aa36>",
+    " OPEN/CLOSE uzfp2.wel.per1.ref",
     "END PERIOD 1",
     "",
     "BEGIN PERIOD 3",
@@ -330,7 +354,7 @@
     "END PERIOD 3",
     "",
     "BEGIN PERIOD 5",
-    "<10 data lines 101fb98144e655ce>",
+    " OPEN/CLOSE uzfp2.wel.per5.ref",
     "END PERIOD 5",
     "",
     "BEGIN PERIOD 6",
@@ -346,7 +370,7 @@
     "END PERIOD 8",
     "",
     "BEGIN PERIOD 9",
-    "<10 data lines a22254f4da3f6050>",
+    " OPEN/CLOSE uzfp2.wel.per9.ref",
     "END PERIOD 9",
     "",
     "BEGIN PERIOD 10",
@@ -360,5 +384,14 @@
     "BEGIN PERIOD 12",
     "",
     "END PERIOD 12"
+  ],
+  "uzfp2.wel.per1.ref": [
+    "<10 data lines 939fc7b056f7119d>"
+  ],
+  "uzfp2.wel.per5.ref": [
+    "<10 data lines 7c5ed7554b0c69c9>"
+  ],
+  "uzfp2.wel.per9.ref": [
+    "<10 data lines 79439c94818e535e>"
   ]
 }

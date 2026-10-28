@@ -11,8 +11,11 @@
     "END DIMENSIONS",
     "",
     "BEGIN PERIOD 1",
-    "<1312 data lines 52378fc84f211cba>",
+    " OPEN/CLOSE Reilly.chd.ref",
     "END PERIOD 1"
+  ],
+  "Reilly.chd.ref": [
+    "<1312 data lines 94fe3c74b1d8e638>"
   ],
   "Reilly.dis": [
     "BEGIN OPTIONS",

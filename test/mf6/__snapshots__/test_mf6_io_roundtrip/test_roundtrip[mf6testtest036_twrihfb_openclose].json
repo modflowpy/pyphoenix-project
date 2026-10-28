@@ -19,6 +19,9 @@
     " MXITER 1",
     "END SOLUTIONGROUP 1"
   ],
+  "twrihfb2015.chd.per1.ref": [
+    "<30 data lines 03e4baf3cb5065e1>"
+  ],
   "twrihfb2015.dis": [
     "BEGIN OPTIONS",
     " LENGTH_UNITS FEET",
@@ -55,8 +58,11 @@
     "END DIMENSIONS",
     "",
     "BEGIN PERIOD 1",
-    "<9 data lines 7f6c9356195edec1>",
+    " OPEN/CLOSE twrihfb2015.drn.per1.ref",
     "END PERIOD 1"
+  ],
+  "twrihfb2015.drn.per1.ref": [
+    "<9 data lines c894cf8e05a28709>"
   ],
   "twrihfb2015.hfb": [
     "BEGIN OPTIONS",
@@ -68,15 +74,18 @@
     "END DIMENSIONS",
     "",
     "BEGIN PERIOD 1",
-    " 1 10 14 1 10 15 4e-07",
-    " 1 10 13 1 10 14 4e-07",
-    " 1 10 14 1 11 14 4e-07",
-    " 1 9 14 1 10 14 4e-07",
-    " 5 6 12 5 6 13 8e-08",
-    " 5 6 11 5 6 12 8e-08",
-    " 5 6 12 5 7 12 8e-08",
-    " 5 5 12 5 6 12 8e-08",
+    " OPEN/CLOSE twrihfb2015.hfb.ref",
     "END PERIOD 1"
+  ],
+  "twrihfb2015.hfb.ref": [
+    "1 10 14 1 10 15 4e-07",
+    "1 10 13 1 10 14 4e-07",
+    "1 10 14 1 11 14 4e-07",
+    "1 9 14 1 10 14 4e-07",
+    "5 6 12 5 6 13 8e-08",
+    "5 6 11 5 6 12 8e-08",
+    "5 6 12 5 7 12 8e-08",
+    "5 5 12 5 6 12 8e-08"
   ],
   "twrihfb2015.ic": [
     "BEGIN GRIDDATA",
@@ -193,7 +202,7 @@
     "END DIMENSIONS",
     "",
     "BEGIN PERIOD 1",
-    "<30 data lines 1cac334c0cdfec8b>",
+    " OPEN/CLOSE twrihfb2015.chd.per1.ref",
     "END PERIOD 1"
   ]
 }

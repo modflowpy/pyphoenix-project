@@ -11,8 +11,11 @@
     "END DIMENSIONS",
     "",
     "BEGIN PERIOD 1",
-    "<1312 data lines 52378fc84f211cba>",
+    " OPEN/CLOSE Reilly.chd.ref",
     "END PERIOD 1"
+  ],
+  "Reilly.chd.ref": [
+    "<1312 data lines 94fe3c74b1d8e638>"
   ],
   "Reilly.dis": [
     "BEGIN OPTIONS",
@@ -102,15 +105,15 @@
     "END DIMENSIONS",
     "",
     "BEGIN PACKAGEDATA",
-    " 1 0.1333 -65.0 10.0 SPECIFIED 12",
+    " OPEN/CLOSE maw_well.ref",
     "END PACKAGEDATA",
     "",
     "BEGIN CONNECTIONDATA",
-    "<12 data lines 6a60f612afebf677>",
+    " OPEN/CLOSE maw_well_connections.ref",
     "END CONNECTIONDATA",
     "",
     "BEGIN PERIOD 1",
-    " 1 RATE 0.0",
+    " OPEN/CLOSE maw_tsdata_per01.ref",
     "END PERIOD 1"
   ],
   "Reilly.maw.obs": [
@@ -210,6 +213,15 @@
   ],
   "delr.ref": [
     "10.0 10.0 9.0 6.0 4.0 5.0 2.0 1.33 1.25 1.0 1.0 0.75 0.5 0.333 0.5 0.75 1.0 1.0 1.25 1.333 2.0 3.0 4.0 6.0 9.0 10.0 10.0"
+  ],
+  "maw_tsdata_per01.ref": [
+    "1 RATE 0.0"
+  ],
+  "maw_well.ref": [
+    "1 0.1333 -65.0 10.0 SPECIFIED 12"
+  ],
+  "maw_well_connections.ref": [
+    "<12 data lines cd2b64223471abde>"
   ],
   "mfsim.nam": [
     "BEGIN OPTIONS",

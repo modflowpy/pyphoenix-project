@@ -131,6 +131,9 @@
     "",
     "END TIME 30.0"
   ],
+  "timeseries.ghb.ref": [
+    "<102 data lines dac93bef14f845ef>"
+  ],
   "timeseries.ghb.ts": [
     "BEGIN ATTRIBUTES",
     " NAMES ghbh_1 ghbh_2 ghbc_1 ghbc_2",
@@ -197,7 +200,7 @@
     "END DIMENSIONS",
     "",
     "BEGIN PERIOD 1",
-    "<102 data lines c3beca963e138f9e>",
+    " OPEN/CLOSE timeseries.ghb.ref",
     "END PERIOD 1"
   ],
   "timeseriestest.ic": [

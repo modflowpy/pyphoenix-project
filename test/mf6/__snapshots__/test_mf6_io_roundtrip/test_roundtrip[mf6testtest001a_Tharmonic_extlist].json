@@ -1,4 +1,8 @@
 {
+  "chd.txt": [
+    "1 1 1 5.0 2.0",
+    "1 1 10 0.0 0.0"
+  ],
   "flow15.dis": [
     "BEGIN OPTIONS",
     " LENGTH_UNITS METERS",
@@ -120,8 +124,7 @@
     "END DIMENSIONS",
     "",
     "BEGIN PERIOD 1",
-    " 1 1 1 5.0 2.0",
-    " 1 1 10 0.0 0.0",
+    " OPEN/CLOSE chd.txt",
     "END PERIOD 1"
   ],
   "mfsim.nam": [

@@ -1,4 +1,7 @@
 {
+  "ghb.ref": [
+    "<600 data lines 33b95b6f6af908dc>"
+  ],
   "mfsim.nam": [
     "BEGIN OPTIONS",
     " CONTINUE",
@@ -105,7 +108,7 @@
     "END DIMENSIONS",
     "",
     "BEGIN PERIOD 1",
-    "<600 data lines a2ee74e845fff9e6>",
+    " OPEN/CLOSE ghb.ref",
     "END PERIOD 1"
   ],
   "test033.ic": [
