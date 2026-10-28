@@ -9,7 +9,7 @@ from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
 from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.utils.time import Time
-from flopy4.mf6.write_context import ArrayIO, WriteContext
+from flopy4.mf6.write_context import ArrayIO, ListIO, WriteContext
 
 
 def test_write_context_default():
@@ -270,6 +270,25 @@ def test_array_io_falls_back_to_containing_array():
     assert ctx.array_io("recharge", 4, 0).iprn == 1
     assert ctx.array_io("recharge").iprn == 1
     assert ctx.array_io("other").iprn is None
+
+
+def test_resolve_merges_list_entries():
+    """List entries merge like array entries; a higher list_format drops
+    the lower entries' formats, and "internal" their paths too."""
+    high = WriteContext(lists={"spd": ListIO(format="binary")})
+    low = WriteContext(lists={"spd": ListIO(path="a.bin"), ("spd", 1): ListIO(path="b.txt")})
+    resolved = WriteContext.resolve(high, low)
+    assert resolved.lists == {
+        "spd": ListIO(path="a.bin", format="binary"),
+        ("spd", 1): ListIO(path="b.txt"),
+    }
+    assert resolved.list_io("spd", 1) == ListIO(path="b.txt", format="binary")
+    assert resolved.list_io("spd", 2) == ListIO(path="a.bin", format="binary")
+    loaded = WriteContext(lists={"spd": ListIO(path="a.bin", format="binary")})
+    text = WriteContext.resolve(WriteContext(list_format="open/close"), loaded)
+    assert text.lists == {"spd": ListIO(path="a.bin")}
+    inline = WriteContext.resolve(WriteContext(list_format="internal"), loaded)
+    assert inline.lists == {"spd": ListIO()}
 
 
 def _dis(**kwargs):

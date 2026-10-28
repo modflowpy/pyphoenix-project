@@ -210,8 +210,11 @@
     "END DIMENSIONS",
     "",
     "BEGIN EXCHANGEDATA",
-    "<36 data lines 4e03e7cff404e53d>",
+    " OPEN/CLOSE simulation.exg.exchangedata.dat",
     "END EXCHANGEDATA"
+  ],
+  "simulation.exg.exchangedata.dat": [
+    "<36 data lines 0ed82d643fb0d68f>"
   ],
   "simulation.exg.obs": [
     "BEGIN OPTIONS",

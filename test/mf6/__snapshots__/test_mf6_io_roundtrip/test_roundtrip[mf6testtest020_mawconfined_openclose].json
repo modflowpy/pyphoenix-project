@@ -94,16 +94,25 @@
     "END DIMENSIONS",
     "",
     "BEGIN PACKAGEDATA",
-    " 1 0.15 -1000.0 0.0 THIEM 1 WELL",
+    " OPEN/CLOSE test020_mawconfined.maw.wells.ref",
     "END PACKAGEDATA",
     "",
     "BEGIN CONNECTIONDATA",
-    " 1 1 1 51 51 0.0 -1000.0 0.0 0.0",
+    " OPEN/CLOSE test020_mawconfined.maw.connect.ref",
     "END CONNECTIONDATA",
     "",
     "BEGIN PERIOD 1",
-    " 1 RATE -2000.0",
+    " OPEN/CLOSE test020_mawconfined.maw.per1.ref",
     "END PERIOD 1"
+  ],
+  "test020_mawconfined.maw.connect.ref": [
+    "1 1 1 51 51 0.0 -1000.0 0.0 0.0"
+  ],
+  "test020_mawconfined.maw.per1.ref": [
+    "1 RATE -2000.0"
+  ],
+  "test020_mawconfined.maw.wells.ref": [
+    "1 0.15 -1000.0 0.0 THIEM 1 WELL"
   ],
   "test020_mawconfined.nam": [
     "BEGIN OPTIONS",

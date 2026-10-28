@@ -8,7 +8,7 @@ import warnings
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, cast
 
 import attrs
 import numpy as np
@@ -16,15 +16,17 @@ import numpy.typing as npt
 import xarray as xr
 
 from flopy4.mf6.codec.reader.transformer.rows import array_values
-from flopy4.mf6.codec.writer.filters import array2chunks, array2string
+from flopy4.mf6.codec.writer.filters import array2chunks, array2string, data2lines
+from flopy4.mf6.item_table import Rows
 from flopy4.mf6.write_context import ArrayFormat, WriteContext, array_hash
 
 _session = threading.local()
 
 
 class ExternalFileError(ValueError):
-    """An array's file can't be written as given, with
-    `WriteContext.strict` on. See `write_external_arrays`."""
+    """An array's or list's file can't be written as given, with
+    `WriteContext.strict` on. See `write_external_arrays` and
+    `write_external_lists`."""
 
 
 def in_write_session() -> bool:
@@ -34,9 +36,10 @@ def in_write_session() -> bool:
 
 @contextmanager
 def write_session() -> Iterator[None]:
-    """Track the files written for OPEN/CLOSE arrays across one `write()`
-    call tree, so that arrays of different components naming one file are
-    checked against each other. A nested session joins the outermost."""
+    """Track the files written for OPEN/CLOSE arrays and lists across one
+    `write()` call tree, so that those of different components naming one
+    file are checked against each other. A nested session joins the
+    outermost."""
     if getattr(_session, "files", None) is not None:
         yield
         return
@@ -51,27 +54,38 @@ def write_session() -> Iterator[None]:
 
 @attrs.define(eq=False)
 class _Target:
-    """One array, or one layer of a layered array, to write to a file."""
+    """One array, one layer of a layered array, or one list, to write to
+    a file."""
 
     block: str
     key: str
     layer: int | None
     label: str
     path: Path  # absolute, normalized
-    values: xr.DataArray
+    values: "xr.DataArray | Rows"
     binary: bool
     hash: str | None = None  # the values' hash when loaded
+    records: np.ndarray | None = None  # a list's rows, for a binary file
 
     def unchanged(self) -> bool:
         """Whether the values are as loaded from the file."""
-        return self.hash is not None and self.hash == array_hash(self.values)
+        return self.hash is not None and self.hash == _hash(self.values)
 
 
 @attrs.frozen
 class _Written:
     label: str
-    values: xr.DataArray
+    values: "xr.DataArray | Rows"
     binary: bool
+
+
+def _warner(context: WriteContext):
+    def warn(message: str) -> None:
+        if context.strict:
+            raise ExternalFileError(message)
+        warnings.warn(message, stacklevel=4)
+
+    return warn
 
 
 def write_external_arrays(
@@ -107,11 +121,6 @@ def write_external_arrays(
     With `context.strict`, either rule raises `ExternalFileError` instead,
     before any file of the component is written.
     """
-    files: dict[Path, _Written] | None = getattr(_session, "files", None)
-    moved: dict[Path, Path] | None = getattr(_session, "moved", None)
-    if files is None or moved is None:
-        files, moved = {}, {}
-    root = Path(os.path.normpath(root.absolute()))
     targets: list[_Target] = []
     for block_name, block in data.items():
         if not isinstance(block, dict):
@@ -119,14 +128,61 @@ def write_external_arrays(
         for key, value in block.items():
             if isinstance(value, xr.DataArray):
                 targets.extend(_targets(block_name, key, value, root, filename, label, context))
+    return _write_targets(data, targets, root, filename, context)
+
+
+def write_external_lists(
+    data: dict[str, Any], root: Path, filename: Path, label: str, context: WriteContext
+) -> dict[str, Any]:
+    """Write the lists in `data` (an unstructured component) that go to
+    files of their own, and mark them so the writer writes OPEN/CLOSE
+    records for them, as `write_external_arrays` does arrays, by the
+    same rules, and in the same files a write's arrays are checked
+    against.
+
+    A list goes to a file if its `ListIO.format`, else the context's
+    `list_format` (for "binary", only if its rows are bigger than
+    `binary_threshold`, in bytes as written), is "open/close" or
+    "binary", or else if it has a `ListIO.path`: that path, or one named
+    for the component, field and period. Only a list alone in its block
+    can, and not an empty one; another is written inline, with a warning
+    if its own `ListIO` says otherwise.
+
+    A list MF6 can't read from a binary file (see `binary_row_spec`), or
+    whose rows hold words where it reads numbers (time series' names), is
+    written to a text file instead, with a warning if its own `ListIO`
+    says "binary". So is a list not in a period block, unless its own
+    `ListIO` says "binary": MF6 reads a binary list only into a block it
+    knows the length of beforehand, as it knows a period's (MAXBOUND) but
+    not, say, TDIS's PERIODDATA's.
+    """
+    warn = _warner(context)
+    targets: list[_Target] = []
+    for block_name, block in data.items():
+        if not isinstance(block, dict):
+            continue
+        for key, value in block.items():
+            if not isinstance(value, Rows) or value.field is None:
+                continue
+            alone = len(block) == 1
+            t = _list_target(block_name, key, value, alone, root, filename, label, context, warn)
+            if t is not None:
+                targets.append(t)
+    return _write_targets(data, targets, root, filename, context)
+
+
+def _write_targets(
+    data: dict[str, Any], targets: list[_Target], root: Path, filename: Path, context: WriteContext
+) -> dict[str, Any]:
+    """Write `targets`' files, but those the rules of `write_external_arrays`
+    keep inline, and mark the others in a copy of `data`."""
+    files: dict[Path, _Written] | None = getattr(_session, "files", None)
+    moved: dict[Path, Path] | None = getattr(_session, "moved", None)
+    if files is None or moved is None:
+        files, moved = {}, {}
     if not targets:
         return data
-
-    def warn(message: str) -> None:
-        if context.strict:
-            raise ExternalFileError(message)
-        warnings.warn(message, stacklevel=3)
-
+    warn = _warner(context)
     # the component's own directory is being written to anyway, even if
     # outside the simulation's (a standalone component's file can be)
     home = _absolute(filename.parent, root)
@@ -168,7 +224,7 @@ def write_external_arrays(
                 warn(
                     f"{path}: {', '.join(t.label for t in group)} use this file but "
                     f"{differ}; writing them inline. To write one of them to the "
-                    "file, give the others another ArrayIO path."
+                    "file, give the others another path."
                 )
                 inline.extend(group)
                 continue
@@ -189,7 +245,12 @@ def write_external_arrays(
         writes.append(first)
 
     for t in writes:
-        if t.binary:
+        if isinstance(t.values, Rows):
+            if t.records is not None:
+                _write_binary_list_file(t.path, t.records)
+            else:
+                _write_list_file(t.path, t.values)
+        elif t.binary:
             _write_binary_file(t.path, t.values, t.key, t.layer)
         else:
             _write_file(t.path, t.values, context)
@@ -200,9 +261,12 @@ def write_external_arrays(
     for t in targets:
         if id(t) in skip:
             continue
+        rel = _relative(t.path, root)
+        if isinstance(t.values, Rows):
+            out[t.block][t.key] = t.values.marked(rel, t.binary)
+            continue
         da = out[t.block][t.key]
         da = da.copy(deep=False)
-        rel = _relative(t.path, root)
         if t.layer is None:
             da.attrs = {**da.attrs, "open_close": rel, "open_close_binary": t.binary}
         else:
@@ -293,6 +357,63 @@ def _file_format(
 _FILE_FORMATS = ("open/close", "binary")
 
 
+def _list_target(
+    block_name: str,
+    key: str,
+    rows: Rows,
+    alone: bool,
+    root: Path,
+    filename: Path,
+    label: str,
+    context: WriteContext,
+    warn,
+) -> _Target | None:
+    name, _, header = block_name.partition(" ")
+    kper = int(header) - 1 if name == "period" and header.isdigit() else None
+    field = cast(str, rows.field)
+    io = context.list_io(field) if kper is None else context.list_io(field, kper)
+    where = f"{label}.{field}" + (f" period {kper + 1}" if kper is not None else "")
+    fmt = io.format
+    if fmt is None and context.list_format in _FILE_FORMATS:
+        fmt = context.list_format
+    if fmt is None and io.path is not None:
+        fmt = "open/close"
+    if fmt not in _FILE_FORMATS or not len(rows):
+        return None
+    if not alone:
+        if io.format in _FILE_FORMATS or io.path is not None:
+            warn(f"{where}: only a list alone in its block can go to a file; writing it inline")
+        return None
+    if fmt == "binary" and io.format is None and kper is None:
+        # MF6 reads a binary list only into a block it knows the length
+        # of beforehand: a period's (MAXBOUND), not every other's (TDIS's
+        # PERIODDATA), so only its own ListIO makes another one binary
+        fmt = "open/close"
+    records = None
+    if fmt == "binary":
+        spec = rows.binary_spec()
+        records = None if spec is None else _binary_records(rows, spec)
+        if records is None:
+            if io.format == "binary":
+                warn(f"{where}: MF6 can't read these rows from a binary file; writing them as text")
+            fmt = "open/close"
+        elif io.format is None and (threshold := context.binary_threshold) is not None:
+            if records.nbytes <= threshold:
+                if io.path is None:
+                    return None
+                fmt, records = "open/close", None
+    binary = fmt == "binary"
+    path = io.path
+    if path is None:
+        stem = filename.name.replace(".", "_") + f"_{field}"
+        if kper is not None:
+            stem += f"_p{kper + 1}"
+        path = filename.parent / f"{stem}.{'bin' if binary else 'txt'}"
+    return _Target(
+        block_name, key, None, where, _absolute(path, root), rows, binary, io.hash, records
+    )
+
+
 def _absolute(path: Path, root: Path) -> Path:
     return Path(os.path.normpath(root / path))
 
@@ -327,8 +448,14 @@ def _disagree(group: list[_Target]) -> str | None:
     return None
 
 
-def _equal(a: xr.DataArray, b: xr.DataArray) -> bool:
+def _equal(a: "xr.DataArray | Rows", b: "xr.DataArray | Rows") -> bool:
+    if isinstance(a, Rows) or isinstance(b, Rows):
+        return isinstance(a, Rows) and isinstance(b, Rows) and a.hash() == b.hash()
     return a.shape == b.shape and bool(np.array_equal(np.asarray(a), np.asarray(b)))
+
+
+def _hash(values: "xr.DataArray | Rows") -> str:
+    return values.hash() if isinstance(values, Rows) else array_hash(values)
 
 
 def _write_file(path: Path, values: xr.DataArray, context: WriteContext) -> None:
@@ -370,6 +497,51 @@ def _write_binary_file(path: Path, values: xr.DataArray, key: str, layer: int | 
         f.write(np.ascontiguousarray(values, dtype=_binary_dtype(values.dtype)).tobytes())
 
 
+def _write_list_file(path: Path, rows: Rows) -> None:
+    """Write `rows` as MF6 reads an OPEN/CLOSE list file: a row per line,
+    as in the block."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w") as f:
+        f.write(data2lines(rows, inset="") + "\n")
+
+
+def _binary_list_dtype(spec: "list[tuple[str, int]]") -> np.dtype:
+    """A binary list row's record type: a field per `spec` piece."""
+    return np.dtype([(f"f{i}", piece, (n,)) for i, (piece, n) in enumerate(spec)])
+
+
+def _binary_records(rows: Rows, spec: "list[tuple[str, int]]") -> np.ndarray | None:
+    """`rows` as a binary list file's records, laid out by `spec`, or None
+    if they don't fit it: a word where a number goes (a time series'
+    name), a fraction where an integer does, or another count of values."""
+    try:
+        table = np.array(list(rows), dtype=np.float64)
+    except (TypeError, ValueError):
+        return None
+    if table.ndim != 2 or table.shape[1] != sum(n for _, n in spec):
+        return None
+    records = np.empty(len(table), dtype=_binary_list_dtype(spec))
+    start = 0
+    for i, (piece, n) in enumerate(spec):
+        values = table[:, start : start + n]
+        start += n
+        if np.dtype(piece).kind == "i":
+            info = np.iinfo(piece)
+            if not np.all(np.isfinite(values)) or not np.array_equal(values, np.trunc(values)):
+                return None
+            if values.size and (values.min() < info.min or values.max() > info.max):
+                return None
+        records[f"f{i}"] = values
+    return records
+
+
+def _write_binary_list_file(path: Path, records: np.ndarray) -> None:
+    """Write `records` as MF6 reads an OPEN/CLOSE (BINARY) list file: each
+    row's values back to back, with no header (see `read_binary_list_file`)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(records.tobytes())
+
+
 # --- reading ---------------------------------------------------------------
 
 
@@ -400,7 +572,7 @@ def read_binary_list_file(path: Path, spec: "list[tuple[str, int]]") -> list[lis
     """A binary OPEN/CLOSE list file's rows: each `spec`'s pieces back to
     back, until EOF, with no header. A partial last row is dropped, as
     IDM's ``StructArray%read_from_binary`` drops it."""
-    dtype = np.dtype([(f"f{i}", piece, (n,)) for i, (piece, n) in enumerate(spec)])
+    dtype = _binary_list_dtype(spec)
     data = path.read_bytes()
     records = np.frombuffer(data, dtype=dtype, count=len(data) // dtype.itemsize)
     columns = [records[name].tolist() for name in dtype.names or ()]

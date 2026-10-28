@@ -23,7 +23,12 @@
 {% endmacro %}
 
 {% macro list(value) -%}
+{% set record = value|list_file_record %}
+{% if record %}
+{{ inset ~ record -}}
+{% else %}
 {{ value|data2lines -}}
+{% endif %}
 {%- endmacro %}
 
 {% macro array(name, value, how="internal") %}

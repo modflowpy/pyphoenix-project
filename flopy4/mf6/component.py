@@ -819,12 +819,12 @@ class Component(DimensionResolverMixin, ABC, MutableMapping, metaclass=LegacyKwa
             child resolves its own, from the same argument.
         """
         # ancestors' contexts give whole-write settings only: their arrays
-        # key the ancestor's own fields, not this component's
+        # and lists key the ancestor's own fields, not this component's
         ancestors = []
         node = self._parent
         while node is not None:
             if node.write_context is not None:
-                ancestors.append(attrs.evolve(node.write_context, arrays={}))
+                ancestors.append(attrs.evolve(node.write_context, arrays={}, lists={}))
             node = node._parent
         active_context = WriteContext.resolve(
             context, WriteContext.current(), self.write_context, *ancestors

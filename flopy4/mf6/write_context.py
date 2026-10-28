@@ -1,6 +1,7 @@
 """Write context for configuring MF6 input file writing."""
 
 import hashlib
+import struct
 import threading
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, Optional, Union
@@ -19,6 +20,11 @@ an array whose values aren't all equal. Unset, the writer chooses: a file
 for an array with an `ArrayIO.path`, else CONSTANT or INTERNAL."""
 
 INLINE_FORMATS = ("constant", "internal")
+
+ListFormat = Literal["internal", "open/close", "binary"]
+"""How to write a list's rows: INTERNAL, in the block, or OPEN/CLOSE or
+OPEN/CLOSE (BINARY), as the block's only record. Unset, the writer
+chooses: a file for a list with a `ListIO.path`, else in the block."""
 FloatPrecision = Union[int, Literal["lossless"]]
 
 ArrayKey = Union[str, tuple[str, int], tuple[str, int, int]]
@@ -26,6 +32,11 @@ ArrayKey = Union[str, tuple[str, int], tuple[str, int, int]]
 field name, ``(field, kper)`` for one period of a period field (0-based,
 like the field's dict keys), ``(field, layer)`` for one layer of a griddata
 field (0-based), or ``(field, kper, layer)``."""
+
+ListKey = Union[str, tuple[str, int]]
+"""A list's key in `WriteContext.lists`, relative to its component: a
+field name (``stress_period_data``), or ``(field, kper)`` for one period
+of a period field (0-based, like the field's dict keys)."""
 
 
 @frozen
@@ -82,6 +93,51 @@ class ArrayIO:
         )
 
 
+@frozen
+class ListIO:
+    """
+    How to write one list. Every setting is optional, `None` meaning unset,
+    as for `ArrayIO`.
+
+    Parameters
+    ----------
+    path : Path, optional
+        The list's file, relative to the simulation directory, for a
+        `format` of "open/close" (implied by a path without a format) or
+        "binary". Without one, a file is named for the component and
+        field (and period), beside the component's file. Files are
+        written as for arrays (see `ArrayIO.path`): never outside the
+        simulation directory, and lists sharing one must hold the same
+        rows, or they're written inline.
+    format : ListFormat, optional
+        How to write the list. Overrides the context's `list_format`.
+        Only a list alone in its block, as a period's, can go to a file;
+        another is written inline, with a warning. A list MF6 can't read
+        from a binary file (with a text column, such as a boundname or a
+        time series' name, or keywords) is written to a text file
+        instead, with a warning.
+    hash : str, optional
+        The list's rows' `list_hash` when loaded from its file, as
+        `ArrayIO.hash`. Set by loading; not compared by `==`.
+
+    Loading sets each list's `format` and `path` to the OPEN/CLOSE record
+    it was read from, so writing it again writes them back.
+    """
+
+    path: Optional[Path] = attrs.field(default=None, converter=attrs.converters.optional(Path))
+    format: Optional[ListFormat] = None
+    hash: Optional[str] = attrs.field(default=None, eq=False, repr=False)
+
+    def over(self, lower: "ListIO") -> "ListIO":
+        """This entry's settings, with `lower`'s filling those it leaves unset."""
+        return ListIO(
+            **{
+                a.name: _first(getattr(self, a.name), getattr(lower, a.name))
+                for a in attrs.fields(ListIO)
+            }
+        )
+
+
 @define
 class WriteContext:
     """
@@ -112,7 +168,9 @@ class WriteContext:
         With an `array_format` of "binary", write only arrays (or layers,
         for a file per layer) bigger than this many bytes as binary: 8 per
         value of a real array, 4 of an integer one. Others are written as
-        if `array_format` were unset. If None, every array is.
+        if `array_format` were unset. If None, every array is. Likewise
+        lists, with a `list_format` of "binary": 8 bytes per real value of
+        a row, 4 per integer (a cellid's every index).
     float_precision : int or "lossless", optional
         Number of decimal places for float output, in scientific notation,
         or "lossless" (the default) to write the shortest string that
@@ -126,13 +184,27 @@ class WriteContext:
         as loaded ones, and, if "constant" or "internal", their paths; an
         `ArrayIO.path` of this context still writes its array to the file.
         `use_netcdf` overrides it.
+    list_format : ListFormat, optional
+        How to write lists, unless a list's own `ListIO.format` in this
+        context says otherwise. "open/close" and "binary" write each list
+        alone in its block (a period's) to a file, its `ListIO.path` or
+        one named for its component, field and period. "binary" writes
+        only period blocks' lists binary, as MF6 reads other blocks'
+        only if it knows their length beforehand; those, and lists MF6
+        can't read from a binary file, are written to text files. Set
+        here, it overrides lower-ranked contexts' formats, and, if
+        "internal", their paths.
     strict : bool, optional
-        Raise instead of warning when the arrays' files can't be written
-        as given: a file outside the simulation directory, or arrays that
-        share a file and disagree. Raises before the component writes any
-        array file. Default is False.
+        Raise instead of warning when the arrays' or lists' files can't be
+        written as given: a file outside the simulation directory, arrays
+        or lists that share a file and disagree, or a list that can't go
+        to a file, or a binary one, as its `ListIO` says. Raises before
+        the component writes any file. Default is False.
     arrays : dict, optional
         Settings for single arrays, by `ArrayKey`, relative to the
+        component written.
+    lists : dict, optional
+        Settings for single lists, by `ListKey`, relative to the
         component written.
 
     Examples
@@ -152,8 +224,10 @@ class WriteContext:
     binary_threshold: Optional[int] = field(default=None)
     float_precision: Optional[FloatPrecision] = field(default=None)
     array_format: Optional[ArrayFormat] = field(default=None)
+    list_format: Optional[ListFormat] = field(default=None)
     strict: Optional[bool] = field(default=None)
     arrays: dict[ArrayKey, ArrayIO] = field(factory=dict)
+    lists: dict[ListKey, ListIO] = field(factory=dict)
 
     # Class-level thread-local storage for context stack
     _global_context_stack: ClassVar["local"]
@@ -240,7 +314,7 @@ class WriteContext:
         values = {
             a.name: _first(getattr(self, a.name), getattr(lower, a.name))
             for a in attrs.fields(WriteContext)
-            if a.name != "arrays"
+            if a.name not in ("arrays", "lists")
         }
         arrays = dict(lower.arrays)
         if self.array_format is not None:
@@ -251,7 +325,15 @@ class WriteContext:
             arrays = {k: attrs.evolve(io, **cleared) for k, io in arrays.items()}
         for key, io in self.arrays.items():
             arrays[key] = io.over(arrays[key]) if key in arrays else io
-        return WriteContext(**values, arrays=arrays)
+        lists = dict(lower.lists)
+        if self.list_format is not None:
+            cleared = {"format": None}
+            if self.list_format == "internal":
+                cleared["path"] = None
+            lists = {k: attrs.evolve(io, **cleared) for k, io in lists.items()}
+        for key, list_io in self.lists.items():
+            lists[key] = list_io.over(lists[key]) if key in lists else list_io
+        return WriteContext(**values, arrays=arrays, lists=lists)
 
     def array_io(self, *key: Any) -> ArrayIO:
         """The settings for the array at `key` (see `ArrayKey`), merged from
@@ -260,6 +342,17 @@ class WriteContext:
         io = ArrayIO()
         for n in range(len(key), 0, -1):
             entry = self.arrays.get(key[0] if n == 1 else key[:n])
+            if entry is not None:
+                io = io.over(entry)
+        return io
+
+    def list_io(self, *key: Any) -> ListIO:
+        """The settings for the list at `key` (see `ListKey`), merged from
+        its own entry and its field's: a period's list falls back to the
+        field's entry."""
+        io = ListIO()
+        for n in range(len(key), 0, -1):
+            entry = self.lists.get(key[0] if n == 1 else key[:n])
             if entry is not None:
                 io = io.over(entry)
         return io
@@ -290,6 +383,20 @@ def array_hash(values: Any) -> str:
     dtype = "<i8" if np.issubdtype(values.dtype, np.integer) else "<f8"
     data = np.ascontiguousarray(values, dtype=dtype).tobytes()
     return hashlib.blake2b(data, digest_size=16).hexdigest()
+
+
+def list_hash(rows: Any) -> str:
+    """A digest of a list's rows, as written: each row's tokens, a number
+    as an 8-byte float, a word as itself. See `ListIO.hash`."""
+    h = hashlib.blake2b(digest_size=16)
+    for row in rows:
+        for token in row:
+            if isinstance(token, (int, float, np.number)) and not isinstance(token, bool):
+                h.update(b"n" + struct.pack("<d", float(token)))
+            else:
+                h.update(b"s" + str(token).encode() + b"\0")
+        h.update(b"\n")
+    return h.hexdigest()
 
 
 def _first(*values: Any) -> Any:

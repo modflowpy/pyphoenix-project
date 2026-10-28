@@ -716,6 +716,57 @@ def number_kind(f: attrs.Attribute) -> NumberKind | None:
     return None
 
 
+_BINARY_DTYPES: dict[str | None, str] = {
+    "index": "<i4",
+    "int": "<i4",
+    "float": "<f8",
+    "series": "<f8",
+}
+
+
+def binary_row_spec(
+    item_cls: "type[Item]",
+    ncelldim: "int | Mapping[str, int] | None",
+    sizes: "Mapping[str, int] | None",
+    enabled: "frozenset[str]" = frozenset(),
+) -> "list[tuple[str, int]] | None":
+    """One binary list row of `item_cls` as (numpy dtype, element count)
+    pieces, in order, one per column, by the row's slots (as the text
+    reader lays rows out): a cellid as `ncelldim` 4-byte ints (or its
+    column's, by name), a package-sized array (aux) as `sizes` says, a
+    plain value as one. Ints and indexes are 4 bytes, floats 8, as IDM's
+    ``StructArray%read_from_binary`` reads its columns.
+
+    None if MF6 can't read the row from binary either: a text column
+    (MF6 stops on one -- a boundname, once BOUNDNAMES puts it in the
+    row), a keyword or flag, a union, or an array whose length isn't
+    fixed by the package (DISV's icvert). A `when`-gated column whose
+    option is off (not in `enabled`) isn't in the row, nor is an
+    optional package-sized one nothing sizes (aux, without AUXILIARY).
+    """
+    spec: list[tuple[str, int]] = []
+    for slot in _slots(item_cls, True):  # type: ignore[arg-type]  # lru_cache wants Hashable
+        f = slot.field
+        if f is not None and (when := f.metadata.get("when")) and when not in enabled:
+            continue  # option off, field isn't in the row at all
+        if slot.kind not in ("cellid", "sized", "value") or f.metadata.get("_keyword"):
+            return None
+        if (dtype := _BINARY_DTYPES.get(number_kind(f))) is None:
+            return None
+        n: int | None = 1
+        if slot.kind == "cellid":
+            n = ncelldim.get(f.name) if isinstance(ncelldim, Mapping) else ncelldim
+        elif slot.kind == "sized":
+            n = (sizes or {}).get(inline_dim(f) or "")
+            if n is None and _may_be_absent(f):
+                n = 0  # nothing sizes it (e.g. no AUXILIARY given) -- it's just not there
+        if n is None:
+            return None
+        if n:
+            spec.append((dtype, n))
+    return spec or None
+
+
 @lru_cache(maxsize=None)
 def _value_reader(f: attrs.Attribute) -> Callable[[Any], Any]:
     """A file token to a scalar field's value, as `_convert` reads it."""

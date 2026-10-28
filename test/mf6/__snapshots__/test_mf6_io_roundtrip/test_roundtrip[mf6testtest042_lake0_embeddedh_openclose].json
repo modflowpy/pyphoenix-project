@@ -36,14 +36,17 @@
     "END DIMENSIONS",
     "",
     "BEGIN TABLE",
-    " 4.0 0.0 0.0 0.0",
-    " 5.0 0.727221 2.181662 3.407864",
-    " 6.0 5.817764 8.726646 13.631457",
-    " 7.0 19.634954 19.634954 30.670779",
-    " 8.0 46.542113 34.906585 54.525829",
-    " 9.0 90.902565 54.541539 85.196608",
-    " 10.0 157.079633 78.539816 122.683115",
+    " OPEN/CLOSE l2_table_data.ref",
     "END TABLE"
+  ],
+  "l2_table_data.ref": [
+    "4.0 0.0 0.0 0.0",
+    "5.0 0.727221 2.181662 3.407864",
+    "6.0 5.817764 8.726646 13.631457",
+    "7.0 19.634954 19.634954 30.670779",
+    "8.0 46.542113 34.906585 54.525829",
+    "9.0 90.902565 54.541539 85.196608",
+    "10.0 157.079633 78.539816 122.683115"
   ],
   "l3_table.ref": [
     "BEGIN DIMENSIONS",
@@ -147,27 +150,19 @@
     "END DIMENSIONS",
     "",
     "BEGIN PACKAGEDATA",
-    " 1 4.0 1 elake01",
-    " 2 4.0 1 elake02",
-    " 3 4.0 1 elake03",
+    " OPEN/CLOSE lake_data.ref",
     "END PACKAGEDATA",
     "",
     "BEGIN CONNECTIONDATA",
-    " 1 1 1 3 3 EMBEDDEDH 1.0 0.0 0.0 2.5 0.0",
-    " 2 1 1 3 3 EMBEDDEDH 1.0 0.0 0.0 2.5 0.0",
-    " 3 1 1 3 3 EMBEDDEDH 1.0 0.0 0.0 2.5 0.0",
+    " OPEN/CLOSE lake_connection.ref",
     "END CONNECTIONDATA",
     "",
     "BEGIN TABLES",
-    " 1 TAB6 FILEIN l1_table.ref",
-    " 2 TAB6 FILEIN l2_table.ref",
-    " 3 TAB6 FILEIN l3_table.ref",
+    " OPEN/CLOSE lake_table.ref",
     "END TABLES",
     "",
     "BEGIN PERIOD 1",
-    " 1 RAINFALL 0.25",
-    " 2 RAINFALL 0.5",
-    " 3 RAINFALL 0.0",
+    " OPEN/CLOSE lake_stressperiod01data.ref",
     "END PERIOD 1"
   ],
   "lake0_embedded.lak.obs": [
@@ -261,6 +256,26 @@
     " 10.0 10 1.0",
     " 10.0 10 1.0",
     "END PERIODDATA"
+  ],
+  "lake_connection.ref": [
+    "1 1 1 3 3 EMBEDDEDH 1.0 0.0 0.0 2.5 0.0",
+    "2 1 1 3 3 EMBEDDEDH 1.0 0.0 0.0 2.5 0.0",
+    "3 1 1 3 3 EMBEDDEDH 1.0 0.0 0.0 2.5 0.0"
+  ],
+  "lake_data.ref": [
+    "1 4.0 1 elake01",
+    "2 4.0 1 elake02",
+    "3 4.0 1 elake03"
+  ],
+  "lake_stressperiod01data.ref": [
+    "1 RAINFALL 0.25",
+    "2 RAINFALL 0.5",
+    "3 RAINFALL 0.0"
+  ],
+  "lake_table.ref": [
+    "1 TAB6 FILEIN l1_table.ref",
+    "2 TAB6 FILEIN l2_table.ref",
+    "3 TAB6 FILEIN l3_table.ref"
   ],
   "mfsim.nam": [
     "BEGIN OPTIONS",

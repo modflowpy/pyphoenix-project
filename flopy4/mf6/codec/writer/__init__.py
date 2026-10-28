@@ -22,6 +22,7 @@ _JINJA_ENV.filters["iprn_option"] = writer_filters.iprn_option
 _JINJA_ENV.filters["layer_is_constant"] = writer_filters.layer_is_constant
 _JINJA_ENV.filters["binary_option"] = writer_filters.binary_option
 _JINJA_ENV.filters["data2lines"] = writer_filters.data2lines
+_JINJA_ENV.filters["list_file_record"] = writer_filters.list_file_record
 _JINJA_ENV.filters["quote_if_needed"] = writer_filters.quote_if_needed
 _JINJA_TEMPLATE_NAME = "blocks.jinja"
 

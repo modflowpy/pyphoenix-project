@@ -34,12 +34,18 @@
     "END GRIDDATA",
     "",
     "BEGIN VERTICES",
-    "<148 data lines 9c966d45c0116f2d>",
+    " OPEN/CLOSE flow.disv.vertices.ref",
     "END VERTICES",
     "",
     "BEGIN CELL2D",
-    "<121 data lines ef84c28f18c6e6f7>",
+    " OPEN/CLOSE flow.disv.cell2d.ref",
     "END CELL2D"
+  ],
+  "flow.disv.cell2d.ref": [
+    "<121 data lines 69b92be772fd8ad7>"
+  ],
+  "flow.disv.vertices.ref": [
+    "<148 data lines 57fc418ab11e238c>"
   ],
   "flow.gnc": [
     "BEGIN OPTIONS",

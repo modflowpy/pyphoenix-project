@@ -261,8 +261,11 @@
     "END DIMENSIONS",
     "",
     "BEGIN EXCHANGEDATA",
-    "<190 data lines 48b00fa0e983716d>",
+    " OPEN/CLOSE pbc.exg.exgdata.ref",
     "END EXCHANGEDATA"
+  ],
+  "pbc.exg.exgdata.ref": [
+    "<190 data lines 6c015a7b5d65d6a0>"
   ],
   "pbc.ic": [
     "BEGIN GRIDDATA",

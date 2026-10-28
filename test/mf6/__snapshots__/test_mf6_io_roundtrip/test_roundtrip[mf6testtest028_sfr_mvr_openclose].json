@@ -120,9 +120,12 @@
     "END DIMENSIONS",
     "",
     "BEGIN PERIOD 1",
-    " 1 13 1 988.0 0.038",
-    " 1 14 9 1045.0 0.038",
+    " OPEN/CLOSE test1tr.ghb.per1.ref",
     "END PERIOD 1"
+  ],
+  "test1tr.ghb.per1.ref": [
+    "1 13 1 988.0 0.038",
+    "1 14 9 1045.0 0.038"
   ],
   "test1tr.ic": [
     "BEGIN GRIDDATA",
@@ -204,6 +207,21 @@
     "<15 data lines fdeec2ae364f0486>",
     "END PERIOD 1"
   ],
+  "test1tr.sfr.connect.ref": [
+    "<36 data lines d8cbeecc61f852b6>"
+  ],
+  "test1tr.sfr.divert.ref": [
+    "4 1 10 FRACTION"
+  ],
+  "test1tr.sfr.per1.ref": [
+    "1 INFLOW 25.0",
+    "16 INFLOW 10.0",
+    "28 INFLOW 150.0",
+    "4 DIVERSION 1 0.5"
+  ],
+  "test1tr.sfr.reaches.ref": [
+    "<36 data lines fccf0a54ec259ffc>"
+  ],
   "test1tr.sfr8": [
     "BEGIN OPTIONS",
     " PRINT_FLOWS",
@@ -216,22 +234,19 @@
     "END DIMENSIONS",
     "",
     "BEGIN PACKAGEDATA",
-    "<36 data lines e3e2933cd636ceaf>",
+    " OPEN/CLOSE test1tr.sfr.reaches.ref",
     "END PACKAGEDATA",
     "",
     "BEGIN CONNECTIONDATA",
-    "<36 data lines 12424c7026cb4f46>",
+    " OPEN/CLOSE test1tr.sfr.connect.ref",
     "END CONNECTIONDATA",
     "",
     "BEGIN DIVERSIONS",
-    " 4 1 10 FRACTION",
+    " OPEN/CLOSE test1tr.sfr.divert.ref",
     "END DIVERSIONS",
     "",
     "BEGIN PERIOD 1",
-    " 1 INFLOW 25.0",
-    " 16 INFLOW 10.0",
-    " 28 INFLOW 150.0",
-    " 4 DIVERSION 1 0.5",
+    " OPEN/CLOSE test1tr.sfr.per1.ref",
     "END PERIOD 1"
   ],
   "test1tr.sto": [
@@ -263,11 +278,14 @@
     "END DIMENSIONS",
     "",
     "BEGIN PERIOD 1",
-    "<10 data lines eaace9472dcf65ee>",
+    " OPEN/CLOSE test1tr.wel.per1.ref",
     "END PERIOD 1",
     "",
     "BEGIN PERIOD 2",
     "",
     "END PERIOD 2"
+  ],
+  "test1tr.wel.per1.ref": [
+    "<10 data lines 68f24fbb2b0e228f>"
   ]
 }

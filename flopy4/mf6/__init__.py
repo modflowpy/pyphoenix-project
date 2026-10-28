@@ -170,21 +170,17 @@ def _open_for_write(component: Component, mode: str = "w"):
 
 def _write_mf6(component: Component, context=None, **kwargs) -> None:
     from flopy4.mf6.converter.egress.unstructure import annotate_arrays
-    from flopy4.mf6.external import write_external_arrays
+    from flopy4.mf6.external import write_external_arrays, write_external_lists
     from flopy4.mf6.write_context import WriteContext
 
     ctx = WriteContext.resolve(context)
 
-    # settle the arrays' files before opening (and emptying) the
-    # component's, which a strict write may refuse
+    # settle the arrays' and lists' files before opening (and emptying)
+    # the component's, which a strict write may refuse
     data = annotate_arrays(unstructure(component), ctx)
-    data = write_external_arrays(
-        data,
-        component.root,
-        component.filename,
-        component._name_or_class(),
-        ctx,
-    )
+    where = (component.root, component.filename, component._name_or_class())
+    data = write_external_arrays(data, *where, ctx)
+    data = write_external_lists(data, *where, ctx)
     with _open_for_write(component) as fp:
         try:
             dump_mf6(data, fp, context=ctx)
