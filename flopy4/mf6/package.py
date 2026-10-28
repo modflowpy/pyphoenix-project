@@ -671,10 +671,28 @@ class Package(Component, ABC):
 
     def write(self, format: str = MF6, context: Optional[WriteContext] = None) -> None:
         self._sync_dims()
+        self._check_periods()
         self._check_tas_refs()
         self._check_ts_refs()
         self._check_obs_ids()
         super().write(format=format, context=context)
+
+    def _check_periods(self) -> None:
+        """Raise if a fill-forward field's period key isn't a 0-based
+        period index, or is past NPER (when known), which would otherwise
+        be written as a block MF6 never reads, or not written at all."""
+        nper = self.resolve_dims("nper").get("nper")
+        for f in attrs.fields(type(self)):  # type: ignore[arg-type]
+            if not f.metadata.get("fill_forward"):
+                continue
+            for kper in self.__dict__.get(f.name) or {}:
+                where = f"{type(self).__name__}.{f.name.lstrip('_')}: period {kper!r}"
+                if isinstance(kper, bool) or not isinstance(kper, (int, np.integer)):
+                    raise ValueError(f"{where} isn't an integer (0-based) period index")
+                if kper < 0:
+                    raise ValueError(f"{where} is negative")
+                if nper is not None and kper >= nper:
+                    raise ValueError(f"{where} is past NPER ({nper})")
 
     def _check_tas_refs(self) -> None:
         """Raise if a time-array series reference names a series none of
