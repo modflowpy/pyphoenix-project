@@ -34,6 +34,13 @@ flopy4 mf6 sync 6.8.1 --install    # also install that release's mf6
 
 Or from Python, `flopy4.mf6.sync("6.8.1")`.
 
+Sync leaves out the variables the DFNs mark `developmode` (the `dev_*`
+options), which an MF6 release build rejects. Pass `--developmode`
+(`developmode=True` from Python) to include them, e.g. to test against a
+development build of MF6. Without them, loading a file that uses
+developmode options skips those options, with a warning, so writing the
+model back out drops them.
+
 Sync writes into the installed `flopy4` package, so install flopy4 into a
 virtual environment. A failed sync leaves the previous classes in place.
 `pip install --upgrade flopy4` restores the release's classes; sync again

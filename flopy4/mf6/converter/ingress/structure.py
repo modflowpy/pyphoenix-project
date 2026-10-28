@@ -1097,7 +1097,8 @@ def structure_component(
             )
             if f is None:
                 # MF6 rejects a keyword it doesn't know, so this is likely
-                # one flopy4 doesn't support yet. A computed one (a list
+                # one flopy4 doesn't support yet, or a developmode one the
+                # classes were synced without. A computed one (a list
                 # package's MAXBOUND) is derived, not read.
                 if block_name.split()[0] not in binding_blocks and not isinstance(
                     getattr(cls, key, None), property
