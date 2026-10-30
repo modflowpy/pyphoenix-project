@@ -206,8 +206,9 @@ class Package(Component, ABC):
         explicitly. An explicit dimension must equal the row count, or
         satisfy the bound, else it is an error. A list left at a one-row
         default (TDIS's perioddata, from the DFN) gets that row repeated
-        `dim` times. `maxbound` (where applicable) is a computed property
-        instead, not set here.
+        `dim` times. A `dim_required` dim (SPC's `maxbound`) defaults to 0
+        with no rows, else raises instead of defaulting (see
+        `_set_dim_from_rows`). A computed `maxbound` isn't set here.
 
         Reads/writes the field's real attribute name (f.name) always --
         aliases (e.g. _stress_period_data's "stress_period_data") only name
@@ -225,6 +226,8 @@ class Package(Component, ABC):
             if raw is not None and raw is f.default and len(raw) == 1:
                 raw = list(raw) * ((getattr(self, dim) if dim else None) or 1)
             if raw is None:
+                if dim and f.metadata.get("dim_required") and getattr(self, dim) is None:
+                    object.__setattr__(self, dim, 0)
                 continue
             value = self._coerce_list_field(f, raw)
             object.__setattr__(self, f.name, value)
@@ -476,7 +479,7 @@ class Package(Component, ABC):
     ) -> None:
         declared = getattr(self, dim)
         if declared is None:
-            if required:
+            if required and nrows > 0:
                 raise ValueError(
                     f"{dim} must be given explicitly -- it can't be derived "
                     "from this package's own data alone"

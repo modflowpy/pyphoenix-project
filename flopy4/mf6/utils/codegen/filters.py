@@ -160,10 +160,10 @@ def is_feature_index_keyed(f: FieldV3) -> bool:
     can never derive a correct ``maxbound`` -- see
     docs/dev/spc_maxbound_gap.md on the modflow6 side.
     """
-    if not isinstance(f, ListField) or not isinstance(f.item, Record):
+    if not isinstance(f, ListField):
         return False
-    first = next(iter(f.item.fields.values()), None)
-    return isinstance(first, Integer) and bool(first.index)
+    columns = list_columns(f)
+    return bool(columns) and columns[0].is_index
 
 
 # Field classification

@@ -1534,31 +1534,29 @@ def build_component_spec(
     _ff_block = next(iter(_fill_forward_blocks), None)
 
     has_maxbound = filters.has_dimensions_block(component)
+    # The fill-forward block's own list field (there's at most one, per
+    # the ValueError check above), reused below for _spd_meta too.
+    _ff_list = next(
+        (
+            f
+            for block_name, f in all_fields
+            if block_name in _fill_forward_blocks
+            and filters.is_list_field(f)
+            and filters.dynamically_named_array(f) is None
+        ),
+        None,
+    )
     # maxbound becomes a computed property only with a real Item-list
     # period field to derive it from, excluding one keyed into another
     # package's own id space (SPC's bndno -- see is_feature_index_keyed).
-    _has_list_period = any(
-        block_name in _fill_forward_blocks
-        and filters.is_list_field(f)
-        and filters.dynamically_named_array(f) is None
-        and not filters.is_feature_index_keyed(f)
-        for block_name, f in all_fields
-    )
+    _has_list_period = _ff_list is not None and not filters.is_feature_index_keyed(_ff_list)
     _maxbound_is_computed = has_maxbound and _has_list_period
     # SPC's case: maxbound can't default from its own row count (see
     # is_feature_index_keyed), so it needs `default=None` (via
     # `_linked_dims`, below) and `dim_required=True` (via `_spd_meta`,
     # below) so `Package._set_dim_from_rows` raises instead of defaulting.
     _maxbound_needs_explicit_value = (
-        has_maxbound
-        and not _maxbound_is_computed
-        and any(
-            block_name in _fill_forward_blocks
-            and filters.is_list_field(f)
-            and filters.dynamically_named_array(f) is None
-            and filters.is_feature_index_keyed(f)
-            for block_name, f in all_fields
-        )
+        has_maxbound and _ff_list is not None and filters.is_feature_index_keyed(_ff_list)
     )
 
     # Fields are collected into four ordered buckets so the generated class has
@@ -1860,17 +1858,7 @@ def build_component_spec(
     if _period_item is not None:
         _spd_meta: dict[str, Any] = {"block": _ff_block, "fill_forward": True}
         # The DIMENSIONS field bounding each period's rows, unless it's
-        # computed (maxbound): HFB's "<=maxhfb".
-        _ff_list = next(
-            (
-                f
-                for b, f in all_fields
-                if b == _ff_block
-                and filters.is_list_field(f)
-                and filters.dynamically_named_array(f) is None
-            ),
-            None,
-        )
+        # computed (maxbound): HFB's "<=maxhfb". _ff_list computed above.
         if (
             _ff_list is not None
             and (_ff_dim := filters.list_col_dim(_ff_list, component))
