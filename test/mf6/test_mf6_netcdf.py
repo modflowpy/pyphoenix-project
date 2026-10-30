@@ -429,7 +429,7 @@ def test_from_model_periods_past_nper_dropped():
     import pytest
 
     gwf = _welg_chdg_model()
-    with pytest.warns(UserWarning, match=r"MF6 periods \[4\] are past NPER \(2\)"):
+    with pytest.warns(UserWarning, match=r"periods \[3\] are past NPER \(2\)"):
         ds = NetCDFModel.from_model(gwf).to_xarray()
     assert ds.sizes["time"] == 2
     assert np.allclose(ds["chdg0_head"].values[0].ravel()[:2], [1.0, 2.0])
