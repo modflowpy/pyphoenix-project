@@ -693,9 +693,10 @@ class Package(Component, ABC):
         super().write(format=format, context=context)
 
     def _check_periods(self) -> None:
-        """Raise if a fill-forward field's period key isn't a 0-based
-        period index, or is past NPER (when known), which would otherwise
-        be written as a block MF6 never reads, or not written at all."""
+        """Raise if a fill-forward field's period key isn't a 0-based period
+        index, or is negative. Warn (not raise) if it's past NPER (when
+        known): MF6's period loop stops at NPER and never reads such a
+        block, so it's harmless dead data, not necessarily a mistake."""
         nper = self.resolve_dims("nper").get("nper")
         for f in attrs.fields(type(self)):  # type: ignore[arg-type]
             if not f.metadata.get("fill_forward"):
@@ -707,7 +708,14 @@ class Package(Component, ABC):
                 if kper < 0:
                     raise ValueError(f"{where} is negative")
                 if nper is not None and kper >= nper:
-                    raise ValueError(f"{where} is past NPER ({nper})")
+                    # MF6's own 1-based file numbering, not flopy4's 0-based
+                    # kper -- this warning is about what MF6 reads from the
+                    # file, so it's reported the way MF6 counts periods.
+                    prefix = f"{type(self).__name__}.{f.name.lstrip('_')}"
+                    warnings.warn(
+                        f"{prefix}: MF6 period {kper + 1} is past NPER ({nper}); "
+                        "MF6 won't read this block"
+                    )
 
     def _check_tas_refs(self) -> None:
         """Raise if a time-array series reference names a series none of
