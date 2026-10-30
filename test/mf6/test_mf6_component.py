@@ -624,7 +624,6 @@ def test_filename_collision_case_insensitive(function_tmpdir):
 @pytest.mark.parametrize(
     "kper, match",
     [
-        (1, r"period 1 is past NPER \(1\)"),
         (-1, "period -1 is negative"),
         (np.datetime64("2000-01-01"), r"period np.datetime64\('2000-01-01'\) isn't an integer"),
         ("0", "period '0' isn't an integer"),
@@ -638,12 +637,24 @@ def test_bad_period_key_raises_on_write(function_tmpdir, kper, match):
         sim.write()
 
 
-def test_period_array_past_nper_raises_on_write(function_tmpdir):
+def test_period_key_past_nper_warns_on_write(function_tmpdir):
+    """MF6's period loop stops at NPER and never reads a later block, so
+    this is a warning, not an error -- see Package._check_periods."""
+    from flopy4.mf6.gwf import Wel
+
+    sim = _wel_sim(function_tmpdir, [Wel(stress_period_data={1: [((0, 0, 0), -1.0)]})])
+    with pytest.warns(
+        UserWarning, match=r"Wel.stress_period_data: MF6 period 2 is past NPER \(1\)"
+    ):
+        sim.write()
+
+
+def test_period_array_past_nper_warns_on_write(function_tmpdir):
     from flopy4.mf6.gwf import Rcha
 
     sim = _wel_sim(function_tmpdir, [])
     sim["model"].rch = [Rcha(recharge={0: 0.1, 1: 0.2})]
-    with pytest.raises(ValueError, match=r"Rcha.recharge: period 1 is past NPER \(1\)"):
+    with pytest.warns(UserWarning, match=r"Rcha.recharge: MF6 period 2 is past NPER \(1\)"):
         sim.write()
 
 

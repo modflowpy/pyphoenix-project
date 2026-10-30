@@ -693,7 +693,14 @@ class Package(Component, ABC):
                 if kper < 0:
                     raise ValueError(f"{where} is negative")
                 if nper is not None and kper >= nper:
-                    warnings.warn(f"{where} is past NPER ({nper}); MF6 won't read this block")
+                    # MF6's own 1-based file numbering, not flopy4's 0-based
+                    # kper -- this warning is about what MF6 reads from the
+                    # file, so it's reported the way MF6 counts periods.
+                    prefix = f"{type(self).__name__}.{f.name.lstrip('_')}"
+                    warnings.warn(
+                        f"{prefix}: MF6 period {kper + 1} is past NPER ({nper}); "
+                        "MF6 won't read this block"
+                    )
 
     def _check_tas_refs(self) -> None:
         """Raise if a time-array series reference names a series none of
