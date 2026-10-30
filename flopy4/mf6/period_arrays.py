@@ -233,7 +233,10 @@ def dense(
             f"periods {sorted(refs)} come from a time-array series, which can't be made dense yet"
         )
     if past := [kper for kper in periods if kper >= nper]:
-        warnings.warn(f"periods {past} are past NPER ({nper}), dropped", stacklevel=2)
+        # MF6's own 1-based file numbering, not flopy4's 0-based kper.
+        warnings.warn(
+            f"MF6 periods {[p + 1 for p in past]} are past NPER ({nper}), dropped", stacklevel=2
+        )
     arrays = [a for a in periods.values() if a is not None]
     if not arrays:
         raise ValueError("every period is cleared, so no array gives the shape")

@@ -693,7 +693,10 @@ def _stack(frames: dict[int, np.ndarray], nper: int) -> np.ndarray:
     """``{kper: array}`` as ``(nper, ...)``, each period holding the last
     block at or before it, missing before the first."""
     if past := [k for k in frames if k >= nper]:
-        warnings.warn(f"periods {past} are past NPER ({nper}), dropped", stacklevel=3)
+        # MF6's own 1-based file numbering, not flopy4's 0-based k.
+        warnings.warn(
+            f"MF6 periods {[p + 1 for p in past]} are past NPER ({nper}), dropped", stacklevel=3
+        )
     blocks = sorted(k for k in frames if k < nper)
     first = frames[blocks[0] if blocks else min(frames)]  # all past NPER: all missing
     fill = (
