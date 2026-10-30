@@ -1534,15 +1534,32 @@ def build_component_spec(
     _ff_block = next(iter(_fill_forward_blocks), None)
 
     has_maxbound = filters.has_dimensions_block(component)
-    # maxbound becomes a computed property only with a real Item-list period
-    # field to derive it from (see has_dimensions_block's docstring).
+    # maxbound becomes a computed property only with a real Item-list
+    # period field to derive it from, excluding one keyed into another
+    # package's own id space (SPC's bndno -- see is_feature_index_keyed).
     _has_list_period = any(
         block_name in _fill_forward_blocks
         and filters.is_list_field(f)
         and filters.dynamically_named_array(f) is None
+        and not filters.is_feature_index_keyed(f)
         for block_name, f in all_fields
     )
     _maxbound_is_computed = has_maxbound and _has_list_period
+    # SPC's case: maxbound can't default from its own row count (see
+    # is_feature_index_keyed), so it needs `default=None` (via
+    # `_linked_dims`, below) and `dim_required=True` (via `_spd_meta`,
+    # below) so `Package._set_dim_from_rows` raises instead of defaulting.
+    _maxbound_needs_explicit_value = (
+        has_maxbound
+        and not _maxbound_is_computed
+        and any(
+            block_name in _fill_forward_blocks
+            and filters.is_list_field(f)
+            and filters.dynamically_named_array(f) is None
+            and filters.is_feature_index_keyed(f)
+            for block_name, f in all_fields
+        )
+    )
 
     # Fields are collected into four ordered buckets so the generated class has
     # fields in DFN block order without hard-coding block names in any sort key.
@@ -1573,6 +1590,10 @@ def build_component_spec(
     block_properties, _bp_block_names = _build_block_property_specs(component, skip=child_fields)
     # DIMENSIONS fields counting a list's rows
     _linked_dims = {bp.dim_attr for bp in block_properties if bp.dim_is_dfn_declared}
+    if _maxbound_needs_explicit_value:
+        # Forces `default=None` instead of field_call's ordinary
+        # required-maxbound default of 0.
+        _linked_dims = _linked_dims | {"maxbound"}
 
     extra_imports: list[str] = []  # child fields' imports
     # reference fields first, in row order
@@ -1856,6 +1877,8 @@ def build_component_spec(
             and not (_ff_dim == "maxbound" and _maxbound_is_computed)
         ):
             _spd_meta["shape"] = (f"{filters.list_dim_bound(_ff_list) or ''}{_ff_dim}",)
+            if _maxbound_needs_explicit_value:
+                _spd_meta["dim_required"] = True
         period_specs.append(
             FieldSpec(
                 dfn_name="_stress_period_data",

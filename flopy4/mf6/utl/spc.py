@@ -45,24 +45,20 @@ class Spc(Package):
     ts: list[Ts] = child(
         block="options", keyword="ts6", direction="in", default=attrs.Factory(list)
     )
+    maxbound: Optional[int] = integer(
+        default=None,
+        block="dimensions",
+        longname="maximum number of ssm entries",
+    )
     _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
         alias="stress_period_data",
         default=None,
         repr=False,
         block="period",
         fill_forward=True,
+        shape=("<=maxbound",),
+        dim_required=True,
     )
-
-    @property
-    def maxbound(self) -> int:
-        """Maximum number of active entries in any stress period.
-
-        Computed live from `stress_period_data`'s row counts -- not
-        stored or independently settable.
-        """
-        if not self.stress_period_data:
-            return 0
-        return max(len(v) for v in self.stress_period_data.values())
 
 
 SpcConcentration = Spc.Concentration

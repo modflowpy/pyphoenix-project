@@ -153,6 +153,19 @@ def has_dimensions_block(component: Component) -> bool:
     return block is not None and "maxbound" in block.fields
 
 
+def is_feature_index_keyed(f: FieldV3) -> bool:
+    """True if a list field's rows are keyed by a feature-number index
+    (e.g. SPC's ``bndno``) into a *different* package's own numbering,
+    rather than a self-contained ``cellid``. Such a field's row count
+    can never derive a correct ``maxbound`` -- see
+    docs/dev/spc_maxbound_gap.md on the modflow6 side.
+    """
+    if not isinstance(f, ListField) or not isinstance(f.item, Record):
+        return False
+    first = next(iter(f.item.fields.values()), None)
+    return isinstance(first, Integer) and bool(first.index)
+
+
 # Field classification
 #
 # dev3's Field union is a real discriminated union -- isinstance dispatch

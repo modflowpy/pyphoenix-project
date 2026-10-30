@@ -233,7 +233,9 @@ class Package(Component, ABC):
                     nrows = max((len(r) for r in value.values()), default=0)
                 else:
                     nrows = len(value)
-                self._set_dim_from_rows(dim, nrows, bound)
+                self._set_dim_from_rows(
+                    dim, nrows, bound, required=f.metadata.get("dim_required", False)
+                )
 
     def _coerce_list_field(self, f: attrs.Attribute, raw: Any) -> Any:
         """An Item-list field's value from user data (see
@@ -270,9 +272,11 @@ class Package(Component, ABC):
         return rows
 
     def _counted_lists(self):
-        """Yield ``(bound, dim, nrows)`` for each list whose rows a
-        DIMENSIONS field counts: NPER for TDIS's perioddata, ``<=``MAXATS
-        for ATS's. A filled-forward list counts its longest period."""
+        """Yield ``(bound, dim, nrows, required)`` for each list whose rows
+        a DIMENSIONS field counts: NPER for TDIS's perioddata, ``<=``MAXATS
+        for ATS's. A filled-forward list counts its longest period.
+        ``required`` means that dim can't be defaulted from ``nrows`` --
+        see `_set_dim_from_rows`."""
         fields = attrs.fields(type(self))  # type: ignore[arg-type]
         names = {f.name for f in fields if f.metadata.get("block") == "dimensions"}
         for f in fields:
@@ -284,10 +288,11 @@ class Package(Component, ABC):
             rows = self.__dict__.get(f.name)
             if dim not in names or rows is None:
                 continue
+            required = bool(f.metadata.get("dim_required"))
             if f.metadata.get("fill_forward"):
-                yield bound, dim, max((len(r) for r in rows.values()), default=0)
+                yield bound, dim, max((len(r) for r in rows.values()), default=0), required
             else:
-                yield bound, dim, len(rows)
+                yield bound, dim, len(rows), required
 
     def _sync_dims(self) -> None:
         """Bring the dimensions counting list rows in step with the lists.
@@ -298,16 +303,16 @@ class Package(Component, ABC):
         An exact dimension takes the current row count; a bounded one
         ("<=maxats") is the user's, so it's only checked.
         """
-        for bound, dim, nrows in self._counted_lists():
+        for bound, dim, nrows, required in self._counted_lists():
             if bound is None:
                 object.__setattr__(self, dim, nrows)
             else:
-                self._set_dim_from_rows(dim, nrows, bound)
+                self._set_dim_from_rows(dim, nrows, bound, required=required)
 
     def _check_dim_rows(self, dim: str, value: int) -> None:
         """Raise if a dimension being assigned disagrees with the rows of a
         list it counts, which the next sync would otherwise overwrite."""
-        for bound, name, nrows in self._counted_lists():
+        for bound, name, nrows, _required in self._counted_lists():
             if name == dim:
                 _check_rows(dim, value, nrows, bound)
 
@@ -466,9 +471,16 @@ class Package(Component, ABC):
         if grid:
             check_grid_periods(stress_by_name, named[0][1] if named else None)
 
-    def _set_dim_from_rows(self, dim: str, nrows: int, bound: str | None = None) -> None:
+    def _set_dim_from_rows(
+        self, dim: str, nrows: int, bound: str | None = None, required: bool = False
+    ) -> None:
         declared = getattr(self, dim)
         if declared is None:
+            if required:
+                raise ValueError(
+                    f"{dim} must be given explicitly -- it can't be derived "
+                    "from this package's own data alone"
+                )
             object.__setattr__(self, dim, nrows)
         else:
             _check_rows(dim, declared, nrows, bound)

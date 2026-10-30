@@ -283,13 +283,16 @@ def list_(
     shape: tuple[str, ...] = (),
     fill_forward: bool = False,
     write_if_empty: bool = False,
+    dim_required: bool = False,
     **kwargs: Unpack[FieldKwargs],
 ) -> Any:
     """A list of items. Its ``shape``, if any, is the dimension counting its
     rows, exact (``("nper",)``) or a bound (``("<=maxbound",)``). A
     ``fill_forward`` list is given per period, each period's rows carrying
     on until the next's. A ``write_if_empty`` one's block is written even
-    with no rows."""
+    with no rows. ``dim_required`` means that dimension can't be defaulted
+    from the list's own row count -- its absence must raise instead (see
+    `Package._set_dim_from_rows`)."""
     if len(shape) > 1:
         raise ValueError(f"a list has at most one dimension, got {shape!r}")
     if kwargs.get("block"):
@@ -298,7 +301,12 @@ def list_(
             attrs.setters.convert, attrs.setters.validate, _coerce_rows, kwargs.get("on_setattr")
         )
     return _field(
-        "list", kwargs, shape=shape, fill_forward=fill_forward, write_if_empty=write_if_empty
+        "list",
+        kwargs,
+        shape=shape,
+        fill_forward=fill_forward,
+        write_if_empty=write_if_empty,
+        dim_required=dim_required,
     )
 
 
