@@ -286,7 +286,7 @@ def _item_columns(
             pk = not fk and bool(getattr(f, "pk", False))
             item = filters.feature_id_column(name, fk=fk, pk=pk, optional=optional, time_series=ts)
         elif _is_label(col, columns):
-            meta = {"empty_is_none": True}
+            meta = {"empty_is_none": True, **filters.string_key(f)}
             item = filters.attr_column(name, "str", "string", meta, optional=True, when=when)
             when = None
         elif col.is_row_keyword:
@@ -314,6 +314,7 @@ def _item_columns(
                 optional=optional,
                 time_series=ts,
                 when=when,
+                meta=filters.string_key(f) if isinstance(f, String) else None,
             )
             when = None
         if when:

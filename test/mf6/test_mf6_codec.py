@@ -4902,7 +4902,11 @@ def test_ats_hpc_children_load_and_write(tmp_path):
     (src / "mfsim.nam").write_text(
         "BEGIN OPTIONS\n  HPC6 FILEIN sim.hpc\nEND OPTIONS\n"
         "BEGIN TIMING\n  TDIS6 sim.tdis\nEND TIMING\n"
+        "BEGIN MODELS\n  GWF6 gwf.nam gwf\nEND MODELS\n"
+        "BEGIN SOLUTIONGROUP 1\n  IMS6 sim.ims gwf\nEND SOLUTIONGROUP\n"
     )
+    (src / "gwf.nam").write_text("BEGIN PACKAGES\nEND PACKAGES\n")
+    (src / "sim.ims").write_text("BEGIN OPTIONS\nEND OPTIONS\n")
     (src / "sim.tdis").write_text(
         "BEGIN OPTIONS\n  ATS6 FILEIN sim.ats\nEND OPTIONS\n"
         "BEGIN DIMENSIONS\n  NPER 1\nEND DIMENSIONS\n"
