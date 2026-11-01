@@ -4,6 +4,7 @@ from warnings import warn
 
 import attrs
 import numpy as np
+import xarray as xr
 from flopy.datbase import DataInterface, DataListInterface, DataType
 from flopy.discretization.grid import Grid
 from flopy.discretization.modeltime import ModelTime
@@ -15,7 +16,8 @@ from flopy.plot.plotutil import PlotUtilities
 from flopy4.attrs_xarray import attrs_to_dataset
 from flopy4.mf6.item import item_list_type
 from flopy4.mf6.model import Model
-from flopy4.mf6.package import Package
+from flopy4.mf6.package import _DTYPE_MAP, Package, period_shape
+from flopy4.mf6.spec import to_field_type
 
 # The only runtime types Flopy3Data's data_type/dtype/array properties
 # know how to dispatch on.
@@ -237,8 +239,13 @@ class Flopy3Package(PackageInterface):
             field = field_by_name.get(a)
             if field is None or value is None:
                 continue
-            leaf_type = _resolve_leaf_type(field.type)
-            if leaf_type is None:
+            # a grid array holding one value is the full array
+            leaf_type: type
+            if (filled := _filled_array(package, field, value)) is not None:
+                value, leaf_type = filled, np.ndarray
+            elif (resolved := _resolve_leaf_type(field.type)) is not None:
+                leaf_type = resolved
+            else:
                 continue
             d_fp3 = Flopy3Data(
                 data=value,
@@ -672,6 +679,21 @@ class Flopy3ListData(DataInterface, DataListInterface):
             gdf = gdf.dropna(subset=col_names, how="all")
             gdf = gdf.dropna(axis="columns", how="all")
         return gdf
+
+
+def _filled_array(package: Package, field: attrs.Attribute, value: Any) -> "xr.DataArray | None":
+    """A grid array holding one value (a constant, or its default) filled
+    to its shape, with dims named as the shape's; None for anything else,
+    or if the shape's dimensions aren't known."""
+    meta = field.metadata
+    if meta.get("type") != "array" or meta.get("block") != "griddata":
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float, np.number)):
+        return None
+    if (shape := period_shape(package, field)) is None:
+        return None
+    dtype = _DTYPE_MAP.get(to_field_type(field.type), np.float64) if field.type else np.float64
+    return xr.DataArray(np.full(shape, value, dtype=dtype), dims=meta["shape"], name=field.name)
 
 
 # where models keep their discretization, by kind of model

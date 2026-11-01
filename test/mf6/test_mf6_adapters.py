@@ -26,7 +26,7 @@ def quickstart_model():
     sim = Simulation(name=name, tdis=tdis, solutiongroup=[ims])
     dis = Dis(nrow=10, ncol=10)
     gwf = Gwf(parent=sim, name=name, save_flows=True, dis=dis)
-    ic = Ic(parent=gwf, strt=np.full((1, 10, 10), 5.0))
+    ic = Ic(parent=gwf, strt=5.0)
     npf = Npf(parent=gwf, save_specific_discharge=True)
     chd = Chd(
         parent=gwf,
@@ -449,7 +449,10 @@ def test_flopy3_export(tmp_path):
     assert gdf.crs.to_epsg() == 3070
     assert {"top", "botm", "strt", "chd0_head_0_0"} <= set(gdf.columns)
     assert gdf["chd0_head_0_0"].dropna().tolist() == [1.0, 0.0]
+    # constants, given or defaults, filled to the grid
     assert gdf["strt"].tolist() == [5.0] * 100
+    assert gdf["k"].tolist() == [1.0] * 100
+    assert gdf["icelltype"].tolist() == [0] * 100
     assert "delr" not in gdf  # not a value per cell
     assert "chd0_boundname_0_0" not in gdf  # not a number
     assert "chd0_head_0_0" not in gwf3.to_geodataframe(package_names=["ic"])
