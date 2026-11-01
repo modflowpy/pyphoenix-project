@@ -1372,8 +1372,7 @@ def _row_columns(component: Component, f: FieldV3, link: File) -> tuple[str, ...
             columns.append("ftype")
         elif m is link:
             columns.append("filename")
-        # TODO: a model's package names aren't keyed in the DFNs yet
-        elif getattr(m, "pk", False) or (filters.is_model_nam(component.name) and name == "pname"):
+        elif getattr(m, "pk", False):
             columns.append("name")
         elif getattr(m, "fk", None):
             columns.append(filters.safe_name(name))
