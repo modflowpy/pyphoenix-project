@@ -16,14 +16,6 @@ from flopy4.attrs_xarray import attrs_to_dataset
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
 
-
-def _to_numpy(val):
-    """Extract numpy data from a value (handles xr.DataArray, ndarray, or scalar)."""
-    if hasattr(val, "data") and hasattr(val, "dims"):
-        return val.data  # xr.DataArray
-    return np.asarray(val) if val is not None else val
-
-
 # The only runtime types Flopy3Data's data_type/dtype/array properties
 # know how to dispatch on.
 _LEAF_TYPES = (bool, int, float, str, np.ndarray)
@@ -74,24 +66,10 @@ class Flopy3Model(ModelInterface):
         if self._model is None:
             raise Exception("Model Interface needs a model")
 
-        lenuni = "unknown"
-        xoff = 0.0
-        yoff = 0.0
-        angrot = 0.0
-
-        if self._grid is None:
-            if hasattr(model, "dis"):
-                if model.dis.length_units:
-                    lenuni = _to_numpy(model.dis.length_units)
-                if model.dis.xorigin:
-                    xoff = _to_numpy(model.dis.xorigin)
-                if model.dis.yorigin:
-                    yoff = _to_numpy(model.dis.yorigin)
-                if model.dis.angrot:
-                    yoff = _to_numpy(model.dis.angrot)
-
-                self._grid = model.dis.to_grid()
-                self._grid.legacy = True
+        # to_grid() carries the origin, rotation, length units and crs
+        if self._grid is None and hasattr(model, "dis"):
+            self._grid = model.dis.to_grid()
+            self._grid.legacy = True
 
         if hasattr(model, "_children"):
             for package in model._children.values():
@@ -334,15 +312,6 @@ class Flopy3Data(DataInterface):
         self._data = data
         self._leaf_type = leaf_type
 
-    # class DataType(Enum):
-    #    array2d = 1 #  e.g. nrow, ncol
-    #    array3d = 2 #  e.g. nlay, nrow, ncol
-    #    transient2d = 3  # nper, nodes (grid)
-    #    transient3d = 4  # nper, nrow, ncol (layer)
-    #    list = 5
-    #    transientlist = 6
-    #    scalar = 7
-    #    transientscalar = 8
     # TODO: how to handle transient data, list input
     @property
     def data_type(self):
