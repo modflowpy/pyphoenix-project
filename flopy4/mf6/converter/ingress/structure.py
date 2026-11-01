@@ -749,20 +749,11 @@ def _resolve_bindings(cls: type, raw_lower: dict, context: LoadContext) -> dict[
 
         dims: dict = {}
         collectors: dict[str, Any] = {}
-        # instances of each package type in a model, for its unnamed ones'
-        # names (dims providers, moved first above, are single-instance)
-        instances: dict[str, int] = {}
         for row, target_cls, child_name, kind, columns in resolved:
             values = read_row(row, columns, target_cls, kwargs.get("models", []))
             fname = str(values.pop("filename"))
             name = values.pop("name", None)
-            ftype = str(values.pop("ftype")).lower().removesuffix("6")
-            if model_prefix and kind == "list":
-                # as MF6 names them, so other files' references (MVR's
-                # pname) resolve: WEL-1, WEL-2, counting named ones too
-                instances[ftype] = instances.get(ftype, 0) + 1
-                if name is None:
-                    name = f"{ftype}-{instances[ftype]}"
+            values.pop("ftype")
             # the rest are references, set like a built child's
             referenced_models = [v for value in values.values() for v in referenced(value)]
             child_context = attrs.evolve(

@@ -12,7 +12,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -213,14 +213,14 @@
     "save_flows": true,
     "ts": []
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "dims": {},
     "filename": "model.ims",
     "inner_dvclose": "1e-09",
     "inner_maximum": 100,
     "linear_acceleration": "bicgstab",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "1e-08",
     "outer_maximum": 500,
     "print_option": "summary",

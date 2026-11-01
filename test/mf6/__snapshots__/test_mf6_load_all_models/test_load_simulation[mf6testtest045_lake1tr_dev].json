@@ -12,19 +12,19 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "dims": {},
     "filename": "lakeex1a.ims",
     "inner_dvclose": "1e-06",
     "inner_maximum": 100,
     "linear_acceleration": "cg",
-    "name": "ims0",
+    "name": "ims-1",
     "number_orthogonalizations": 2,
     "outer_dvclose": "1e-06",
     "outer_maximum": 500,
@@ -247,7 +247,7 @@
     "print_stage": false,
     "save_flows": false,
     "ts": [
-      "<Ts ts0>"
+      "<Ts ts-1>"
     ]
   },
   "simulation/lakeex1a/lak-1/obs": {
@@ -296,7 +296,7 @@
     "name": "obs",
     "print_input": true
   },
-  "simulation/lakeex1a/lak-1/ts0": {
+  "simulation/lakeex1a/lak-1/ts-1": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -314,7 +314,7 @@
         "linearend"
       ]
     },
-    "name": "ts0",
+    "name": "ts-1",
     "time_series_name": {
       "__type__": "TimeSeriesName",
       "time_series_names": [

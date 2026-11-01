@@ -12,7 +12,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -106,10 +106,10 @@
     "print_input": true,
     "save_flows": false,
     "ts": [
-      "<Ts ts0>"
+      "<Ts ts-1>"
     ]
   },
-  "simulation/GWF_1/ghb-1/ts0": {
+  "simulation/GWF_1/ghb-1/ts-1": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -129,7 +129,7 @@
         "linear"
       ]
     },
-    "name": "ts0",
+    "name": "ts-1",
     "time_series_name": {
       "__type__": "TimeSeriesName",
       "time_series_names": [
@@ -313,10 +313,10 @@
     },
     "save_flows": false,
     "tas": [
-      "<Tas tas0>"
+      "<Tas tas-1>"
     ]
   },
-  "simulation/GWF_1/rch-1/tas0": {
+  "simulation/GWF_1/rch-1/tas-1": {
     "__type__": "Tas",
     "dims": {
       "ncelldim": 3,
@@ -331,7 +331,7 @@
       "__type__": "InterpolationMethod",
       "interpolation_method": "STEPWISE"
     },
-    "name": "tas0",
+    "name": "tas-1",
     "sfac": {
       "__type__": "Sfac",
       "sfacval": "float64[1] 8f688ce4f0389109"
@@ -451,7 +451,7 @@
     "print_input": true,
     "save_flows": false,
     "ts": [
-      "<Ts ts0>"
+      "<Ts ts-1>"
     ]
   },
   "simulation/GWF_1/wel-1/obs": {
@@ -499,7 +499,7 @@
     "name": "obs",
     "print_input": true
   },
-  "simulation/GWF_1/wel-1/ts0": {
+  "simulation/GWF_1/wel-1/ts-1": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -517,7 +517,7 @@
         "linear"
       ]
     },
-    "name": "ts0",
+    "name": "ts-1",
     "time_series_name": {
       "__type__": "TimeSeriesName",
       "time_series_names": [
@@ -532,7 +532,7 @@
       "ts_time": "float64[2] 6821f42627caffc6"
     }
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "backtracking_number": 0,
     "backtracking_reduction_factor": "0.6",
@@ -543,7 +543,7 @@
     "inner_dvclose": "1e-09",
     "inner_maximum": 100,
     "linear_acceleration": "cg",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "1e-09",
     "outer_maximum": 50,
     "print_option": "summary",

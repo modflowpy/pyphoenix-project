@@ -12,19 +12,19 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "dims": {},
     "filename": "uzfp3_lakmvr_v2.ims",
     "inner_dvclose": "1e-05",
     "inner_maximum": 200,
     "linear_acceleration": "bicgstab",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "0.001",
     "outer_maximum": 200,
     "print_option": "summary",

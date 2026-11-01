@@ -12,19 +12,19 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
     "filename": "mv.ims",
     "inner_dvclose": "1e-06",
     "inner_maximum": 100,
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "1e-05",
     "outer_maximum": 10000,
     "print_option": "summary",

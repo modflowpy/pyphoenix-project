@@ -4,7 +4,7 @@
     "continue_": false,
     "dims": {},
     "exchanges": [
-      "<Gwfgwf gwfgwf0>"
+      "<Gwfgwf gwfgwf-1>"
     ],
     "filename": "mfsim.nam",
     "memory_print_option": "SUMMARY",
@@ -15,7 +15,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -316,7 +316,7 @@
     "head_file": "model2.hds",
     "name": "oc"
   },
-  "simulation/gwfgwf0": {
+  "simulation/gwfgwf-1": {
     "__type__": "Gwfgwf",
     "auxiliary": [
       "testaux"
@@ -338,7 +338,7 @@
     "exgmnamea": "GWF_Model_1",
     "exgmnameb": "GWF_Model_2",
     "filename": "simulation.exg",
-    "name": "gwfgwf0",
+    "name": "gwfgwf-1",
     "newton": false,
     "nexg": 36,
     "obs": "<Obs obs>",
@@ -347,7 +347,7 @@
     "save_flows": true,
     "xt3d": false
   },
-  "simulation/gwfgwf0/obs": {
+  "simulation/gwfgwf-1/obs": {
     "__type__": "Obs",
     "continuous": {
       "__table__": "ContinuousBlock",
@@ -383,7 +383,7 @@
     "name": "obs",
     "print_input": true
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "csv_inner_output_file": "2models.inner.ims.csv",
     "csv_outer_output_file": "2models.outer.ims.csv",
@@ -392,7 +392,7 @@
     "inner_dvclose": "1e-08",
     "inner_maximum": 100,
     "linear_acceleration": "cg",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "1e-08",
     "outer_maximum": 50,
     "print_option": "all",

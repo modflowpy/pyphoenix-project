@@ -12,7 +12,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -267,10 +267,10 @@
     "save_flows": false,
     "surf_rate_specified": false,
     "ts": [
-      "<Ts ts0>"
+      "<Ts ts-1>"
     ]
   },
-  "simulation/flow15/evt-1/ts0": {
+  "simulation/flow15/evt-1/ts-1": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -287,7 +287,7 @@
         "STEPWISE"
       ]
     },
-    "name": "ts0",
+    "name": "ts-1",
     "time_series_name": {
       "__type__": "TimeSeriesName",
       "time_series_names": [
@@ -382,7 +382,7 @@
     "head_file": "flow15_flow.hds",
     "name": "oc"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -390,7 +390,7 @@
     "inner_dvclose": "1e-06",
     "inner_maximum": 30,
     "linear_acceleration": "cg",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "9.9999997e-06",
     "outer_maximum": 50,
     "print_option": "all",

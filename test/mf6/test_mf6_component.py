@@ -290,17 +290,17 @@ def test_init_sim_explicit_dims():
     sim = Simulation(tdis=tdis, models=[gwf])
 
     assert sim.tdis is tdis
-    assert sim["gwf0"] is gwf
+    assert sim["gwf-1"] is gwf
     assert sim._children["tdis"] is tdis
-    assert sim._children["gwf0"] is gwf
+    assert sim._children["gwf-1"] is gwf
     assert gwf.dis is dis
     assert gwf.ic is ic
     assert gwf.oc is oc
     assert gwf.npf is npf
     assert gwf.chd[0] is chd
     # k is stored as a plain attrs field; use to_xarray() for Dataset access
-    assert np.array_equal(sim["gwf0"].npf.k, np.ones(100))
-    assert np.array_equal(sim["gwf0"].npf.to_xarray()["k"].values, np.ones((1, 10, 10)))
+    assert np.array_equal(sim["gwf-1"].npf.k, np.ones(100))
+    assert np.array_equal(sim["gwf-1"].npf.to_xarray()["k"].values, np.ones((1, 10, 10)))
 
 
 def test_sim_children_list():
@@ -330,8 +330,8 @@ def test_sim_children_unnamed():
 
     sim = Simulation(models=[Gwf(), Gwt(), Gwf()], solutiongroup=[Ims()])
 
-    assert [m.name for m in sim.models] == ["gwf0", "gwt0", "gwf1"]
-    assert sim.solutiongroup[0].name == "ims0"
+    assert [m.name for m in sim.models] == ["gwf-1", "gwt-1", "gwf-2"]
+    assert sim.solutiongroup[0].name == "ims-1"
 
 
 def test_sim_children_name_collision():
@@ -345,7 +345,7 @@ def test_sim_children_bottom_up():
     unnamed = Gwf(parent=sim)
 
     assert sim.models == [gwf, unnamed]
-    assert unnamed.name == "gwf0"
+    assert unnamed.name == "gwf-2"
     with pytest.raises(ValueError, match="collides"):
         Gwf(parent=sim, name="flow")
 
@@ -373,23 +373,23 @@ def test_child_names_by_class():
     gwf = Gwf(name="model", dis=Disv(), chd=[Chd(), Chdg()], wel=[_wel(), _wel()])
 
     assert gwf.dis.name == "disv"
-    assert [c.name for c in gwf.chd] == ["chd0", "chdg0"]
-    assert [w.name for w in gwf.wel] == ["wel0", "wel1"]
+    assert [c.name for c in gwf.chd] == ["chd-1", "chd-2"]
+    assert [w.name for w in gwf.wel] == ["wel-1", "wel-2"]
     assert gwf["disv"] is gwf.dis
 
 
 def test_child_names_given_kept():
     gwf = Gwf(wel=[_wel(), _wel(name="wel")])
 
-    assert [w.name for w in gwf.wel] == ["wel0", "wel"]
+    assert [w.name for w in gwf.wel] == ["wel-1", "wel"]
     with pytest.raises(ValueError, match="collides"):
         Gwf(wel=[_wel(name="north"), _wel(name="north")])
 
 
 def test_child_names_given_avoided_by_automatic():
-    gwf = Gwf(wel=[_wel(), _wel(name="wel0")])
+    gwf = Gwf(wel=[_wel(), _wel(name="wel-1")])
 
-    assert [w.name for w in gwf.wel] == ["wel1", "wel0"]
+    assert [w.name for w in gwf.wel] == ["wel-2", "wel-1"]
 
 
 def test_detached_name_is_none():
@@ -399,13 +399,13 @@ def test_detached_name_is_none():
 def test_child_names_not_renumbered_on_delete():
     gwf = Gwf(wel=[_wel(), _wel()])
     second = gwf.wel[1]
-    del gwf["wel0"]
+    del gwf["wel-1"]
 
-    assert list(gwf) == ["wel1"]
-    assert second.name == "wel1"
+    assert list(gwf) == ["wel-2"]
+    assert second.name == "wel-2"
     added = _wel(parent=gwf)
-    assert added.name == "wel0"
-    assert second.name == "wel1"
+    assert added.name == "wel-3"
+    assert second.name == "wel-2"
 
 
 def test_child_rename_sticks():
@@ -420,7 +420,7 @@ def test_child_rename_sticks():
 
 def test_child_rename_clash_raises():
     gwf = Gwf(wel=[_wel(), _wel()])
-    gwf.wel[1].name = "wel0"
+    gwf.wel[1].name = "wel-1"
 
     with pytest.raises(ValueError, match="collides"):
         gwf._children
@@ -430,8 +430,8 @@ def test_child_names_plain_assignment():
     gwf = Gwf(name="model")
     gwf.wel = [_wel(), _wel()]
 
-    assert [w.name for w in gwf.wel] == ["wel0", "wel1"]
-    assert gwf.wel[0].filename == Path("model.wel0.wel")
+    assert [w.name for w in gwf.wel] == ["wel-1", "wel-2"]
+    assert gwf.wel[0].filename == Path("model.wel-1.wel")
 
 
 def test_child_names_list_mutation():
@@ -440,7 +440,7 @@ def test_child_names_list_mutation():
     gwf.wel.insert(0, x := _wel())
     gwf.wel += [y := _wel()]
 
-    assert (w.name, x.name, y.name) == ("wel1", "wel2", "wel3")
+    assert (w.name, x.name, y.name) == ("wel-2", "wel-3", "wel-4")
     assert w.parent is gwf
 
 
@@ -449,11 +449,11 @@ def test_child_names_assignment_clash():
     old = gwf.wel
 
     with pytest.raises(ValueError, match="collides"):
-        gwf.wel.append(_wel(name="wel0"))
+        gwf.wel.append(_wel(name="wel-1"))
     with pytest.raises(ValueError, match="collides"):
         gwf.wel = [_wel(name="a"), _wel(name="a")]
     assert gwf.wel is old
-    assert [w.name for w in gwf.wel] == ["wel0"]
+    assert [w.name for w in gwf.wel] == ["wel-1"]
 
 
 def test_child_list_copies():
@@ -462,7 +462,7 @@ def test_child_list_copies():
     for copied in (copy.deepcopy(gwf), pickle.loads(pickle.dumps(gwf))):
         copied.wel.append(w := _wel())
         assert w.parent is copied
-        assert w.name == "wel1"
+        assert w.name == "wel-2"
     assert len(gwf.wel) == 1
 
 
@@ -502,15 +502,15 @@ def test_default_filenames():
 
     assert gwf.dis.filename == Path("model.disv")
     assert gwf.npf.filename == Path("model.npf")
-    assert [c.filename for c in gwf.chd] == [Path("model.chd0.chd"), Path("model.chdg0.chd")]
-    assert gwf.rch[0].filename == Path("model.rcha0.rch")
-    assert gwf.wel[0].filename == Path("model.wel0.wel")
+    assert [c.filename for c in gwf.chd] == [Path("model.chd-1.chd"), Path("model.chd-2.chd")]
+    assert gwf.rch[0].filename == Path("model.rch-1.rch")
+    assert gwf.wel[0].filename == Path("model.wel-1.wel")
     list(gwf.wel[0])
-    assert ts.filename == Path("model.wel0.ts0.ts")
+    assert ts.filename == Path("model.wel-1.ts-1.ts")
     assert gwf.filename == Path("model.nam")
     assert sim.tdis.filename == Path("sim.tdis")
-    assert sim.solutiongroup[0].filename == Path("sim.ims0.ims")
-    assert exg.filename == Path("sim.gwfgwf0.gwfgwf")
+    assert sim.solutiongroup[0].filename == Path("sim.ims-1.ims")
+    assert exg.filename == Path("sim.gwfgwf-1.gwfgwf")
 
 
 def test_subpackage_filename_under_shortened_filename():
@@ -531,7 +531,7 @@ def test_named_like_extension():
     gwf = Gwf(name="model", wel=[_wel(name="wel"), _wel()])
     list(gwf)
 
-    assert [w.filename for w in gwf.wel] == [Path("model.wel"), Path("model.wel0.wel")]
+    assert [w.filename for w in gwf.wel] == [Path("model.wel"), Path("model.wel-2.wel")]
 
 
 def test_default_filename_detached():
@@ -563,7 +563,7 @@ def test_subpackage_filename_under_set_filename():
     w = _wel(filename="north.wel", ts=[ts])
     list(w)
 
-    assert ts.filename == Path("north.ts0.ts")
+    assert ts.filename == Path("north.ts-1.ts")
 
 
 def _wel_sim(workspace, wel):
@@ -587,7 +587,7 @@ def _wel_sim(workspace, wel):
 def test_rename_after_write_uses_new_filename(function_tmpdir):
     sim = _wel_sim(function_tmpdir, [_wel(), _wel()])
     sim.write()
-    assert (function_tmpdir / "model.wel1.wel").exists()
+    assert (function_tmpdir / "model.wel-2.wel").exists()
 
     sim["model"].wel[1].name = "north"
     sim.write()
@@ -595,7 +595,7 @@ def test_rename_after_write_uses_new_filename(function_tmpdir):
     assert (function_tmpdir / "model.north.wel").exists()
     nam = (function_tmpdir / "model.nam").read_text()
     assert "model.north.wel" in nam
-    assert "model.wel1.wel" not in nam
+    assert "model.wel-2.wel" not in nam
 
 
 def test_loaded_package_keeps_filename_on_rename(function_tmpdir):
@@ -677,7 +677,7 @@ def test_period_key_numpy_integer_writes(function_tmpdir):
 
     wel = Wel(stress_period_data={np.int64(0): [((0, 0, 0), -1.0)]})
     _wel_sim(function_tmpdir, [wel]).write()
-    assert "BEGIN PERIOD 1" in (function_tmpdir / "model.wel0.wel").read_text()
+    assert "BEGIN PERIOD 1" in (function_tmpdir / "model.wel-1.wel").read_text()
 
 
 def test_several_packages_of_a_type_write(function_tmpdir):
@@ -687,7 +687,7 @@ def test_several_packages_of_a_type_write(function_tmpdir):
     sim["model"].chd = [Chd(), Chdg()]
     sim.write()
 
-    for name in ("model.wel0.wel", "model.wel1.wel", "model.chd0.chd", "model.chdg0.chd"):
+    for name in ("model.wel-1.wel", "model.wel-2.wel", "model.chd-1.chd", "model.chd-1.chd"):
         assert (function_tmpdir / name).exists()
 
 
@@ -722,10 +722,10 @@ def test_solution_models_by_object_write(function_tmpdir):
     )
     sim.write()
 
-    assert gwf.name == "gwf0"
+    assert gwf.name == "gwf-1"
     (row,) = _solutiongroup_rows(function_tmpdir)
     assert row[0] == "IMS6"
-    assert row[2:] == ["gwf0"]
+    assert row[2:] == ["gwf-1"]
 
 
 def _write_sim(workspace, models, solutions):
@@ -791,7 +791,7 @@ def test_solution_models_named_late(function_tmpdir):
     assert second.name is None
     _write_sim(function_tmpdir, [first, second], [ims])
     (row,) = _solutiongroup_rows(function_tmpdir)
-    assert row[2:] == ["gwf0", "gwf1"]
+    assert row[2:] == ["gwf-1", "gwf-2"]
 
 
 def test_solution_models_default(function_tmpdir):
@@ -803,9 +803,9 @@ def test_solution_models_default(function_tmpdir):
     ims = Ims()
     sim = _write_sim(function_tmpdir, [_small_gwf(), gwt], [ims])
     (row,) = _solutiongroup_rows(function_tmpdir)
-    assert row[2:] == ["gwf0", "gwt0"]
+    assert row[2:] == ["gwf-1", "gwt-1"]
     assert ims.models == []
-    assert sim["gwt0"].solution is ims
+    assert sim["gwt-1"].solution is ims
 
 
 def test_solution_models_are_references():
@@ -824,7 +824,7 @@ def test_solution_models_are_references():
     ims = Ims(parent=sim, models=gwf)
     assert ims.models == [gwf]
     assert gwf.parent is sim
-    assert gwf.name == "gwf0"
+    assert gwf.name == "gwf-1"
     assert gwf.solution is ims
 
 
@@ -1138,8 +1138,8 @@ def test_exchange_models_by_object_write(function_tmpdir):
 
     (row,) = _block_rows(function_tmpdir, "EXCHANGES")
     assert row[0] == "GWF6-GWF6"
-    assert row[2:] == ["gwf0", "gwf1"]
-    assert "exgmnamea='gwf0', exgmnameb='gwf1'" in repr(exg)
+    assert row[2:] == ["gwf-1", "gwf-2"]
+    assert "exgmnamea='gwf-1', exgmnameb='gwf-2'" in repr(exg)
     assert left.exchanges == [exg]
     assert right.exchanges == [exg]
 
@@ -1260,15 +1260,15 @@ def test_init_big_sim():
         stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 9999, 9999), 0.0]]},
     )
 
-    assert sim["gwf0"] is gwf
-    assert sim._children["gwf0"] is gwf
+    assert sim["gwf-1"] is gwf
+    assert sim._children["gwf-1"] is gwf
     assert gwf.ic is ic
     assert gwf.oc is oc
     assert gwf.npf is npf
     assert gwf.chd[0] is chd
 
     # Without explicit dims, griddata scalars stay compact (no 100M allocation)
-    assert sim["gwf0"].npf.k == 1.0
+    assert sim["gwf-1"].npf.k == 1.0
 
     # SPD is a recarray with only 2 rows — no full-grid allocation
     spd = chd.stress_period_data[0]
@@ -1328,7 +1328,7 @@ def test_write_ascii(function_tmpdir):
     assert f"{gwf_name}.ic" in file_names
     assert f"{gwf_name}.oc" in file_names
     assert f"{gwf_name}.npf" in file_names
-    assert f"{gwf_name}.chd0.chd" in file_names
+    assert f"{gwf_name}.chd-1.chd" in file_names
 
 
 def test_to_dict_fields():
@@ -2288,10 +2288,10 @@ def test_several_packages_of_a_type_default_filenames():
     adding one doesn't change the others'."""
     gwf = Gwf(name="gwf")
     chd = Chd(parent=gwf, stress_period_data={0: [((0, 0, 0), 1.0)]})
-    assert chd.default_filename() == "gwf.chd0.chd"
+    assert chd.default_filename() == "gwf.chd-1.chd"
     chd2 = Chd(parent=gwf, stress_period_data={0: [((0, 0, 1), 0.0)]})
-    assert chd.default_filename() == "gwf.chd0.chd"
-    assert chd2.default_filename() == "gwf.chd1.chd"
+    assert chd.default_filename() == "gwf.chd-1.chd"
+    assert chd2.default_filename() == "gwf.chd-2.chd"
 
 
 def test_ncf_subpackage_load(function_tmpdir):
@@ -2335,7 +2335,7 @@ def test_ncf_subpackage_simulation_load(function_tmpdir):
     sim.write()
 
     loaded = Simulation.load(function_tmpdir / "mfsim.nam")
-    dis = loaded["gwf0"].dis
+    dis = loaded["gwf-1"].dis
     assert isinstance(dis.ncf, Ncf)
     assert dis.ncf.filename == ncf.filename
     np.testing.assert_array_equal(dis.ncf.latitude, ncf.latitude)
@@ -3256,7 +3256,7 @@ def test_eq_array_nan_equal():
 
 def test_eq_ignores_parent_and_dims():
     assert Ims(dims={"nodes": 3}) == Ims(dims={"nodes": 4})
-    assert Ims(parent=Simulation()) == Ims(name="ims0")
+    assert Ims(parent=Simulation()) == Ims(name="ims-1")
     assert Ims(inner_maximum=10) != Ims(inner_maximum=20)
 
 

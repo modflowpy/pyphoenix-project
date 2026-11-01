@@ -12,7 +12,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -168,7 +168,7 @@
     "print_input": true,
     "save_flows": false,
     "ts": [
-      "<Ts ts0>"
+      "<Ts ts-1>"
     ]
   },
   "simulation/GWF_1/MAW-NT_Well/obs": {
@@ -241,7 +241,7 @@
     "name": "obs",
     "print_input": true
   },
-  "simulation/GWF_1/MAW-NT_Well/ts0": {
+  "simulation/GWF_1/MAW-NT_Well/ts-1": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -261,7 +261,7 @@
         "linear"
       ]
     },
-    "name": "ts0",
+    "name": "ts-1",
     "time_series_name": {
       "__type__": "TimeSeriesName",
       "time_series_names": [
@@ -449,7 +449,7 @@
     "storagecoefficient": false,
     "sy": "float64[20402] fdb06f808f2801f0"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "backtracking_number": 0,
     "backtracking_reduction_factor": "0.6",
@@ -460,7 +460,7 @@
     "inner_dvclose": "0.0001",
     "inner_maximum": 100,
     "linear_acceleration": "bicgstab",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "0.0001",
     "outer_maximum": 500,
     "print_option": "summary",

@@ -396,7 +396,7 @@ def test_layered_open_close_griddata(tmp_path):
 def test_gwt_transport_round_trips(tmp_path, pkg_cls):
     """GWT's advanced transport packages (sft, mwt, uzt -- registered the
     same way) round-trip load -> write -> reload."""
-    gwt_name = "gwt1"
+    gwt_name = "gwt-2"
     sim = Simulation(
         tdis=Time(perlen=[1.0], nstp=[1], tsmult=[1.0], time_units="DAYS"),
         workspace=tmp_path,
@@ -436,7 +436,7 @@ def test_gwt_transport_round_trips(tmp_path, pkg_cls):
 def test_gwe_transport_round_trips(tmp_path, pkg_cls, row):
     """GWE's advanced transport packages (sfe, uze, mwe -- registered the
     same way) round-trip load -> write -> reload."""
-    gwe_name = "gwe1"
+    gwe_name = "gwe-2"
     sim = Simulation(
         tdis=Time(perlen=[1.0], nstp=[1], tsmult=[1.0], time_units="DAYS"),
         workspace=tmp_path,
@@ -469,7 +469,7 @@ def test_gwe_transport_round_trips(tmp_path, pkg_cls, row):
 def test_quoted_multiword_boundname_and_obsname_round_trips(tmp_path):
     """A multi-word boundname and its obsname/id survive load -> write ->
     reload as one token, not split at the embedded space."""
-    gwf_name = "gwf1"
+    gwf_name = "gwf-2"
     sim = Simulation(
         tdis=Time(perlen=[1.0], nstp=[1], tsmult=[1.0], time_units="DAYS"),
         workspace=tmp_path,
@@ -517,10 +517,10 @@ def test_obs_id_naming_numeric_boundname_warns(tmp_path, boundname, warns):
         tdis=Time(perlen=[1.0], nstp=[1], tsmult=[1.0], time_units="DAYS"),
         workspace=tmp_path,
         name="sim1",
-        solutiongroup=[Ims(filename="gwf.ims", models=["gwf1"])],
+        solutiongroup=[Ims(filename="gwf.ims", models=["gwf-2"])],
     )
     dis = Dis(nlay=1, nrow=1, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=0.0)
-    gwf = Gwf(parent=sim, dis=dis, name="gwf1", save_flows=True)
+    gwf = Gwf(parent=sim, dis=dis, name="gwf-2", save_flows=True)
     Ic(parent=gwf, strt=0.0)
     Npf(parent=gwf, icelltype=0, k=1.0)
     ghb = Ghb(
@@ -533,7 +533,7 @@ def test_obs_id_naming_numeric_boundname_warns(tmp_path, boundname, warns):
         parent=ghb,
         continuous=[
             Obs.ContinuousBlock(
-                output=Obs.Output(obs_output_file_name="gwf1.ghb.obs.csv"),
+                output=Obs.Output(obs_output_file_name="gwf-2.ghb.obs.csv"),
                 continuous=[Obs.Continuous(obsname="o", obstype="GHB", id_=boundname)],
             )
         ],
@@ -549,7 +549,7 @@ def test_obs_id_naming_numeric_boundname_warns(tmp_path, boundname, warns):
 def _ghb_sim(tmp_path, rows, *, auxiliary=None, obs=()):
     """A one-row-of-cells GHB model with boundnames, and an OBS file of
     (obsname, id) observations of it."""
-    gwf_name = "gwf1"
+    gwf_name = "gwf-2"
     sim = Simulation(
         tdis=Time(perlen=[1.0], nstp=[1], tsmult=[1.0], time_units="DAYS"),
         workspace=tmp_path,
@@ -586,7 +586,7 @@ def _ghb_sim(tmp_path, rows, *, auxiliary=None, obs=()):
 
 
 def _reloaded_ghb(tmp_path):
-    return Simulation.load(tmp_path / "mfsim.nam")["gwf1"].ghb[0]
+    return Simulation.load(tmp_path / "mfsim.nam")["gwf-2"].ghb[0]
 
 
 @pytest.mark.parametrize("boundname", ["5", "end", "begin", "endpoint", None])

@@ -12,7 +12,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -310,14 +310,14 @@
     "storagecoefficient": false,
     "sy": "float64[100] 73329cb7671df4b9"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "dims": {},
     "filename": "model.ims",
     "inner_dvclose": "0.0001",
     "inner_maximum": 100,
     "linear_acceleration": "cg",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "0.0001",
     "outer_maximum": 500,
     "print_option": "summary",

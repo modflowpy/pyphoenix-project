@@ -12,7 +12,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -289,10 +289,10 @@
     "save_flows": false,
     "storage": false,
     "ts": [
-      "<Ts ts0>"
+      "<Ts ts-1>"
     ]
   },
-  "simulation/GWF_1/sfr-1/ts0": {
+  "simulation/GWF_1/sfr-1/ts-1": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -310,7 +310,7 @@
         "stepwise"
       ]
     },
-    "name": "ts0",
+    "name": "ts-1",
     "time_series_name": {
       "__type__": "TimeSeriesName",
       "time_series_names": [
@@ -325,7 +325,7 @@
       "ts_time": "float64[2] adabbda6bfa55a60"
     }
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "backtracking_number": 0,
     "backtracking_reduction_factor": "0.7",
@@ -336,7 +336,7 @@
     "inner_dvclose": "1e-05",
     "inner_maximum": 10,
     "linear_acceleration": "cg",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "1e-05",
     "outer_maximum": 12625,
     "print_option": "summary",

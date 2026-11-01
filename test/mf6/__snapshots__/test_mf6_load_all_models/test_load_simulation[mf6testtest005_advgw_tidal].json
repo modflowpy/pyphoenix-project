@@ -13,7 +13,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -128,7 +128,7 @@
     "print_input": true,
     "save_flows": true,
     "ts": [
-      "<Ts ts0>"
+      "<Ts ts-1>"
     ]
   },
   "simulation/GWF_1/GHB-TIDAL/obs": {
@@ -198,7 +198,7 @@
     "name": "obs",
     "print_input": true
   },
-  "simulation/GWF_1/GHB-TIDAL/ts0": {
+  "simulation/GWF_1/GHB-TIDAL/ts-1": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -213,7 +213,7 @@
       "__type__": "InterpolationMethodrecordSingle",
       "interpolation_method_single": "linear"
     },
-    "name": "ts0",
+    "name": "ts-1",
     "time_series_name": {
       "__type__": "TimeSeriesName",
       "time_series_names": [
@@ -263,10 +263,10 @@
     "print_input": true,
     "save_flows": true,
     "ts": [
-      "<Ts ts0>"
+      "<Ts ts-1>"
     ]
   },
-  "simulation/GWF_1/RCH-ZONE_1/ts0": {
+  "simulation/GWF_1/RCH-ZONE_1/ts-1": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -283,7 +283,7 @@
         "stepwise"
       ]
     },
-    "name": "ts0",
+    "name": "ts-1",
     "time_series_name": {
       "__type__": "TimeSeriesName",
       "time_series_names": [
@@ -375,10 +375,10 @@
     "print_input": true,
     "save_flows": true,
     "ts": [
-      "<Ts ts0>"
+      "<Ts ts-1>"
     ]
   },
-  "simulation/GWF_1/RCH-ZONE_2/ts0": {
+  "simulation/GWF_1/RCH-ZONE_2/ts-1": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -395,7 +395,7 @@
         "linear"
       ]
     },
-    "name": "ts0",
+    "name": "ts-1",
     "time_series_name": {
       "__type__": "TimeSeriesName",
       "time_series_names": [
@@ -445,10 +445,10 @@
     "print_input": true,
     "save_flows": true,
     "ts": [
-      "<Ts ts0>"
+      "<Ts ts-1>"
     ]
   },
-  "simulation/GWF_1/RCH-ZONE_3/ts0": {
+  "simulation/GWF_1/RCH-ZONE_3/ts-1": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -465,7 +465,7 @@
         "linear"
       ]
     },
-    "name": "ts0",
+    "name": "ts-1",
     "time_series_name": {
       "__type__": "TimeSeriesName",
       "time_series_names": [
@@ -535,7 +535,7 @@
     "print_input": true,
     "save_flows": true,
     "ts": [
-      "<Ts ts0>"
+      "<Ts ts-1>"
     ]
   },
   "simulation/GWF_1/RIV/obs": {
@@ -653,7 +653,7 @@
     "name": "obs",
     "print_input": true
   },
-  "simulation/GWF_1/RIV/ts0": {
+  "simulation/GWF_1/RIV/ts-1": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -671,7 +671,7 @@
         "stepwise"
       ]
     },
-    "name": "ts0",
+    "name": "ts-1",
     "time_series_name": {
       "__type__": "TimeSeriesName",
       "time_series_names": [
@@ -778,10 +778,10 @@
     "print_input": true,
     "save_flows": true,
     "ts": [
-      "<Ts ts0>"
+      "<Ts ts-1>"
     ]
   },
-  "simulation/GWF_1/WEL/ts0": {
+  "simulation/GWF_1/WEL/ts-1": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -796,7 +796,7 @@
       "__type__": "InterpolationMethodrecordSingle",
       "interpolation_method_single": "stepwise"
     },
-    "name": "ts0",
+    "name": "ts-1",
     "time_series_name": {
       "__type__": "TimeSeriesName",
       "time_series_names": [
@@ -1045,7 +1045,7 @@
     "storagecoefficient": false,
     "sy": "float64[450] 450f72f145d4702a"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -1053,7 +1053,7 @@
     "inner_dvclose": "0.0001",
     "inner_maximum": 100,
     "linear_acceleration": "cg",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "0.0001",
     "outer_maximum": 500,
     "print_option": "summary",

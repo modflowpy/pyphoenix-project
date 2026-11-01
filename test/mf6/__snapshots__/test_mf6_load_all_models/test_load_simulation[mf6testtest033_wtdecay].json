@@ -12,7 +12,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -196,7 +196,7 @@
     "storagecoefficient": false,
     "sy": "float64[22801] 40f1c3e229d2ef8b"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "backtracking_number": 20,
     "backtracking_reduction_factor": "0.6",
@@ -207,7 +207,7 @@
     "inner_dvclose": "1e-05",
     "inner_maximum": 200,
     "linear_acceleration": "bicgstab",
-    "name": "ims0",
+    "name": "ims-1",
     "number_orthogonalizations": 7,
     "outer_dvclose": "0.001",
     "outer_maximum": 500,

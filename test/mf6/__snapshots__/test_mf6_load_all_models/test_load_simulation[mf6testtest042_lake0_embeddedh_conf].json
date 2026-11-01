@@ -13,12 +13,12 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -26,7 +26,7 @@
     "inner_dvclose": "1e-06",
     "inner_maximum": 100,
     "linear_acceleration": "cg",
-    "name": "ims0",
+    "name": "ims-1",
     "number_orthogonalizations": 2,
     "outer_dvclose": "1e-05",
     "outer_maximum": 500,
@@ -144,10 +144,10 @@
     "print_input": true,
     "save_flows": false,
     "ts": [
-      "<Ts ts0>"
+      "<Ts ts-1>"
     ]
   },
-  "simulation/lake0_e/chd-1/ts0": {
+  "simulation/lake0_e/chd-1/ts-1": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -164,7 +164,7 @@
         "linear"
       ]
     },
-    "name": "ts0",
+    "name": "ts-1",
     "time_series_name": {
       "__type__": "TimeSeriesName",
       "time_series_names": [
@@ -277,15 +277,15 @@
       "__table__": "Tables",
       "ifno": "int64[3] ab2fa50ae23ce035",
       "laktab": [
-        "<Laktab laktab0>",
-        "<Laktab laktab1>",
-        "<Laktab laktab2>"
+        "<Laktab laktab-1>",
+        "<Laktab laktab-2>",
+        "<Laktab laktab-3>"
       ],
       "n": 3
     },
     "ts": []
   },
-  "simulation/lake0_e/lak-1/laktab0": {
+  "simulation/lake0_e/lak-1/laktab-1": {
     "__type__": "Laktab",
     "dims": {
       "ncelldim": 3,
@@ -296,7 +296,7 @@
       "nrow": 5
     },
     "filename": "l1_table.ref",
-    "name": "laktab0",
+    "name": "laktab-1",
     "ncol": 4,
     "nrow": 7,
     "table": {
@@ -308,7 +308,7 @@
       "volume": "float64[7] 69e2c7a6ee9f5260"
     }
   },
-  "simulation/lake0_e/lak-1/laktab1": {
+  "simulation/lake0_e/lak-1/laktab-2": {
     "__type__": "Laktab",
     "dims": {
       "ncelldim": 3,
@@ -319,7 +319,7 @@
       "nrow": 5
     },
     "filename": "l2_table.ref",
-    "name": "laktab1",
+    "name": "laktab-2",
     "ncol": 5,
     "nrow": 7,
     "table": {
@@ -331,7 +331,7 @@
       "volume": "float64[7] 52645fd5b65c6a95"
     }
   },
-  "simulation/lake0_e/lak-1/laktab2": {
+  "simulation/lake0_e/lak-1/laktab-3": {
     "__type__": "Laktab",
     "dims": {
       "ncelldim": 3,
@@ -342,7 +342,7 @@
       "nrow": 5
     },
     "filename": "l3_table.ref",
-    "name": "laktab2",
+    "name": "laktab-3",
     "ncol": 5,
     "nrow": 9,
     "table": {

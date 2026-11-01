@@ -2032,16 +2032,16 @@ def test_dumps_tas_inner_classes_multi_value():
     from flopy4.mf6.utl.tas import Tas
 
     tas = Tas(
-        time_series_name=Tas.TimeSeriesName(time_series_name=("ts1", "ts2")),
+        time_series_name=Tas.TimeSeriesName(time_series_name=("ts-2", "ts-3")),
         sfac=Tas.Sfac(sfacval=(1.5, 2.0)),
     )
 
     unstructured = COMPONENT_CONVERTER.unstructure(tas)
-    assert unstructured["attributes"]["time_series_name"] == ("NAME", "ts1", "ts2")
+    assert unstructured["attributes"]["time_series_name"] == ("NAME", "ts-2", "ts-3")
     assert unstructured["attributes"]["sfac"] == ("SFAC", 1.5, 2.0)
 
     dumped = dumps(unstructured)
-    assert "NAME ts1 ts2" in dumped
+    assert "NAME ts-2 ts-3" in dumped
     assert "SFAC 1.5 2.0" in dumped
 
 
@@ -2052,13 +2052,13 @@ def test_load_tas_inner_classes_name_collision():
     from flopy4.mf6.utl.tas import Tas
 
     tas = Tas(
-        time_series_name=Tas.TimeSeriesName(time_series_name=("ts1", "ts2")),
+        time_series_name=Tas.TimeSeriesName(time_series_name=("ts-2", "ts-3")),
         sfac=Tas.Sfac(sfacval=(1.5, 2.0)),
     )
     dumped = dumps(COMPONENT_CONVERTER.unstructure(tas))
     structured = structure_component(loads(dumped), Tas)
     assert structured.name is None  # not clobbered by the "NAME ts1 ts2" row
-    assert structured.time_series_name.time_series_name == ("ts1", "ts2")
+    assert structured.time_series_name.time_series_name == ("ts-2", "ts-3")
     assert structured.sfac.sfacval == (1.5, 2.0)
 
 
@@ -3295,7 +3295,7 @@ def test_ssm_fileinput_children(tmp_path):
     assert isinstance(rch.spc, Spca)
     assert wel.spc.filename == Path("wel.spc")
     assert [r.spcsetting.concentration for r in wel.spc.stress_period_data[0]] == [100.0]
-    assert sorted(ssm._children) == ["spc0", "spca0"]
+    assert sorted(ssm._children) == ["spc-1", "spc-2"]
     assert wel.spc.parent is ssm
 
     text = dumps(COMPONENT_CONVERTER.unstructure(ssm))
@@ -3331,7 +3331,7 @@ def test_sfr_period_cross_section_children(tmp_path, monkeypatch):
     assert b_row.sfrtab.filename == Path("b.tab")
     assert b_row.sfrtab.table[0].height == 2.0
     assert a_row.sfrtab is a
-    assert sorted(sfr._children) == ["sfrtab0", "sfrtab1"]
+    assert sorted(sfr._children) == ["sfrtab-1", "sfrtab-2"]
     assert b_row.sfrtab.parent is sfr
 
     text = dumps(COMPONENT_CONVERTER.unstructure(sfr))

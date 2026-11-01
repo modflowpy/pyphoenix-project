@@ -77,17 +77,19 @@ def get_ftype(token: str, prefix: "str | None" = None) -> "type[Component] | Non
     return ftypes.get(token)
 
 
-def _resolve_child_name(used: "set[str]", kind: str, child: "Component") -> str:
+def _resolve_child_name(used: "set[str]", kind: str, child: "Component", before: int = 0) -> str:
     """Resolve the name `child` should be attached under (stored as its
     own `.name`), given the set of names already claimed by any of the
-    parent's other children (`used`).
+    parent's other children (`used`) and how many of them, named or not,
+    come before it with its ftype (`before`).
 
     A name already set (given, or assigned on an earlier attach) is kept
-    as is, raising if a sibling has it. An unnamed "only"-kind child takes
-    its class name ("dis" for `Dis`, "disv" for `Disv`). An unnamed
-    "list"-kind child takes its class name plus the first free index from
-    0 ("wel0", "rcha0", "gwf0"). A stored name never changes, so deleting
-    a sibling doesn't renumber the rest.
+    as is, raising if a sibling has it. Otherwise, as MF6 names a name
+    file's unnamed packages: an "only"-kind child takes its ftype ("dis",
+    "disv"), a "list"-kind child its ftype and 1-based position among
+    its parent's children of that ftype ("wel-1", "chd-2" for a second
+    CHD or CHDG, "gwf-1"), bumped past names taken. A stored name never
+    changes, so deleting a sibling doesn't renumber the rest.
     """
     if kind not in ("only", "list"):
         raise TypeError(f"Bad child collection kind '{kind}'")
@@ -98,13 +100,13 @@ def _resolve_child_name(used: "set[str]", kind: str, child: "Component") -> str:
                 "on the same parent."
             )
         return child.name  # type: ignore[attr-defined]
-    name = type(child).__name__.lower()
+    name = child._file_ext()
     if kind == "only":
         return name
-    i = 0
-    while f"{name}{i}" in used:
+    i = before + 1
+    while f"{name}-{i}" in used:
         i += 1
-    return f"{name}{i}"
+    return f"{name}-{i}"
 
 
 def _check_filenames(top: "Component") -> None:
@@ -445,10 +447,13 @@ class Component(DimensionResolverMixin, ABC, MutableMapping, metaclass=LegacyKwa
         for kind, c in found:
             if c.name is not None:  # type: ignore[attr-defined]
                 used.add(_resolve_child_name(used, kind, c))
+        before: "dict[str, int]" = {}  # children so far, by ftype
         for kind, c in found:
+            ext = c._file_ext()
             if c.name is None:  # type: ignore[attr-defined]
-                c.name = _resolve_child_name(used, kind, c)  # type: ignore[attr-defined]
+                c.name = _resolve_child_name(used, kind, c, before.get(ext, 0))  # type: ignore[attr-defined]
                 used.add(c.name)  # type: ignore[attr-defined]
+            before[ext] = before.get(ext, 0) + 1
         for c in joined:
             c._retarget_references()
 
@@ -478,6 +483,15 @@ class Component(DimensionResolverMixin, ABC, MutableMapping, metaclass=LegacyKwa
         """The component's name, or its class name, lowercase, if it has
         none yet (it's detached)."""
         return self.name or type(self).__name__.lower()
+
+    def _file_ext(self) -> str:
+        """The name-file ftype, lowercase, without the ``6``s or an
+        exchange's hyphen (``CHD6`` -> ``chd``, ``GWF6-GWF6`` ->
+        ``gwfgwf``), or the class name if it has none: a package's
+        default filename extension, and the stem of a made-up name."""
+        if not self.ftype:
+            return type(self).__name__.lower()
+        return self.ftype.lower().replace("6", "").replace("-", "")
 
     def default_filename(self) -> str:
         """
@@ -633,8 +647,9 @@ class Component(DimensionResolverMixin, ABC, MutableMapping, metaclass=LegacyKwa
         if match is None:
             return
         target_field, kind = match
-        used = set(parent._children)
-        self.name = _resolve_child_name(used, kind, self)  # type: ignore[attr-defined]
+        siblings = parent._children
+        before = sum(c._file_ext() == self._file_ext() for c in siblings.values())
+        self.name = _resolve_child_name(set(siblings), kind, self, before)  # type: ignore[attr-defined]
         if kind == "only":
             setattr(parent, target_field.name, self)
         elif kind == "list":

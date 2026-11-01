@@ -12,7 +12,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -200,14 +200,14 @@
     "save_flows": true,
     "ts": []
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "dims": {},
     "filename": "TM9_global_gv.ims",
     "inner_dvclose": "1e-05",
     "inner_maximum": 500,
     "linear_acceleration": "cg",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "1e-05",
     "outer_maximum": 25,
     "print_option": "summary",

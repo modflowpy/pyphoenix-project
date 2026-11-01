@@ -12,12 +12,12 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "backtracking_number": 20,
     "backtracking_reduction_factor": "0.7",
@@ -28,7 +28,7 @@
     "inner_dvclose": "1e-10",
     "inner_maximum": 50,
     "linear_acceleration": "bicgstab",
-    "name": "ims0",
+    "name": "ims-1",
     "no_ptc": {
       "__type__": "NoPtc",
       "no_ptc_option": null

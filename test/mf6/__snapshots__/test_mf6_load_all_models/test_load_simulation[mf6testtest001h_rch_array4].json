@@ -12,7 +12,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -227,11 +227,11 @@
     },
     "save_flows": false,
     "tas": [
-      "<Tas tas0>",
-      "<Tas tas1>"
+      "<Tas tas-1>",
+      "<Tas tas-2>"
     ]
   },
-  "simulation/flow15/rch-1/tas0": {
+  "simulation/flow15/rch-1/tas-1": {
     "__type__": "Tas",
     "dims": {
       "ncelldim": 3,
@@ -246,7 +246,7 @@
       "__type__": "InterpolationMethod",
       "interpolation_method": "STEPWISE"
     },
-    "name": "tas0",
+    "name": "tas-1",
     "sfac": {
       "__type__": "Sfac",
       "sfacval": "float64[1] 78e7013ffb07fc54"
@@ -262,7 +262,7 @@
       ]
     }
   },
-  "simulation/flow15/rch-1/tas1": {
+  "simulation/flow15/rch-1/tas-2": {
     "__type__": "Tas",
     "dims": {
       "ncelldim": 3,
@@ -277,7 +277,7 @@
       "__type__": "InterpolationMethod",
       "interpolation_method": "STEPWISE"
     },
-    "name": "tas1",
+    "name": "tas-2",
     "sfac": {
       "__type__": "Sfac",
       "sfacval": "float64[1] 8f688ce4f0389109"
@@ -293,7 +293,7 @@
       ]
     }
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -301,7 +301,7 @@
     "inner_dvclose": "1e-06",
     "inner_maximum": 30,
     "linear_acceleration": "cg",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "9.9999997e-06",
     "outer_maximum": 50,
     "print_option": "all",

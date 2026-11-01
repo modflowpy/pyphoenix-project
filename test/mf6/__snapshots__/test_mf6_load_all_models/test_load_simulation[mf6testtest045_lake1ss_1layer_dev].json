@@ -12,12 +12,12 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -25,7 +25,7 @@
     "inner_dvclose": "1e-07",
     "inner_maximum": 100,
     "linear_acceleration": "cg",
-    "name": "ims0",
+    "name": "ims-1",
     "number_orthogonalizations": 2,
     "outer_dvclose": "1e-07",
     "outer_maximum": 500,
@@ -183,14 +183,14 @@
       "__table__": "Tables",
       "ifno": "int64[1] 05fe405753166f12",
       "laktab": [
-        "<Laktab laktab0>"
+        "<Laktab laktab-1>"
       ],
       "n": 1
     },
     "time_conversion": "86400.0",
     "ts": []
   },
-  "simulation/lakeex1b_1layer/LAK_1/laktab0": {
+  "simulation/lakeex1b_1layer/LAK_1/laktab-1": {
     "__type__": "Laktab",
     "dims": {
       "ncelldim": 3,
@@ -201,7 +201,7 @@
       "nrow": 17
     },
     "filename": "lakeex1b_table.ref",
-    "name": "laktab0",
+    "name": "laktab-1",
     "ncol": 3,
     "nrow": 151,
     "table": {

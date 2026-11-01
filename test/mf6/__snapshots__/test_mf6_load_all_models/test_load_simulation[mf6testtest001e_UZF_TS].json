@@ -12,7 +12,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -577,7 +577,7 @@
     "simulate_gwseep": true,
     "square_gwet": false,
     "ts": [
-      "<Ts ts0>"
+      "<Ts ts-1>"
     ],
     "unsat_etae": false,
     "unsat_etwc": false
@@ -636,7 +636,7 @@
     "name": "obs",
     "print_input": false
   },
-  "simulation/GWF_1/uzf-1/ts0": {
+  "simulation/GWF_1/uzf-1/ts-1": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -660,7 +660,7 @@
         "stepwise"
       ]
     },
-    "name": "ts0",
+    "name": "ts-1",
     "time_series_name": {
       "__type__": "TimeSeriesName",
       "time_series_names": [
@@ -681,7 +681,7 @@
       "ts_time": "float64[2] 9b0ddd17d6b7ab75"
     }
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "complexity": "moderate",
     "dims": {},
@@ -689,7 +689,7 @@
     "inner_dvclose": "1e-09",
     "inner_maximum": 50,
     "linear_acceleration": "bicgstab",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "1e-06",
     "outer_maximum": 100,
     "print_option": "summary",
