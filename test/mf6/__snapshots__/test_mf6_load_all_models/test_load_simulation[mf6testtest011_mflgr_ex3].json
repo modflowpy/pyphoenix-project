@@ -40,7 +40,7 @@
     "print_input": false,
     "rch": [],
     "riv": [
-      "<Riv riv0>"
+      "<Riv riv-1>"
     ],
     "save_flows": false,
     "sfr": [],
@@ -149,7 +149,7 @@
     "head_file": "ex3_child.hds",
     "name": "oc"
   },
-  "simulation/CHILD/riv0": {
+  "simulation/CHILD/riv-1": {
     "__type__": "Riv",
     "_stress_period_data": {
       "0": {
@@ -179,7 +179,7 @@
     },
     "filename": "ex3_child.riv",
     "mover": false,
-    "name": "riv0",
+    "name": "riv-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,
@@ -189,8 +189,8 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>",
-      "<Chd chd1>"
+      "<Chd chd-1>",
+      "<Chd chd-2>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
@@ -208,7 +208,7 @@
     "print_input": false,
     "rch": [],
     "riv": [
-      "<Riv riv0>"
+      "<Riv riv-1>"
     ],
     "save_flows": false,
     "sfr": [],
@@ -216,7 +216,7 @@
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/PARENT/chd0": {
+  "simulation/PARENT/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -238,13 +238,13 @@
       "nrow": 15
     },
     "filename": "ex3_parent-left.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,
     "ts": []
   },
-  "simulation/PARENT/chd1": {
+  "simulation/PARENT/chd-2": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -266,7 +266,7 @@
       "nrow": 15
     },
     "filename": "ex3_parent-right.chd",
-    "name": "chd1",
+    "name": "chd-2",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,
@@ -372,7 +372,7 @@
     "head_file": "ex3_parent.hds",
     "name": "oc"
   },
-  "simulation/PARENT/riv0": {
+  "simulation/PARENT/riv-1": {
     "__type__": "Riv",
     "_stress_period_data": {
       "0": {
@@ -421,7 +421,7 @@
     },
     "filename": "ex3_parent.riv",
     "mover": false,
-    "name": "riv0",
+    "name": "riv-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,

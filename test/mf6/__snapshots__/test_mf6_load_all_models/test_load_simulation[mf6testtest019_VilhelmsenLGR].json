@@ -39,10 +39,10 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rcha0>"
+      "<Rcha rch-1>"
     ],
     "riv": [
-      "<Riv riv0>"
+      "<Riv riv-1>"
     ],
     "save_flows": false,
     "sfr": [],
@@ -151,7 +151,7 @@
     "head_file": "Child_GN.hds",
     "name": "oc"
   },
-  "simulation/CHILD/rcha0": {
+  "simulation/CHILD/rch-1": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -164,7 +164,7 @@
     "export_array_netcdf": false,
     "filename": "Child_GN.rch",
     "fixed_cell": false,
-    "name": "rcha0",
+    "name": "rch-1",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,
@@ -174,7 +174,7 @@
     "save_flows": true,
     "tas": []
   },
-  "simulation/CHILD/riv0": {
+  "simulation/CHILD/riv-1": {
     "__type__": "Riv",
     "_stress_period_data": {
       "0": {
@@ -199,7 +199,7 @@
     },
     "filename": "Child_GN.riv",
     "mover": false,
-    "name": "riv0",
+    "name": "riv-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,
@@ -224,10 +224,10 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rcha0>"
+      "<Rcha rch-1>"
     ],
     "riv": [
-      "<Riv riv0>"
+      "<Riv riv-1>"
     ],
     "save_flows": false,
     "sfr": [],
@@ -335,7 +335,7 @@
     "head_file": "TM9_parent_GN.hds",
     "name": "oc"
   },
-  "simulation/PARENT/rcha0": {
+  "simulation/PARENT/rch-1": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -348,7 +348,7 @@
     "export_array_netcdf": false,
     "filename": "TM9_parent_GN.rch",
     "fixed_cell": false,
-    "name": "rcha0",
+    "name": "rch-1",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,
@@ -358,7 +358,7 @@
     "save_flows": true,
     "tas": []
   },
-  "simulation/PARENT/riv0": {
+  "simulation/PARENT/riv-1": {
     "__type__": "Riv",
     "_stress_period_data": {
       "0": {
@@ -417,7 +417,7 @@
     },
     "filename": "TM9_parent_GN.riv",
     "mover": false,
-    "name": "riv0",
+    "name": "riv-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,

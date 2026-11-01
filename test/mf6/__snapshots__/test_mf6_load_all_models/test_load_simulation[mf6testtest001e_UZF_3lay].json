@@ -21,7 +21,7 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
@@ -48,12 +48,12 @@
     "sfr": [],
     "sto": "<Sto sto>",
     "uzf": [
-      "<Uzf uzf0>"
+      "<Uzf uzf-1>"
     ],
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/GWF_1/chd0": {
+  "simulation/GWF_1/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -78,7 +78,7 @@
       "nrow": 1
     },
     "filename": "test001e_UZF_3lay.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": true,
     "print_input": false,
     "save_flows": false,
@@ -268,7 +268,7 @@
     "storagecoefficient": false,
     "sy": "float64[30] 3e2c7d397e7f2184"
   },
-  "simulation/GWF_1/uzf0": {
+  "simulation/GWF_1/uzf-1": {
     "__type__": "Uzf",
     "_stress_period_data": {
       "0": {
@@ -349,7 +349,7 @@
     "filename": "test001e_UZF_3lay.uzf",
     "linear_gwet": true,
     "mover": false,
-    "name": "uzf0",
+    "name": "uzf-1",
     "ntrailwaves": 10,
     "nuzfcells": 24,
     "nwavesets": 40,
@@ -379,7 +379,7 @@
     "unsat_etae": false,
     "unsat_etwc": false
   },
-  "simulation/GWF_1/uzf0/obs": {
+  "simulation/GWF_1/uzf-1/obs": {
     "__type__": "Obs",
     "continuous": {
       "__table__": "ContinuousBlock",

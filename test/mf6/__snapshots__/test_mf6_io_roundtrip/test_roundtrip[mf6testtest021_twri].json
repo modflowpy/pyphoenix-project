@@ -107,13 +107,13 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 twri.dis dis",
-    " CHD6 twri.chd chd0",
-    " DRN6 twri.drn drn0",
+    " CHD6 twri.chd chd-1",
+    " DRN6 twri.drn drn-1",
     " IC6 twri.ic ic",
     " NPF6 twri.npf npf",
     " OC6 twri.oc oc",
-    " RCH6 twri.rch rcha0",
-    " WEL6 twri.wel wel0",
+    " RCH6 twri.rch rch-1",
+    " WEL6 twri.wel wel-1",
     "END PACKAGES"
   ],
   "twri.npf": [

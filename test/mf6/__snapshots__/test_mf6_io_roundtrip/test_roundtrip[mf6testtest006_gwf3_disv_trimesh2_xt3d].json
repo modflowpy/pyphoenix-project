@@ -75,7 +75,7 @@
     "",
     "BEGIN PACKAGES",
     " DISV6 flow.disv disv",
-    " CHD6 flow.chd chd0",
+    " CHD6 flow.chd chd-1",
     " IC6 flow.ic ic",
     " NPF6 flow.npf npf",
     " OC6 flow.oc oc",

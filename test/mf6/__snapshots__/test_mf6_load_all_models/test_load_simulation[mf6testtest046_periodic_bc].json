@@ -72,7 +72,7 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
@@ -96,7 +96,7 @@
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/pbc/chd0": {
+  "simulation/pbc/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -118,7 +118,7 @@
       "nrow": 1
     },
     "filename": "pbc.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": false,

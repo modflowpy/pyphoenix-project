@@ -29,13 +29,13 @@
     "evt": [],
     "filename": "ghbmvr.nam",
     "ghb": [
-      "<Ghb ghb0>"
+      "<Ghb ghb-1>"
     ],
     "ic": "<Ic ic>",
     "lak": [],
     "list_": "ghbmvr.lst",
     "maw": [
-      "<Maw maw0>"
+      "<Maw maw-1>"
     ],
     "mvr": "<Mvr mvr>",
     "name": "ghbmvr",
@@ -98,7 +98,7 @@
     "nrow": 20,
     "top": "float64[400] 9079c8684054a67d"
   },
-  "simulation/ghbmvr/ghb0": {
+  "simulation/ghbmvr/ghb-1": {
     "__type__": "Ghb",
     "_stress_period_data": {
       "0": {
@@ -127,14 +127,14 @@
     },
     "filename": "ghbmvr.ghb",
     "mover": true,
-    "name": "ghb0",
+    "name": "ghb-1",
     "obs": "<Obs obs>",
     "print_flows": true,
     "print_input": true,
     "save_flows": false,
     "ts": []
   },
-  "simulation/ghbmvr/ghb0/obs": {
+  "simulation/ghbmvr/ghb-1/obs": {
     "__type__": "Obs",
     "continuous": {
       "__table__": "ContinuousBlock",
@@ -226,7 +226,7 @@
     "name": "ic",
     "strt": "float64[400] ddccf4c92324d206"
   },
-  "simulation/ghbmvr/maw0": {
+  "simulation/ghbmvr/maw-1": {
     "__type__": "Maw",
     "_stress_period_data": {
       "0": []
@@ -255,7 +255,7 @@
     "flow_correction": false,
     "flowing_wells": false,
     "mover": true,
-    "name": "maw0",
+    "name": "maw-1",
     "nmawwells": 4,
     "no_well_storage": true,
     "non_vertical_wells": false,

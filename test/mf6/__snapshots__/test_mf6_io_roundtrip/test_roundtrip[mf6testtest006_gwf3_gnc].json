@@ -119,7 +119,7 @@
     "",
     "BEGIN PACKAGES",
     " DISU6 flow.disu disu",
-    " CHD6 flow.chd chd0",
+    " CHD6 flow.chd chd-1",
     " GNC6 flow.gnc gnc",
     " IC6 flow.ic ic",
     " NPF6 flow.npf npf",

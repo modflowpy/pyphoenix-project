@@ -27,7 +27,7 @@
     "evt": [],
     "filename": "ci.nam",
     "ghb": [
-      "<Ghb ghb0>"
+      "<Ghb ghb-1>"
     ],
     "ic": "<Ic ic>",
     "lak": [],
@@ -38,7 +38,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rcha0>"
+      "<Rcha rch-1>"
     ],
     "riv": [],
     "save_flows": false,
@@ -78,7 +78,7 @@
       "yv": "float64[2778] 40e2f18f7951e8a1"
     }
   },
-  "simulation/CI/ghb0": {
+  "simulation/CI/ghb-1": {
     "__type__": "Ghb",
     "_stress_period_data": {
       "0": {
@@ -101,7 +101,7 @@
     },
     "filename": "ci.ghb",
     "mover": false,
-    "name": "ghb0",
+    "name": "ghb-1",
     "print_flows": false,
     "print_input": false,
     "save_flows": false,
@@ -186,7 +186,7 @@
     "head_file": "ci.output.hds",
     "name": "oc"
   },
-  "simulation/CI/rcha0": {
+  "simulation/CI/rch-1": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 2,
@@ -198,7 +198,7 @@
     "export_array_netcdf": false,
     "filename": "ci.rch",
     "fixed_cell": false,
-    "name": "rcha0",
+    "name": "rch-1",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,

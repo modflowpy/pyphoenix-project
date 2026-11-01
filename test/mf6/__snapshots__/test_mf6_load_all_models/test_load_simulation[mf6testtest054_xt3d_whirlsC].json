@@ -21,7 +21,7 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
@@ -43,11 +43,11 @@
     "sfr": [],
     "uzf": [],
     "wel": [
-      "<Wel wel0>"
+      "<Wel wel-1>"
     ],
     "workspace": "<workspace>"
   },
-  "simulation/GWF_1/chd0": {
+  "simulation/GWF_1/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -71,7 +71,7 @@
       "nrow": 10
     },
     "filename": "model.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,
@@ -183,7 +183,7 @@
     "head_file": "model.hds",
     "name": "oc"
   },
-  "simulation/GWF_1/wel0": {
+  "simulation/GWF_1/wel-1": {
     "__type__": "Wel",
     "_stress_period_data": {
       "0": {
@@ -207,7 +207,7 @@
     "filename": "model.wel",
     "flow_reduction_length": false,
     "mover": false,
-    "name": "wel0",
+    "name": "wel-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,

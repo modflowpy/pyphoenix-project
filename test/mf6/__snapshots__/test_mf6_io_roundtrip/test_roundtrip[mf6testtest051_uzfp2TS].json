@@ -108,14 +108,14 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 uzfp2.dis dis",
-    " GHB6 uzfp2.ghb ghb0",
+    " GHB6 uzfp2.ghb ghb-1",
     " IC6 uzfp2.ic ic",
     " NPF6 uzfp2.npf npf",
     " OC6 uzfp2.oc oc",
     " SFR6 uzfp2.sfr SFR_1",
     " STO6 uzfp2.sto sto",
     " UZF6 uzfp2.uzf UZF_1",
-    " WEL6 uzfp2.wel wel0",
+    " WEL6 uzfp2.wel wel-1",
     "END PACKAGES"
   ],
   "uzfp2.npf": [

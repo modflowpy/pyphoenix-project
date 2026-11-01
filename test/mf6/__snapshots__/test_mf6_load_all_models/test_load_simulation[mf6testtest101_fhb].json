@@ -71,7 +71,7 @@
     "dims": {},
     "dis": "<Dis dis>",
     "drn": [
-      "<Drn drn0>"
+      "<Drn drn-1>"
     ],
     "evt": [],
     "filename": "test_fhb.nam",
@@ -262,7 +262,7 @@
     "nrow": 3,
     "top": "float64[30] 95ddcd2482edd7c0"
   },
-  "simulation/test_fhb/drn0": {
+  "simulation/test_fhb/drn-1": {
     "__type__": "Drn",
     "_stress_period_data": {
       "0": {
@@ -289,14 +289,14 @@
     },
     "filename": "test_fhb.drn",
     "mover": false,
-    "name": "drn0",
+    "name": "drn-1",
     "obs": "<Obs obs>",
     "print_flows": false,
     "print_input": false,
     "save_flows": false,
     "ts": []
   },
-  "simulation/test_fhb/drn0/obs": {
+  "simulation/test_fhb/drn-1/obs": {
     "__type__": "Obs",
     "continuous": {
       "__table__": "ContinuousBlock",

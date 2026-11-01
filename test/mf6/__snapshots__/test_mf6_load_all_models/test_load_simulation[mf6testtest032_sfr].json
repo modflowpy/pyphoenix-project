@@ -27,7 +27,7 @@
     "evt": [],
     "filename": "test032.nam",
     "ghb": [
-      "<Ghb ghb0>"
+      "<Ghb ghb-1>"
     ],
     "ic": "<Ic ic>",
     "lak": [],
@@ -41,7 +41,7 @@
     "riv": [],
     "save_flows": false,
     "sfr": [
-      "<Sfr sfr0>"
+      "<Sfr sfr-1>"
     ],
     "uzf": [],
     "wel": [],
@@ -65,7 +65,7 @@
     "nrow": 1,
     "top": "float64[10] 865e87f5dbb37c47"
   },
-  "simulation/GWF_1/ghb0": {
+  "simulation/GWF_1/ghb-1": {
     "__type__": "Ghb",
     "_stress_period_data": {
       "0": {
@@ -92,7 +92,7 @@
     },
     "filename": "test032.ghb",
     "mover": false,
-    "name": "ghb0",
+    "name": "ghb-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": false,
@@ -183,7 +183,7 @@
     "head_file": "test032.hds",
     "name": "oc"
   },
-  "simulation/GWF_1/sfr0": {
+  "simulation/GWF_1/sfr-1": {
     "__type__": "Sfr",
     "_stress_period_data": {
       "0": {
@@ -235,7 +235,7 @@
     },
     "filename": "test032.sfr8",
     "mover": false,
-    "name": "sfr0",
+    "name": "sfr-1",
     "nreaches": 10,
     "packagedata": {
       "__table__": "Packagedata",
@@ -292,7 +292,7 @@
       "<Ts ts0>"
     ]
   },
-  "simulation/GWF_1/sfr0/ts0": {
+  "simulation/GWF_1/sfr-1/ts0": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,

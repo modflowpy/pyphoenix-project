@@ -68,7 +68,7 @@
     "evt": [],
     "filename": "uzfp3_lakmvr_v2.nam",
     "ghb": [
-      "<Ghb ghb0>"
+      "<Ghb ghb-1>"
     ],
     "ic": "<Ic ic>",
     "lak": [
@@ -866,7 +866,7 @@
     "nrow": 15,
     "top": "float64[150] 556b3670a83b717f"
   },
-  "simulation/uzfp3_lakmvr/ghb0": {
+  "simulation/uzfp3_lakmvr/ghb-1": {
     "__type__": "Ghb",
     "_stress_period_data": {
       "0": {
@@ -893,7 +893,7 @@
     },
     "filename": "uzfp3_lakmvr_v2.ghb",
     "mover": false,
-    "name": "ghb0",
+    "name": "ghb-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,

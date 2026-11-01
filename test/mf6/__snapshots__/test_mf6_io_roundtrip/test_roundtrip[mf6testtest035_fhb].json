@@ -75,12 +75,12 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 fhb2015.dis dis",
-    " CHD6 fhb2015.chd chd0",
+    " CHD6 fhb2015.chd chd-1",
     " IC6 fhb2015.ic ic",
     " NPF6 fhb2015.npf npf",
     " OC6 fhb2015.oc oc",
     " STO6 fhb2015.sto sto",
-    " WEL6 fhb2015.wel wel0",
+    " WEL6 fhb2015.wel wel-1",
     "END PACKAGES"
   ],
   "fhb2015.npf": [

@@ -21,7 +21,7 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
@@ -29,7 +29,7 @@
     "evt": [],
     "filename": "crinkle.nam",
     "ghb": [
-      "<Ghb ghb0>"
+      "<Ghb ghb-1>"
     ],
     "ic": "<Ic ic>",
     "lak": [],
@@ -44,7 +44,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rcha0>"
+      "<Rcha rch-1>"
     ],
     "riv": [],
     "save_flows": false,
@@ -54,7 +54,7 @@
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/GWF_1/chd0": {
+  "simulation/GWF_1/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -76,7 +76,7 @@
       "nrow": 40
     },
     "filename": "crinkle.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": false,
@@ -99,7 +99,7 @@
     "nrow": 40,
     "top": "float64[3200] 78dacecaea76d086"
   },
-  "simulation/GWF_1/ghb0": {
+  "simulation/GWF_1/ghb-1": {
     "__type__": "Ghb",
     "_stress_period_data": {
       "0": {
@@ -130,7 +130,7 @@
     },
     "filename": "crinkle.ghb",
     "mover": false,
-    "name": "ghb0",
+    "name": "ghb-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": false,
@@ -229,7 +229,7 @@
     "head_file": "crinkle.hds",
     "name": "oc"
   },
-  "simulation/GWF_1/rcha0": {
+  "simulation/GWF_1/rch-1": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -242,7 +242,7 @@
     "export_array_netcdf": false,
     "filename": "crinkle.rch",
     "fixed_cell": false,
-    "name": "rcha0",
+    "name": "rch-1",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,

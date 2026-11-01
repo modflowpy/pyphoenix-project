@@ -47,7 +47,7 @@
     "sto": "<Sto sto>",
     "uzf": [],
     "wel": [
-      "<Wel wel0>"
+      "<Wel wel-1>"
     ],
     "workspace": "<workspace>"
   },
@@ -219,7 +219,7 @@
     "storagecoefficient": false,
     "sy": "float64[100] fe0e420a6aff8c6f"
   },
-  "simulation/GWF_1/wel0": {
+  "simulation/GWF_1/wel-1": {
     "__type__": "Wel",
     "_stress_period_data": {
       "0": {
@@ -246,14 +246,14 @@
     "filename": "Well_Reduction.wel",
     "flow_reduction_length": false,
     "mover": false,
-    "name": "wel0",
+    "name": "wel-1",
     "obs": "<Obs obs>",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,
     "ts": []
   },
-  "simulation/GWF_1/wel0/obs": {
+  "simulation/GWF_1/wel-1/obs": {
     "__type__": "Obs",
     "continuous": {
       "__table__": "ContinuousBlock",

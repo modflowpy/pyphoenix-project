@@ -33,7 +33,7 @@
     "ic": "<Ic ic>",
     "lak": [],
     "maw": [
-      "<Maw maw0>"
+      "<Maw maw-1>"
     ],
     "name": "CHILD",
     "newtonoptions": {
@@ -85,7 +85,7 @@
     "name": "ic",
     "strt": "float64[81] e8de88ca8ee842f2"
   },
-  "simulation/CHILD/maw0": {
+  "simulation/CHILD/maw-1": {
     "__type__": "Maw",
     "_stress_period_data": {
       "0": {
@@ -123,7 +123,7 @@
     "flow_correction": false,
     "flowing_wells": false,
     "mover": true,
-    "name": "maw0",
+    "name": "maw-1",
     "nmawwells": 1,
     "no_well_storage": false,
     "non_vertical_wells": false,
@@ -219,7 +219,7 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
@@ -230,7 +230,7 @@
     "ic": "<Ic ic>",
     "lak": [],
     "maw": [
-      "<Maw maw0>"
+      "<Maw maw-1>"
     ],
     "name": "PARENT",
     "newtonoptions": {
@@ -249,7 +249,7 @@
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/PARENT/chd0": {
+  "simulation/PARENT/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -286,7 +286,7 @@
       "nrow": 7
     },
     "filename": "model1.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,
@@ -326,7 +326,7 @@
     "name": "ic",
     "strt": "float64[49] cae03e8a718e8432"
   },
-  "simulation/PARENT/maw0": {
+  "simulation/PARENT/maw-1": {
     "__type__": "Maw",
     "_stress_period_data": {
       "0": {
@@ -364,7 +364,7 @@
     "flow_correction": false,
     "flowing_wells": false,
     "mover": true,
-    "name": "maw0",
+    "name": "maw-1",
     "nmawwells": 1,
     "no_well_storage": false,
     "non_vertical_wells": false,

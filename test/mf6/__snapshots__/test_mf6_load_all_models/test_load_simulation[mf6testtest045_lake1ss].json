@@ -49,19 +49,19 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
     "drn": [],
     "evt": [
-      "<Evta evta0>"
+      "<Evta evt-1>"
     ],
     "filename": "lakeex1b.nam",
     "ghb": [],
     "ic": "<Ic ic>",
     "lak": [
-      "<Lak lak0>"
+      "<Lak lak-1>"
     ],
     "maw": [],
     "name": "lakeex1b",
@@ -70,7 +70,7 @@
     "print_flows": false,
     "print_input": true,
     "rch": [
-      "<Rcha rcha0>"
+      "<Rcha rch-1>"
     ],
     "riv": [],
     "save_flows": false,
@@ -79,7 +79,7 @@
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/lakeex1b/chd0": {
+  "simulation/lakeex1b/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -101,7 +101,7 @@
       "nrow": 17
     },
     "filename": "lakeex1b.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": false,
     "print_input": true,
     "save_flows": false,
@@ -125,7 +125,7 @@
     "nrow": 17,
     "top": "float64[289] 59f448962fb067e1"
   },
-  "simulation/lakeex1b/evta0": {
+  "simulation/lakeex1b/evt-1": {
     "__type__": "Evta",
     "depth": {
       "0": "float64[1] 6e834c27afb79741"
@@ -141,7 +141,7 @@
     "export_array_netcdf": false,
     "filename": "lakeex1b.evt",
     "fixed_cell": false,
-    "name": "evta0",
+    "name": "evt-1",
     "print_flows": false,
     "print_input": false,
     "rate": {
@@ -170,7 +170,7 @@
     "name": "ic",
     "strt": "float64[1445] ddefb3839d29fb17"
   },
-  "simulation/lakeex1b/lak0": {
+  "simulation/lakeex1b/lak-1": {
     "__type__": "Lak",
     "_stress_period_data": {
       "0": [
@@ -211,7 +211,7 @@
     "filename": "lakeex1b.lak",
     "implicit": false,
     "mover": false,
-    "name": "lak0",
+    "name": "lak-1",
     "nlakes": 1,
     "noutlets": 0,
     "packagedata": {
@@ -308,7 +308,7 @@
     },
     "name": "oc"
   },
-  "simulation/lakeex1b/rcha0": {
+  "simulation/lakeex1b/rch-1": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -321,7 +321,7 @@
     "export_array_netcdf": false,
     "filename": "lakeex1b.rch",
     "fixed_cell": false,
-    "name": "rcha0",
+    "name": "rch-1",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,

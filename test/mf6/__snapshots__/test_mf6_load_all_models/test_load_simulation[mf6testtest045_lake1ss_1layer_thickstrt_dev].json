@@ -50,7 +50,7 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
@@ -236,7 +236,7 @@
     "save_flows": false,
     "tas": []
   },
-  "simulation/lakeex1b_1layerc/chd0": {
+  "simulation/lakeex1b_1layerc/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -258,7 +258,7 @@
       "nrow": 17
     },
     "filename": "lakeex1b_1layerc.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": false,
     "print_input": true,
     "save_flows": false,

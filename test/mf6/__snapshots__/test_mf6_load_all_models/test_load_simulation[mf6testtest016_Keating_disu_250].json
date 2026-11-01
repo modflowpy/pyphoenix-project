@@ -27,7 +27,7 @@
     "evt": [],
     "filename": "keating.nam",
     "ghb": [
-      "<Ghb ghb0>"
+      "<Ghb ghb-1>"
     ],
     "gnc": "<Gnc gnc>",
     "ic": "<Ic ic>",
@@ -43,7 +43,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rch rch0>"
+      "<Rch rch-1>"
     ],
     "riv": [],
     "save_flows": false,
@@ -89,7 +89,7 @@
       "yv": "float64[162] 2b262c7e96f0d700"
     }
   },
-  "simulation/GWF_1/ghb0": {
+  "simulation/GWF_1/ghb-1": {
     "__type__": "Ghb",
     "_stress_period_data": {
       "0": {
@@ -117,7 +117,7 @@
     },
     "filename": "keating.ghb",
     "mover": false,
-    "name": "ghb0",
+    "name": "ghb-1",
     "print_flows": false,
     "print_input": false,
     "save_flows": false,
@@ -222,7 +222,7 @@
     "head_file": "keating.hds",
     "name": "oc"
   },
-  "simulation/GWF_1/rch0": {
+  "simulation/GWF_1/rch-1": {
     "__type__": "Rch",
     "_stress_period_data": {
       "0": {
@@ -247,7 +247,7 @@
     },
     "filename": "keating.rch",
     "fixed_cell": false,
-    "name": "rch0",
+    "name": "rch-1",
     "print_flows": false,
     "print_input": false,
     "save_flows": false,

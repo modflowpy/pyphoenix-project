@@ -182,7 +182,7 @@
     " MVR6 mf6-gwt.mvr mvr",
     " NPF6 mf6-gwt.npf npf",
     " OC6 mf6-gwt.oc oc",
-    " RCH6 mf6-gwt.rch rcha0",
+    " RCH6 mf6-gwt.rch rch-1",
     " SFR6 mf6-gwt.sfr SFR-1",
     "END PACKAGES"
   ],

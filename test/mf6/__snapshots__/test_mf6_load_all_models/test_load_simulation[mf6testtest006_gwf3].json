@@ -21,7 +21,7 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Disu disu>",
@@ -38,7 +38,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rch rch0>"
+      "<Rch rch-1>"
     ],
     "riv": [],
     "save_flows": false,
@@ -47,7 +47,7 @@
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/GWF_1/chd0": {
+  "simulation/GWF_1/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -81,7 +81,7 @@
       "nodes": 121
     },
     "filename": "flow.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,
@@ -180,7 +180,7 @@
     "head_file": "flow.hds",
     "name": "oc"
   },
-  "simulation/GWF_1/rch0": {
+  "simulation/GWF_1/rch-1": {
     "__type__": "Rch",
     "_stress_period_data": {
       "0": {
@@ -211,7 +211,7 @@
     },
     "filename": "flow.rch",
     "fixed_cell": true,
-    "name": "rch0",
+    "name": "rch-1",
     "print_flows": false,
     "print_input": false,
     "save_flows": false,

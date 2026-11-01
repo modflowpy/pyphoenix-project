@@ -71,7 +71,7 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 flow15.dis dis",
-    " CHD6 flow15_constant.chd chd0",
+    " CHD6 flow15_constant.chd chd-1",
     " HFB6 flow15.hfb hfb",
     " IC6 flow15.ic ic",
     " NPF6 flow15.npf npf",

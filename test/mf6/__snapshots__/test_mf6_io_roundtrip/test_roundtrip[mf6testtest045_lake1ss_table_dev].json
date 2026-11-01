@@ -138,13 +138,13 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 lakeex1b.dis dis",
-    " CHD6 lakeex1b.chd chd0",
-    " EVT6 lakeex1b.evt evta0",
+    " CHD6 lakeex1b.chd chd-1",
+    " EVT6 lakeex1b.evt evt-1",
     " IC6 lakeex1b.ic ic",
-    " LAK6 lakeex1b.lak lak0",
+    " LAK6 lakeex1b.lak lak-1",
     " NPF6 lakeex1b.npf npf",
     " OC6 lakeex1b.oc oc",
-    " RCH6 lakeex1b.rch rcha0",
+    " RCH6 lakeex1b.rch rch-1",
     "END PACKAGES"
   ],
   "lakeex1b.npf": [

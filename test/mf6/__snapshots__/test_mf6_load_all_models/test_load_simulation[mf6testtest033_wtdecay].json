@@ -27,7 +27,7 @@
     "evt": [],
     "filename": "test033.nam",
     "ghb": [
-      "<Ghb ghb0>"
+      "<Ghb ghb-1>"
     ],
     "ic": "<Ic ic>",
     "lak": [],
@@ -68,7 +68,7 @@
     "nrow": 151,
     "top": "float64[22801] f8880cb15749fd24"
   },
-  "simulation/GWF_1/ghb0": {
+  "simulation/GWF_1/ghb-1": {
     "__type__": "Ghb",
     "_stress_period_data": {
       "0": {
@@ -92,7 +92,7 @@
     },
     "filename": "test033.ghb",
     "mover": false,
-    "name": "ghb0",
+    "name": "ghb-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": false,

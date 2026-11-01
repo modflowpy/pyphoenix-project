@@ -76,7 +76,7 @@
     "lak": [],
     "list_": "welmvr.lst",
     "maw": [
-      "<Maw maw0>"
+      "<Maw maw-1>"
     ],
     "mvr": "<Mvr mvr>",
     "name": "welmvr",
@@ -90,7 +90,7 @@
     "sfr": [],
     "uzf": [],
     "wel": [
-      "<Wel wel0>"
+      "<Wel wel-1>"
     ],
     "workspace": "<workspace>"
   },
@@ -157,7 +157,7 @@
     "name": "ic",
     "strt": "float64[400] ddccf4c92324d206"
   },
-  "simulation/welmvr/maw0": {
+  "simulation/welmvr/maw-1": {
     "__type__": "Maw",
     "_stress_period_data": {
       "0": []
@@ -186,7 +186,7 @@
     "flow_correction": false,
     "flowing_wells": false,
     "mover": true,
-    "name": "maw0",
+    "name": "maw-1",
     "nmawwells": 4,
     "no_well_storage": true,
     "non_vertical_wells": false,
@@ -352,7 +352,7 @@
     },
     "name": "oc"
   },
-  "simulation/welmvr/wel0": {
+  "simulation/welmvr/wel-1": {
     "__type__": "Wel",
     "_stress_period_data": {
       "0": {
@@ -381,14 +381,14 @@
     "filename": "welmvr.wel",
     "flow_reduction_length": false,
     "mover": true,
-    "name": "wel0",
+    "name": "wel-1",
     "obs": "<Obs obs>",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,
     "ts": []
   },
-  "simulation/welmvr/wel0/obs": {
+  "simulation/welmvr/wel-1/obs": {
     "__type__": "Obs",
     "continuous": {
       "__table__": "ContinuousBlock",

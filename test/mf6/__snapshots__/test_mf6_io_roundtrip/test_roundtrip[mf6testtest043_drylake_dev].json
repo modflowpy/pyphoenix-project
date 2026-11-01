@@ -139,9 +139,9 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 drylake.dis dis",
-    " CHD6 drylake.chd chd0",
+    " CHD6 drylake.chd chd-1",
     " IC6 drylake.ic ic",
-    " LAK6 drylake.lak lak0",
+    " LAK6 drylake.lak lak-1",
     " NPF6 drylake.npf npf",
     " OC6 drylake.oc oc",
     "END PACKAGES"

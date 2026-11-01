@@ -121,10 +121,10 @@
     "BEGIN PACKAGES",
     " DIS6 lbf.dis dis",
     " IC6 lbf.ic ic",
-    " LAK6 lbf.lak lak0",
+    " LAK6 lbf.lak lak-1",
     " NPF6 lbf.npf npf",
     " OC6 lbf.oc oc",
-    " RCH6 lbf.rch rcha0",
+    " RCH6 lbf.rch rch-1",
     " STO6 lbf.sto sto",
     " OBS6 lbf.obs obs",
     "END PACKAGES"

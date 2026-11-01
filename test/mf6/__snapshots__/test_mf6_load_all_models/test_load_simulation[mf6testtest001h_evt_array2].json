@@ -21,13 +21,13 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
     "drn": [],
     "evt": [
-      "<Evta evta0>"
+      "<Evta evt-1>"
     ],
     "filename": "flow15.nam",
     "ghb": [],
@@ -47,7 +47,7 @@
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/flow15/chd0": {
+  "simulation/flow15/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -72,7 +72,7 @@
       "nrow": 1
     },
     "filename": "flow15_constant.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,
@@ -95,7 +95,7 @@
     "nrow": 1,
     "top": "float64[10] 7880455745addd07"
   },
-  "simulation/flow15/evta0": {
+  "simulation/flow15/evt-1": {
     "__type__": "Evta",
     "aux": {
       "0": {
@@ -120,7 +120,7 @@
     "export_array_netcdf": false,
     "filename": "flow15.evt",
     "fixed_cell": true,
-    "name": "evta0",
+    "name": "evt-1",
     "print_flows": false,
     "print_input": false,
     "rate": {

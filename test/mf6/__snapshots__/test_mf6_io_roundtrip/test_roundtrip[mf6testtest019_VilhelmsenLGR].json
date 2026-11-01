@@ -70,8 +70,8 @@
     " IC6 Child_GN.ic ic",
     " NPF6 Child_GN.npf npf",
     " OC6 Child_GN.oc oc",
-    " RCH6 Child_GN.rch rcha0",
-    " RIV6 Child_GN.riv riv0",
+    " RCH6 Child_GN.rch rch-1",
+    " RIV6 Child_GN.riv riv-1",
     "END PACKAGES"
   ],
   "Child_GN.npf": [
@@ -214,8 +214,8 @@
     " IC6 TM9_parent_GN.ic ic",
     " NPF6 TM9_parent_GN.npf npf",
     " OC6 TM9_parent_GN.oc oc",
-    " RCH6 TM9_parent_GN.rch rcha0",
-    " RIV6 TM9_parent_GN.riv riv0",
+    " RCH6 TM9_parent_GN.rch rch-1",
+    " RIV6 TM9_parent_GN.riv riv-1",
     "END PACKAGES"
   ],
   "TM9_parent_GN.npf": [

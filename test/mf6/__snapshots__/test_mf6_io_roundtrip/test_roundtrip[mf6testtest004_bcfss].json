@@ -38,9 +38,9 @@
     " IC6 bcf2ss.ic ic",
     " NPF6 bcf2ss.npf npf",
     " OC6 bcf2ss.oc oc",
-    " RCH6 bcf2ss.rch rcha0",
-    " RIV6 bcf2ss.riv riv0",
-    " WEL6 bcf2ss.wel wel0",
+    " RCH6 bcf2ss.rch rch-1",
+    " RIV6 bcf2ss.riv riv-1",
+    " WEL6 bcf2ss.wel wel-1",
     "END PACKAGES"
   ],
   "bcf2ss.npf": [

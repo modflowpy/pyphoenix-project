@@ -21,12 +21,12 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
     "drn": [
-      "<Drn drn0>"
+      "<Drn drn-1>"
     ],
     "evt": [],
     "filename": "flow15.nam",
@@ -47,7 +47,7 @@
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/flow15/chd0": {
+  "simulation/flow15/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -72,7 +72,7 @@
       "nrow": 1
     },
     "filename": "flow15_constant.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,
@@ -95,7 +95,7 @@
     "nrow": 1,
     "top": "float64[10] 7880455745addd07"
   },
-  "simulation/flow15/drn0": {
+  "simulation/flow15/drn-1": {
     "__type__": "Drn",
     "_stress_period_data": {
       "0": {
@@ -244,7 +244,7 @@
     },
     "filename": "flow15.drn",
     "mover": false,
-    "name": "drn0",
+    "name": "drn-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": false,
@@ -252,7 +252,7 @@
       "<Ts ts0>"
     ]
   },
-  "simulation/flow15/drn0/ts0": {
+  "simulation/flow15/drn-1/ts0": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,

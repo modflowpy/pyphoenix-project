@@ -93,8 +93,8 @@
     " IC6 parent.ic ic",
     " NPF6 parent.npf npf",
     " OC6 parent.oc oc",
-    " RCH6 parent.rch rcha0",
-    " RIV6 parent.riv riv0",
+    " RCH6 parent.rch rch-1",
+    " RIV6 parent.riv riv-1",
     "END PACKAGES"
   ],
   "parent.npf": [

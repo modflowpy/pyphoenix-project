@@ -24,7 +24,7 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
@@ -48,7 +48,7 @@
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/GWF_Model_1/chd0": {
+  "simulation/GWF_Model_1/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -85,7 +85,7 @@
       "nrow": 7
     },
     "filename": "model1.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,

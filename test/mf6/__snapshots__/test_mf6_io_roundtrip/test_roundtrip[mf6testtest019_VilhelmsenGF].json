@@ -89,8 +89,8 @@
     " IC6 TM9_global_gv.ic ic",
     " NPF6 TM9_global_gv.npf npf",
     " OC6 TM9_global_gv.oc oc",
-    " RCH6 TM9_global_gv.rch rcha0",
-    " RIV6 TM9_global_gv.riv riv0",
+    " RCH6 TM9_global_gv.rch rch-1",
+    " RIV6 TM9_global_gv.riv riv-1",
     "END PACKAGES"
   ],
   "TM9_global_gv.npf": [

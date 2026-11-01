@@ -26,7 +26,7 @@
     "dims": {},
     "dis": "<Dis dis>",
     "drn": [
-      "<Drn drn0>"
+      "<Drn drn-1>"
     ],
     "evt": [],
     "filename": "drnmvr.nam",
@@ -35,7 +35,7 @@
     "lak": [],
     "list_": "drnmvr.lst",
     "maw": [
-      "<Maw maw0>"
+      "<Maw maw-1>"
     ],
     "mvr": "<Mvr mvr>",
     "name": "drnmvr",
@@ -98,7 +98,7 @@
     "nrow": 20,
     "top": "float64[400] 9079c8684054a67d"
   },
-  "simulation/drnmvr/drn0": {
+  "simulation/drnmvr/drn-1": {
     "__type__": "Drn",
     "_stress_period_data": {
       "0": {
@@ -124,14 +124,14 @@
     },
     "filename": "drnmvr.drn",
     "mover": true,
-    "name": "drn0",
+    "name": "drn-1",
     "obs": "<Obs obs>",
     "print_flows": true,
     "print_input": true,
     "save_flows": false,
     "ts": []
   },
-  "simulation/drnmvr/drn0/obs": {
+  "simulation/drnmvr/drn-1/obs": {
     "__type__": "Obs",
     "continuous": {
       "__table__": "ContinuousBlock",
@@ -204,7 +204,7 @@
     "name": "ic",
     "strt": "float64[400] ddccf4c92324d206"
   },
-  "simulation/drnmvr/maw0": {
+  "simulation/drnmvr/maw-1": {
     "__type__": "Maw",
     "_stress_period_data": {
       "0": []
@@ -233,7 +233,7 @@
     "flow_correction": false,
     "flowing_wells": false,
     "mover": true,
-    "name": "maw0",
+    "name": "maw-1",
     "nmawwells": 4,
     "no_well_storage": true,
     "non_vertical_wells": false,

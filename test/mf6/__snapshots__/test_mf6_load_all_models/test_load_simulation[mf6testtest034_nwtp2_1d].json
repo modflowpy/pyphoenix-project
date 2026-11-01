@@ -71,7 +71,7 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
@@ -93,7 +93,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rcha0>"
+      "<Rcha rch-1>"
     ],
     "riv": [],
     "save_flows": false,
@@ -103,7 +103,7 @@
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/test034_nwtp2/chd0": {
+  "simulation/test034_nwtp2/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -141,7 +141,7 @@
       "nrow": 1
     },
     "filename": "test034_nwtp2_constant.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": true,
     "print_input": false,
     "save_flows": true,
@@ -149,7 +149,7 @@
       "<Ts ts0>"
     ]
   },
-  "simulation/test034_nwtp2/chd0/ts0": {
+  "simulation/test034_nwtp2/chd-1/ts0": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -405,7 +405,7 @@
     },
     "name": "oc"
   },
-  "simulation/test034_nwtp2/rcha0": {
+  "simulation/test034_nwtp2/rch-1": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -418,7 +418,7 @@
     "export_array_netcdf": false,
     "filename": "test034_nwtp2.rch",
     "fixed_cell": true,
-    "name": "rcha0",
+    "name": "rch-1",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,

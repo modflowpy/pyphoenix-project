@@ -140,7 +140,7 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 flow15.dis dis",
-    " CHD6 flow15_constant.chd chd0",
+    " CHD6 flow15_constant.chd chd-1",
     " IC6 flow15.ic ic",
     " MAW6 flow15.maw_1.mawq MAW-FIRST",
     " MAW6 flow15.maw_2.mawq MAW-SECOND",

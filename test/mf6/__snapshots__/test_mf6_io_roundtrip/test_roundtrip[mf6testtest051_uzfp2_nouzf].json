@@ -127,14 +127,14 @@
     "BEGIN PACKAGES",
     " DIS6 uzfp2_nouzf.dis dis",
     " EVT6 uzfp2_nouzf.evt EVT-1",
-    " GHB6 uzfp2_nouzf.ghb ghb0",
+    " GHB6 uzfp2_nouzf.ghb ghb-1",
     " IC6 uzfp2_nouzf.ic ic",
     " NPF6 uzfp2_nouzf.npf npf",
     " OC6 uzfp2_nouzf.oc oc",
     " RCH6 uzfp2_nouzf.rch RCH-1",
     " SFR6 uzfp2_nouzf.sfr SFR_1",
     " STO6 uzfp2_nouzf.sto sto",
-    " WEL6 uzfp2_nouzf.wel wel0",
+    " WEL6 uzfp2_nouzf.wel wel-1",
     "END PACKAGES"
   ],
   "uzfp2_nouzf.npf": [

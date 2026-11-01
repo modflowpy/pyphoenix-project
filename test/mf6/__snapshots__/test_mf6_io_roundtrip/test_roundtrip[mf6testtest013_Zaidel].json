@@ -116,7 +116,7 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 zaidel5m.dis dis",
-    " CHD6 zaidel5m.chd chd0",
+    " CHD6 zaidel5m.chd chd-1",
     " IC6 zaidel5m.ic ic",
     " NPF6 zaidel5m.npf npf",
     " OC6 zaidel5m.oc oc",

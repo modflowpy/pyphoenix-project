@@ -128,11 +128,11 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 keating.dis dis",
-    " CHD6 keating.chd chd0",
+    " CHD6 keating.chd chd-1",
     " IC6 keating.ic ic",
     " NPF6 keating.npf npf",
     " OC6 keating.oc oc",
-    " RCH6 keating.rch rch0",
+    " RCH6 keating.rch rch-1",
     "END PACKAGES"
   ],
   "keating.npf": [

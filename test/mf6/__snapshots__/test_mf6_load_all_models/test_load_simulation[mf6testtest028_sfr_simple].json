@@ -54,11 +54,11 @@
     "dis": "<Dis dis>",
     "drn": [],
     "evt": [
-      "<Evta evta0>"
+      "<Evta evt-1>"
     ],
     "filename": "mf6.nam",
     "ghb": [
-      "<Ghb ghb0>"
+      "<Ghb ghb-1>"
     ],
     "ic": "<Ic ic>",
     "lak": [],
@@ -70,7 +70,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rcha0>"
+      "<Rcha rch-1>"
     ],
     "riv": [],
     "save_flows": false,
@@ -80,7 +80,7 @@
     "sto": "<Sto sto>",
     "uzf": [],
     "wel": [
-      "<Wel wel0>"
+      "<Wel wel-1>"
     ],
     "workspace": "<workspace>"
   },
@@ -302,7 +302,7 @@
     "nrow": 15,
     "top": "float64[150] 556b3670a83b717f"
   },
-  "simulation/mf6/evta0": {
+  "simulation/mf6/evt-1": {
     "__type__": "Evta",
     "depth": {
       "0": "float64[1] 6e834c27afb79741"
@@ -318,7 +318,7 @@
     "export_array_netcdf": false,
     "filename": "mf6.evt6",
     "fixed_cell": true,
-    "name": "evta0",
+    "name": "evt-1",
     "print_flows": false,
     "print_input": true,
     "rate": {
@@ -331,7 +331,7 @@
     },
     "tas": []
   },
-  "simulation/mf6/ghb0": {
+  "simulation/mf6/ghb-1": {
     "__type__": "Ghb",
     "_stress_period_data": {
       "0": {
@@ -358,7 +358,7 @@
     },
     "filename": "mf6.ghb6",
     "mover": false,
-    "name": "ghb0",
+    "name": "ghb-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": false,
@@ -505,7 +505,7 @@
     },
     "name": "oc"
   },
-  "simulation/mf6/rcha0": {
+  "simulation/mf6/rch-1": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -518,7 +518,7 @@
     "export_array_netcdf": false,
     "filename": "mf6.rch6",
     "fixed_cell": true,
-    "name": "rcha0",
+    "name": "rch-1",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,
@@ -549,7 +549,7 @@
     "storagecoefficient": false,
     "sy": "float64[150] 837f288590c22f6b"
   },
-  "simulation/mf6/wel0": {
+  "simulation/mf6/wel-1": {
     "__type__": "Wel",
     "_stress_period_data": {
       "0": {
@@ -592,7 +592,7 @@
     "filename": "mf6.wel6",
     "flow_reduction_length": false,
     "mover": false,
-    "name": "wel0",
+    "name": "wel-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": false,

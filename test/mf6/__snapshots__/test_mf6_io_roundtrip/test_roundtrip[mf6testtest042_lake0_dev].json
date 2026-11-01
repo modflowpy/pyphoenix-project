@@ -122,9 +122,9 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 lake0.dis dis",
-    " CHD6 lake0.chd chd0",
+    " CHD6 lake0.chd chd-1",
     " IC6 lake0.ic ic",
-    " LAK6 lake0.lak lak0",
+    " LAK6 lake0.lak lak-1",
     " NPF6 lake0.npf npf",
     " OC6 lake0.oc oc",
     "END PACKAGES"

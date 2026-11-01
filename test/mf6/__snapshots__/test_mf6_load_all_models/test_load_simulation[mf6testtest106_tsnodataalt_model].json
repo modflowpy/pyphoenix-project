@@ -45,7 +45,7 @@
     "sto": "<Sto sto>",
     "uzf": [],
     "wel": [
-      "<Wel wel0>"
+      "<Wel wel-1>"
     ],
     "workspace": "<workspace>"
   },
@@ -290,7 +290,7 @@
     "storagecoefficient": false,
     "sy": "float64[800] 792547c5259dcbbf"
   },
-  "simulation/GWF_1/wel0": {
+  "simulation/GWF_1/wel-1": {
     "__type__": "Wel",
     "_stress_period_data": {
       "0": {
@@ -536,7 +536,7 @@
     "filename": "model.wel",
     "flow_reduction_length": false,
     "mover": false,
-    "name": "wel0",
+    "name": "wel-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,
@@ -548,7 +548,7 @@
       "<Ts ts4>"
     ]
   },
-  "simulation/GWF_1/wel0/ts0": {
+  "simulation/GWF_1/wel-1/ts0": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -577,7 +577,7 @@
       "ts_time": "float64[10] 4c25f080400f92c3"
     }
   },
-  "simulation/GWF_1/wel0/ts1": {
+  "simulation/GWF_1/wel-1/ts1": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -606,7 +606,7 @@
       "ts_time": "float64[13] aeb555f340f65abf"
     }
   },
-  "simulation/GWF_1/wel0/ts2": {
+  "simulation/GWF_1/wel-1/ts2": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -635,7 +635,7 @@
       "ts_time": "float64[7] 39e09e074084c140"
     }
   },
-  "simulation/GWF_1/wel0/ts3": {
+  "simulation/GWF_1/wel-1/ts3": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -664,7 +664,7 @@
       "ts_time": "float64[15] 74b900b927f0eedf"
     }
   },
-  "simulation/GWF_1/wel0/ts4": {
+  "simulation/GWF_1/wel-1/ts4": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,

@@ -51,7 +51,7 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
@@ -61,7 +61,7 @@
     "ghb": [],
     "ic": "<Ic ic>",
     "lak": [
-      "<Lak lak0>"
+      "<Lak lak-1>"
     ],
     "maw": [],
     "name": "lake0_e",
@@ -82,7 +82,7 @@
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/lake0_e/chd0": {
+  "simulation/lake0_e/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -142,7 +142,7 @@
       "nrow": 5
     },
     "filename": "lake0_embedded.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": false,
     "print_input": true,
     "save_flows": false,
@@ -150,7 +150,7 @@
       "<Ts ts0>"
     ]
   },
-  "simulation/lake0_e/chd0/ts0": {
+  "simulation/lake0_e/chd-1/ts0": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -215,7 +215,7 @@
     "name": "ic",
     "strt": "float64[25] d0510308133a7a1f"
   },
-  "simulation/lake0_e/lak0": {
+  "simulation/lake0_e/lak-1": {
     "__type__": "Lak",
     "_stress_period_data": {
       "0": {
@@ -254,7 +254,7 @@
     "filename": "lake0_embedded.lak",
     "implicit": false,
     "mover": false,
-    "name": "lak0",
+    "name": "lak-1",
     "nlakes": 3,
     "noutlets": 0,
     "ntables": 3,
@@ -288,7 +288,7 @@
     },
     "ts": []
   },
-  "simulation/lake0_e/lak0/laktab0": {
+  "simulation/lake0_e/lak-1/laktab0": {
     "__type__": "Laktab",
     "dims": {
       "ncelldim": 3,
@@ -311,7 +311,7 @@
       "volume": "float64[7] 69e2c7a6ee9f5260"
     }
   },
-  "simulation/lake0_e/lak0/laktab1": {
+  "simulation/lake0_e/lak-1/laktab1": {
     "__type__": "Laktab",
     "dims": {
       "ncelldim": 3,
@@ -334,7 +334,7 @@
       "volume": "float64[7] 52645fd5b65c6a95"
     }
   },
-  "simulation/lake0_e/lak0/laktab2": {
+  "simulation/lake0_e/lak-1/laktab2": {
     "__type__": "Laktab",
     "dims": {
       "ncelldim": 3,
@@ -357,7 +357,7 @@
       "volume": "float64[9] f5937ab1287d7009"
     }
   },
-  "simulation/lake0_e/lak0/obs": {
+  "simulation/lake0_e/lak-1/obs": {
     "__type__": "Obs",
     "continuous": {
       "__table__": "ContinuousBlock",

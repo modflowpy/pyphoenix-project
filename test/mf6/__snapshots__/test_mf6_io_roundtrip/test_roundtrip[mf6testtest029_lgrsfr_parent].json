@@ -119,12 +119,12 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 test029.dis dis",
-    " CHD6 test029.chd chd0",
+    " CHD6 test029.chd chd-1",
     " IC6 test029.ic ic",
     " NPF6 test029.npf npf",
     " OC6 test029.oc oc",
-    " SFR6 test029.sfr8 sfr0",
-    " WEL6 test029.wel wel0",
+    " SFR6 test029.sfr8 sfr-1",
+    " WEL6 test029.wel wel-1",
     "END PACKAGES"
   ],
   "test029.npf": [

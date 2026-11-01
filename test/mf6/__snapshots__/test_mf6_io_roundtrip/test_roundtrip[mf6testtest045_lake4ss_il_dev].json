@@ -149,10 +149,10 @@
     " DIS6 lakeex4_il.dis dis",
     " CHD6 lakeex4_il.ibound.chd CHD-IB",
     " IC6 lakeex4_il.ic ic",
-    " LAK6 lakeex4_il.lak lak0",
+    " LAK6 lakeex4_il.lak lak-1",
     " NPF6 lakeex4_il.npf npf",
     " OC6 lakeex4_il.oc oc",
-    " RCH6 lakeex4_il.rch rcha0",
+    " RCH6 lakeex4_il.rch rch-1",
     "END PACKAGES"
   ],
   "lakeex4_il.npf": [

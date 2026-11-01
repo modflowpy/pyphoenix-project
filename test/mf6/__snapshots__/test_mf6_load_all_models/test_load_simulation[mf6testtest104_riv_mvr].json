@@ -61,7 +61,7 @@
     "lak": [],
     "list_": "rivmvr.lst",
     "maw": [
-      "<Maw maw0>"
+      "<Maw maw-1>"
     ],
     "mvr": "<Mvr mvr>",
     "name": "rivmvr",
@@ -71,7 +71,7 @@
     "print_input": false,
     "rch": [],
     "riv": [
-      "<Riv riv0>"
+      "<Riv riv-1>"
     ],
     "save_flows": false,
     "sfr": [],
@@ -142,7 +142,7 @@
     "name": "ic",
     "strt": "float64[400] ddccf4c92324d206"
   },
-  "simulation/rivmvr/maw0": {
+  "simulation/rivmvr/maw-1": {
     "__type__": "Maw",
     "_stress_period_data": {
       "0": []
@@ -171,7 +171,7 @@
     "flow_correction": false,
     "flowing_wells": false,
     "mover": true,
-    "name": "maw0",
+    "name": "maw-1",
     "nmawwells": 4,
     "no_well_storage": true,
     "non_vertical_wells": false,
@@ -331,7 +331,7 @@
     },
     "name": "oc"
   },
-  "simulation/rivmvr/riv0": {
+  "simulation/rivmvr/riv-1": {
     "__type__": "Riv",
     "_stress_period_data": {
       "0": {
@@ -361,14 +361,14 @@
     },
     "filename": "rivmvr.riv",
     "mover": true,
-    "name": "riv0",
+    "name": "riv-1",
     "obs": "<Obs obs>",
     "print_flows": true,
     "print_input": true,
     "save_flows": false,
     "ts": []
   },
-  "simulation/rivmvr/riv0/obs": {
+  "simulation/rivmvr/riv-1/obs": {
     "__type__": "Obs",
     "continuous": {
       "__table__": "ContinuousBlock",

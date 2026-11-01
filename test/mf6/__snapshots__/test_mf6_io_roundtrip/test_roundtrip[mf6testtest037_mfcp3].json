@@ -77,14 +77,14 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 test037.dis dis",
-    " CHD6 test037_constant.chd chd0",
+    " CHD6 test037_constant.chd chd-1",
     " IC6 test037.ic ic",
     " NPF6 test037.npf npf",
     " OC6 test037.oc oc",
-    " RCH6 test037.rch rcha0",
-    " RIV6 test037.riv riv0",
+    " RCH6 test037.rch rch-1",
+    " RIV6 test037.riv riv-1",
     " STO6 test037.sto sto",
-    " WEL6 test037.wel wel0",
+    " WEL6 test037.wel wel-1",
     "END PACKAGES"
   ],
   "test037.npf": [

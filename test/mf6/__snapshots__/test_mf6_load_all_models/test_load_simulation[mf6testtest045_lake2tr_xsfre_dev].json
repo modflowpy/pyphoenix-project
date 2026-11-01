@@ -50,13 +50,13 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
     "drn": [],
     "evt": [
-      "<Evta evta0>"
+      "<Evta evt-1>"
     ],
     "filename": "lakeex2a.nam",
     "ghb": [],
@@ -72,7 +72,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rcha0>"
+      "<Rcha rch-1>"
     ],
     "riv": [],
     "save_flows": false,
@@ -298,7 +298,7 @@
       "ts_time": "float64[201] ef496a1befad5c6c"
     }
   },
-  "simulation/lakeex2a/chd0": {
+  "simulation/lakeex2a/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -320,7 +320,7 @@
       "nrow": 27
     },
     "filename": "lakeex2a.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": false,
     "print_input": true,
     "save_flows": false,
@@ -344,7 +344,7 @@
     "nrow": 27,
     "top": "float64[459] 9592d91ccef2e4b8"
   },
-  "simulation/lakeex2a/evta0": {
+  "simulation/lakeex2a/evt-1": {
     "__type__": "Evta",
     "depth": {
       "0": "float64[1] 6e834c27afb79741"
@@ -360,7 +360,7 @@
     "export_array_netcdf": false,
     "filename": "lakeex2a.evt",
     "fixed_cell": true,
-    "name": "evta0",
+    "name": "evt-1",
     "print_flows": false,
     "print_input": true,
     "rate": {
@@ -537,7 +537,7 @@
     },
     "name": "oc"
   },
-  "simulation/lakeex2a/rcha0": {
+  "simulation/lakeex2a/rch-1": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -550,7 +550,7 @@
     "export_array_netcdf": false,
     "filename": "lakeex2a.rch",
     "fixed_cell": false,
-    "name": "rcha0",
+    "name": "rch-1",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,

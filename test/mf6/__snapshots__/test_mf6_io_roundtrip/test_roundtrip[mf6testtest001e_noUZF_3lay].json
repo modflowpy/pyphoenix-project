@@ -117,7 +117,7 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 test001e_noUZF.dis dis",
-    " CHD6 test001e_noUZF.chd chd0",
+    " CHD6 test001e_noUZF.chd chd-1",
     " IC6 test001e_noUZF.ic ic",
     " NPF6 test001e_noUZF.npf npf",
     " OC6 test001e_noUZF.oc oc",

@@ -50,7 +50,7 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
@@ -60,7 +60,7 @@
     "ghb": [],
     "ic": "<Ic ic>",
     "lak": [
-      "<Lak lak0>"
+      "<Lak lak-1>"
     ],
     "maw": [],
     "name": "lakeex2a",
@@ -77,7 +77,7 @@
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/lakeex2a/chd0": {
+  "simulation/lakeex2a/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -99,7 +99,7 @@
       "nrow": 27
     },
     "filename": "lakeex2a.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": false,
     "print_input": true,
     "save_flows": false,
@@ -139,7 +139,7 @@
     "name": "ic",
     "strt": "float64[2295] b9d7c2965357e85d"
   },
-  "simulation/lakeex2a/lak0": {
+  "simulation/lakeex2a/lak-1": {
     "__type__": "Lak",
     "_stress_period_data": {
       "0": [
@@ -206,7 +206,7 @@
     "implicit": false,
     "length_conversion": "3.28081",
     "mover": false,
-    "name": "lak0",
+    "name": "lak-1",
     "nlakes": 2,
     "noutlets": 2,
     "obs": "<Obs obs>",
@@ -244,7 +244,7 @@
     "time_conversion": "86400.0",
     "ts": []
   },
-  "simulation/lakeex2a/lak0/obs": {
+  "simulation/lakeex2a/lak-1/obs": {
     "__type__": "Obs",
     "continuous": {
       "__table__": "ContinuousBlock",

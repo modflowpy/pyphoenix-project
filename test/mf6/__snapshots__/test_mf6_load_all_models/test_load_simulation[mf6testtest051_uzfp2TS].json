@@ -75,7 +75,7 @@
     "evt": [],
     "filename": "uzfp2.nam",
     "ghb": [
-      "<Ghb ghb0>"
+      "<Ghb ghb-1>"
     ],
     "ic": "<Ic ic>",
     "lak": [],
@@ -97,7 +97,7 @@
       "<Uzf UZF_1>"
     ],
     "wel": [
-      "<Wel wel0>"
+      "<Wel wel-1>"
     ],
     "workspace": "<workspace>"
   },
@@ -445,7 +445,7 @@
     "nrow": 15,
     "top": "float64[150] 556b3670a83b717f"
   },
-  "simulation/uzfp2/ghb0": {
+  "simulation/uzfp2/ghb-1": {
     "__type__": "Ghb",
     "_stress_period_data": {
       "0": {
@@ -472,7 +472,7 @@
     },
     "filename": "uzfp2.ghb",
     "mover": false,
-    "name": "ghb0",
+    "name": "ghb-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,
@@ -633,7 +633,7 @@
     "storagecoefficient": false,
     "sy": "float64[150] 837f288590c22f6b"
   },
-  "simulation/uzfp2/wel0": {
+  "simulation/uzfp2/wel-1": {
     "__type__": "Wel",
     "_stress_period_data": {
       "0": {
@@ -795,7 +795,7 @@
     "filename": "uzfp2.wel",
     "flow_reduction_length": false,
     "mover": false,
-    "name": "wel0",
+    "name": "wel-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,

@@ -43,7 +43,7 @@
     " NPF6 CHILD.npf npf",
     " OC6 CHILD.oc oc",
     " SFR6 CHILD.sfr SFR-2",
-    " WEL6 CHILD.wel wel0",
+    " WEL6 CHILD.wel wel-1",
     "END PACKAGES"
   ],
   "CHILD.npf": [
@@ -178,7 +178,7 @@
     " NPF6 PARENT.npf npf",
     " OC6 PARENT.oc oc",
     " SFR6 PARENT.sfr SFR-1",
-    " WEL6 PARENT.wel wel0",
+    " WEL6 PARENT.wel wel-1",
     "END PACKAGES"
   ],
   "PARENT.npf": [

@@ -50,7 +50,7 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
@@ -74,11 +74,11 @@
     "sto": "<Sto sto>",
     "uzf": [],
     "wel": [
-      "<Wel wel0>"
+      "<Wel wel-1>"
     ],
     "workspace": "<workspace>"
   },
-  "simulation/mf6/chd0": {
+  "simulation/mf6/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -100,7 +100,7 @@
       "nrow": 75
     },
     "filename": "mf6.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": false,
@@ -289,7 +289,7 @@
     "storagecoefficient": false,
     "sy": "float64[5625] 5e86ebb37e27d457"
   },
-  "simulation/mf6/wel0": {
+  "simulation/mf6/wel-1": {
     "__type__": "Wel",
     "_stress_period_data": {
       "0": {
@@ -325,7 +325,7 @@
     "filename": "mf6.wel",
     "flow_reduction_length": false,
     "mover": false,
-    "name": "wel0",
+    "name": "wel-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,

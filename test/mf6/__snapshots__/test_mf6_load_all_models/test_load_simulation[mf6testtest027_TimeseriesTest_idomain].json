@@ -27,7 +27,7 @@
     "evt": [],
     "filename": "timeseriestest.nam",
     "ghb": [
-      "<Ghb ghb0>"
+      "<Ghb ghb-1>"
     ],
     "ic": "<Ic ic>",
     "lak": [],
@@ -39,7 +39,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rcha0>"
+      "<Rcha rch-1>"
     ],
     "riv": [],
     "save_flows": false,
@@ -47,7 +47,7 @@
     "sto": "<Sto sto>",
     "uzf": [],
     "wel": [
-      "<Wel wel0>"
+      "<Wel wel-1>"
     ],
     "workspace": "<workspace>"
   },
@@ -69,7 +69,7 @@
     "nrow": 51,
     "top": "float64[2601] 6385983e32846178"
   },
-  "simulation/GWF_1/ghb0": {
+  "simulation/GWF_1/ghb-1": {
     "__type__": "Ghb",
     "_stress_period_data": {
       "0": {
@@ -101,7 +101,7 @@
     },
     "filename": "timeseriestest.ghb",
     "mover": false,
-    "name": "ghb0",
+    "name": "ghb-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": false,
@@ -109,7 +109,7 @@
       "<Ts ts0>"
     ]
   },
-  "simulation/GWF_1/ghb0/ts0": {
+  "simulation/GWF_1/ghb-1/ts0": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -277,7 +277,7 @@
     "head_file": "timeseriestest.hds",
     "name": "oc"
   },
-  "simulation/GWF_1/rcha0": {
+  "simulation/GWF_1/rch-1": {
     "__type__": "Rcha",
     "aux": {
       "0": {
@@ -301,7 +301,7 @@
     "export_array_netcdf": false,
     "filename": "timeseriestest.rch",
     "fixed_cell": true,
-    "name": "rcha0",
+    "name": "rch-1",
     "print_flows": true,
     "print_input": true,
     "readasarrays": true,
@@ -316,7 +316,7 @@
       "<Tas tas0>"
     ]
   },
-  "simulation/GWF_1/rcha0/tas0": {
+  "simulation/GWF_1/rch-1/tas0": {
     "__type__": "Tas",
     "dims": {
       "ncelldim": 3,
@@ -381,7 +381,7 @@
     "storagecoefficient": false,
     "sy": "float64[5202] ff6ea1f11dba6b1d"
   },
-  "simulation/GWF_1/wel0": {
+  "simulation/GWF_1/wel-1": {
     "__type__": "Wel",
     "_stress_period_data": {
       "0": {
@@ -445,7 +445,7 @@
     "filename": "timeseriestest.wel",
     "flow_reduction_length": false,
     "mover": false,
-    "name": "wel0",
+    "name": "wel-1",
     "obs": "<Obs obs>",
     "print_flows": true,
     "print_input": true,
@@ -454,7 +454,7 @@
       "<Ts ts0>"
     ]
   },
-  "simulation/GWF_1/wel0/obs": {
+  "simulation/GWF_1/wel-1/obs": {
     "__type__": "Obs",
     "continuous": {
       "__table__": "ContinuousBlock",
@@ -499,7 +499,7 @@
     "name": "obs",
     "print_input": true
   },
-  "simulation/GWF_1/wel0/ts0": {
+  "simulation/GWF_1/wel-1/ts0": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,

@@ -46,7 +46,7 @@
     " NPF6 Well_Reduction.npf npf",
     " OC6 Well_Reduction.oc oc",
     " STO6 Well_Reduction.sto sto",
-    " WEL6 Well_Reduction.wel wel0",
+    " WEL6 Well_Reduction.wel wel-1",
     " OBS6 Well_Reduction.obs obs",
     "END PACKAGES"
   ],

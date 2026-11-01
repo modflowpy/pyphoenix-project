@@ -179,6 +179,22 @@ def test_load_preserves_list_package_pname(written_sim):
     assert "CHD6 mymodel.chd0.chd boundary_west" in rewritten
 
 
+def test_load_names_unnamed_packages_as_mf6(written_sim):
+    """An unnamed stress package gets MF6's name, its type and its number
+    among the model's packages of that type (named ones too), so other
+    files' references to it (MVR's pname) resolve; a single-instance one
+    gets its type."""
+    nam_path = written_sim / "mymodel.nam"
+    chd = "CHD6 mymodel.chd0.chd chd0"
+    nam_path.write_text(
+        nam_path.read_text().replace(chd, "CHD6 mymodel.chd0.chd west\n  CHD6 mymodel.chd0.chd")
+    )
+
+    gwf = next(iter(Simulation.load(written_sim / "mfsim.nam").models))
+    assert [c.name for c in gwf.chd] == ["west", "chd-2"]
+    assert gwf.npf.name == "npf"
+
+
 def test_load_disambiguates_ga_variant(tmp_path):
     """Real MF6 writes "CHD6" for both Chd and Chdg (see
     Component.ftype) -- the namefile row alone can't tell them apart, so

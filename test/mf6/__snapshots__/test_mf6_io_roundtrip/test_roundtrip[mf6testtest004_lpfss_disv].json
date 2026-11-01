@@ -101,9 +101,9 @@
     " IC6 t4.ic ic",
     " NPF6 t4.npf npf",
     " OC6 t4.oc oc",
-    " RCH6 t4.rch rcha0",
-    " RIV6 t4.riv riv0",
-    " WEL6 t4.wel wel0",
+    " RCH6 t4.rch rch-1",
+    " RIV6 t4.riv riv-1",
+    " WEL6 t4.wel wel-1",
     "END PACKAGES"
   ],
   "t4.npf": [

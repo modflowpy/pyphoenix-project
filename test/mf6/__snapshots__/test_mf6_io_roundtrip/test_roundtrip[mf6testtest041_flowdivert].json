@@ -68,7 +68,7 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 flowdivert.dis dis",
-    " CHD6 flowdivert.chd chd0",
+    " CHD6 flowdivert.chd chd-1",
     " IC6 flowdivert.ic ic",
     " NPF6 flowdivert.npf npf",
     " OC6 flowdivert.oc oc",
