@@ -28,7 +28,7 @@ class Zdg(Package):
     @attrs.define
     class StressPeriodData(Item):
         cellid: tuple[int, ...] = cellid_()
-        idcxs: int = integer(index=True, fk="chf-cxs.packagedata.idcxs")
+        idcxs: int = integer(index=True, fk="chf-cxs.packagedata.ifno")
         width: Union[float, TimeSeriesRef] = double(time_series=True)
         slope: Union[float, TimeSeriesRef] = double(time_series=True)
         rough: Union[float, TimeSeriesRef] = double(time_series=True)

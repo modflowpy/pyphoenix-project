@@ -27,7 +27,7 @@ class Cdb(Package):
     @attrs.define
     class StressPeriodData(Item):
         cellid: tuple[int, ...] = cellid_()
-        idcxs: int = integer(index=True, fk="chf-cxs.packagedata.idcxs")
+        idcxs: int = integer(index=True, fk="chf-cxs.packagedata.ifno")
         width: Union[float, TimeSeriesRef] = double(time_series=True)
         aux: tuple[Union[float, TimeSeriesRef], ...] = array(
             default=(), shape=("auxiliary",), time_series=True, optional=True

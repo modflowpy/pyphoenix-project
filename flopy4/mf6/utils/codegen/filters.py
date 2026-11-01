@@ -28,6 +28,7 @@ from modflow_devtools.dfns.schema import (
     Component,
     Double,
     File,
+    ForeignKey,
     Integer,
     Record,
     String,
@@ -385,7 +386,7 @@ def dynamically_named_array(f) -> tuple[Array, str] | None:
     if not isinstance(f, ListField) or not isinstance(f.item, Record):
         return None
     match list(f.item.fields.values()):
-        case [String(fk=str(fk)), Array(shape=[_, *_]) as arr]:
+        case [String(fk=ForeignKey(path=fk)), Array(shape=[_, *_]) as arr]:
             return arr, fk
     return None
 
