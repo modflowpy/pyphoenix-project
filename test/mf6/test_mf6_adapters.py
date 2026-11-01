@@ -26,7 +26,7 @@ def quickstart_model():
     sim = Simulation(name=name, tdis=tdis, solutiongroup=[ims])
     dis = Dis(nrow=10, ncol=10)
     gwf = Gwf(parent=sim, name=name, save_flows=True, dis=dis)
-    ic = Ic(parent=gwf)
+    ic = Ic(parent=gwf, strt=np.full((1, 10, 10), 5.0))
     npf = Npf(parent=gwf, save_specific_discharge=True)
     chd = Chd(
         parent=gwf,
@@ -106,11 +106,11 @@ def test_flopy3_model(tmp_path):
     assert gwf3.get_package_list() == pnames
     for i, p in enumerate(gwf3.packagelist):
         assert isinstance(p, PackageInterface)
-        assert p.name == pnames[i]
+        assert p.name == [pnames[i]]
         assert p.package_type == ptypes[i]
         assert p.parent is gwf3
         # TODO oc?
-        if p.name == "north" or p.name == "oc":
+        if p.name[0] in ("north", "oc"):
             assert p.has_stress_period_data
         else:
             assert not p.has_stress_period_data
@@ -126,9 +126,32 @@ def test_flopy3_model(tmp_path):
             print(f"data_type: {d.data_type}")
             print(f"array: {d.array}\n")
 
+    # by name, else by type, ignoring case
+    assert gwf3.get_package("NORTH") is gwf3.packagelist[1]
+    assert gwf3.get_package("chd") is gwf3.packagelist[1]
+    assert gwf3.get_package("DIS") is gwf3.packagelist[0]
+    assert gwf3.get_package("wel") is None
+    assert len(gwf3.get_package()) == len(pnames)
+
     bpth = Path(tmp_path) / "flopy3_model" / "flopy3_model"
     (Path(tmp_path) / "flopy3_model").mkdir(parents=True, exist_ok=True)
     gwf3.plot(filename_base=bpth)
+
+
+def test_flopy3_model_grid():
+    from flopy4.mf6.olf import Dis2d, Olf
+
+    # a grid from whichever discretization the model has
+    olf3 = Flopy3Model(Olf(dis2d=Dis2d(nrow=2, ncol=3)))
+    assert isinstance(olf3.modelgrid, StructuredGrid)
+    assert olf3.modelgrid.shape == (1, 2, 3)
+
+    # none without one
+    assert Flopy3Model(Gwf()).modelgrid is None
+
+    # crs given overrides the discretization's
+    gwf3 = Flopy3Model(Gwf(dis=Dis(nrow=2, ncol=3)), crs="EPSG:3070")
+    assert gwf3.modelgrid.crs.to_epsg() == 3070
 
 
 def test_flopy3_package(tmp_path):
@@ -218,11 +241,11 @@ def test_flopy3_package(tmp_path):
     assert np.all(np.equal(gwf3.modelgrid.botm, grid.botm))
 
     # model packages
-    assert dis3.name == "dis"
+    assert dis3.name == ["dis"]
     assert dis3.package_type == "DIS"
     # unattached, so unnamed: type and name come from the class
     npf3 = Flopy3Package(package=Npf(dims=dims), modelgrid=gwf3.modelgrid)
-    assert (npf3.name, npf3.package_type) == ("npf", "NPF")
+    assert (npf3.name, npf3.package_type) == (["npf"], "NPF")
     assert not dis3.has_stress_period_data
 
     # package data
@@ -405,7 +428,6 @@ def test_flopy3_list_data(tmp_path):
     chd3.plot(key="conc", kper=0)
 
 
-@pytest.mark.skip(reason="Flopy3Model/Flopy3Package have no to_geodataframe")
 def test_flopy3_export(tmp_path):
     # see flopy test_export.py test_export_output()
     (Path(tmp_path) / "flopy3_model" / "shape").mkdir(parents=True, exist_ok=True)
@@ -422,10 +444,23 @@ def test_flopy3_export(tmp_path):
     # model shapefile export
     shp_mpth = Path(tmp_path / "flopy3_model" / "shape" / "flopy3_model.shp")
     gwf3.export(f=shp_mpth)
+    assert shp_mpth.exists()
+    gdf = gwf3.to_geodataframe()
+    assert gdf.crs.to_epsg() == 3070
+    assert {"top", "botm", "strt", "chd0_head_0_0"} <= set(gdf.columns)
+    assert gdf["chd0_head_0_0"].dropna().tolist() == [1.0, 0.0]
+    assert gdf["strt"].tolist() == [5.0] * 100
+    assert "delr" not in gdf  # not a value per cell
+    assert "chd0_boundname_0_0" not in gdf  # not a number
+    assert "chd0_head_0_0" not in gwf3.to_geodataframe(package_names=["ic"])
 
     # package shapefile export
     shp_ppth = Path(tmp_path / "flopy3_package" / "shape" / "flopy3_package.shp")
     dis3.export(f=shp_ppth)
+    assert shp_ppth.exists()
+    chd3 = gwf3.get_package("chd")
+    assert len(chd3.to_geodataframe(full_grid=False)) == 2
+    assert dis3.to_geodataframe()["top"].tolist() == [1.0] * 100
 
     # model netcdf export
     nc_mpth = Path(tmp_path / "flopy3_model" / "netcdf" / "flopy3_model.nc")

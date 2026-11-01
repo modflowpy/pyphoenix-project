@@ -54,7 +54,7 @@ class Flopy3Model(ModelInterface):
         modelgrid: Optional[Grid] = None,
         modeltime: Optional[ModelTime] = None,
         ims: Optional[Package] = None,
-        crs: Optional[int] = None,
+        crs: Any = None,
     ):
         self._model = model
         self._grid = modelgrid
@@ -67,10 +67,11 @@ class Flopy3Model(ModelInterface):
         if self._model is None:
             raise Exception("Model Interface needs a model")
 
-        # to_grid() carries the origin, rotation, length units and crs
-        if self._grid is None and hasattr(model, "dis"):
-            self._grid = model.dis.to_grid()
-            self._grid.legacy = True
+        if self._grid is None:
+            self._grid = _model_grid(model)
+        # overrides the discretization's own (anything pyproj accepts)
+        if crs is not None and self._grid is not None:
+            self._grid.crs = crs
 
         if hasattr(model, "_children"):
             for package in model._children.values():
@@ -161,13 +162,47 @@ class Flopy3Model(ModelInterface):
         """
         Get a list of all the package names.
         """
-        return [p.name for p in self._plist]
+        return [p.name[0] for p in self._plist]
 
     def get_package(self, name=None):
+        """
+        A package by name, else by type (a list if several have it),
+        ignoring case, as flopy3's MF6 models find them. Every package
+        if no name is given; None if none matches.
+        """
+        if name is None:
+            return self._plist[:]
+        key = name.lower()
         for p in self._plist:
-            if p.name == name.upper():
+            if p.name[0].lower() == key:
                 return p
-        return None
+        of_type = [p for p in self._plist if p.package_type.lower() == key]
+        if not of_type:
+            return None
+        return of_type[0] if len(of_type) == 1 else of_type
+
+    def to_geodataframe(self, gdf=None, kper=0, package_names=None, shorten_attr=False, **kwargs):
+        """
+        A GeoDataFrame of the grid's cells with each package's data, the
+        period's for transient data, as flopy3's MF6 models build one
+        (`model_export` to a shapefile). Packages may be chosen by name
+        or type; HFB, whose barriers are between cells, is left out.
+        """
+        if gdf is None:
+            if self._grid is None:
+                raise AttributeError(
+                    "model does not have a grid instance, please supply a geodataframe"
+                )
+            gdf = self._grid.to_geodataframe()
+        if package_names is None:
+            package_names = [p.name[0] for p in self._plist]
+        for p in self._plist:
+            if p.package_type == "HFB":
+                continue
+            if p.name[0] not in package_names and p.package_type not in package_names:
+                continue
+            gdf = p.to_geodataframe(gdf, kper=kper, full_grid=True, shorten_attr=shorten_attr)
+        return gdf
 
     def plot(self, packages: Optional[list] = None, **kwargs):
         return PlotUtilities._plot_model_helper(self, SelPackList=packages, **kwargs)
@@ -237,8 +272,8 @@ class Flopy3Package(PackageInterface):
 
     @property
     def name(self):
-        # or upper() or title()
-        return self._package._name_or_class()
+        # a list, as flopy3's packages' (it reads name[0])
+        return [self._package._name_or_class()]
 
     @name.setter
     def name(self, name):
@@ -293,6 +328,26 @@ class Flopy3Package(PackageInterface):
 
     def plot(self, **kwargs):
         return PlotUtilities._plot_package_helper(self, **kwargs)
+
+    def to_geodataframe(self, gdf=None, kper=0, full_grid=True, shorten_attr=False, **kwargs):
+        """
+        A GeoDataFrame of the grid's cells with the package's arrays and
+        the period's stress period data, as flopy3's MF6 packages build
+        one (`package_export` to a shapefile). Data that doesn't fit the
+        grid is left out. With ``full_grid`` false, cells with no data
+        are dropped.
+        """
+        if gdf is None:
+            gdf = self._grid.to_geodataframe()
+        for d in self._dlist:
+            gdf = d.to_geodataframe(gdf, kper=kper, full_grid=True, shorten_attr=shorten_attr)
+        if not full_grid:
+            # the grid's own columns (flopy3 counts "active" as data, so
+            # drops nothing)
+            cols = [c for c in gdf if c not in ("geometry", "node", "row", "col", "active")]
+            gdf = gdf.dropna(subset=cols, how="all")
+            gdf = gdf.dropna(axis="columns", how="all")
+        return gdf
 
     def export(self, f, **kwargs):
         return package_export(f, self, **kwargs)
@@ -391,6 +446,37 @@ class Flopy3Data(DataInterface):
         if self.data_type == DataType.scalar:
             return False
         return True
+
+    def to_geodataframe(self, gdf=None, kper=0, full_grid=True, shorten_attr=False, **kwargs):
+        """
+        Add the array to a GeoDataFrame of the grid's cells, as flopy3's
+        MF6 arrays do: one column if it has a value per cell of a layer,
+        one per layer if it has one per cell, the period's if transient.
+        Scalars, and arrays of any other size (``delr``), are left out.
+        """
+        from flopy.export.shapefile_utils import shape_attr_name
+
+        if self._grid is None:
+            return gdf
+        if gdf is None:
+            gdf = self._grid.to_geodataframe()
+        data = self.array
+        if data is None or self.name is None:
+            return gdf
+        name = shape_attr_name(self.name) if shorten_attr else self.name
+        if "nper" in self._data.dims:
+            data = data[kper]
+            name = f"{name}_{kper}"
+        ncpl = self._grid.nnodes if self._grid.grid_type == "unstructured" else self._grid.ncpl
+        data = np.asarray(data)
+        if data.size == ncpl:
+            gdf[name] = data.ravel()
+        elif ncpl and data.size % ncpl == 0:
+            for ix, arr in enumerate(data.reshape((-1, ncpl))):
+                gdf[f"{name}_{ix}"] = arr
+        if not full_grid and "active" in gdf:
+            gdf = gdf[gdf["active"] > 0]
+        return gdf
 
 
 # flopy3 sums a column's values where cells repeat in a period, and
@@ -572,7 +658,7 @@ class Flopy3ListData(DataInterface, DataListInterface):
             name = (
                 shape_attr_name(name, length=4)
                 if shorten_attr
-                else f"{self._package.name.lower()}_{name}"
+                else f"{self._package.name[0].lower()}_{name}"
             )
             if modelgrid.grid_type == "unstructured":
                 gdf[name] = np.ma.filled(arr, np.nan).ravel()
@@ -586,6 +672,21 @@ class Flopy3ListData(DataInterface, DataListInterface):
             gdf = gdf.dropna(subset=col_names, how="all")
             gdf = gdf.dropna(axis="columns", how="all")
         return gdf
+
+
+# where models keep their discretization, by kind of model
+_DIS_FIELDS = ("dis", "dis2d", "disv2d", "disv1d")
+
+
+def _model_grid(model: Model) -> "Grid | None":
+    """The grid of the model's discretization package, which carries the
+    origin, rotation, length units and crs; None if it has none."""
+    for name in _DIS_FIELDS:
+        if (dis := getattr(model, name, None)) is not None:
+            grid = dis.to_grid()
+            grid.legacy = True
+            return grid
+    return None
 
 
 def _nper(package: "Flopy3Package") -> int:
@@ -646,9 +747,13 @@ def _spread_names(col, width, field, pkg) -> list[str]:
 def _settle(out, name, values, field) -> type:
     """Set `out[name]` to `values`, numeric if they all are, and return
     the column's dtype. A field that may hold time series names is float,
-    NaN where one does."""
+    NaN where one does. A string field is objects, even if its values are
+    all missing or look like numbers."""
     import pandas as pd
 
+    if field is not None and field.metadata.get("type") == "string":
+        out[name] = values.astype(object)
+        return object
     time_series = field is not None and field.metadata.get("time_series")
     try:
         numeric = pd.to_numeric(values, errors="coerce" if time_series else "raise")
