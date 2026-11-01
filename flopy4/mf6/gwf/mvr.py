@@ -26,7 +26,7 @@ class Mvr(Package):
             "pname",
         )
         pname: str = string()
-        mname: Optional[str] = string(default=None, optional=True)
+        mname: Optional[str] = string(default=None, when="modelnames")
 
     @attrs.define
     class StressPeriodData(Item):
@@ -46,8 +46,8 @@ class Mvr(Package):
         id2: int = integer(index=True)
         mvrtype: str = string()
         value: float = double()
-        mname1: Optional[str] = string(default=None, optional=True)
-        mname2: Optional[str] = string(default=None, optional=True)
+        mname1: Optional[str] = string(default=None, when="modelnames")
+        mname2: Optional[str] = string(default=None, when="modelnames")
 
     print_input: bool = keyword(
         default=False,

@@ -282,7 +282,7 @@ def _item_columns(
         elif isinstance(f, CellID):
             item = filters.cellid_column(name, f.model, allow_zero=f.allow_zero, optional=optional)
         elif col.is_index:
-            fk = getattr(f, "fk", None)
+            fk = f.fk.path if getattr(f, "fk", None) else None
             pk = not fk and bool(getattr(f, "pk", False))
             item = filters.feature_id_column(name, fk=fk, pk=pk, optional=optional, time_series=ts)
         elif _is_label(col, columns):
@@ -1419,8 +1419,8 @@ def _reference_specs(
     for py_name, (name, m) in columns:
         if not (fk := getattr(m, "fk", None)):
             continue
-        if fk.partition(".")[0] != "models":
-            raise NotImplementedError(f"{component.name}.{name}: a reference to {fk}")
+        if fk.component or fk.block != "models":
+            raise NotImplementedError(f"{component.name}.{name}: a reference to {fk.path}")
         args = []
         if isinstance(m, Array):
             annotation = "list[Model | str]"
