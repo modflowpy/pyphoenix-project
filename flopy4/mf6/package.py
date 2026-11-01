@@ -885,9 +885,7 @@ class Package(Component, ABC):
         """The default filename's extension: the name-file ftype,
         lowercase, without the ``6``s or an exchange's hyphen
         (``CHD6`` -> ``chd``, ``GWF6-GWF6`` -> ``gwfgwf``)."""
-        from flopy4.mf6.converter.binding import component_ftype
-
-        return component_ftype(type(self)).lower().replace("6", "").replace("-", "")
+        return self.ftype.lower().replace("6", "").replace("-", "")
 
     def to_dict(self, blocks: bool = False, strict: bool = False) -> dict:
         """Convert to a dictionary of field values.

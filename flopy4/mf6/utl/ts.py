@@ -13,6 +13,7 @@ from flopy4.mf6.utl.ts_methods import TsMethods
 @attrs.define(kw_only=True, slots=False)
 class Ts(TsMethods, Package):
     dfn_name: ClassVar[str] = "utl-ts"
+    ftype: ClassVar[str] = "TS6"
 
     multi_package: ClassVar[bool] = True
 

@@ -13,6 +13,7 @@ from flopy4.mf6.spec import array, file, integer, keyword, record, string
 @attrs.define(kw_only=True, slots=False)
 class Ist(Package):
     dfn_name: ClassVar[str] = "gwt-ist"
+    ftype: ClassVar[str] = "IST6"
 
     multi_package: ClassVar[bool] = True
 

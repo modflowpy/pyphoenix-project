@@ -22,11 +22,11 @@
     "dims": {},
     "filename": "mv.ims",
     "inner_dvclose": "1e-10",
-    "models": [
-      "model"
-    ],
     "name": "ims0",
-    "outer_dvclose": "1e-09"
+    "outer_dvclose": "1e-09",
+    "slnmnames": [
+      "model"
+    ]
   },
   "simulation/model": {
     "__type__": "Gwf",

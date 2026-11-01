@@ -11,6 +11,7 @@ from flopy4.mf6.spec import array, cellid_, integer, keyword, list_
 @attrs.define(kw_only=True, slots=False)
 class Gnc(Package):
     dfn_name: ClassVar[str] = "gwf-gnc"
+    ftype: ClassVar[str] = "GNC6"
 
     @attrs.define
     class Gncdata(Item):

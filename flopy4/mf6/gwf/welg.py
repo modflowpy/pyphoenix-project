@@ -15,6 +15,7 @@ from flopy4.mf6.utl.obs import Obs
 @attrs.define(kw_only=True, slots=False)
 class Welg(Package):
     dfn_name: ClassVar[str] = "gwf-welg"
+    ftype: ClassVar[str] = "WEL6"
 
     multi_package: ClassVar[bool] = True
 

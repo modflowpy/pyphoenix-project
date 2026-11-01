@@ -11,6 +11,7 @@ from flopy4.mf6.spec import double, integer, list_
 @attrs.define(kw_only=True, slots=False)
 class Sfrtab(Package):
     dfn_name: ClassVar[str] = "utl-sfrtab"
+    ftype: ClassVar[str] = "SFRTAB6"
 
     multi_package: ClassVar[bool] = True
 

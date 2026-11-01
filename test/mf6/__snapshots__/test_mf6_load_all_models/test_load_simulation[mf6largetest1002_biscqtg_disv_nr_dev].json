@@ -334,9 +334,6 @@
     "inner_dvclose": "1e-06",
     "inner_maximum": 100,
     "linear_acceleration": "bicgstab",
-    "models": [
-      "Biscayne"
-    ],
     "name": "ims0",
     "no_ptc": {
       "__type__": "NoPtc",
@@ -352,6 +349,9 @@
       "rclose_option": null
     },
     "relaxation_factor": "0.97",
+    "slnmnames": [
+      "Biscayne"
+    ],
     "under_relaxation": "dbd",
     "under_relaxation_gamma": "0.05",
     "under_relaxation_kappa": "0.08",

@@ -16,6 +16,7 @@ from flopy4.mf6.utl.ts import Ts
 @attrs.define(kw_only=True, slots=False)
 class Evt(Package):
     dfn_name: ClassVar[str] = "gwf-evt"
+    ftype: ClassVar[str] = "EVT6"
 
     multi_package: ClassVar[bool] = True
 

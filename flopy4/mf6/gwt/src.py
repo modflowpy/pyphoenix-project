@@ -16,6 +16,7 @@ from flopy4.mf6.utl.ts import Ts
 @attrs.define(kw_only=True, slots=False)
 class Src(Package):
     dfn_name: ClassVar[str] = "gwt-src"
+    ftype: ClassVar[str] = "SRC6"
 
     multi_package: ClassVar[bool] = True
 

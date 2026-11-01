@@ -17,6 +17,7 @@ from flopy4.mf6.utl.ts import Ts
 @attrs.define(kw_only=True, slots=False)
 class Wel(Package):
     dfn_name: ClassVar[str] = "gwf-wel"
+    ftype: ClassVar[str] = "WEL6"
 
     multi_package: ClassVar[bool] = True
 

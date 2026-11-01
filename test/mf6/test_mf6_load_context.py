@@ -43,18 +43,18 @@ def test_ncelldim_unknown_solved_from_row():
 def test_ncelldim_per_column_under_exchange():
     """Each cellid column takes its own model's grid width, whatever the
     dims say."""
-    context = LoadContext(dims={"nodes": 4}, exchange=(_model(3), _model(2)))
+    context = LoadContext(dims={"nodes": 4}, models=(_model(3), _model(2)))
     assert context.ncelldim(Gwfgwf.Exchangedata) == {"cellidm1": 3, "cellidm2": 2}
 
 
 def test_ncelldim_gnc_columns_under_exchange():
     """GNC's columns refer to models 1, 2 and 1, so position can't say."""
-    context = LoadContext(exchange=(_model(3), _model(1)))
+    context = LoadContext(models=(_model(3), _model(1)))
     assert context.ncelldim(Gnc.Gncdata) == {"cellidn": 3, "cellidm": 1, "cellidsj": 3}
 
 
 def test_ncelldim_under_exchange_without_dis_solved_from_row():
-    context = LoadContext(exchange=(_model(3), _model(None)))
+    context = LoadContext(models=(_model(3), _model(None)))
     assert context.ncelldim(Gwfgwf.Exchangedata) is None
     row = Gwfgwf.Exchangedata.from_tokens([1, 1, 2, 1, 1, 1, 1, 0.5, 0.5, 1.0])
     assert (row.cellidm1, row.cellidm2) == ((0, 0, 1), (0, 0, 0))

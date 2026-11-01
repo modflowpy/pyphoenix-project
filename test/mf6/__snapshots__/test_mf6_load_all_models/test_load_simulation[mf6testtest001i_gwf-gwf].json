@@ -1695,7 +1695,16 @@
     "inner_dvclose": "1e-06",
     "inner_maximum": 30,
     "linear_acceleration": "cg",
-    "models": [
+    "name": "ims0",
+    "outer_dvclose": "9.9999997e-06",
+    "outer_maximum": 50,
+    "print_option": "all",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "9.9999997e-06",
+      "rclose_option": null
+    },
+    "slnmnames": [
       "flow-l1",
       "flow-l2",
       "flow-l3",
@@ -1707,15 +1716,6 @@
       "flow-l9",
       "flow-l10"
     ],
-    "name": "ims0",
-    "outer_dvclose": "9.9999997e-06",
-    "outer_maximum": 50,
-    "print_option": "all",
-    "rclose": {
-      "__type__": "Rclose",
-      "inner_rclose": "9.9999997e-06",
-      "rclose_option": null
-    },
     "under_relaxation": "none"
   },
   "simulation/tdis": {

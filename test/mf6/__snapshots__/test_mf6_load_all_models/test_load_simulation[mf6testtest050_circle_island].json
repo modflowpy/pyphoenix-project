@@ -215,9 +215,6 @@
     "inner_dvclose": "1e-06",
     "inner_maximum": 1000,
     "linear_acceleration": "bicgstab",
-    "models": [
-      "CI"
-    ],
     "name": "ims0",
     "outer_dvclose": "1e-06",
     "outer_maximum": 500,
@@ -228,6 +225,9 @@
       "rclose_option": null
     },
     "relaxation_factor": "0.0",
+    "slnmnames": [
+      "CI"
+    ],
     "under_relaxation": "none"
   },
   "simulation/tdis": {

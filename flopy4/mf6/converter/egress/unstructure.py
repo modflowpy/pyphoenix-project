@@ -16,9 +16,15 @@ from flopy4.mf6.block import block_list_type
 from flopy4.mf6.component import Component
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.context import Context
-from flopy4.mf6.converter.binding import Binding
+from flopy4.mf6.converter.binding import write_row
 from flopy4.mf6.dims_provider_methods import DimsProviderMethods
-from flopy4.mf6.item import Item, conditional_fields, dim_lookup, item_list_type, sized_by
+from flopy4.mf6.item import (
+    Item,
+    conditional_fields,
+    dim_lookup,
+    item_list_type,
+    sized_by,
+)
 from flopy4.mf6.item_table import ItemTable, Rows
 from flopy4.mf6.package import Package
 from flopy4.mf6.period_arrays import is_cleared, is_grid_package
@@ -80,13 +86,14 @@ def _make_binding_blocks(value: Component) -> dict[str, dict[str, list[tuple[str
         if f.metadata.get("_keyword"):
             _put_child_file_records(blocks[block_name], f, child)
             continue
+        columns = f.metadata["row"]
         match child:
             case Component():
-                blocks[block_name][child_name] = [Binding.from_component(child).to_tuple()]
+                blocks[block_name][child_name] = [write_row(child, columns)]
             case Iterable():
-                bindings = [Binding.from_component(c).to_tuple() for c in child if c is not None]
-                if bindings:
-                    blocks[block_name][child_name] = bindings
+                rows = [write_row(c, columns) for c in child if c is not None]
+                if rows:
+                    blocks[block_name][child_name] = rows
             case _:
                 raise ValueError(f"Unexpected child type: {type(child)}")
 

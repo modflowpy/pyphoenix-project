@@ -223,6 +223,8 @@ END MODELS
 
 The structurer maps the type token (`gwf6`) to a component class and recursively calls its `load()`. Because this is recursive, a single `Simulation.load()` traverses and loads the entire component tree &mdash; simulation, temporal discretization, each model and its packages, exchanges, and solutions &mdash; in one pass. `Gwf.load()` (or any model/package `load()`) works standalone the same way.
 
+What each column of a binding row holds comes from the DFN: the type (the column the file's `component_ftype` names), the file, the child's key (`pk`, its name), and keys to the simulation's models (`fk`, an exchange's or solution's reference fields). Codegen records this on each binding child field as `row` (e.g. `row=("ftype", "filename", "exgmnamea", "exgmnameb")`), and `converter/binding.py` reads and writes every row from it. Each component's `ftype` (`GWF6`, `CHD6`) is generated from its DFN too.
+
 A *typed* per-component grammar system also exists: `flopy4 mf6 sync` (or `dfn2lark` on its own) generates a Lark grammar for each component (with rules for array control records, layered arrays, records, and structured list rows) from the DFN spec. Each rule is named for what it is (see `grammar/names.py`), so the typed transformer reads the parse tree without the DFNs. Pushing structure into the grammar this way promises better parse trees and error messages, but it is not yet on the default load path &mdash; the basic-grammar-plus-`structure` pipeline above is what `load()` uses today.
 
 ### Output

@@ -401,9 +401,6 @@
     "inner_dvclose": "1e-09",
     "inner_maximum": 100,
     "linear_acceleration": "cg",
-    "models": [
-      "drnmvr"
-    ],
     "name": "ims0",
     "number_orthogonalizations": 2,
     "outer_dvclose": "1e-08",
@@ -415,6 +412,9 @@
       "rclose_option": null
     },
     "reordering_method": "none",
+    "slnmnames": [
+      "drnmvr"
+    ],
     "under_relaxation": "none",
     "under_relaxation_gamma": "0.0",
     "under_relaxation_kappa": "0.0",

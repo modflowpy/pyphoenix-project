@@ -14,8 +14,7 @@ from flopy4.spec import reference
 @attrs.define(kw_only=True, slots=False)
 class Ims(Solution):
     dfn_name: ClassVar[str] = "sln-ims"
-
-    slntype: ClassVar[str] = "ims"
+    ftype: ClassVar[str] = "IMS6"
 
     @attrs.define
     class NoPtc(Record):
@@ -28,7 +27,7 @@ class Ims(Solution):
         inner_rclose: float = double()
         rclose_option: Optional[str] = string(default=None, optional=True)
 
-    models: list[Model | str] = reference()
+    slnmnames: list[Model | str] = reference(alias="models")
     print_option: Optional[str] = string(
         default=None,
         block="options",

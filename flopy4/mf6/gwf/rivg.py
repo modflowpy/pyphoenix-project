@@ -14,6 +14,7 @@ from flopy4.mf6.utl.obs import Obs
 @attrs.define(kw_only=True, slots=False)
 class Rivg(Package):
     dfn_name: ClassVar[str] = "gwf-rivg"
+    ftype: ClassVar[str] = "RIV6"
 
     multi_package: ClassVar[bool] = True
 

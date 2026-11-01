@@ -12,6 +12,7 @@ from flopy4.mf6.spec import array, record, string
 @attrs.define(kw_only=True, slots=False)
 class Tas(Package):
     dfn_name: ClassVar[str] = "utl-tas"
+    ftype: ClassVar[str] = "TAS6"
 
     multi_package: ClassVar[bool] = True
 

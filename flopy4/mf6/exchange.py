@@ -27,10 +27,9 @@ class Exchange(Package, ABC):
     @property
     def model_types(self) -> tuple[str, str]:
         """The types of the models the exchange connects, in order:
-        ``("gwf", "gwt")`` for GWF-GWT. (Every MF6 model type has three
-        letters.)"""
-        pair = type(self).dfn_name.partition("-")[2]  # type: ignore[attr-defined]
-        return pair[:3], pair[3:]
+        ``("gwf", "gwt")`` for GWF-GWT, from its ftype (``GWF6-GWT6``)."""
+        a, _, b = self.ftype.lower().partition("-")
+        return a.removesuffix("6"), b.removesuffix("6")
 
     def _reference_problem(self, field: Attribute, model) -> "str | None":
         """A problem if the model isn't of the type the exchange connects on

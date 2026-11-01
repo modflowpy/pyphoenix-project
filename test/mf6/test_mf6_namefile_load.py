@@ -181,9 +181,9 @@ def test_load_preserves_list_package_pname(written_sim):
 
 def test_load_disambiguates_ga_variant(tmp_path):
     """Real MF6 writes "CHD6" for both Chd and Chdg (see
-    component_ftype()'s docstring) -- the namefile row alone can't tell
-    them apart, so _resolve_bindings must peek the referenced file's own
-    OPTIONS block for the READARRAYGRID marker."""
+    Component.ftype) -- the namefile row alone can't tell them apart, so
+    _resolve_bindings must peek the referenced file's own OPTIONS block
+    for the READARRAYGRID marker."""
     import textwrap
 
     (tmp_path / "model.dis").write_text(

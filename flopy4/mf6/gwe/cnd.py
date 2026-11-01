@@ -11,6 +11,7 @@ from flopy4.mf6.spec import array, keyword
 @attrs.define(kw_only=True, slots=False)
 class Cnd(Package):
     dfn_name: ClassVar[str] = "gwe-cnd"
+    ftype: ClassVar[str] = "CND6"
 
     xt3d_off: bool = keyword(
         default=False,

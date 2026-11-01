@@ -16,6 +16,7 @@ from flopy4.mf6.utl.ts import Ts
 @attrs.define(kw_only=True, slots=False)
 class Rch(Package):
     dfn_name: ClassVar[str] = "gwf-rch"
+    ftype: ClassVar[str] = "RCH6"
 
     multi_package: ClassVar[bool] = True
 

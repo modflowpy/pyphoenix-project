@@ -282,12 +282,12 @@
     "dims": {},
     "filename": "mv.ims",
     "inner_dvclose": "1e-10",
-    "models": [
+    "name": "ims0",
+    "outer_dvclose": "1e-09",
+    "slnmnames": [
       "mv",
       "child"
-    ],
-    "name": "ims0",
-    "outer_dvclose": "1e-09"
+    ]
   },
   "simulation/mv": {
     "__type__": "Gwf",

@@ -18,6 +18,7 @@ from flopy4.mf6.utl.ts import Ts
 @attrs.define(kw_only=True, slots=False)
 class Uzf(Package):
     dfn_name: ClassVar[str] = "gwf-uzf"
+    ftype: ClassVar[str] = "UZF6"
 
     multi_package: ClassVar[bool] = True
 

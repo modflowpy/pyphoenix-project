@@ -28,9 +28,10 @@ class LoadContext:
     """The class of the component whose file named this one, which tells
     how to read some of its values (see OBS's ids)."""
 
-    exchange: "tuple[Model, Model] | None" = None
-    """The models an exchange connects, whose grids give its cellids'
-    widths. Inherited by the exchange's children (GNC, MVR, OBS)."""
+    models: "tuple[Model, ...] | None" = None
+    """The models the component's row in its parent's name file refers
+    to, in order (an exchange's two), whose grids give its cellids'
+    widths. Inherited by its children (an exchange's GNC, MVR, OBS)."""
 
     def resolve(self, path: str | PathLike) -> Path:
         """A path as written in an input file, resolved against the
@@ -51,18 +52,18 @@ class LoadContext:
         return ncelldim_from_dims(dict(self.dims))
 
     def _exchange_widths(self) -> dict[str, int] | None:
-        """The cellid width of each model the exchange connects, keyed
-        as a cellid column names it (``"1"``, ``"2"``), or None if not
-        under an exchange or either model has no discretization package.
+        """The cellid width of each of the `models` (an exchange's),
+        keyed as a cellid column names it (``"1"``, ``"2"``), or None if
+        there are none or one has no discretization package.
 
         Resolved via `resolve_dims()` (walks the model's children for a
         dimension provider), not a hardcoded `.dis` attribute, so it
         works for any grid field name (`disv1d`, `dis2d`, ...), not just
         `Gwf`-style models."""
-        if self.exchange is None:
+        if self.models is None:
             return None
         widths = {}
-        for key, model in zip(("1", "2"), self.exchange):
+        for key, model in zip(("1", "2"), self.models):
             width = model.resolve_dims("ncelldim").get("ncelldim")
             if width is None:
                 return None

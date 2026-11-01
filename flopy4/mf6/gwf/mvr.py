@@ -13,6 +13,7 @@ from flopy4.mf6.spec import double, file, integer, keyword, list_, string
 @attrs.define(kw_only=True, slots=False)
 class Mvr(Package):
     dfn_name: ClassVar[str] = "gwf-mvr"
+    ftype: ClassVar[str] = "MVR6"
 
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
         "perioddata": Legacy("stress_period_data"),

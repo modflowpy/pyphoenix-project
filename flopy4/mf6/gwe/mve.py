@@ -11,6 +11,7 @@ from flopy4.mf6.spec import file, keyword
 @attrs.define(kw_only=True, slots=False)
 class Mve(Package):
     dfn_name: ClassVar[str] = "gwe-mve"
+    ftype: ClassVar[str] = "MVE6"
 
     print_input: bool = keyword(
         default=False,

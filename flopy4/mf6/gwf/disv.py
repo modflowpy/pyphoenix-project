@@ -17,6 +17,7 @@ from flopy4.mf6.utl.ncf import Ncf
 @attrs.define(kw_only=True, slots=False)
 class Disv(DisvMethods, DimsProviderMethods, Package):
     dfn_name: ClassVar[str] = "gwf-disv"
+    ftype: ClassVar[str] = "DISV6"
 
     shared_dims: ClassVar[tuple[str, ...]] = ("nlay", "ncpl", "nvert", "nodes", "ncelldim")
 

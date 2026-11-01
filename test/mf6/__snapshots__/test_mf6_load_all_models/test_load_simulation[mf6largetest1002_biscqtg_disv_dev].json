@@ -325,9 +325,6 @@
     "inner_dvclose": "0.0001",
     "inner_maximum": 100,
     "linear_acceleration": "bicgstab",
-    "models": [
-      "Biscayne"
-    ],
     "name": "ims0",
     "number_orthogonalizations": 2,
     "outer_dvclose": "0.0001",
@@ -339,6 +336,9 @@
       "rclose_option": null
     },
     "relaxation_factor": "0.0",
+    "slnmnames": [
+      "Biscayne"
+    ],
     "under_relaxation": "none"
   },
   "simulation/tdis": {

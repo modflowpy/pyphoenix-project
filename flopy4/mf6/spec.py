@@ -449,13 +449,19 @@ def child(
     converter=None,
     keyword: str | None = None,
     direction: FileDirection | None = None,
+    row: tuple[str, ...] | None = None,
 ):
     """A child component field: the component itself, standing in for the
     DFN field that names its file. A child named by a file record
-    (``NCF6 FILEIN <file>``) has the record's keyword and direction."""
+    (``NCF6 FILEIN <file>``) has the record's keyword and direction. A
+    child named by a row in a name file (``GWF6 model.nam model``) has the
+    row's columns, as the child's attributes they hold (see
+    `flopy4.mf6.converter.binding`)."""
     metadata: dict = {"child": True}
     if block:
         metadata["block"] = block
+    if row:
+        metadata["row"] = row
     if keyword:
         metadata["_keyword"] = keyword.lower()
     if direction:

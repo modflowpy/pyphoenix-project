@@ -1598,17 +1598,6 @@
     "inner_dvclose": "1e-08",
     "inner_maximum": 1000,
     "linear_acceleration": "cg",
-    "models": [
-      "GWF1_1",
-      "GWF1_2",
-      "GWF1_3",
-      "GWF2_1",
-      "GWF2_2",
-      "GWF2_3",
-      "GWF3_1",
-      "GWF3_2",
-      "GWF3_3"
-    ],
     "name": "ims0",
     "outer_dvclose": "1e-08",
     "outer_maximum": 1000,
@@ -1621,6 +1610,17 @@
     "relaxation_factor": "0.97",
     "reordering_method": "none",
     "scaling_method": "none",
+    "slnmnames": [
+      "GWF1_1",
+      "GWF1_2",
+      "GWF1_3",
+      "GWF2_1",
+      "GWF2_2",
+      "GWF2_3",
+      "GWF3_1",
+      "GWF3_2",
+      "GWF3_3"
+    ],
     "under_relaxation": "none"
   },
   "simulation/tdis": {

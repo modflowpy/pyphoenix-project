@@ -169,7 +169,7 @@ class ComponentSpec:
     base_class: str
     mixins: list[str]
     multi: bool
-    slntype: str | None
+    ftype: str | None
     imports: dict[str, list[str]]
     fields: list[FieldSpec]
     inner_classes: list[InnerClassSpec]
@@ -922,7 +922,6 @@ def _generated_imports(
     base_class: str = "Package",
     mixins: list[str] | None = None,
     multi: bool = False,
-    slntype: bool = False,
     has_inner_classes: bool = False,
     has_readarray_period: bool = False,
     needs_int_arraylike: bool = False,
@@ -950,7 +949,7 @@ def _generated_imports(
         or has_optional_child
     )
     # dfn_name is always emitted as a ClassVar (see package.py.jinja), so
-    # ClassVar is always needed regardless of multi/slntype/inner classes.
+    # ClassVar is always needed regardless of multi/ftype/inner classes.
     has_classvar = True
     # Union[float, TimeSeriesRef] is used by item_class() for time_series columns.
     # Check every generated Item class's columns.
@@ -1272,11 +1271,12 @@ def _child_field_spec(
         if len(bases) != 1:
             raise NotImplementedError(f"{component.name}.{f.name}: children of {sorted(bases)}")
         module, base = bases.pop().split(":")
+        row = filters.tuple_repr(_row_columns(component, f, link))
         return FieldSpec(
             dfn_name=f.name,
             py_name=filters.safe_name(f.name),
             type_annotation=f"list[{base}]",
-            spec_call=f'child(block="{block_name}", default=attrs.Factory(list))',
+            spec_call=f'child(block="{block_name}", row={row}, default=attrs.Factory(list))',
             generatable=True,
         ), [f"from {module} import {base}"]
     (target,) = targets
@@ -1353,15 +1353,41 @@ def _legacy_kwargs(component: Component) -> dict[str, str]:
     }
 
 
-# Reference fields' Python names, where they aren't the DFN's: a solution's
-# models kept the name they had before the DFNs keyed them.
-_REFERENCE_NAMES = {"slnmnames": "models"}
+# Reference fields' constructor names, where they aren't the DFN's: a
+# solution takes its models as `models`, as it did before the DFNs keyed
+# them (see `Solution.models`).
+_REFERENCE_ALIASES = {"slnmnames": "models"}
 
 
-def _binding_row(component: Component, dfns: Mapping[str, Component]) -> Record | None:
-    """The row naming the component in its parent's name file (an
-    exchange's ``exgtype exgfile exgmnamea exgmnameb`` in the simulation's
-    exchanges block), or None. Such a row's file column picks its
+def _row_columns(component: Component, f: FieldV3, link: File) -> tuple[str, ...]:
+    """The child attribute each column of a binding row holds (see
+    `flopy4.mf6.converter.binding`), by the column's role in the DFN: the
+    type the file's ``component_ftype`` names (``ftype``), the file
+    (``filename``), the child's key (``pk``, its ``name``), or a key to
+    the parent's models (``fk``, a reference field of the column's name)."""
+    assert isinstance(f, ListField) and isinstance(f.item, Record)
+    columns = []
+    for name, m in (f.item.fields or {}).items():
+        if name == link.component_ftype:
+            columns.append("ftype")
+        elif m is link:
+            columns.append("filename")
+        # TODO: a model's package names aren't keyed in the DFNs yet
+        elif getattr(m, "pk", False) or (filters.is_model_nam(component.name) and name == "pname"):
+            columns.append("name")
+        elif getattr(m, "fk", None):
+            columns.append(filters.safe_name(name))
+        else:
+            raise ValueError(f"{component.name}.{f.name}: no role for column {name!r}")
+    return tuple(columns)
+
+
+def _binding_row(
+    component: Component, dfns: Mapping[str, Component]
+) -> tuple[Component, ListField, File] | None:
+    """The list naming the component in its parent's name file (the
+    simulation's exchanges, for an exchange), with the parent and the
+    list's file column, or None. Such a list's file column picks its
     component by a ``component_ftype`` column."""
     for parent in dfns.values():
         if not _is_child_of(component, parent):
@@ -1373,7 +1399,7 @@ def _binding_row(component: Component, dfns: Mapping[str, Component]) -> Record 
             if found is None or found[1].component_ftype is None:
                 continue
             if component.name in resolve_link(parent, found[0], found[1], dfns):
-                return f.item
+                return parent, f, found[1]
     return None
 
 
@@ -1382,28 +1408,34 @@ def _reference_specs(
 ) -> tuple[list[FieldSpec], list[str]]:
     """The component's reference fields (see `flopy4.spec.reference`) and
     their imports: the columns of its row in its parent's name file keyed
-    (``fk``) to the parent's models, in row order. An exchange's
-    ``exgmnamea`` and ``exgmnameb``, a solution's ``slnmnames``."""
-    row = _binding_row(component, dfns) if dfns is not None else None
-    if row is None:
+    (``fk``) to the parent's models, in row order, named as the parent's
+    ``row`` names them (see `_row_columns`). An exchange's ``exgmnamea``
+    and ``exgmnameb``, a solution's ``slnmnames``."""
+    found = _binding_row(component, dfns) if dfns is not None else None
+    if found is None:
         return [], []
+    parent, f, link = found
+    columns = zip(_row_columns(parent, f, link), (f.item.fields or {}).items())
     specs = []
-    for name, m in (row.fields or {}).items():
+    for py_name, (name, m) in columns:
         if not (fk := getattr(m, "fk", None)):
             continue
         if fk.partition(".")[0] != "models":
             raise NotImplementedError(f"{component.name}.{name}: a reference to {fk}")
+        args = []
         if isinstance(m, Array):
-            annotation, call = "list[Model | str]", "reference()"
+            annotation = "list[Model | str]"
         else:
             annotation = "Model | str | None"
-            call = "reference(many=False)" if m.optional else "reference(many=False, required=True)"
+            args += ["many=False"] + ([] if m.optional else ["required=True"])
+        if alias := _REFERENCE_ALIASES.get(name):
+            args.append(f'alias="{alias}"')
         specs.append(
             FieldSpec(
                 dfn_name=name,
-                py_name=_REFERENCE_NAMES.get(name, filters.safe_name(name)),
+                py_name=py_name,
                 type_annotation=annotation,
-                spec_call=call,
+                spec_call=f"reference({', '.join(args)})",
                 generatable=True,
             )
         )
@@ -1427,13 +1459,18 @@ _GRID_SLOTS = ("dis", "disv1d", "dis2d", "disv2d")
 
 
 def _model_package_specs(
-    component: Component, block_name: str, targets: list[str], dfns: Mapping[str, Component]
+    component: Component,
+    block_name: str,
+    row: tuple[str, ...],
+    targets: list[str],
+    dfns: Mapping[str, Component],
 ) -> tuple[list[FieldSpec], list[str]]:
     """A model's package fields, one per package type in its name file's
     packages block, and their imports. Variants sharing a type (CHD and
     CHDG) share a field typed as their union; a type MF6 reads more than
     once (``multi``) is a list. Packages without a generated class are left
-    out until they have one. The discretization comes first."""
+    out until they have one. The discretization comes first. Each field's
+    binding rows have the packages block's columns, ``row``."""
     slots: dict[str, list[str]] = {}
     for t in targets:
         if not _has_module(t):
@@ -1457,11 +1494,11 @@ def _model_package_specs(
         classes = [filters.class_name(t) for t in members]
         imports += [f"from {_component_module(t)} import {c}" for t, c in zip(members, classes)]
         cls = classes[0] if len(classes) == 1 else f"Union[{', '.join(classes)}]"
+        args = f'block="{block_name}", row={filters.tuple_repr(row)}'
         if dfns[members[0]].multi:
-            annotation = f"list[{cls}]"
-            call = f'child(block="{block_name}", default=attrs.Factory(list))'
+            annotation, call = f"list[{cls}]", f"child({args}, default=attrs.Factory(list))"
         else:
-            annotation, call = f"Optional[{cls}]", f'child(block="{block_name}")'
+            annotation, call = f"Optional[{cls}]", f"child({args})"
         specs.append(
             FieldSpec(
                 dfn_name=name,
@@ -1485,13 +1522,6 @@ def _base_class(component: Component) -> str:
     if getattr(component, "subtype", None) == "exchange":
         return "Exchange"
     return "Package"
-
-
-def _slntype(component: Component) -> str | None:
-    """Return the slntype string for solution DFNs, or None."""
-    if component.name.split("-")[0] == _SLN_PREFIX:
-        return component.name.split("-")[1]
-    return None
 
 
 def build_component_spec(
@@ -1627,7 +1657,10 @@ def build_component_spec(
             link, targets = links[f.name]
             if filters.is_model_nam(component.name) and link.component_ftype is not None:
                 assert dfns is not None  # resolve_link needed them
-                specs, child_imports = _model_package_specs(component, block_name, targets, dfns)
+                row = _row_columns(component, f, link)
+                specs, child_imports = _model_package_specs(
+                    component, block_name, row, targets, dfns
+                )
             else:
                 spec, child_imports = _child_field_spec(
                     component, f, block_name, link, targets, dfns
@@ -1970,7 +2003,6 @@ def build_component_spec(
     shared_dims = filters.shared_dims(component)
     mixins = [*MIXINS.get(component.name, []), *([_DIMS_PROVIDER] if shared_dims else [])]
     multi = bool(component.multi) if hasattr(component, "multi") else False
-    slntype = _slntype(component)
     has_inner_classes = bool(inner_class_specs)
 
     _has_griddata = any(
@@ -2005,7 +2037,6 @@ def build_component_spec(
         base_class=base,
         mixins=mixins,
         multi=multi,
-        slntype=slntype is not None,
         has_inner_classes=has_inner_classes,
         needs_int_arraylike=_needs_int_arraylike,
         needs_float_arraylike=_needs_float_arraylike,
@@ -2056,7 +2087,7 @@ def build_component_spec(
         base_class=base,
         mixins=[m.split(":")[1] for m in mixins],
         multi=multi,
-        slntype=slntype,
+        ftype=component.ftype,
         imports=imports,
         fields=field_specs,
         inner_classes=inner_class_specs,

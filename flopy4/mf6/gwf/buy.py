@@ -12,6 +12,7 @@ from flopy4.mf6.spec import double, file, integer, keyword, list_, string
 @attrs.define(kw_only=True, slots=False)
 class Buy(Package):
     dfn_name: ClassVar[str] = "gwf-buy"
+    ftype: ClassVar[str] = "BUY6"
 
     @attrs.define
     class Packagedata(Item):

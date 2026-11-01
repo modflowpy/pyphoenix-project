@@ -10,6 +10,7 @@ from flopy4.mf6.spec import double, string
 @attrs.define(kw_only=True, slots=False)
 class Adv(Package):
     dfn_name: ClassVar[str] = "gwe-adv"
+    ftype: ClassVar[str] = "ADV6"
 
     scheme: Optional[str] = string(
         default=None,

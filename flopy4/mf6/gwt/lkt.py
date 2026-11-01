@@ -18,6 +18,7 @@ from flopy4.mf6.utl.ts import Ts
 @attrs.define(kw_only=True, slots=False)
 class Lkt(Package):
     dfn_name: ClassVar[str] = "gwt-lkt"
+    ftype: ClassVar[str] = "LKT6"
 
     multi_package: ClassVar[bool] = True
 

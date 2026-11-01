@@ -14,6 +14,7 @@ from flopy4.mf6.utl.ts import Ts
 @attrs.define(kw_only=True, slots=False)
 class Tvs(Package):
     dfn_name: ClassVar[str] = "utl-tvs"
+    ftype: ClassVar[str] = "TVS6"
 
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
         "perioddata": Legacy("stress_period_data"),

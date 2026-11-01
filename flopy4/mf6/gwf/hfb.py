@@ -11,6 +11,7 @@ from flopy4.mf6.spec import cellid_, double, integer, keyword, list_
 @attrs.define(kw_only=True, slots=False)
 class Hfb(Package):
     dfn_name: ClassVar[str] = "gwf-hfb"
+    ftype: ClassVar[str] = "HFB6"
 
     @attrs.define
     class StressPeriodData(Item):

@@ -25,9 +25,6 @@
     "inner_dvclose": "1e-06",
     "inner_maximum": 50,
     "linear_acceleration": "bicgstab",
-    "models": [
-      "twrihfb_nr"
-    ],
     "name": "ims0",
     "number_orthogonalizations": 5,
     "outer_dvclose": "1e-06",
@@ -40,6 +37,9 @@
       "inner_rclose": "1e-06",
       "rclose_option": "l2norm_rclose"
     },
+    "slnmnames": [
+      "twrihfb_nr"
+    ],
     "under_relaxation": "dbd",
     "under_relaxation_gamma": "0.0",
     "under_relaxation_kappa": "0.0001",

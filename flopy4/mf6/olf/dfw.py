@@ -12,6 +12,7 @@ from flopy4.mf6.utl.obs import Obs
 @attrs.define(kw_only=True, slots=False)
 class Dfw(Package):
     dfn_name: ClassVar[str] = "olf-dfw"
+    ftype: ClassVar[str] = "DFW6"
 
     observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
         "ext-outflow": (("index",),),

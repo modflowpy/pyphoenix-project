@@ -13,6 +13,7 @@ from flopy4.mf6.utl.tvk import Tvk
 @attrs.define(kw_only=True, slots=False)
 class Npf(Package):
     dfn_name: ClassVar[str] = "gwf-npf"
+    ftype: ClassVar[str] = "NPF6"
 
     @attrs.define
     class Cvoptions(Record):

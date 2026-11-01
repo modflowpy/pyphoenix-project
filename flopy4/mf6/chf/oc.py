@@ -14,6 +14,7 @@ from flopy4.mf6.spec import array, file, integer, list_, record, string, union
 @attrs.define(kw_only=True, slots=False)
 class Oc(Package):
     dfn_name: ClassVar[str] = "chf-oc"
+    ftype: ClassVar[str] = "OC6"
 
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
         "saverecord": Legacy("stress_period_data", oc_period_data),

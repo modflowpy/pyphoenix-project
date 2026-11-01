@@ -14,6 +14,7 @@ from flopy4.mf6.utl.obs import Obs
 @attrs.define(kw_only=True, slots=False)
 class Ghbg(Package):
     dfn_name: ClassVar[str] = "gwf-ghbg"
+    ftype: ClassVar[str] = "GHB6"
 
     multi_package: ClassVar[bool] = True
 

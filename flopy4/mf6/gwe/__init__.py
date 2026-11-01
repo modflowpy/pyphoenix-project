@@ -51,6 +51,7 @@ __all__ = [
 @attrs.define(kw_only=True, slots=False)
 class Gwe(ModelMethods, Model):
     dfn_name: ClassVar[str] = "gwe-nam"
+    ftype: ClassVar[str] = "GWE6"
 
     observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
         "flow-ja-face": (("cellid", "cellid"),),
@@ -111,19 +112,33 @@ class Gwe(ModelMethods, Model):
         direction="in",
         keyword="netcdf",
     )
-    dis: Optional[Union[Dis, Disu, Disv]] = child(block="packages")
-    adv: Optional[Adv] = child(block="packages")
-    cnd: Optional[Cnd] = child(block="packages")
-    ctp: list[Ctp] = child(block="packages", default=attrs.Factory(list))
-    esl: list[Esl] = child(block="packages", default=attrs.Factory(list))
-    est: Optional[Est] = child(block="packages")
-    fmi: Optional[Fmi] = child(block="packages")
-    ic: Optional[Ic] = child(block="packages")
-    lke: list[Lke] = child(block="packages", default=attrs.Factory(list))
-    mve: Optional[Mve] = child(block="packages")
-    mwe: list[Mwe] = child(block="packages", default=attrs.Factory(list))
-    oc: Optional[Oc] = child(block="packages")
-    sfe: list[Sfe] = child(block="packages", default=attrs.Factory(list))
-    ssm: Optional[Ssm] = child(block="packages")
-    uze: list[Uze] = child(block="packages", default=attrs.Factory(list))
-    obs: Optional[Obs] = child(block="packages")
+    dis: Optional[Union[Dis, Disu, Disv]] = child(
+        block="packages", row=("ftype", "filename", "name")
+    )
+    adv: Optional[Adv] = child(block="packages", row=("ftype", "filename", "name"))
+    cnd: Optional[Cnd] = child(block="packages", row=("ftype", "filename", "name"))
+    ctp: list[Ctp] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    esl: list[Esl] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    est: Optional[Est] = child(block="packages", row=("ftype", "filename", "name"))
+    fmi: Optional[Fmi] = child(block="packages", row=("ftype", "filename", "name"))
+    ic: Optional[Ic] = child(block="packages", row=("ftype", "filename", "name"))
+    lke: list[Lke] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    mve: Optional[Mve] = child(block="packages", row=("ftype", "filename", "name"))
+    mwe: list[Mwe] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    oc: Optional[Oc] = child(block="packages", row=("ftype", "filename", "name"))
+    sfe: list[Sfe] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    ssm: Optional[Ssm] = child(block="packages", row=("ftype", "filename", "name"))
+    uze: list[Uze] = child(
+        block="packages", row=("ftype", "filename", "name"), default=attrs.Factory(list)
+    )
+    obs: Optional[Obs] = child(block="packages", row=("ftype", "filename", "name"))

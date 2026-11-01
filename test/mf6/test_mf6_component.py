@@ -36,7 +36,7 @@ def test_registry():
     assert FNAMES["gwf-oc"] is Oc
 
 
-def test_component_ftype_ga_variants():
+def test_ftype_ga_variants():
     """G/A-variant package classes (Chdg, Drng, Evta, Ghbg, Rcha, Rivg,
     Welg) share their base's namefile ftype -- confirmed against real MF6
     source (gwf.f90's package-type dispatch has no 'CHDG6'/'RCHA6'/etc.
@@ -44,16 +44,15 @@ def test_component_ftype_ga_variants():
     token with "Model package type not supported"). Legacy flopy's
     dfn_file_name='gwf-chdg.dfn' describes the DFN/class identity, not the
     namefile-level ftype -- don't infer the latter from the former."""
-    from flopy4.mf6.converter.binding import component_ftype
     from flopy4.mf6.gwf.chd import Chd
     from flopy4.mf6.gwf.chdg import Chdg
     from flopy4.mf6.gwf.rch import Rch
     from flopy4.mf6.gwf.rcha import Rcha
 
-    assert component_ftype(Chd) == "CHD6"
-    assert component_ftype(Chdg) == "CHD6"
-    assert component_ftype(Rch) == "RCH6"
-    assert component_ftype(Rcha) == "RCH6"
+    assert Chd.ftype == "CHD6"
+    assert Chdg.ftype == "CHD6"
+    assert Rch.ftype == "RCH6"
+    assert Rcha.ftype == "RCH6"
 
 
 def test_ftypes_registry():
@@ -845,7 +844,7 @@ def test_solution_models_in_different_simulations():
 def test_solution_models_repr_eq():
     gwf = Gwf(name="flow")
     ims = Ims(models=[gwf, "other"])
-    assert "models=['flow', 'other']" in repr(ims)
+    assert "slnmnames=['flow', 'other']" in repr(ims)
     assert "Gwf(" not in repr(ims)
     assert ims == Ims(models=["flow", "other"])
     assert ims != Ims(models=["flow"])
@@ -1024,11 +1023,21 @@ def test_joining_simulation_keeps_unmatched_references():
     assert any("isn't in the simulation" in e for e in ims._reference_errors())
 
 
+def test_solution_models_alias():
+    """A solution's `slnmnames` (the DFN's name) is also `models`, in the
+    constructor and as an attribute."""
+    gwf, other = Gwf(name="flow"), Gwf(name="other")
+    ims = Ims(models=[gwf])
+    assert ims.slnmnames == ims.models == [gwf]
+    ims.models = [other]
+    assert ims.slnmnames[0] is other
+
+
 def test_solution_models_to_xarray():
     gwf = Gwf(name="flow")
     ims = Ims(models=[gwf])
     Simulation(models=[gwf], solutiongroup=[ims])
-    assert ims.to_xarray().attrs["models"] == ["flow"]
+    assert ims.to_xarray().attrs["slnmnames"] == ["flow"]
 
 
 def test_solution_model_solution():
@@ -1045,7 +1054,7 @@ def test_solution_model_solution():
     [
         (
             lambda: ([_small_gwf(name="flow")], [Ims(models=["nope"])]),
-            "refers to model 'nope' in models, which isn't in the simulation",
+            "refers to model 'nope' in slnmnames, which isn't in the simulation",
         ),
         (
             lambda: ([_small_gwf(name="a"), _small_gwf(name="b")], [Ims(models=["a"]), Ims()]),
@@ -1087,7 +1096,7 @@ def test_solution_models_dangling(function_tmpdir):
     )
     sim["flow"] = _small_gwf()
     with pytest.raises(
-        ValueError, match="refers to model 'flow' in models, which isn't in the simulation"
+        ValueError, match="refers to model 'flow' in slnmnames, which isn't in the simulation"
     ):
         sim.write()
 
@@ -3164,14 +3173,14 @@ def test_filename_is_path():
     from pathlib import PureWindowsPath
 
     from flopy4.mf6.codec.writer.filters import quote_if_needed
-    from flopy4.mf6.converter.binding import Binding
+    from flopy4.mf6.converter.binding import write_row
 
     ic = Ic(filename="gwf.ic")
     assert ic.filename == Path("gwf.ic")
     ic.filename = "other.ic"
     assert ic.filename == Path("other.ic")
     ic.filename = Path("sub") / "gwf.ic"
-    assert Binding.from_component(ic).fname == "sub/gwf.ic"
+    assert write_row(ic, ("ftype", "filename")) == ("IC6", "sub/gwf.ic")
     assert quote_if_needed(PureWindowsPath("sub\\gwf.ic")) == "sub/gwf.ic"
 
 

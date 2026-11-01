@@ -12,6 +12,7 @@ from flopy4.mf6.spec import double, file, integer, list_, string
 @attrs.define(kw_only=True, slots=False)
 class Vsc(Package):
     dfn_name: ClassVar[str] = "gwf-vsc"
+    ftype: ClassVar[str] = "VSC6"
 
     @attrs.define
     class Packagedata(Item):

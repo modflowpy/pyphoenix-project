@@ -12,6 +12,7 @@ from flopy4.mf6.spec import keyword, list_, string
 @attrs.define(kw_only=True, slots=False)
 class Sto(Package):
     dfn_name: ClassVar[str] = "chf-sto"
+    ftype: ClassVar[str] = "STO6"
 
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
         "steady_state": Legacy("stress_period_data", sto_period_data),

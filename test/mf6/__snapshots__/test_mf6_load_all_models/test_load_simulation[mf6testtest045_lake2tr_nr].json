@@ -28,9 +28,6 @@
     "inner_dvclose": "1e-05",
     "inner_maximum": 100,
     "linear_acceleration": "bicgstab",
-    "models": [
-      "lakeex2a"
-    ],
     "name": "ims0",
     "number_orthogonalizations": 2,
     "outer_dvclose": "0.0001",
@@ -44,6 +41,9 @@
     "relaxation_factor": "0.97",
     "reordering_method": "none",
     "scaling_method": "none",
+    "slnmnames": [
+      "lakeex2a"
+    ],
     "under_relaxation": "none",
     "under_relaxation_gamma": "0.05",
     "under_relaxation_kappa": "0.08",

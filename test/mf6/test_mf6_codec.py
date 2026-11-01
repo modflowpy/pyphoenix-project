@@ -4358,7 +4358,7 @@ def test_binary_list_row_spec_two_cellids_and_an_integer_field():
 
     model1 = Gwf(name="m1", dis=Dis(nlay=1, nrow=1, ncol=1))
     model2 = Gwf(name="m2", dis=Dis(nlay=1, nrow=1, ncol=1))
-    context = LoadContext(exchange=(model1, model2))
+    context = LoadContext(models=(model1, model2))
     assert _binary_list_row_spec(Gwfgwf.Exchangedata, context, {}) == [
         ("<i4", 3),  # cellidm1 (model 1's DIS)
         ("<i4", 3),  # cellidm2 (model 2's DIS)
