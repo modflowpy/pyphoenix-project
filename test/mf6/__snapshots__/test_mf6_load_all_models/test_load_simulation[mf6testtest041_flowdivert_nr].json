@@ -192,9 +192,6 @@
     "inner_dvclose": "1e-06",
     "inner_maximum": 100,
     "linear_acceleration": "bicgstab",
-    "models": [
-      "GWF_1"
-    ],
     "name": "ims0",
     "number_orthogonalizations": 2,
     "outer_dvclose": "1e-06",
@@ -206,6 +203,9 @@
       "rclose_option": null
     },
     "relaxation_factor": "0.0",
+    "slnmnames": [
+      "GWF_1"
+    ],
     "under_relaxation": "none"
   },
   "simulation/tdis": {

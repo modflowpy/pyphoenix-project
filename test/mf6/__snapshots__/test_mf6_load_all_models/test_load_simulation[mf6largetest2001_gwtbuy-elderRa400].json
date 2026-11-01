@@ -526,9 +526,6 @@
     "inner_dvclose": "1e-09",
     "inner_maximum": 300,
     "linear_acceleration": "bicgstab",
-    "models": [
-      "gwf_elder"
-    ],
     "name": "ims0",
     "no_ptc": {
       "__type__": "NoPtc",
@@ -545,6 +542,9 @@
     "relaxation_factor": "0.97",
     "reordering_method": "none",
     "scaling_method": "none",
+    "slnmnames": [
+      "gwf_elder"
+    ],
     "under_relaxation": "dbd"
   },
   "simulation/ims1": {
@@ -554,9 +554,6 @@
     "inner_dvclose": "1e-09",
     "inner_maximum": 300,
     "linear_acceleration": "bicgstab",
-    "models": [
-      "gwt_elder"
-    ],
     "name": "ims1",
     "outer_dvclose": "1e-08",
     "outer_maximum": 100,
@@ -569,6 +566,9 @@
     "relaxation_factor": "0.97",
     "reordering_method": "none",
     "scaling_method": "none",
+    "slnmnames": [
+      "gwt_elder"
+    ],
     "under_relaxation": "none"
   },
   "simulation/tdis": {

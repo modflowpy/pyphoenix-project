@@ -54,9 +54,6 @@
     "inner_dvclose": "1e-06",
     "inner_maximum": 300,
     "linear_acceleration": "cg",
-    "models": [
-      "pbc"
-    ],
     "name": "ims0",
     "outer_dvclose": "9.9999997e-06",
     "outer_maximum": 50,
@@ -66,6 +63,9 @@
       "inner_rclose": "9.9999997e-06",
       "rclose_option": null
     },
+    "slnmnames": [
+      "pbc"
+    ],
     "under_relaxation": "none"
   },
   "simulation/pbc": {

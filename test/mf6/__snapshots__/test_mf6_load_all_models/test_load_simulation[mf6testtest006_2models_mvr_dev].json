@@ -622,10 +622,6 @@
     "inner_dvclose": "1e-08",
     "inner_maximum": 1000,
     "linear_acceleration": "bicgstab",
-    "models": [
-      "PARENT",
-      "CHILD"
-    ],
     "name": "ims0",
     "outer_dvclose": "1e-08",
     "outer_maximum": 1000,
@@ -638,6 +634,10 @@
     "relaxation_factor": "0.97",
     "reordering_method": "none",
     "scaling_method": "none",
+    "slnmnames": [
+      "PARENT",
+      "CHILD"
+    ],
     "under_relaxation": "none"
   },
   "simulation/tdis": {

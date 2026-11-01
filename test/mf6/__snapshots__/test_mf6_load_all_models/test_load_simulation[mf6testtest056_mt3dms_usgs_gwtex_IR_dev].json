@@ -25,9 +25,6 @@
     "inner_dvclose": "0.0001",
     "inner_maximum": 100,
     "linear_acceleration": "cg",
-    "models": [
-      "m1"
-    ],
     "name": "ims0",
     "number_orthogonalizations": 2,
     "outer_dvclose": "0.001",
@@ -40,6 +37,9 @@
     },
     "relaxation_factor": "0.99",
     "reordering_method": "none",
+    "slnmnames": [
+      "m1"
+    ],
     "under_relaxation": "none",
     "under_relaxation_gamma": "0.0",
     "under_relaxation_kappa": "0.0",

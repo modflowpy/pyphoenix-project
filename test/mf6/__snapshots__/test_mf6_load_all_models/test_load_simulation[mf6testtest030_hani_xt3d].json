@@ -219,9 +219,6 @@
     "inner_dvclose": "1e-07",
     "inner_maximum": 1000,
     "linear_acceleration": "bicgstab",
-    "models": [
-      "GWF"
-    ],
     "name": "ims0",
     "outer_dvclose": "9.9999997e-06",
     "outer_maximum": 50,
@@ -232,6 +229,9 @@
       "rclose_option": null
     },
     "relaxation_factor": "0.97",
+    "slnmnames": [
+      "GWF"
+    ],
     "under_relaxation": "none"
   },
   "simulation/tdis": {

@@ -25,9 +25,6 @@
     "inner_dvclose": "1e-07",
     "inner_maximum": 50,
     "linear_acceleration": "cg",
-    "models": [
-      "twrihfb_5lay"
-    ],
     "name": "ims0",
     "outer_dvclose": "1e-06",
     "outer_maximum": 100,
@@ -38,6 +35,9 @@
       "rclose_option": null
     },
     "relaxation_factor": "0.97",
+    "slnmnames": [
+      "twrihfb_5lay"
+    ],
     "under_relaxation": "none",
     "under_relaxation_gamma": "0.0",
     "under_relaxation_kappa": "0.0",

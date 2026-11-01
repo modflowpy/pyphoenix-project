@@ -683,10 +683,6 @@
     "inner_dvclose": "1e-06",
     "inner_maximum": 200,
     "linear_acceleration": "bicgstab",
-    "models": [
-      "PARENT",
-      "CHILD"
-    ],
     "name": "ims0",
     "outer_dvclose": "1e-05",
     "outer_maximum": 100,
@@ -696,7 +692,11 @@
       "inner_rclose": "0.0",
       "rclose_option": "relative_rclose"
     },
-    "relaxation_factor": "0.97"
+    "relaxation_factor": "0.97",
+    "slnmnames": [
+      "PARENT",
+      "CHILD"
+    ]
   },
   "simulation/tdis": {
     "__type__": "Tdis",

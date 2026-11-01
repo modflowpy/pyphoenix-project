@@ -25,9 +25,6 @@
     "inner_dvclose": "0.00050000004",
     "inner_maximum": 200,
     "linear_acceleration": "bicgstab",
-    "models": [
-      "v6"
-    ],
     "name": "ims0",
     "number_orthogonalizations": 5,
     "outer_dvclose": "0.05",
@@ -42,6 +39,9 @@
     },
     "relaxation_factor": "0.0",
     "reordering_method": "rcm",
+    "slnmnames": [
+      "v6"
+    ],
     "under_relaxation": "dbd",
     "under_relaxation_gamma": "0.0",
     "under_relaxation_kappa": "1e-05",

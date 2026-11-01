@@ -25,9 +25,6 @@
     "inner_dvclose": "0.0001",
     "inner_maximum": 100,
     "linear_acceleration": "cg",
-    "models": [
-      "twrihfb2015"
-    ],
     "name": "ims0",
     "outer_dvclose": "0.001",
     "outer_maximum": 50,
@@ -37,6 +34,9 @@
       "inner_rclose": "0.1",
       "rclose_option": null
     },
+    "slnmnames": [
+      "twrihfb2015"
+    ],
     "under_relaxation": "none"
   },
   "simulation/tdis": {

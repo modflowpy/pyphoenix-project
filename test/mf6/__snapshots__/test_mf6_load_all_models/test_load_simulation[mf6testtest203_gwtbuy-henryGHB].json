@@ -454,9 +454,6 @@
     "inner_dvclose": "1e-08",
     "inner_maximum": 300,
     "linear_acceleration": "bicgstab",
-    "models": [
-      "gwf_henry"
-    ],
     "name": "ims0",
     "outer_dvclose": "1e-07",
     "outer_maximum": 100,
@@ -469,6 +466,9 @@
     "relaxation_factor": "0.97",
     "reordering_method": "none",
     "scaling_method": "none",
+    "slnmnames": [
+      "gwf_henry"
+    ],
     "under_relaxation": "none"
   },
   "simulation/ims1": {
@@ -478,9 +478,6 @@
     "inner_dvclose": "1e-08",
     "inner_maximum": 300,
     "linear_acceleration": "bicgstab",
-    "models": [
-      "gwt_henry"
-    ],
     "name": "ims1",
     "outer_dvclose": "1e-07",
     "outer_maximum": 100,
@@ -493,6 +490,9 @@
     "relaxation_factor": "0.97",
     "reordering_method": "none",
     "scaling_method": "none",
+    "slnmnames": [
+      "gwt_henry"
+    ],
     "under_relaxation": "none"
   },
   "simulation/tdis": {

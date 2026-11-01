@@ -504,9 +504,6 @@
     "filename": "holly.ims",
     "inner_dvclose": "1e-06",
     "inner_maximum": 100,
-    "models": [
-      "holly"
-    ],
     "name": "ims0",
     "outer_dvclose": "1e-06",
     "outer_maximum": 200,
@@ -519,6 +516,9 @@
     "relaxation_factor": "0.97",
     "reordering_method": "none",
     "scaling_method": "none",
+    "slnmnames": [
+      "holly"
+    ],
     "under_relaxation": "none"
   },
   "simulation/tdis": {

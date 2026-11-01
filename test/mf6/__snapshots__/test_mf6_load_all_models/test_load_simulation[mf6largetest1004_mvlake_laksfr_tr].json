@@ -24,9 +24,6 @@
     "filename": "mv.ims",
     "inner_dvclose": "1e-06",
     "inner_maximum": 100,
-    "models": [
-      "mv"
-    ],
     "name": "ims0",
     "outer_dvclose": "1e-05",
     "outer_maximum": 12000,
@@ -35,7 +32,10 @@
       "__type__": "Rclose",
       "inner_rclose": "0.001",
       "rclose_option": null
-    }
+    },
+    "slnmnames": [
+      "mv"
+    ]
   },
   "simulation/mv": {
     "__type__": "Gwf",

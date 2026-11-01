@@ -396,9 +396,6 @@
     "inner_dvclose": "1e-09",
     "inner_maximum": 300,
     "linear_acceleration": "bicgstab",
-    "models": [
-      "fig4_base"
-    ],
     "name": "ims0",
     "outer_dvclose": "1e-09",
     "outer_maximum": 500,
@@ -411,6 +408,9 @@
     "relaxation_factor": "1.0",
     "reordering_method": "none",
     "scaling_method": "none",
+    "slnmnames": [
+      "fig4_base"
+    ],
     "under_relaxation": "none"
   },
   "simulation/tdis": {

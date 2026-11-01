@@ -25,9 +25,6 @@
     "inner_dvclose": "0.0001",
     "inner_maximum": 100,
     "linear_acceleration": "cg",
-    "models": [
-      "lakeex4"
-    ],
     "name": "ims0",
     "number_orthogonalizations": 2,
     "outer_dvclose": "0.001",
@@ -40,6 +37,9 @@
     },
     "relaxation_factor": "0.97",
     "reordering_method": "none",
+    "slnmnames": [
+      "lakeex4"
+    ],
     "under_relaxation": "none"
   },
   "simulation/lakeex4": {

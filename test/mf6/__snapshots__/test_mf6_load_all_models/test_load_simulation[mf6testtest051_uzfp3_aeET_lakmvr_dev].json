@@ -25,9 +25,6 @@
     "inner_dvclose": "1e-06",
     "inner_maximum": 100,
     "linear_acceleration": "bicgstab",
-    "models": [
-      "uzfp3_lakmvr"
-    ],
     "name": "ims0",
     "outer_dvclose": "1e-05",
     "outer_maximum": 100,
@@ -38,6 +35,9 @@
       "rclose_option": null
     },
     "relaxation_factor": "0.99",
+    "slnmnames": [
+      "uzfp3_lakmvr"
+    ],
     "under_relaxation": "none",
     "under_relaxation_gamma": "0.0",
     "under_relaxation_kappa": "0.0",

@@ -29,9 +29,6 @@
     "inner_dvclose": "1e-06",
     "inner_maximum": 200,
     "linear_acceleration": "bicgstab",
-    "models": [
-      "test004_lpfss_nr"
-    ],
     "name": "ims0",
     "number_orthogonalizations": 7,
     "outer_dvclose": "1e-06",
@@ -45,6 +42,9 @@
       "rclose_option": null
     },
     "reordering_method": "none",
+    "slnmnames": [
+      "test004_lpfss_nr"
+    ],
     "under_relaxation": "dbd",
     "under_relaxation_gamma": "0.0",
     "under_relaxation_kappa": "0.0001",

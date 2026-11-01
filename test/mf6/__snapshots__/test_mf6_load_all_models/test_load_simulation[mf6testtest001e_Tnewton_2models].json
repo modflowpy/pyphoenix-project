@@ -379,10 +379,6 @@
     "inner_dvclose": "1e-06",
     "inner_maximum": 30,
     "linear_acceleration": "bicgstab",
-    "models": [
-      "Model_01",
-      "Model_02"
-    ],
     "name": "ims0",
     "outer_dvclose": "9.9999997e-06",
     "outer_maximum": 50,
@@ -392,6 +388,10 @@
       "inner_rclose": "9.9999997e-06",
       "rclose_option": null
     },
+    "slnmnames": [
+      "Model_01",
+      "Model_02"
+    ],
     "under_relaxation": "none"
   },
   "simulation/tdis": {

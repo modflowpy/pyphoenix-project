@@ -390,9 +390,6 @@
     "inner_dvclose": "1e-06",
     "inner_maximum": 30,
     "linear_acceleration": "cg",
-    "models": [
-      "flow15"
-    ],
     "name": "ims0",
     "outer_dvclose": "9.9999997e-06",
     "outer_maximum": 50,
@@ -402,6 +399,9 @@
       "inner_rclose": "9.9999997e-06",
       "rclose_option": null
     },
+    "slnmnames": [
+      "flow15"
+    ],
     "under_relaxation": "none"
   },
   "simulation/tdis": {

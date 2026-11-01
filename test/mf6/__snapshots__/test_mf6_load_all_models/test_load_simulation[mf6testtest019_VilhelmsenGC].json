@@ -207,9 +207,6 @@
     "inner_dvclose": "1e-05",
     "inner_maximum": 500,
     "linear_acceleration": "cg",
-    "models": [
-      "PARENT"
-    ],
     "name": "ims0",
     "outer_dvclose": "1e-05",
     "outer_maximum": 25,
@@ -222,6 +219,9 @@
     "relaxation_factor": "0.97",
     "reordering_method": "none",
     "scaling_method": "none",
+    "slnmnames": [
+      "PARENT"
+    ],
     "under_relaxation": "none"
   },
   "simulation/tdis": {
