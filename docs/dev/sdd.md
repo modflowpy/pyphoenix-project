@@ -109,20 +109,30 @@ The produce defines protocols for converting component instances to `xarray.Data
 
 ### Dimension management
 
-Components may declare dimensions to or consume dimensions from other components via a protocol-based registration system.
+Components provide dimensions to, or resolve dimensions from, other components in the tree. Two protocols in `flopy4.dimensions` define the contract, independent of MF6:
 
-Dimensions are resolved lazily at runtime. When a consuming component needs a dimension size, i.e. defines an array field referencing a dimension, it will:
+- `DimensionProvider`: `get_dims()` returns the dimension sizes a component publishes.
+- `DimensionResolver`: `resolve_dims(*names)` looks dimensions up in the tree.
 
-- Check the local cache
-- Walk child components to find providers
-- If not found, consider parent providers
-- If found, cache the result
+Every MF6 component is a resolver: the base `Component` inherits `DimensionResolverMixin`, the protocol's implementation. Some components are also providers. Grid discretization (DIS, DISV, DISU) publishes the grid dimensions, and TDIS publishes `nper`. A provider publishes only the dimensions the DFN scopes beyond its own file; codegen lists them in the class's `shared_dims`. They may be explicit DFN fields (`nlay`) or derived from others with a `DerivedDim` built from the DFN's expression (`nodes = nlay * nrow * ncol`). A derived dimension is read-only, and reads as `None` until everything it depends on is set.
 
-This approach is construction-order agnostic, working whether components are built top-down (e.g., loading from files) or bottom-up (interactive construction). Parent references enable walking up the hierarchy, while the cache prevents repeated tree traversals.
+A component resolves a dimension by looking in these places in order:
 
-E.g., grid discretization (DIS, DISV, DISU) and time discretization (TDIS) packages provide dimensions, both explicit ones (DFN fields like nlay) and derived (like nodes = nlay * nrow * ncol).
+1. its children, for a provider giving it;
+2. its parent, recursively up the tree;
+3. its own `dims`, given at construction (`Npf(dims={"nodes": 100})`) or when loading a lone package.
 
-All components act as dimension consumers via a mixin implementing the consumer protocol, giving uniform resolution behavior throughout the hierarchy, so any component can resolve dimensions on demand.
+If two providers, or a provider and the component's own `dims`, disagree, resolution raises. The result is never cached: a provider's dimensions can change (a grid package is replaced, a list grows), and a cache would go stale. Resolution is therefore construction-order agnostic. A component can be built top-down (`Gwf(dis=Dis(...))`, or loading) or bottom-up (`Dis(parent=gwf)`), and it sees its dimensions as soon as a provider is reachable.
+
+A package's own dimensions (its `DIMENSIONS` block, e.g. `maxbound` or `nexg`) are local fields, not shared through the tree. Each counts the rows of a list in the same package. The package sets the count from the rows at construction and before writing. Assigning a count that disagrees with the rows raises. A bounded count (`<=maxbound`) is the user's, so it is checked but never overwritten.
+
+Resolution is lazy, but consistency checks are eager:
+
+- **Eager**, where data enters: row counts, conflicts between providers, and assignments that disagree with a list's rows all raise immediately.
+- **Lazy**, when needed: an array's shape is resolved when something needs it (writing, `to_xarray()`). Arrays keep no shape of their own beyond their value's.
+- **Once, before writing**: a dimension that can't be resolved at all (e.g. a model with no grid package) can't be caught while the tree is being built, because its provider may not be attached yet. `Simulation.write()` runs `validate_dimension_resolution()` first. It checks that every array field holding a value can resolve its shape, and raises before writing anything if one can't. Writing a lone package or model skips this check, because scalar griddata writes as `CONSTANT` with no grid.
+
+Griddata is broadcast to its full shape only at construction, from the dimensions visible then: the package's own `dims`, or, for a grid package, its own. A package attached to a model afterwards keeps its values as given; e.g. a scalar stays a scalar and is written as `CONSTANT`. Broadcasting when a package is attached may come later as an optional mode.
 
 ## NetCDF
 

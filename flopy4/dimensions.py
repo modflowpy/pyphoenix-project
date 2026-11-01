@@ -178,9 +178,9 @@ class DimensionResolverMixin:
         result_dict = {}
         for dim_name in dims:
             value = self._find_dimension_in_children(dim_name)
-            if value is None and hasattr(self, "_parent") and self._parent is not None:
-                if hasattr(self._parent, "resolve_dims"):
-                    value = self._parent.resolve_dims(dim_name).get(dim_name)
+            parent = getattr(self, "_parent", None)
+            if value is None and isinstance(parent, DimensionResolver):
+                value = parent.resolve_dims(dim_name).get(dim_name)
             own = (getattr(self, "dims", None) or {}).get(dim_name)
             if value is not None and own is not None and value != own:
                 raise ValueError(
@@ -224,12 +224,12 @@ class DimensionResolverMixin:
         dim_sources: dict[str, str] = {}
 
         # Parent dims (lower priority)
-        if hasattr(self, "_parent") and self._parent is not None:
-            if hasattr(self._parent, "resolve_dims"):
-                parent_dims = self._parent.resolve_dims()
-                resolved_dims.update(parent_dims)
-                for dim_name in parent_dims:
-                    dim_sources[dim_name] = "parent"
+        parent = getattr(self, "_parent", None)
+        if isinstance(parent, DimensionResolver):
+            parent_dims = parent.resolve_dims()
+            resolved_dims.update(parent_dims)
+            for dim_name in parent_dims:
+                dim_sources[dim_name] = "parent"
 
         # Child dims (override parent, conflict with each other)
         child_dims: dict[str, int] = {}
@@ -260,84 +260,88 @@ class DimensionResolverMixin:
         return resolved_dims
 
 
-def validate_dimension_resolution(component) -> list[str]:
+def validate_dimension_resolution(component: DimensionResolver) -> list[str]:
     """
-    Validate that all array fields can resolve their required dimensions.
+    Check that every array in a component tree can resolve its shape.
 
-    This function walks the component hierarchy and checks that every array field
-    with dimension requirements can resolve those dimensions from the parent chain.
-    Use this in tests or CI to catch missing dimension providers.
+    Resolution is lazy: nothing checks, as a tree is built, that an array's
+    dimensions will be resolvable, since the providers (a model's Dis, the
+    simulation's Tdis) may be attached later. This checks a finished tree
+    all at once, e.g. before writing it. For each array field (``type``
+    "array" in its metadata) with a value and a ``shape``, it resolves the shape's dimensions on
+    the component holding the array (its children, then its parent chain,
+    then its own ``dims``; see `DimensionResolverMixin.resolve_dims`), and
+    descends into child components (those that are DimensionResolvers,
+    alone or in a dict or list). Reference fields, and the parent, aren't
+    descended into.
 
     Parameters
     ----------
-    component : Component
-        The component to validate (must have DimensionResolver interface)
+    component : DimensionResolver
+        The root of the tree to check.
 
     Returns
     -------
     list[str]
-        List of error messages for dimensions that cannot be resolved.
-        Empty list means all dimensions can be resolved successfully.
+        An error message for each dimension an array can't resolve, and
+        for each component whose dimensions conflict. Empty if every
+        shape resolves.
 
     Examples
     --------
-    >>> errors = validate_dimension_resolution(simulation)
-    >>> if errors:
-    ...     for error in errors:
-    ...         print(error)
-    >>> # Use in tests:
-    >>> assert not validate_dimension_resolution(sim), "Dimension resolution failed"
+    >>> errors = validate_dimension_resolution(sim)  # doctest: +SKIP
+    >>> assert not errors, "; ".join(errors)  # doctest: +SKIP
     """
-    errors = []
-
-    # Check all array fields on this component
-    for field in attrs.fields(type(component)):
-        # Check if field has dimension metadata
-        if hasattr(field, "metadata") and field.metadata and "dims" in field.metadata:
-            dims_needed = field.metadata["dims"]
-            # Check if this component has a parent and can resolve dimensions
-            if hasattr(component, "_parent") and component._parent:
-                if hasattr(component._parent, "resolve_dims"):
-                    for dim in dims_needed:
-                        result = component._parent.resolve_dims(dim)
-                        if dim not in result:
-                            errors.append(
-                                f"{type(component).__name__}.{field.name} needs dimension '{dim}' "
-                                f"but it's not available in parent hierarchy"
-                            )
-
-    # Recursively validate children
-    for field in attrs.fields(type(component)):
-        if is_reference(field):
+    errors: list[str] = []
+    seen: set[int] = set()
+    stack: list[Any] = [component]
+    while stack:
+        comp = stack.pop()
+        if id(comp) in seen:
             continue
-        value = getattr(component, field.name, None)
-        if value is None:
-            continue
-
-        # Check if child is a component with attrs fields
-        if hasattr(value, "__class__") and hasattr(attrs, "fields"):
-            try:
-                attrs.fields(type(value))
-                # It's an attrs class, validate it
-                errors.extend(validate_dimension_resolution(value))
-            except Exception:
-                # Not an attrs class, skip
-                pass
-        elif isinstance(value, dict):
-            for child in value.values():
-                if hasattr(child, "__class__") and hasattr(attrs, "fields"):
-                    try:
-                        attrs.fields(type(child))
-                        errors.extend(validate_dimension_resolution(child))
-                    except Exception:
-                        pass
-        elif isinstance(value, list):
-            for child in value:
-                if hasattr(child, "__class__") and hasattr(attrs, "fields"):
-                    try:
-                        attrs.fields(type(child))
-                        errors.extend(validate_dimension_resolution(child))
-                    except Exception:
-                        pass
-
+        seen.add(id(comp))
+        label = _label(comp)
+        for field in attrs.fields(type(comp)):
+            if is_reference(field) or field.name == "_parent":
+                continue
+            value = getattr(comp, field.name, None)
+            if _is_empty(value):
+                continue
+            # only arrays: a list's shape names the count its own
+            # dimension field keeps in step with its rows (NEXG, "<=MAXBOUND")
+            is_array = field.metadata.get("type") == "array"
+            shape = tuple(field.metadata.get("shape") or ()) if is_array else ()
+            if shape:
+                try:
+                    found = comp.resolve_dims(*shape)
+                except ValueError as e:
+                    errors.append(f"{label}: {e}")
+                    continue
+                for dim in shape:
+                    if dim not in found:
+                        errors.append(
+                            f"{label}.{field.name} needs dimension '{dim}', which "
+                            "no provider in its tree (or its own dims) gives"
+                        )
+            children = value.values() if isinstance(value, dict) else value
+            if not isinstance(children, (list, tuple, type({}.values()))):
+                children = [children]
+            stack.extend(
+                c for c in children if attrs.has(type(c)) and isinstance(c, DimensionResolver)
+            )
     return errors
+
+
+def _label(component: Any) -> str:
+    """A component's type, and its name if it has one, for messages."""
+    name = getattr(component, "name", None)
+    kind = type(component).__name__
+    return f"{kind} '{name}'" if isinstance(name, str) and name else kind
+
+
+def _is_empty(value: Any) -> bool:
+    """Whether a field's value is unset: None, or an empty dict or list (a
+    period array with no periods given)."""
+    if value is None:
+        return True
+    return isinstance(value, (dict, list, tuple)) and not value
