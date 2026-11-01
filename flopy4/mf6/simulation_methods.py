@@ -5,6 +5,8 @@ from warnings import warn
 
 from modflow_devtools.misc import cd, get_ostag, is_in_ci, run_cmd
 
+from flopy4.dimensions import validate_dimension_resolution
+
 if TYPE_CHECKING:
     from flopy4.mf6.context import Context
     from flopy4.mf6.simulation import Simulation
@@ -36,12 +38,16 @@ class SimulationMethods:
         self._resolve_references()  # type: ignore[attr-defined]
 
     def write(self, *args, **kwargs) -> None:
-        """Check the children's references (see `Component._reference_errors`)
-        and the solution group (see `_solution_models`), then write."""
+        """Check the children's references (see `Component._reference_errors`),
+        that every array's shape resolves (see
+        `flopy4.dimensions.validate_dimension_resolution`), and the solution
+        group (see `_solution_models`), then write."""
         sim: "Simulation" = self  # type: ignore[assignment]
         errors = [e for child in sim._children.values() for e in child._reference_errors()]
         if errors:
             raise ValueError("Invalid references: " + "; ".join(errors))
+        if errors := validate_dimension_resolution(sim):
+            raise ValueError("Unresolvable dimensions: " + "; ".join(errors))
         self._solution_models(check=True)  # type: ignore[misc]
         super().write(*args, **kwargs)  # type: ignore[misc]
 

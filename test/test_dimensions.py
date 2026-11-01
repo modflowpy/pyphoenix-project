@@ -5,7 +5,13 @@ from typing import Optional
 import pytest
 from attrs import define, field
 
-from flopy4.dimensions import DerivedDim, DimensionResolverMixin
+from flopy4.dimensions import (
+    DerivedDim,
+    DimensionProvider,
+    DimensionResolver,
+    DimensionResolverMixin,
+    validate_dimension_resolution,
+)
 
 
 @define
@@ -255,3 +261,88 @@ def test_derived_dim():
     assert grid.ncpl == 6
     with pytest.raises(AttributeError, match="derived"):
         grid.ncpl = 7
+
+
+def test_mixin_satisfies_protocols():
+    container = MockContainer()
+    assert isinstance(container, DimensionResolver)
+    assert not isinstance(container, DimensionProvider)
+    assert isinstance(MockDimensionProvider(nlay=1, nrow=1, ncol=1), DimensionProvider)
+    assert not isinstance(object(), DimensionResolver)
+
+
+@define
+class MockArrayHolder(DimensionResolverMixin):
+    """A component with an array shaped by dims it must resolve, and a
+    parent back-reference, as an mf6 component has."""
+
+    top: Optional[list] = field(default=None, metadata={"type": "array", "shape": ("ncpl",)})
+    k: Optional[list] = field(default=None, metadata={"type": "array", "shape": ("nodes",)})
+    dims: dict = field(factory=dict)
+    _parent: object = field(default=None)
+
+
+@define
+class MockModel(DimensionResolverMixin):
+    provider: Optional[MockDimensionProvider] = None
+    packages: list[MockArrayHolder] = field(factory=list)
+    _parent: object = field(default=None)
+
+    def __attrs_post_init__(self):
+        for p in self.packages:
+            p._parent = self
+
+
+def test_resolve_dims_from_parent():
+    pkg = MockArrayHolder()
+    MockModel(provider=MockDimensionProvider(nlay=2, nrow=3, ncol=4), packages=[pkg])
+    assert pkg.resolve_dims("nodes", "ncpl") == {"nodes": 24, "ncpl": 12}
+
+
+def test_resolve_dims_ignores_parent_without_resolve_dims():
+    pkg = MockArrayHolder(dims={"nodes": 5}, parent=object())
+    assert pkg.resolve_dims("nodes") == {"nodes": 5}
+    assert pkg.resolve_dims() == {}
+
+
+def test_validate_dimension_resolution_complete_tree():
+    model = MockModel(
+        provider=MockDimensionProvider(nlay=2, nrow=3, ncol=4),
+        packages=[MockArrayHolder(top=[0.0] * 12, k=[1.0] * 24)],
+    )
+    assert validate_dimension_resolution(model) == []
+
+
+def test_validate_dimension_resolution_missing_provider():
+    model = MockModel(packages=[MockArrayHolder(top=[0.0], k=[1.0])])
+    errors = validate_dimension_resolution(model)
+    assert len(errors) == 2
+    assert "MockArrayHolder.top needs dimension 'ncpl'" in errors[0]
+    assert "MockArrayHolder.k needs dimension 'nodes'" in errors[1]
+
+
+def test_validate_dimension_resolution_skips_unset_arrays():
+    model = MockModel(packages=[MockArrayHolder(k=[])])
+    assert validate_dimension_resolution(model) == []
+
+
+def test_validate_dimension_resolution_own_dims():
+    pkg = MockArrayHolder(k=[1.0] * 5, dims={"nodes": 5})
+    assert validate_dimension_resolution(MockModel(packages=[pkg])) == []
+
+
+def test_validate_dimension_resolution_conflict():
+    pkg = MockArrayHolder(k=[1.0] * 5, dims={"nodes": 5})
+    model = MockModel(provider=MockDimensionProvider(nlay=1, nrow=2, ncol=2), packages=[pkg])
+    errors = validate_dimension_resolution(model)
+    assert len(errors) == 1
+    assert "nodes=5 in its own dims" in errors[0]
+
+
+def test_validate_dimension_resolution_from_child_does_not_climb():
+    pkg = MockArrayHolder(k=[1.0] * 4)
+    sibling = MockArrayHolder(top=[0.0])
+    MockModel(provider=MockDimensionProvider(nlay=1, nrow=2, ncol=2), packages=[pkg, sibling])
+    # validating one package resolves through the parent but doesn't
+    # descend back into the parent's other children
+    assert validate_dimension_resolution(pkg) == []

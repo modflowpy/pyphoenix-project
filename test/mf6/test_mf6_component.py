@@ -620,6 +620,21 @@ def test_filename_collision_case_insensitive(function_tmpdir):
         sim.write()
 
 
+def test_unresolvable_dimensions_raise_on_write(function_tmpdir):
+    """A model with no grid package can't size its arrays: writing the
+    simulation checks every array's shape first, and writes nothing."""
+    sim = Simulation(
+        name="sim",
+        workspace=function_tmpdir,
+        tdis=Tdis(nper=1),
+        models=[Gwf(name="model", npf=Npf(k=[1.0, 2.0]), ic=Ic())],
+        solutiongroup=[Ims()],
+    )
+    with pytest.raises(ValueError, match="Unresolvable dimensions: .*Npf.*'nodes'"):
+        sim.write()
+    assert not (function_tmpdir / "mfsim.nam").exists()
+
+
 @pytest.mark.parametrize(
     "kper, match",
     [
