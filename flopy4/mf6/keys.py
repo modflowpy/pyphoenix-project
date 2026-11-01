@@ -1,9 +1,12 @@
 """Checking a package's string keys when it's written (see
 `flopy4.mf6.spec.string`): a ``pk`` is unique within its ``scope``, and an
-``fk`` names a row that exists, in the same package (MVR's ``pname1``, a
-``packages`` row) or in a name file (MVR's ``mname``, one of the
-simulation's models; its ``pname``, a package of the model ``mname``
-names). Comparison is case-insensitive, as MF6's.
+``fk`` names a row that exists. An fk's path is ``[component.]block.column``:
+a list of the package's own (MVR's ``pname1``, a ``packages`` row), or of
+another component's, the nearest ancestor of that DFN (``sim-nam``, the
+simulation) or the row the key's scope names (MVR's ``pname`` and
+``mname``, a package of the model ``mname`` names). A name file's lists
+are its children, each row's key its name. Comparison is
+case-insensitive, as MF6's.
 
 Integer keys aren't checked yet: some take 0 for none (LAK's ``lakeout``,
 UZF's ``ivertcon``)."""
@@ -18,17 +21,17 @@ from flopy4.mf6.item_table import ItemTable
 
 def key_errors(pkg: Any) -> list[str]:
     """What's wrong with the package's string keys."""
-    fields = attrs.fields(type(pkg))
     errors: list[str] = []
-    for f in fields:
+    for f in attrs.fields(type(pkg)):
         item = item_list_type(f.type)
         if item is None or isinstance(item, tuple):
             continue
+        columns = {col.name: col for col in item.fields()}
         for kper, rows in _groups(getattr(pkg, f.name)):
             where = f"{type(pkg).__name__}.{f.name.lstrip('_')}"
             if kper is not None:
                 where += f": period {kper}"
-            for col in item.fields():
+            for col in columns.values():
                 if col.metadata.get("type") != "string":
                     continue
                 scope = col.metadata.get("scope")
@@ -36,7 +39,8 @@ def key_errors(pkg: Any) -> list[str]:
                 if col.metadata.get("pk"):
                     errors += _duplicates(where, col.name, scope, keys)
                 if fk := col.metadata.get("fk"):
-                    errors += _dangling(pkg, fields, where, col.name, scope, fk, keys)
+                    scope_fk = columns[scope].metadata.get("fk") if scope else None
+                    errors += _dangling(pkg, where, col.name, scope, scope_fk, fk, keys)
     return errors
 
 
@@ -50,75 +54,76 @@ def _duplicates(where, name, scope, keys) -> list[str]:
     return errors
 
 
-def _dangling(pkg, fields, where, name, scope, fk, keys) -> list[str]:
-    """Keys naming no row of the target the path ``fk`` names: a list of
-    this package's (``packages.pname``) or a name file's
-    (``sim-nam.models.mname``, ``gwf-nam.packages.pname``)."""
-    errors = []
+def _dangling(pkg, where, name, scope, scope_fk, fk, keys) -> list[str]:
+    """Keys naming no row of the list the path ``fk`` names. In the
+    package's own list, a key is matched with its scope; in another
+    component's, the scope picks the component (``scope_fk`` the list
+    it's a row of), and a key whose scope names none is skipped: the
+    scope's own check reports it."""
     *component, block, column = fk.split(".")
-    if not component:
-        target = next((g for g in fields if g.metadata.get("block") == block), None)
-        item = item_list_type(target.type) if target else None
-        if item is None or isinstance(item, tuple):
-            return []
-        pk = next(g for g in item.fields() if g.name == column)
-        target_scope = pk.metadata.get("scope")
-        allowed = {
-            _norm(k)
-            for _, rows in _groups(getattr(pkg, target.name))  # type: ignore[union-attr]
-            for k in zip(_values(rows, target_scope), _values(rows, column))
-        }
-        for key in keys:
-            if key[1] is not None and _norm(key) not in allowed:
-                errors.append(f"{where}: {_describe(name, scope, key)} isn't in {block}")
-        return errors
-    names: dict = {}  # by model, as a model's packages are looked up once
+    errors = []
     for key in keys:
         if key[1] is None:
             continue
-        model = key[0].lower() if isinstance(key[0], str) else None
-        if model not in names:
-            names[model] = _names(pkg, component[0], model)
-        if names[model] is not None and key[1].lower() not in names[model]:
-            missing = _missing(pkg, component[0], key[0])
-            errors.append(f"{where}: {_describe(name, scope, key)} {missing}")
+        if not component:
+            owner, found = pkg, _norm(key)
+        else:
+            owner = _ancestor(pkg, component[0]) if key[0] is None else _row(pkg, scope_fk, key[0])
+            found = (None, key[1].lower())
+        if owner is not None and found not in _keys(owner, block, column):
+            missing = block if owner is pkg else f"{block} of {_label(owner)}"
+            errors.append(f"{where}: {_describe(name, scope, key)} isn't in {missing}")
     return errors
 
 
-def _names(pkg, component: str, model: Optional[str]) -> Optional[set[str]]:
-    """The names a name file's list holds, lowercase: the simulation's
-    models (``sim-nam``) or a model's packages (``gwf-nam``), the model
-    ``model`` names or else the package's own. None if not known, as
-    for a package outside a simulation."""
-    from flopy4.mf6.model import Model
-    from flopy4.mf6.simulation import Simulation
+def _keys(owner, block: str, column: str) -> set[tuple]:
+    """The keys of the component's ``block`` rows, by ``column``, with
+    their scope."""
+    keys = {(None, n) for n in _rows(owner, block)}
+    for f in attrs.fields(type(owner)):
+        item = item_list_type(f.type)
+        if f.metadata.get("block") != block or item is None or isinstance(item, tuple):
+            continue
+        pk = next(g for g in item.fields() if g.name == column)
+        scope = pk.metadata.get("scope")
+        for _, rows in _groups(getattr(owner, f.name)):
+            keys |= {_norm(k) for k in zip(_values(rows, scope), _values(rows, column))}
+    return keys
 
-    sim = _ancestor(pkg, Simulation)
-    if component == "sim-nam":
-        return None if sim is None else {m.name.lower() for m in sim.models}
-    if not component.endswith("-nam"):
+
+def _rows(owner, block: str) -> dict[str, Any]:
+    """The component's name-file ``block`` rows, its children there, by
+    lowercase name (a row's pk)."""
+    rows = {}
+    for f in attrs.fields(type(owner)):
+        if f.metadata.get("block") == block and f.metadata.get("row"):
+            value = getattr(owner, f.name)
+            for c in value if isinstance(value, list) else [] if value is None else [value]:
+                rows[c.name.lower()] = c
+    return rows
+
+
+def _row(pkg, fk: Optional[str], key: str) -> Any:
+    """The child the key names in the name-file list the path ``fk``
+    names (MVR's ``mname``, a model), or None."""
+    if fk is None:
         return None
-    if model is None:
-        owner = _ancestor(pkg, Model)
-    else:
-        models = sim.models if sim is not None else []
-        owner = next((m for m in models if m.name.lower() == model.lower()), None)
-    return None if owner is None else {n.lower() for n in owner._children}
+    *component, block, _ = fk.split(".")
+    owner = _ancestor(pkg, component[0]) if component else pkg
+    return None if owner is None else _rows(owner, block).get(key.lower())
 
 
-def _missing(pkg, component: str, model: Optional[str]) -> str:
-    if component == "sim-nam":
-        return "isn't a model in the simulation"
-    from flopy4.mf6.model import Model
-
-    owner = model or getattr(_ancestor(pkg, Model), "name", None)
-    return f"isn't a package of model {owner!r}"
-
-
-def _ancestor(component, cls) -> Any:
-    while component is not None and not isinstance(component, cls):
+def _ancestor(component, dfn_name: str) -> Any:
+    """The component's nearest ancestor of the DFN, or None."""
+    component = component._parent
+    while component is not None and getattr(type(component), "dfn_name", None) != dfn_name:
         component = component._parent
     return component
+
+
+def _label(component) -> str:
+    kind = type(component).__name__.lower()
+    return f"{kind} {component.name!r}" if component.name else f"the {kind}"
 
 
 def _groups(value) -> Iterable[tuple[Optional[int], Any]]:

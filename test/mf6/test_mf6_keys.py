@@ -58,7 +58,7 @@ def test_model_mvr_keys():
         (
             [("wel",), ("riv",)],
             [],
-            "Mvr.packages: pname 'riv' isn't a package of model 'flow'",
+            "Mvr.packages: pname 'riv' isn't in packages of gwf 'flow'",
         ),
         (
             [("wel",), ("drn",)],
@@ -117,12 +117,12 @@ def test_exchange_mvr_keys(tmp_path):
         (
             [("c", "wel")],
             [],
-            "Mvr.packages: mname 'c' isn't a model in the simulation",
+            "Mvr.packages: mname 'c' isn't in models of the simulation",
         ),
         (
             [("a", "riv")],
             [],
-            "Mvr.packages: pname 'riv' (mname 'a') isn't a package of model 'a'",
+            "Mvr.packages: pname 'riv' (mname 'a') isn't in packages of gwf 'a'",
         ),
         (
             [("a", "wel"), ("b", "drn")],
