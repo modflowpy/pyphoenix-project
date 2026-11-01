@@ -1,5 +1,5 @@
 import types
-from typing import Optional, Union, get_args, get_origin
+from typing import Any, Optional, Union, get_args, get_origin
 from warnings import warn
 
 import attrs
@@ -13,6 +13,7 @@ from flopy.pakbase import PackageInterface
 from flopy.plot.plotutil import PlotUtilities
 
 from flopy4.attrs_xarray import attrs_to_dataset
+from flopy4.mf6.item import item_list_type
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
 
@@ -108,7 +109,8 @@ class Flopy3Model(ModelInterface):
 
     @property
     def version(self):
-        return ""
+        # flopy3's plot_bc reads boundary cells by mf6's cellid convention
+        return "mf6"
 
     @property
     def solver_tols(self):
@@ -229,6 +231,10 @@ class Flopy3Package(PackageInterface):
             self.__dict__[f"{v}"] = d_fp3
             self._dlist.append(d_fp3)
 
+        if (spd := Flopy3ListData.from_package(self)) is not None:
+            self.__dict__["stress_period_data"] = spd
+            self._dlist.append(spd)
+
     @property
     def name(self):
         # or upper() or title()
@@ -312,7 +318,8 @@ class Flopy3Data(DataInterface):
         self._data = data
         self._leaf_type = leaf_type
 
-    # TODO: how to handle transient data, list input
+    # TODO: lists besides stress period data (packagedata, connectiondata,
+    # ...), which flopy3's advanced-package plotting reads; see Flopy3ListData
     @property
     def data_type(self):
         match self._leaf_type.__name__:
@@ -386,15 +393,280 @@ class Flopy3Data(DataInterface):
         return True
 
 
-class Flopy3ListData(DataListInterface):
+# flopy3 sums a column's values where cells repeat in a period, and
+# averages the rest
+_SUMMED_COLUMNS = frozenset({"cond", "flux"})
+
+
+class Flopy3ListData(DataInterface, DataListInterface):
+    """A package's stress period data as flopy3's transient list, so
+    flopy3's plotting and export see boundary conditions.
+
+    flopy3 reads it as `.array[kper]` (a recarray per period, or None
+    for none: `plot_bc`), `to_array(kper, mask)` (a grid array per
+    column) and `masked_4D_arrays_itr()` (NetCDF export). Periods fill
+    forward as in MF6: one not given repeats the last one given, and one
+    given empty has no entries. Columns are the period item's fields,
+    with array fields (``aux``) spread one per value, named for the
+    package's auxiliary variables where they are. A value given as a
+    time series name is NaN. Columns that aren't numbers (cellids,
+    boundnames) are objects, which flopy3 skips.
+
+    Built by `from_package` for a package with stress period data.
+    """
+
+    def __init__(self, package: "Flopy3Package", nper: int):
+        self._package = package
+        self._nper = nper
+        pkg = package._package
+        item_cls = item_list_type(pkg._period_item_field().type)
+        self._kpers = sorted(pkg.stress_period_data)
+        self._dtype, flat = _flatten(pkg.to_dataframe(), item_cls, pkg)
+        self._data = {}
+        for kper in self._kpers:
+            rows = flat[flat["kper"] == kper].drop(columns="kper") if len(flat) else flat
+            self._data[kper] = _recarray(rows, self._dtype)
+
+    @classmethod
+    def from_package(cls, package: "Flopy3Package") -> "Flopy3ListData | None":
+        """The package's stress period data, or None if it has none, or
+        its rows are of more than one kind (a list of unions)."""
+        pkg = package._package
+        if not getattr(pkg, "stress_period_data", None):
+            return None
+        try:
+            field = pkg._period_item_field()
+        except (AttributeError, ValueError):
+            return None
+        if not isinstance(item_list_type(field.type), type):
+            return None
+        return cls(package, nper=_nper(package))
+
+    @property
+    def name(self):
+        return "stress_period_data"
+
     @property
     def package(self):
-        pass
+        return self._package
 
     @property
+    def model(self):
+        return self._package.parent
+
+    @property
+    def data_type(self):
+        return DataType.transientlist
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    @property
+    def plottable(self):
+        return True
+
+    @property
+    def data(self):
+        """A recarray for each period given (empty for none)."""
+        return dict(self._data)
+
+    @property
+    def array(self):
+        """A recarray for every period, filled forward; None for a
+        period with no entries."""
+        return {
+            kper: (recs if len(recs) else None)
+            for kper in range(self._nper)
+            for recs in [self._period(kper)]
+        }
+
+    def _period(self, kper: int) -> np.recarray:
+        given = [k for k in self._kpers if k <= kper]
+        if not given:
+            return _recarray(None, self._dtype)
+        return self._data[given[-1]]
+
     def to_array(self, kper=0, mask=False):
-        pass
+        """The period's numeric columns as grid arrays, by column name.
+
+        Cells without an entry are 0, or NaN and masked with ``mask``.
+        Returns None if the rows have no ``cellid``."""
+        if "cellid" not in (self._dtype.names or ()):
+            return None
+        shape = self.model.modelgrid.shape
+        recs = self._period(kper)
+        cellids = [c for c in recs["cellid"] if c is not None]
+        keep = np.array([c is not None for c in recs["cellid"]], dtype=bool)
+        ndim = len(shape)
+        idx = tuple(np.array(cellids, dtype=int).reshape(len(cellids), ndim).T)
+        cnt = np.zeros(shape)
+        np.add.at(cnt, idx, 1.0)
+        arrays = {}
+        for name in self._dtype.names:
+            if self._dtype[name].kind == "O":
+                continue
+            arr = np.zeros(shape)
+            np.add.at(arr, idx, recs[name][keep].astype(float))
+            if name not in _SUMMED_COLUMNS:
+                np.divide(arr, cnt, out=arr, where=cnt > 0)
+            if mask:
+                arr[cnt == 0] = np.nan
+                arr = np.ma.masked_where(cnt == 0, arr)
+            arrays[name] = arr
+        return arrays
 
     @property
+    def masked_4D_arrays(self):
+        return dict(self.masked_4D_arrays_itr())
+
     def masked_4D_arrays_itr(self):
-        pass
+        """Each numeric column as an ``(nper, *grid shape)`` array, NaN
+        where a period has no entry."""
+        periods = [self.to_array(kper, mask=True) for kper in range(self._nper)]
+        if not periods or periods[0] is None:
+            return
+        for name in periods[0]:
+            yield name, np.stack([np.ma.filled(p[name], np.nan) for p in periods])
+
+    def plot(
+        self,
+        key=None,
+        names=None,
+        kper=0,
+        filename_base=None,
+        file_extension=None,
+        mflay=None,
+        **kwargs,
+    ):
+        # as flopy3's mf6 lists: nothing to place without cells (OC)
+        if "cellid" not in (self._dtype.names or ()):
+            return None
+        return PlotUtilities._plot_mflist_helper(
+            self,
+            key=key,
+            names=names,
+            kper=kper,
+            filename_base=filename_base,
+            file_extension=file_extension,
+            mflay=mflay,
+            **kwargs,
+        )
+
+    def to_geodataframe(self, gdf=None, kper=0, full_grid=True, shorten_attr=False, **kwargs):
+        """Add the period's columns to a GeoDataFrame of the grid's cells,
+        one per layer, as flopy3's mf6 lists do (`mflist_export` to a
+        shapefile)."""
+        from flopy.export.shapefile_utils import shape_attr_name
+
+        modelgrid = self.model.modelgrid
+        if modelgrid is None:
+            return gdf
+        if gdf is None:
+            gdf = modelgrid.to_geodataframe()
+        data = self.to_array(kper=kper, mask=True)
+        if data is None:
+            return gdf
+        col_names = []
+        for name, arr in data.items():
+            name = (
+                shape_attr_name(name, length=4)
+                if shorten_attr
+                else f"{self._package.name.lower()}_{name}"
+            )
+            if modelgrid.grid_type == "unstructured":
+                gdf[name] = np.ma.filled(arr, np.nan).ravel()
+                col_names.append(name)
+                continue
+            for lay in range(modelgrid.nlay):
+                aname = f"{name}{lay}{kper}" if shorten_attr else f"{name}_{lay}_{kper}"
+                gdf[aname] = np.ma.filled(arr[lay], np.nan).ravel()
+                col_names.append(aname)
+        if not full_grid:
+            gdf = gdf.dropna(subset=col_names, how="all")
+            gdf = gdf.dropna(axis="columns", how="all")
+        return gdf
+
+
+def _nper(package: "Flopy3Package") -> int:
+    """The number of stress periods: from the model time, else the
+    package's dimensions, else one past the last period given."""
+    model = package.parent
+    for time in (package._time, getattr(model, "modeltime", None)):
+        if time is not None:
+            return int(time.nper)
+    pkg = package._package
+    if nper := pkg.resolve_dims("nper").get("nper"):
+        return int(nper)
+    return max(pkg.stress_period_data) + 1
+
+
+def _flatten(df, item_cls, pkg) -> "tuple[np.dtype, Any]":
+    """Spread array columns one per value, and settle each column's
+    dtype over every period: numeric if every value is, else objects.
+    Cellids stay tuples (objects)."""
+    import pandas as pd
+
+    fields = {f.name: f for f in attrs.fields(item_cls)}
+    out = pd.DataFrame({"kper": df["kper"]}) if len(df) else pd.DataFrame({"kper": []})
+    dtypes: list[tuple[str, type]] = []
+    for col in df.columns:
+        if col == "kper":
+            continue
+        field = fields.get(col)
+        kind = field.metadata.get("type") if field is not None else None
+        values = df[col]
+        if kind == "cellid":
+            out[col] = values
+            dtypes.append((col, object))
+            continue
+        if kind == "array" or values.map(lambda v: isinstance(v, (tuple, list))).any():
+            width = max((len(v) for v in values if isinstance(v, (tuple, list))), default=0)
+            names = _spread_names(col, width, field, pkg)
+            for i, name in enumerate(names):
+                spread = values.map(
+                    lambda v, i=i: v[i] if isinstance(v, (tuple, list)) and i < len(v) else None
+                )
+                dtypes.append((name, _settle(out, name, spread, field)))
+            continue
+        dtypes.append((col, _settle(out, col, values, field)))
+    return np.dtype(dtypes), out
+
+
+def _spread_names(col, width, field, pkg) -> list[str]:
+    """Names for an array column's values: the auxiliary variables'
+    for an ``auxiliary``-shaped field, else the column's with an index."""
+    shape = tuple(field.metadata.get("shape") or ()) if field is not None else ()
+    aux = getattr(pkg, "auxiliary", None)
+    if shape == ("auxiliary",) and aux is not None and len(aux) == width:
+        return [str(a) for a in aux]
+    return [f"{col}{i}" for i in range(width)]
+
+
+def _settle(out, name, values, field) -> type:
+    """Set `out[name]` to `values`, numeric if they all are, and return
+    the column's dtype. A field that may hold time series names is float,
+    NaN where one does."""
+    import pandas as pd
+
+    time_series = field is not None and field.metadata.get("time_series")
+    try:
+        numeric = pd.to_numeric(values, errors="coerce" if time_series else "raise")
+    except (TypeError, ValueError):
+        out[name] = values.astype(object)
+        return object
+    if numeric.dtype.kind not in "iuf":
+        out[name] = values.astype(object)
+        return object
+    out[name] = numeric
+    return numeric.dtype.type
+
+
+def _recarray(rows, dtype: np.dtype) -> np.recarray:
+    """A period's rows as a recarray of the list's dtype."""
+    if rows is None or not len(rows):
+        return np.recarray((0,), dtype=dtype)
+    recs = np.recarray((len(rows),), dtype=dtype)
+    for name in dtype.names or ():
+        recs[name] = rows[name].to_numpy()
+    return recs

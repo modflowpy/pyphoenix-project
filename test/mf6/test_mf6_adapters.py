@@ -30,7 +30,7 @@ def quickstart_model():
     npf = Npf(parent=gwf, save_specific_discharge=True)
     chd = Chd(
         parent=gwf,
-        head={0: {(0, 0, 0): 1.0, (0, 9, 9): 0.0}},
+        stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]]},
     )
     oc = Oc(
         parent=gwf,
@@ -330,7 +330,82 @@ def test_flopy3_grid2(tmp_path):
     gwf3.plot(filename_base=bpth)
 
 
-@pytest.mark.skip(reason="refactor")
+def test_flopy3_list_data(tmp_path):
+    import matplotlib
+
+    matplotlib.use("Agg")
+    from flopy.datbase import DataListInterface, DataType
+    from flopy.export.utils import mflist_export, package_export
+    from flopy.plot import PlotMapView
+
+    S = Chd.StressPeriodData
+    dims = {"nlay": 2, "nrow": 3, "ncol": 4, "nper": 4}
+    chd = Chd(
+        name="c",
+        auxiliary=["conc"],
+        boundnames=True,
+        dims=dims,
+        stress_period_data={
+            # a repeated cell, averaged; period 1 repeats period 0
+            0: [
+                S(cellid=(0, 1, 2), head=1.0, aux=(5.0,), boundname="a"),
+                S(cellid=(0, 1, 2), head=3.0, aux=(7.0,)),
+                S(cellid=(1, 0, 0), head=2.0, aux=(6.0,)),
+            ],
+            2: [],
+            3: [S(cellid=(1, 2, 3), head="tsname", aux=(1.0,))],
+        },
+    )
+    gwf = Gwf(dis=Dis(nlay=2, nrow=3, ncol=4), chd=[chd], dims=dims)
+    time = ModelTime(perlen=[1.0] * 4, nstp=[1] * 4, tsmult=[1.0] * 4)
+    gwf3 = Flopy3Model(gwf, modeltime=time)
+    assert gwf3.version == "mf6"
+    chd3 = next(p for p in gwf3.packagelist if p.package_type == "CHD")
+
+    spd = chd3.stress_period_data
+    assert isinstance(spd, DataListInterface)
+    assert spd in chd3.data_list
+    assert spd.data_type == DataType.transientlist
+    assert spd.package is chd3 and spd.model is gwf3
+    # aux spread and named; a time series name is NaN
+    assert spd.dtype.names == ("cellid", "head", "conc", "boundname")
+    assert spd.dtype["head"] == np.float64
+
+    # recarrays fill forward; None for an empty period
+    recs = spd.array
+    assert [None if r is None else len(r) for r in recs.values()] == [3, 3, None, 1]
+    assert recs[1]["cellid"][2] == (1, 0, 0)
+    assert np.isnan(recs[3]["head"][0])
+    assert set(spd.data) == {0, 2, 3}
+
+    arrays = spd.to_array(1, mask=True)
+    assert set(arrays) == {"head", "conc"}
+    assert arrays["head"].shape == (2, 3, 4)
+    assert arrays["head"][0, 1, 2] == 2.0
+    assert arrays["conc"][0, 1, 2] == 6.0
+    assert arrays["conc"].count() == 2
+    assert spd.to_array(2, mask=True)["conc"].count() == 0
+    assert spd.to_array(0)["conc"][0, 0, 0] == 0.0
+
+    m4 = spd.masked_4D_arrays
+    assert m4["conc"].shape == (4, 2, 3, 4)
+    assert np.isnan(m4["conc"][2]).all()
+    assert m4["conc"][3, 1, 2, 3] == 1.0
+
+    # flopy3 export and plotting
+    assert set(package_export({}, chd3)) == {"c_head", "c_conc"}
+    gdf = spd.to_geodataframe(kper=0, full_grid=False)
+    assert gdf["c_conc_0_0"].dropna().tolist() == [6.0]
+    shp = tmp_path / "chd.shp"
+    mflist_export(shp, spd, kper=0)
+    assert shp.exists()
+    assert PlotMapView(model=gwf3).plot_bc(package=chd3, kper=0) is not None
+    assert PlotMapView(model=gwf3).plot_bc(package=chd3, kper=2) is None
+    chd3.plot(kper=0)
+    chd3.plot(key="conc", kper=0)
+
+
+@pytest.mark.skip(reason="Flopy3Model/Flopy3Package have no to_geodataframe")
 def test_flopy3_export(tmp_path):
     # see flopy test_export.py test_export_output()
     (Path(tmp_path) / "flopy3_model" / "shape").mkdir(parents=True, exist_ok=True)
