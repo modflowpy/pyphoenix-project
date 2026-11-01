@@ -56,6 +56,7 @@ optional = [
     "pyproj>=3.7.2,<4",
     "networkx>=3.5,<4",
     "pyshp>=3.0.2.post1,<4",
+    "geopandas>=1.0,<2",
 ]
 dev = ["flopy4[optional,lint,test,build]"]
 lint = ["codespell[toml] >=2.2.2", "ruff", "pre-commit>=4.0.1,<5", "mypy"]

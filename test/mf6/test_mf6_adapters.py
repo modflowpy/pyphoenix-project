@@ -26,11 +26,11 @@ def quickstart_model():
     sim = Simulation(name=name, tdis=tdis, solutiongroup=[ims])
     dis = Dis(nrow=10, ncol=10)
     gwf = Gwf(parent=sim, name=name, save_flows=True, dis=dis)
-    ic = Ic(parent=gwf)
+    ic = Ic(parent=gwf, strt=5.0)
     npf = Npf(parent=gwf, save_specific_discharge=True)
     chd = Chd(
         parent=gwf,
-        head={0: {(0, 0, 0): 1.0, (0, 9, 9): 0.0}},
+        stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]]},
     )
     oc = Oc(
         parent=gwf,
@@ -106,11 +106,11 @@ def test_flopy3_model(tmp_path):
     assert gwf3.get_package_list() == pnames
     for i, p in enumerate(gwf3.packagelist):
         assert isinstance(p, PackageInterface)
-        assert p.name == pnames[i]
+        assert p.name == [pnames[i]]
         assert p.package_type == ptypes[i]
         assert p.parent is gwf3
         # TODO oc?
-        if p.name == "north" or p.name == "oc":
+        if p.name[0] in ("north", "oc"):
             assert p.has_stress_period_data
         else:
             assert not p.has_stress_period_data
@@ -126,9 +126,32 @@ def test_flopy3_model(tmp_path):
             print(f"data_type: {d.data_type}")
             print(f"array: {d.array}\n")
 
+    # by name, else by type, ignoring case
+    assert gwf3.get_package("NORTH") is gwf3.packagelist[1]
+    assert gwf3.get_package("chd") is gwf3.packagelist[1]
+    assert gwf3.get_package("DIS") is gwf3.packagelist[0]
+    assert gwf3.get_package("wel") is None
+    assert len(gwf3.get_package()) == len(pnames)
+
     bpth = Path(tmp_path) / "flopy3_model" / "flopy3_model"
     (Path(tmp_path) / "flopy3_model").mkdir(parents=True, exist_ok=True)
     gwf3.plot(filename_base=bpth)
+
+
+def test_flopy3_model_grid():
+    from flopy4.mf6.olf import Dis2d, Olf
+
+    # a grid from whichever discretization the model has
+    olf3 = Flopy3Model(Olf(dis2d=Dis2d(nrow=2, ncol=3)))
+    assert isinstance(olf3.modelgrid, StructuredGrid)
+    assert olf3.modelgrid.shape == (1, 2, 3)
+
+    # none without one
+    assert Flopy3Model(Gwf()).modelgrid is None
+
+    # crs given overrides the discretization's
+    gwf3 = Flopy3Model(Gwf(dis=Dis(nrow=2, ncol=3)), crs="EPSG:3070")
+    assert gwf3.modelgrid.crs.to_epsg() == 3070
 
 
 def test_flopy3_package(tmp_path):
@@ -218,11 +241,11 @@ def test_flopy3_package(tmp_path):
     assert np.all(np.equal(gwf3.modelgrid.botm, grid.botm))
 
     # model packages
-    assert dis3.name == "dis"
+    assert dis3.name == ["dis"]
     assert dis3.package_type == "DIS"
     # unattached, so unnamed: type and name come from the class
     npf3 = Flopy3Package(package=Npf(dims=dims), modelgrid=gwf3.modelgrid)
-    assert (npf3.name, npf3.package_type) == ("npf", "NPF")
+    assert (npf3.name, npf3.package_type) == (["npf"], "NPF")
     assert not dis3.has_stress_period_data
 
     # package data
@@ -330,7 +353,81 @@ def test_flopy3_grid2(tmp_path):
     gwf3.plot(filename_base=bpth)
 
 
-@pytest.mark.skip(reason="refactor")
+def test_flopy3_list_data(tmp_path):
+    import matplotlib
+
+    matplotlib.use("Agg")
+    from flopy.datbase import DataListInterface, DataType
+    from flopy.export.utils import mflist_export, package_export
+    from flopy.plot import PlotMapView
+
+    S = Chd.StressPeriodData
+    dims = {"nlay": 2, "nrow": 3, "ncol": 4, "nper": 4}
+    chd = Chd(
+        name="c",
+        auxiliary=["conc"],
+        boundnames=True,
+        dims=dims,
+        stress_period_data={
+            # a repeated cell, averaged; period 1 repeats period 0
+            0: [
+                S(cellid=(0, 1, 2), head=1.0, aux=(5.0,), boundname="a"),
+                S(cellid=(0, 1, 2), head=3.0, aux=(7.0,)),
+                S(cellid=(1, 0, 0), head=2.0, aux=(6.0,)),
+            ],
+            2: [],
+            3: [S(cellid=(1, 2, 3), head="tsname", aux=(1.0,))],
+        },
+    )
+    gwf = Gwf(dis=Dis(nlay=2, nrow=3, ncol=4), chd=[chd], dims=dims)
+    time = ModelTime(perlen=[1.0] * 4, nstp=[1] * 4, tsmult=[1.0] * 4)
+    gwf3 = Flopy3Model(gwf, modeltime=time)
+    assert gwf3.version == "mf6"
+    chd3 = next(p for p in gwf3.packagelist if p.package_type == "CHD")
+
+    spd = chd3.stress_period_data
+    assert isinstance(spd, DataListInterface)
+    assert spd in chd3.data_list
+    assert spd.data_type == DataType.transientlist
+    assert spd.package is chd3 and spd.model is gwf3
+    # aux spread and named; a time series name is NaN
+    assert spd.dtype.names == ("cellid", "head", "conc", "boundname")
+    assert spd.dtype["head"] == np.float64
+
+    # recarrays fill forward; None for an empty period
+    recs = spd.array
+    assert [None if r is None else len(r) for r in recs.values()] == [3, 3, None, 1]
+    assert recs[1]["cellid"][2] == (1, 0, 0)
+    assert np.isnan(recs[3]["head"][0])
+    assert set(spd.data) == {0, 2, 3}
+
+    arrays = spd.to_array(1, mask=True)
+    assert set(arrays) == {"head", "conc"}
+    assert arrays["head"].shape == (2, 3, 4)
+    assert arrays["head"][0, 1, 2] == 2.0
+    assert arrays["conc"][0, 1, 2] == 6.0
+    assert arrays["conc"].count() == 2
+    assert spd.to_array(2, mask=True)["conc"].count() == 0
+    assert spd.to_array(0)["conc"][0, 0, 0] == 0.0
+
+    m4 = spd.masked_4D_arrays
+    assert m4["conc"].shape == (4, 2, 3, 4)
+    assert np.isnan(m4["conc"][2]).all()
+    assert m4["conc"][3, 1, 2, 3] == 1.0
+
+    # flopy3 export and plotting
+    assert set(package_export({}, chd3)) == {"c_head", "c_conc"}
+    gdf = spd.to_geodataframe(kper=0, full_grid=False)
+    assert gdf["c_conc_0_0"].dropna().tolist() == [6.0]
+    shp = tmp_path / "chd.shp"
+    mflist_export(shp, spd, kper=0)
+    assert shp.exists()
+    assert PlotMapView(model=gwf3).plot_bc(package=chd3, kper=0) is not None
+    assert PlotMapView(model=gwf3).plot_bc(package=chd3, kper=2) is None
+    chd3.plot(kper=0)
+    chd3.plot(key="conc", kper=0)
+
+
 def test_flopy3_export(tmp_path):
     # see flopy test_export.py test_export_output()
     (Path(tmp_path) / "flopy3_model" / "shape").mkdir(parents=True, exist_ok=True)
@@ -347,10 +444,26 @@ def test_flopy3_export(tmp_path):
     # model shapefile export
     shp_mpth = Path(tmp_path / "flopy3_model" / "shape" / "flopy3_model.shp")
     gwf3.export(f=shp_mpth)
+    assert shp_mpth.exists()
+    gdf = gwf3.to_geodataframe()
+    assert gdf.crs.to_epsg() == 3070
+    assert {"top", "botm", "strt", "chd0_head_0_0"} <= set(gdf.columns)
+    assert gdf["chd0_head_0_0"].dropna().tolist() == [1.0, 0.0]
+    # constants, given or defaults, filled to the grid
+    assert gdf["strt"].tolist() == [5.0] * 100
+    assert gdf["k"].tolist() == [1.0] * 100
+    assert gdf["icelltype"].tolist() == [0] * 100
+    assert "delr" not in gdf  # not a value per cell
+    assert "chd0_boundname_0_0" not in gdf  # not a number
+    assert "chd0_head_0_0" not in gwf3.to_geodataframe(package_names=["ic"])
 
     # package shapefile export
     shp_ppth = Path(tmp_path / "flopy3_package" / "shape" / "flopy3_package.shp")
     dis3.export(f=shp_ppth)
+    assert shp_ppth.exists()
+    chd3 = gwf3.get_package("chd")
+    assert len(chd3.to_geodataframe(full_grid=False)) == 2
+    assert dis3.to_geodataframe()["top"].tolist() == [1.0] * 100
 
     # model netcdf export
     nc_mpth = Path(tmp_path / "flopy3_model" / "netcdf" / "flopy3_model.nc")
