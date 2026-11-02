@@ -1273,7 +1273,7 @@ def test_lak_outlet_no_lake_round_trip(tmp_path, lakeout):
     assert col.tolist() == [FILL_INT64 if o is None else o for o in lakeout]
     file = [0 if o is None else o + 1 for o in lakeout]
     raw = loads(dumps(unstructure_component(lak)))
-    assert [r[2] for r in raw["OUTLETS"]] == file
+    assert [r[2] for r in raw["OUTLETS"]] == [str(o) for o in file]
 
     path = tmp_path / "m.lak"
     path.write_text(dumps(unstructure_component(lak)))
