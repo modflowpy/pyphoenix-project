@@ -276,6 +276,7 @@ def _item_columns(
                 allow_zero=getattr(f, "allow_zero", False),
                 index=col.is_index,
                 signed=f.index == "signed",
+                fk=f.fk.path if getattr(f, "fk", None) and dfn_type == "integer" else None,
                 optional=optional or name in counted_by,
                 time_series=ts,
             )
@@ -284,7 +285,14 @@ def _item_columns(
         elif col.is_index:
             fk = f.fk.path if getattr(f, "fk", None) else None
             pk = not fk and bool(getattr(f, "pk", False))
-            item = filters.feature_id_column(name, fk=fk, pk=pk, optional=optional, time_series=ts)
+            item = filters.feature_id_column(
+                name,
+                fk=fk,
+                pk=pk,
+                allow_zero=getattr(f, "allow_zero", False),
+                optional=optional,
+                time_series=ts,
+            )
         elif _is_label(col, columns):
             meta = {"empty_is_none": True, **filters.string_key(f)}
             item = filters.attr_column(name, "str", "string", meta, optional=True, when=when)

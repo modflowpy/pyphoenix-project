@@ -69,6 +69,12 @@ def _dtype(f: attrs.Attribute) -> type | None:
     return _DTYPES.get(number_kind(f))  # type: ignore[arg-type]
 
 
+def _no_row(f: attrs.Attribute) -> bool:
+    """Whether the field is an index fk that may ``allow_zero``: None for
+    no row, `FILL_INT64` in a column, as a cellid's no cell."""
+    return bool(f.metadata.get("allow_zero")) and f.metadata.get("type") == "integer"
+
+
 def _typed(f: attrs.Attribute, values: list, width: int | None) -> np.ndarray | None:
     """A field's values as a typed column (``width`` wide for an array or
     cellid, if given), or None if they aren't all numbers of its type."""
@@ -101,6 +107,8 @@ def _typed(f: attrs.Attribute, values: list, width: int | None) -> np.ndarray | 
     else:
         if n == 0:
             return np.empty(0, dtype)
+        if _no_row(f):
+            values = [FILL_INT64 if v is None else v for v in values]
         arr = np.array(values)
         if arr.ndim != 1:
             return None
@@ -122,6 +130,8 @@ def _fit(f: attrs.Attribute, values: list, width: int | None = None) -> np.ndarr
 def _column_of(f: attrs.Attribute, values: list) -> np.ndarray | None:
     """A field's values as a column, or None if all are the default."""
     default = _default(f)
+    if _no_row(f) and f.default is attrs.NOTHING:
+        return _fit(f, values)  # None is no row, not a default
     if all(_is_default(v, default) for v in values):
         return None
     return _fit(f, values)
@@ -132,7 +142,8 @@ def _get(f: attrs.Attribute, col: np.ndarray, i: int) -> Any:
     if col.dtype == object:
         return col[i]
     if col.ndim == 1:
-        return col[i].item()
+        v = col[i].item()
+        return None if v == FILL_INT64 and _no_row(f) else v
     row = col[i]
     if row.size and row[0] == FILL_INT64 and is_cellid(f):
         return None
@@ -142,7 +153,10 @@ def _get(f: attrs.Attribute, col: np.ndarray, i: int) -> Any:
 def _values(f: attrs.Attribute, col: np.ndarray) -> list:
     """A field's column's values, as `_get` gives each."""
     if col.ndim == 1:
-        return col.tolist()
+        values = col.tolist()
+        if _no_row(f):
+            values = [None if v == FILL_INT64 else v for v in values]
+        return values
     if not col.shape[1]:
         return [()] * len(col)
     rows: list = list(zip(*col.T.tolist()))  # faster than per row
@@ -384,6 +398,8 @@ class ItemTable(MutableSequence):
                 return None
             if is_cellid(f):
                 col = np.where(col == FILL_INT64, 0, col + 1)
+            elif _no_row(f):
+                col = np.where(col == FILL_INT64, 0, col + 1)
             elif number_kind(f) == "index":
                 col = col + 1
             if col.ndim == 1:
@@ -536,7 +552,10 @@ def _column(f: attrs.Attribute, took: tuple, values: np.ndarray) -> np.ndarray |
         return cell
     kind = number_kind(f)
     if kind == "index":
-        return values.astype(np.int64) - 1
+        index = values.astype(np.int64) - 1
+        if _no_row(f):
+            index[index == -1] = FILL_INT64
+        return index
     if kind == "int":
         return values.astype(np.int64)
     if kind in ("float", "series"):

@@ -970,17 +970,25 @@ def feature_id_column(
     *,
     fk: str | None = None,
     pk: bool = False,
+    allow_zero: bool = False,
     optional: bool = False,
     time_series: bool = False,
 ) -> ItemColumn:
+    """A 1-based index column, maybe a key: a ``pk``, or an ``fk``, which
+    may ``allow_zero`` for no row (LAK's ``lakeout``)."""
     meta: dict = {"index": True}
     if fk:
         meta["fk"] = fk
+        if allow_zero:
+            meta["allow_zero"] = True
     elif pk:
         meta["pk"] = True
+    py_type = "int"
+    if fk and allow_zero and not optional:
+        py_type = "Optional[int]"  # None for no row, as cellid_column's
     return attr_column(
         name,
-        "int",
+        py_type,
         "integer",
         meta,
         optional=optional,
@@ -1023,6 +1031,7 @@ def array_column(
     allow_zero: bool = False,
     index: bool = False,
     signed: bool = False,
+    fk: str | None = None,
     optional: bool = False,
     time_series: bool = False,
 ) -> ItemColumn:
@@ -1057,6 +1066,8 @@ def array_column(
         meta.update(_cellid_meta(model, allow_zero))
     elif index or signed:
         meta["index"] = "signed" if signed else True
+    if fk:
+        meta["fk"] = fk
     meta["shape"] = (shape,)
     return attr_column(
         name, py_type, "array", meta, optional=optional, time_series=time_series, default="()"

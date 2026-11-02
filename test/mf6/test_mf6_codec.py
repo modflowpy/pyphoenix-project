@@ -1098,12 +1098,12 @@ def test_uzf_round_trip():
     uzf = Uzf(
         packagedata=[
             (0, (0,), 1, 1, 0.001, 1.0, 0.05, 0.25, 0.05, 4.0),
-            (1, (1,), 0, -1, 0.001, 1.0, 0.05, 0.25, 0.05, 4.0),
+            (1, (1,), 0, None, 0.001, 1.0, 0.05, 0.25, 0.05, 4.0),
         ],
         stress_period_data={0: [(0, 0.01, 0.001, 2.25, 0.05, 0.0, 0.0, 0.0)]},
     )
     raw = loads(dumps(unstructure_component(uzf)))
-    # ivertcon 1 -> 2; -1 (no underlying cell) -> 0
+    # ivertcon 1 -> 2; None (no underlying cell) -> 0
     assert [r[3] for r in raw["PACKAGEDATA"]] == [2, 0]
     uzf2 = structure_component(raw, Uzf, context=LoadContext(dims={"nodes": 2}))
     assert uzf2.packagedata == uzf.packagedata
@@ -1205,6 +1205,61 @@ def test_sfr_all_unconnected_reaches_round_trip():
     context = LoadContext(dims={"nlay": 1, "nrow": 1, "ncol": 1})
     sfr2 = structure_component(raw, Sfr, context=context)
     assert sfr2.packagedata == sfr.packagedata
+
+
+@pytest.mark.parametrize("lakeout", [[1, None], [None, None]])
+def test_lak_outlet_no_lake_round_trip(tmp_path, lakeout):
+    """An outlet to no lake is None, 0 in the file, as a cellid's no cell,
+    and FILL_INT64 in its table's column, including when no outlet has a
+    lake (still a column: None is no row, not a default)."""
+    from flopy4.mf6.constants import FILL_INT64
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.gwf import Lak
+
+    def lak_(lakeout):
+        return Lak(
+            nlakes=2,
+            noutlets=2,
+            packagedata=[(0, 1.0, 1), (1, 1.0, 1)],
+            outlets=[(i, 0, o, "SPECIFIED", 0.0, 0.0, 0.0, 0.0) for i, o in enumerate(lakeout)],
+        )
+
+    lak = lak_(lakeout)
+    assert [o.lakeout for o in lak.outlets] == lakeout
+    col = lak.outlets.columns["lakeout"]
+    assert col.tolist() == [FILL_INT64 if o is None else o for o in lakeout]
+    file = [0 if o is None else o + 1 for o in lakeout]
+    raw = loads(dumps(unstructure_component(lak)))
+    assert [r[2] for r in raw["OUTLETS"]] == file
+
+    path = tmp_path / "m.lak"
+    path.write_text(dumps(unstructure_component(lak)))
+    lak2 = Lak.load(path, context=LoadContext(workspace=tmp_path))
+    assert [o.lakeout for o in lak2.outlets] == lakeout
+    assert lak2.outlets == lak.outlets
+
+
+@pytest.mark.parametrize("ivertcon", [[1, None], [None, None]])
+def test_uzf_no_ivertcon_tokens(tmp_path, ivertcon):
+    """An all-numbers table's tokens (`ItemTable.tokens`) write no row as
+    0, including when no row has one (still a column), and reads 0 as None."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.gwf import Uzf
+
+    uzf = Uzf(
+        packagedata=[
+            (i, (i,), 1, v, 0.001, 1.0, 0.05, 0.25, 0.05, 4.0) for i, v in enumerate(ivertcon)
+        ],
+    )
+    assert uzf.packagedata.columns["ivertcon"].dtype == np.int64
+    tokens = uzf.packagedata.tokens()
+    assert tokens is not None
+    assert [r[3] for r in tokens] == [0 if v is None else v + 1 for v in ivertcon]
+    assert [r.to_tokens(ncelldim=1)[3] for r in uzf.packagedata] == [r[3] for r in tokens]
+    path = tmp_path / "m.uzf"
+    path.write_text(dumps(unstructure_component(uzf)))
+    context = LoadContext(workspace=tmp_path, dims={"nodes": 2})
+    assert [r.ivertcon for r in Uzf.load(path, context=context).packagedata] == ivertcon
 
 
 def test_cellid_no_cell_needs_allow_zero():

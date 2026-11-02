@@ -93,7 +93,7 @@ class Lak(Package):
     class Outlets(Item):
         outletno: int = integer(index=True, pk=True)
         lakein: int = integer(index=True, fk="packagedata.ifno")
-        lakeout: int = integer(index=True, fk="packagedata.ifno")
+        lakeout: Optional[int] = integer(index=True, fk="packagedata.ifno", allow_zero=True)
         couttype: str = string()
         invert: Union[float, TimeSeriesRef] = double(time_series=True)
         width: Union[float, TimeSeriesRef] = double(time_series=True)

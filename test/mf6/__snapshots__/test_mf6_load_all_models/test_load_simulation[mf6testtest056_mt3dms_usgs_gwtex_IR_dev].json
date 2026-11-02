@@ -192,7 +192,9 @@
       ],
       "invert": "float64[1] b14f1ecf19807966",
       "lakein": "int64[1] 05fe405753166f12",
-      "lakeout": "int64[1] be673e8a56eaa9d8",
+      "lakeout": [
+        null
+      ],
       "n": 1,
       "outletno": "int64[1] 05fe405753166f12",
       "rough": "float64[1] 8c3d138c12a00200",

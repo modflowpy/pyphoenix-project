@@ -695,7 +695,7 @@ class Package(Component, ABC):
         super().write(format=format, context=context)
 
     def _check_keys(self) -> None:
-        """Raise if a string key is repeated or names nothing (see
+        """Raise if a key is repeated or names nothing (see
         `flopy4.mf6.keys`), which MF6 would fail on."""
         if errors := key_errors(self):
             raise ValueError("Invalid keys: " + "; ".join(errors))
