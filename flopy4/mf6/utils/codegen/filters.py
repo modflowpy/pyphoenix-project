@@ -983,9 +983,12 @@ def feature_id_column(
             meta["allow_zero"] = True
     elif pk:
         meta["pk"] = True
+    py_type = "int"
+    if fk and allow_zero and not optional:
+        py_type = "Optional[int]"  # None for no row, as cellid_column's
     return attr_column(
         name,
-        "int",
+        py_type,
         "integer",
         meta,
         optional=optional,

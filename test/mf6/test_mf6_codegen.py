@@ -592,6 +592,26 @@ def test_cellid_allow_zero_from_dfn(all_dfns, name, item, column):
     assert "Optional[tuple[int, ...]]" in col.annotation
 
 
+@pytest.mark.parametrize(
+    "name,item,column",
+    [("gwf-lak", "Outlets", "lakeout"), ("gwf-uzf", "Packagedata", "ivertcon")],
+)
+def test_fk_allow_zero_from_dfn(all_dfns, name, item, column):
+    """An index fk that may name no row, given as 0, is None for it."""
+    if name not in all_dfns:
+        pytest.skip(f"{name} not in DFN set")
+    spec = build_component_spec(all_dfns[name], root=Path("/fake"))
+    col = next(
+        c
+        for ic in spec.item_classes
+        if ic.class_name == item
+        for c in ic.schema
+        if c.name == column
+    )
+    assert "allow_zero=True" in col.rhs
+    assert col.annotation == "Optional[int]"
+
+
 def test_mvr_list_fields_expanded_and_optional(all_dfns):
     """gwf-mvr period data is emitted as a single stress_period_data recarray field."""
     if "gwf-mvr" not in all_dfns:

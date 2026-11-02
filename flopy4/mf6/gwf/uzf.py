@@ -46,7 +46,7 @@ class Uzf(Package):
         ifno: int = integer(index=True, pk=True)
         cellid: tuple[int, ...] = cellid_()
         landflag: int = integer()
-        ivertcon: int = integer(index=True, fk="packagedata.ifno", allow_zero=True)
+        ivertcon: Optional[int] = integer(index=True, fk="packagedata.ifno", allow_zero=True)
         surfdep: float = double()
         vks: float = double()
         thtr: float = double()

@@ -11,8 +11,8 @@ file's lists are its children, each row's key its name. String comparison
 is case-insensitive, as MF6's.
 
 Integer keys are 0-based indices in memory, as everywhere in flopy4. An fk
-that may ``allow_zero`` is -1 (0 in the file) for no row (LAK's
-``lakeout``). An index array column's fk applies to each element (SFR's
+that may ``allow_zero`` is None (0 in the file) for no row (LAK's
+``lakeout``), as a cellid's no cell. An index array column's fk applies to each element (SFR's
 ``ic``), a signed index's to its magnitude."""
 
 from typing import Any, Iterable, Optional
@@ -62,8 +62,6 @@ def _row_errors(pkg, where: str, cls, rows) -> list[str]:
         else:
             scopes = _values(rows, scope)
         keys = list(zip(scopes, values))
-        if meta.get("allow_zero"):
-            keys = [k for k in keys if k[1] != -1]
         if meta.get("pk"):
             errors += _duplicates(where, col.name, scope, keys)
         if fk := meta.get("fk"):

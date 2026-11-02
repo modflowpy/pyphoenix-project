@@ -137,7 +137,7 @@ def test_exchange_mvr_key_errors(tmp_path, packages, moves, error):
 
 
 # Integer keys are 0-based indices in memory; an fk that may allow_zero is
-# -1 (0 in the file) for no row.
+# None (0 in the file) for no row.
 
 
 def _lak(outlets=(), periods=()):
@@ -154,7 +154,7 @@ def _lak(outlets=(), periods=()):
 
 def test_lak_keys():
     lak = _lak(
-        outlets=[(0, 0, 1), (1, 1, -1)],  # lakeout -1: out of the model
+        outlets=[(0, 0, 1), (1, 1, None)],  # lakeout None: out of the model
         periods=[(1, "STATUS", "ACTIVE"), (1, "RATE", 1.0)],
     )
     assert key_errors(lak) == []
@@ -166,6 +166,7 @@ def test_lak_keys():
         ([(0, 0, 1), (0, 1, 0)], [], "Lak.outlets: outletno 0 is listed more than once"),
         ([(0, 2, 1)], [], "Lak.outlets: lakein 2 isn't in packagedata"),
         ([(0, -1, 1)], [], "Lak.outlets: lakein -1 isn't in packagedata"),
+        ([(0, 0, -1)], [], "Lak.outlets: lakeout -1 isn't in packagedata"),
         ([(0, 0, 1)], [(5, "STAGE", 1.0)], "period 0: lakeno 5 isn't in packagedata"),
         ([(0, 0, 1)], [(3, "RATE", 1.0)], "period 0: outletno 3 isn't in outlets"),
     ],
@@ -175,7 +176,9 @@ def test_lak_key_errors(outlets, periods, error):
     assert actual.endswith(error)
 
 
-@pytest.mark.parametrize("ivertcon, errors", [(-1, []), (1, []), (2, ["ivertcon 2"])])
+@pytest.mark.parametrize(
+    "ivertcon, errors", [(None, []), (1, []), (2, ["ivertcon 2"]), (-1, ["ivertcon -1"])]
+)
 def test_uzf_ivertcon(ivertcon, errors):
     from flopy4.mf6.gwf import Uzf
 
@@ -183,7 +186,7 @@ def test_uzf_ivertcon(ivertcon, errors):
         nuzfcells=2,
         packagedata=[
             (0, (0, 0, 0), 1, ivertcon, 0.1, 1.0, 0.05, 0.3, 0.2, 3.5),
-            (1, (1, 0, 0), 0, -1, 0.1, 1.0, 0.05, 0.3, 0.2, 3.5),
+            (1, (1, 0, 0), 0, None, 0.1, 1.0, 0.05, 0.3, 0.2, 3.5),
         ],
     )
     assert [e.split(": ")[1].split(" isn't")[0] for e in key_errors(uzf)] == errors

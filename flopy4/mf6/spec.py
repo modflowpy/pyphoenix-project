@@ -205,8 +205,8 @@ def integer(
 ) -> Any:
     """An integer. An ``index`` is 1-based in the file, 0-based in memory.
     A key (``pk``, or ``fk``, the path of the key it names) is checked on
-    write (see `flopy4.mf6.keys`); an fk that may ``allow_zero`` takes 0 in
-    the file, -1 in memory, for no row (LAK's ``lakeout``)."""
+    write (see `flopy4.mf6.keys`); an fk that may ``allow_zero`` is None for
+    no row (0 in the file), as a cellid's no cell (LAK's ``lakeout``)."""
     if allow_zero and not (fk and index is True):
         raise ValueError("allow_zero is only for an index fk")
     if time_series:

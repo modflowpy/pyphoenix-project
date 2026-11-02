@@ -2350,9 +2350,8 @@ def test_gwt_lkt01(function_tmpdir):
             (0, 1, (0, 0, 3), "HORIZONTAL", FILL_DNODATA, 10.0, 10.0, connlen, connwidth),
             (0, 2, (0, 0, 2), "VERTICAL", FILL_DNODATA, 10.0, 10.0, connlen, connwidth),
         ],
-        # lakeout=-1 is the Python/0-based external-drain sentinel; the codec writes
-        # it as 0 in the file (MF6's 1-based convention for "no downstream lake").
-        outlets=[(0, 0, -1, "SPECIFIED", 999.0, 999.0, 999.0, 999.0)],
+        # lakeout None: no downstream lake (0 in the file)
+        outlets=[(0, 0, None, "SPECIFIED", 999.0, 999.0, 999.0, 999.0)],
         stress_period_data={
             0: [
                 [0, "STATUS", "CONSTANT"],
@@ -2562,7 +2561,7 @@ def test_gwt_lkt_flow_package_auxiliary_name(function_tmpdir):
             (0, 1, (0, 0, 3), "HORIZONTAL", FILL_DNODATA, 10.0, 10.0, connlen, connwidth),
             (0, 2, (0, 0, 2), "VERTICAL", FILL_DNODATA, 10.0, 10.0, connlen, connwidth),
         ],
-        outlets=[(0, 0, -1, "SPECIFIED", 999.0, 999.0, 999.0, 999.0)],
+        outlets=[(0, 0, None, "SPECIFIED", 999.0, 999.0, 999.0, 999.0)],
         stress_period_data={
             0: [
                 [0, "STATUS", "CONSTANT"],
@@ -2767,7 +2766,7 @@ def test_gwe_lke_flow_package_auxiliary_name(function_tmpdir):
             (0, 1, (0, 0, 3), "HORIZONTAL", FILL_DNODATA, 10.0, 10.0, connlen, connwidth),
             (0, 2, (0, 0, 2), "VERTICAL", FILL_DNODATA, 10.0, 10.0, connlen, connwidth),
         ],
-        outlets=[(0, 0, -1, "SPECIFIED", 999.0, 999.0, 999.0, 999.0)],
+        outlets=[(0, 0, None, "SPECIFIED", 999.0, 999.0, 999.0, 999.0)],
         stress_period_data={
             0: [
                 [0, "STATUS", "CONSTANT"],

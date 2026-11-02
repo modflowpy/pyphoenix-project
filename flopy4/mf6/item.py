@@ -639,6 +639,18 @@ def _solve(cls: type, values: list, context: RowContext, *, file: bool) -> dict[
     return out
 
 
+def _none_is_zero(f: attrs.Attribute) -> bool:
+    """Whether the field's None is written as 0s: a cellid or index fk
+    that may ``allow_zero`` (no cell, no row)."""
+    return bool(f.metadata.get("allow_zero")) and not is_array(f)
+
+
+def _file_index(f: attrs.Attribute, token: Any) -> int | None:
+    """An index token 0-based, or None for 0 if it may ``allow_zero``."""
+    i = int(float(str(token))) - 1
+    return None if i == -1 and f.metadata.get("allow_zero") else i
+
+
 def _file_cellid(f: attrs.Attribute, tokens: list) -> tuple[int, ...] | None:
     cell = tuple(int(float(str(t))) - 1 for t in tokens)
     return None if f.metadata.get("allow_zero") and all(c == -1 for c in cell) else cell
@@ -772,7 +784,7 @@ def _value_reader(f: attrs.Attribute) -> Callable[[Any], Any]:
     """A file token to a scalar field's value, as `_convert` reads it."""
     kind = number_kind(f)
     if kind == "index":
-        return lambda t: int(float(str(t))) - 1
+        return lambda t: _file_index(f, t)
     if kind == "series":
         return _ts_value
     if kind == "int":
@@ -943,7 +955,7 @@ def _convert(
                     raise ValueError(f"{cls.__name__}.{name}: no way to load {raw}")
                 kwargs[name] = load_child(f, str(raw))
             elif f.metadata.get("index"):
-                kwargs[name] = int(float(str(raw))) - 1
+                kwargs[name] = _file_index(f, raw)
             else:
                 kwargs[name] = _coerce(raw, f)
         elif kind == "array":
@@ -1033,7 +1045,7 @@ class Item(Record):
                         f"{cls.__name__}.{f.name}={val} but {counted[f.name].name} has {n} values"
                     )
                 val = n
-            if val is None and not (_is_one_cellid(f) and f.metadata.get("allow_zero")):
+            if val is None and not _none_is_zero(f):
                 if _is_one_cellid(f) and not _may_be_absent(f):
                     raise ValueError(f"{cls.__name__}.{f.name}: no cellid given")
                 continue
@@ -1051,7 +1063,7 @@ class Item(Record):
             elif is_array(f) and f.metadata.get("index"):
                 row.extend(int(v) + 1 for v in val)
             elif f.metadata.get("index"):
-                row.append(int(val) + 1)
+                row.append(0 if val is None else int(val) + 1)
             elif is_array(f):
                 row.extend(_ts_token(v) for v in val)
             elif f.metadata.get("tagged"):
