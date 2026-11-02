@@ -20,6 +20,11 @@ class Api(Package):
         "to-mvr": (("cellid",), ("string",)),
     }
 
+    key_sets: ClassVar[dict[str, str]] = {
+        "bound": "<=maxbound",
+        "mover_provider": "<=maxbound",
+    }
+
     boundnames: bool = keyword(
         default=False,
         block="options",

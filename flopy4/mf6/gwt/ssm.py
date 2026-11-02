@@ -17,13 +17,13 @@ class Ssm(Package):
 
     @attrs.define
     class Sources(Item):
-        pname: str = string()
+        pname: str = string(pk=True, fk="gwf-nam.packages.pname", rule="flow_model")
         srctype: str = string()
         auxname: str = string()
 
     @attrs.define
     class Fileinput(Item):
-        pname: str = string()
+        pname: str = string(pk=True, fk="gwf-nam.packages.pname", rule="flow_model")
         spc: Union[Spc, Spca] = child(keyword="spc6", direction="in", default=attrs.NOTHING)
         mixed: bool = keyword(default=False, optional=True)
 

@@ -953,13 +953,16 @@ def value_column(
 def string_key(field: FieldV3) -> dict:
     """A string column's key metadata: ``pk``, ``fk`` (the target's path)
     and the ``scope`` column that qualifies either (MVR's ``pname``, by
-    ``mname``). A pk and fk on one column share a scope."""
+    ``mname``), or the fk's ``rule``. A pk and fk on one column share a
+    scope."""
     pk, fk = getattr(field, "pk", None), getattr(field, "fk", None)
     meta: dict = {}
     if pk is not None:
         meta["pk"] = True
     if fk is not None:
         meta["fk"] = fk.path
+        if fk.rule:
+            meta["rule"] = fk.rule
     if scope := (pk and pk.scope) or (fk and fk.scope):
         meta["scope"] = scope
     return meta
@@ -971,11 +974,15 @@ def feature_id_column(
     fk: str | None = None,
     pk: bool = False,
     allow_zero: bool = False,
+    key: str | None = None,
+    scope: str | None = None,
+    rule: str | None = None,
     optional: bool = False,
     time_series: bool = False,
 ) -> ItemColumn:
     """A 1-based index column, maybe a key: a ``pk``, or an ``fk``, which
-    may ``allow_zero`` for no row (LAK's ``lakeout``)."""
+    may ``allow_zero`` for no row (LAK's ``lakeout``), or a ``key`` role
+    with a ``scope`` or ``rule``."""
     meta: dict = {"index": True}
     if fk:
         meta["fk"] = fk
@@ -983,6 +990,9 @@ def feature_id_column(
             meta["allow_zero"] = True
     elif pk:
         meta["pk"] = True
+    for name_, value in (("key", key), ("scope", scope), ("rule", rule)):
+        if value:
+            meta[name_] = value
     py_type = "int"
     if fk and allow_zero and not optional:
         py_type = "Optional[int]"  # None for no row, as cellid_column's

@@ -22,6 +22,10 @@ class Chdg(Package):
         "chd": (("cellid",), ("string",)),
     }
 
+    key_sets: ClassVar[dict[str, str]] = {
+        "bound": "<=maxbound",
+    }
+
     readarraygrid: bool = keyword(
         default=True,
         block="options",

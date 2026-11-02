@@ -1338,10 +1338,9 @@ def test_gwf_evta(function_tmpdir):
 def test_gwf_mvr(function_tmpdir):
     """Verify MVR file writing: PACKAGES block (string arrays) and PERIOD block (tabular records).
 
-    Write-only: MF6 is not run because a valid MVR simulation requires at least one
-    advanced package (SFR, LAK, MAW, or UZF) as a receiver. Standard boundary packages
-    (WEL, DRN, CHD, etc.) call pakmvrobj%ar with nreceivers=0 and cannot receive water
-    from MVR. None of those advanced packages are implemented yet in this branch.
+    Write-only: MF6 is not run. The receiver is a LAK, as only an advanced package
+    (SFR, LAK, MAW, or UZF) can receive: standard boundary packages (WEL, DRN, CHD,
+    etc.) call pakmvrobj%ar with nreceivers=0, which the key check on write enforces.
 
     The assertions verify the MVR file format, including the string array fields
     (pname1, pname2, mvrtype) that require special handling in the period block
@@ -1385,10 +1384,12 @@ def test_gwf_mvr(function_tmpdir):
     chd = Chd(parent=gwf, stress_period_data={0: [[(0, 0, 0), 5.0], [(0, 0, 9), 5.0]]})
     # mover=True writes MOVER keyword to OPTIONS block so MF6 allocates IMOVER
     wel = Wel(parent=gwf, mover=True, stress_period_data={0: [[(0, 0, 4), -1.0]]})
-    drn = Drn(
+    lak = Lak(
         parent=gwf,
         mover=True,
-        stress_period_data={0: [[(0, 0, 4), 4.0, 100.0]]},
+        nlakes=1,
+        packagedata=[(0, 5.0, 1)],
+        connectiondata=[(0, 0, (0, 0, 5), "VERTICAL", 0.1, 0.0, 10.0, 0.0, 0.0)],
     )
 
     # MVR PACKAGES block lists participating packages by auto-assigned name.
@@ -1398,7 +1399,7 @@ def test_gwf_mvr(function_tmpdir):
         parent=gwf,
         maxpackages=2,
         maxmvr=1,
-        packages={"pname": np.array(["wel-1", "drn-1"], dtype=object)},
+        packages={"pname": np.array(["wel-1", "lak-1"], dtype=object)},
         stress_period_data={
             0: {
                 "pname1": np.array(["wel-1"], dtype=object),
@@ -1409,7 +1410,7 @@ def test_gwf_mvr(function_tmpdir):
                 # +1-at-write-time conversion every other index/fk column
                 # uses, not a value supplied 1-based directly.
                 "id1": np.array([0], dtype=np.int64),
-                "pname2": np.array(["drn-1"], dtype=object),
+                "pname2": np.array(["lak-1"], dtype=object),
                 "id2": np.array([0], dtype=np.int64),
                 "mvrtype": np.array(["FACTOR"], dtype=object),
                 "value": np.array([0.5]),
@@ -1429,11 +1430,11 @@ def test_gwf_mvr(function_tmpdir):
 
     # PACKAGES block: both packages listed (from pname array)
     assert "wel-1" in content
-    assert "drn-1" in content
+    assert "lak-1" in content
 
     # PERIOD block: full record with all six columns in order
     # (pname1 id1 pname2 id2 mvrtype value)
-    assert "wel-1 1 drn-1 1 FACTOR 0.5" in content
+    assert "wel-1 1 lak-1 1 FACTOR 0.5" in content
 
 
 def test_gwt_basic(function_tmpdir):

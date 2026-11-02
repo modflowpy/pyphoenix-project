@@ -56,6 +56,11 @@ class Lak(Package):
         "withdrawal": (("index",), ("string",)),
     }
 
+    key_sets: ClassVar[dict[str, str]] = {
+        "mover_provider": "outlets.outletno",
+        "mover_receiver": "packagedata.ifno",
+    }
+
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
         "perioddata": Legacy("stress_period_data"),
     }

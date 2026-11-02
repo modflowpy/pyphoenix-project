@@ -26,7 +26,9 @@ class Mvr(Package):
             "pname",
         )
         pname: str = string(pk=True, fk="gwf-nam.packages.pname", scope="mname")
-        mname: Optional[str] = string(default=None, fk="sim-nam.models.mname", when="modelnames")
+        mname: Optional[str] = string(
+            default=None, fk="sim-nam.models.mname", rule="exchange_models", when="modelnames"
+        )
 
     @attrs.define
     class StressPeriodData(Item):
@@ -41,13 +43,17 @@ class Mvr(Package):
             "value",
         )
         pname1: str = string(fk="packages.pname", scope="mname1")
-        id1: int = integer(index=True)
+        id1: int = integer(index=True, key="mover_provider", scope="pname1")
         pname2: str = string(fk="packages.pname", scope="mname2")
-        id2: int = integer(index=True)
+        id2: int = integer(index=True, key="mover_receiver", scope="pname2")
         mvrtype: str = string()
         value: float = double()
-        mname1: Optional[str] = string(default=None, fk="sim-nam.models.mname", when="modelnames")
-        mname2: Optional[str] = string(default=None, fk="sim-nam.models.mname", when="modelnames")
+        mname1: Optional[str] = string(
+            default=None, fk="sim-nam.models.mname", rule="exchange_models", when="modelnames"
+        )
+        mname2: Optional[str] = string(
+            default=None, fk="sim-nam.models.mname", rule="exchange_models", when="modelnames"
+        )
 
     print_input: bool = keyword(
         default=False,

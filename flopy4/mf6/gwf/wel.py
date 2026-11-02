@@ -27,6 +27,11 @@ class Wel(Package):
         "wel-reduction": (("cellid",), ("string",)),
     }
 
+    key_sets: ClassVar[dict[str, str]] = {
+        "bound": "<=maxbound",
+        "mover_provider": "<=maxbound",
+    }
+
     @attrs.define
     class StressPeriodData(Item):
         cellid: tuple[int, ...] = cellid_()

@@ -25,6 +25,11 @@ class Welg(Package):
         "wel-reduction": (("cellid",), ("string",)),
     }
 
+    key_sets: ClassVar[dict[str, str]] = {
+        "bound": "<=maxbound",
+        "mover_provider": "<=maxbound",
+    }
+
     readarraygrid: bool = keyword(
         default=True,
         block="options",
