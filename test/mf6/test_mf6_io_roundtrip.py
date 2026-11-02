@@ -631,3 +631,37 @@ def test_hand_written_boundnames_load(tmp_path):
     rows_back = rghb.stress_period_data[0]
     assert [r.boundname for r in rows_back] == ["5", "1.50", "end", None, None]
     assert all(r.aux == (3.0,) for r in rows_back)
+
+
+@pytest.mark.parametrize(
+    "rows",
+    [
+        # only numbers: read in bulk, then by field when a column is text
+        "  1 1 1 1.0D0 10.0 1.50\n  1 1 2 1.0 1d1 1d0\n",
+        # a word on a row too
+        "  1 1 1 1.0D0 10.0 1.50\n  1 1 2 1.0 1d1 b\n",
+    ],
+    ids=["numbers", "words"],
+)
+def test_unquoted_number_like_names_load_as_written(tmp_path, rows):
+    """A boundname, obsname or observation id that looks like a number
+    (`1.50`, `1d0`) loads as its text, unquoted: only the schema tells
+    a number from a name, and the reader keeps tokens as text for it.
+    Numbers in a real column still read as numbers, D exponents too."""
+    sim, _ = _ghb_sim(tmp_path, [("a",), ("b",)], obs=[("1.50", "1.50")])
+    sim.write()
+    ghb_file = next(tmp_path.glob("*.ghb"))
+    text = ghb_file.read_text()
+    start = text.index("BEGIN PERIOD 1\n") + len("BEGIN PERIOD 1\n")
+    ghb_file.write_text(text[:start] + rows + text[text.index("END PERIOD") :])
+    obs_file = next(tmp_path.glob("*.obs"))
+    obs_file.write_text(obs_file.read_text().replace("'1.50'", "1.50"))
+    assert "'" not in obs_file.read_text().split("BEGIN continuous")[-1]
+
+    rghb = _reloaded_ghb(tmp_path)
+    rows_back = rghb.stress_period_data[0]
+    second = rows.split()[-1]
+    assert [r.boundname for r in rows_back] == ["1.50", second]
+    assert [(r.bhead, r.cond) for r in rows_back] == [(1.0, 10.0), (1.0, 10.0)]
+    obs = rghb.obs.continuous[0].continuous[0]
+    assert (obs.obsname, obs.id_) == ("1.50", "1.50")

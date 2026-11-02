@@ -27,7 +27,7 @@ import numpy as np
 from flopy4.mf6._types import TimeSeriesRef
 from flopy4.mf6.record import Record, _coerce, _resolve_sibling_class
 from flopy4.spec import is_array
-from flopy4.utils import unwrap_optional
+from flopy4.utils import fortran_float, unwrap_optional
 
 
 def is_cellid(f: attrs.Attribute) -> bool:
@@ -249,7 +249,7 @@ def ncelldim_from_dims(dims: "dict | None") -> "int | None":
 def _float_or_str(token: Any) -> Any:
     """A numeric token as a float, else (a time series name) as is."""
     try:
-        return float(token)
+        return fortran_float(token) if isinstance(token, str) else float(token)
     except (ValueError, TypeError):
         return token
 
@@ -267,7 +267,7 @@ def _token_fits(token: Any, kind: type) -> bool:
         return True
     if isinstance(token, str):
         try:
-            float(token)
+            fortran_float(token)  # with a D exponent too, as MF6 reads one
             return True
         except ValueError:
             return False
@@ -276,7 +276,7 @@ def _token_fits(token: Any, kind: type) -> bool:
 
 def _integral(token: Any) -> bool:
     try:
-        return float(str(token)).is_integer()
+        return fortran_float(str(token)).is_integer()
     except ValueError:
         return False
 
@@ -299,7 +299,7 @@ def _read_unions(
     indexes for a package keyed by one, e.g. LAK's lake number, or an
     exchange; cellids otherwise), so a row unlike its parent's (CSUB's
     cellid observations) still reads by its width. A number no arm fits is
-    kept as is. Unknown grid width: any of 3, 2 or 1."""
+    kept as is (from a file, its text: an id `1.50`). Unknown grid width: any of 3, 2 or 1."""
     widths = (ncelldim,) if ncelldim else (3, 2, 1)
 
     def arms(kinds: tuple[str, ...], pos: int):
@@ -313,19 +313,19 @@ def _read_unions(
                 yield str(tok), 1, 0
                 fits = True
             elif kind in ("index", "integer") and _integral(tok):
-                yield int(float(str(tok))) - (kind == "index"), 1, cost
+                yield int(fortran_float(str(tok))) - (kind == "index"), 1, cost
                 fits = True
             elif kind == "double" and numeric:
-                yield float(tok), 1, cost
+                yield fortran_float(tok) if isinstance(tok, str) else float(tok), 1, cost
                 fits = True
             elif kind == "cellid":
                 for w in widths:
                     cell = tokens[pos : pos + w]
                     if len(cell) == w and all(_integral(t) for t in cell):
-                        yield tuple(int(float(str(t))) - 1 for t in cell), w, cost
+                        yield tuple(int(fortran_float(str(t))) - 1 for t in cell), w, cost
                         fits = True
         if numeric and not fits and forms is None:
-            yield _float_or_str(tok), 1, 10
+            yield tok, 1, 10  # as written (text from a file)
 
     def solve(i: int, pos: int, form: "tuple[str, ...] | None") -> "tuple[int, list] | None":
         if i == len(fields):
@@ -560,7 +560,7 @@ def _solve(cls: type, values: list, context: RowContext, *, file: bool) -> dict[
                 if (count := out.get(dim)) is None:
                     yield end, ("array", values[pos:end]), unknown  # the rest
                     return
-                counts = [(int(float(str(count[1]))), unknown)]
+                counts = [(int(fortran_float(str(count[1]))), unknown)]
             elif (count := context.sizes.get(dim)) is not None:
                 counts = [(count, unknown)]
             elif file:
@@ -647,22 +647,22 @@ def _none_is_zero(f: attrs.Attribute) -> bool:
 
 def _file_index(f: attrs.Attribute, token: Any) -> int | None:
     """An index token 0-based, or None for 0 if it may ``allow_zero``."""
-    i = int(float(str(token))) - 1
+    i = int(fortran_float(str(token))) - 1
     return None if i == -1 and f.metadata.get("allow_zero") else i
 
 
 def _file_cellid(f: attrs.Attribute, tokens: list) -> tuple[int, ...] | None:
-    cell = tuple(int(float(str(t))) - 1 for t in tokens)
+    cell = tuple(int(fortran_float(str(t))) - 1 for t in tokens)
     return None if f.metadata.get("allow_zero") and all(c == -1 for c in cell) else cell
 
 
 def _file_array(f: attrs.Attribute, tokens: list) -> tuple:
     if _signed(f):
-        return tuple(int(float(str(t))) for t in tokens)  # see spec.to_signed_indexes
+        return tuple(int(fortran_float(str(t))) for t in tokens)  # see spec.to_signed_indexes
     if f.metadata.get("index"):
-        return tuple(int(float(str(t))) - 1 for t in tokens)
+        return tuple(int(fortran_float(str(t))) - 1 for t in tokens)
     if (elem := _array_elem_type(f)) is not None:
-        return tuple(elem(float(str(t))) for t in tokens)
+        return tuple(elem(fortran_float(str(t))) for t in tokens)
     return tuple(_float_or_str(t) for t in tokens)
 
 
@@ -699,7 +699,7 @@ def _ts_value(token: Any) -> Any:
     """A time series column's token, as `_coerce` reads it: a number, or
     else a name."""
     try:
-        return float(token)
+        return fortran_float(token) if isinstance(token, str) else float(token)
     except (ValueError, TypeError):
         return str(token)
 
@@ -788,7 +788,7 @@ def _value_reader(f: attrs.Attribute) -> Callable[[Any], Any]:
     if kind == "series":
         return _ts_value
     if kind == "int":
-        return lambda v: int(float(str(v)))
+        return lambda v: int(fortran_float(str(v)))
     if kind == "float":
         return float
     return lambda v: _coerce(v, f)
@@ -897,7 +897,7 @@ def _plan(
 
     def read_row(row: list) -> "dict[str, Any] | None":
         try:
-            if any(int(float(str(row[a]))) != count for a, count in counts):
+            if any(int(fortran_float(str(row[a]))) != count for a, count in counts):
                 return None
             kwargs = {name: read(row[a:b] if b else row[a]) for name, a, b, read in readers}
         except (ValueError, TypeError):

@@ -7,7 +7,7 @@ from typing import NamedTuple
 
 import numpy as np
 
-from flopy4.utils import D_EXPONENT, fortran_float, parse_number
+from flopy4.utils import D_EXPONENT, fortran_float
 
 
 class Span(NamedTuple):
@@ -24,8 +24,8 @@ class Span(NamedTuple):
 
 
 class NumberRows(Sequence):
-    """A NUMBERS token's rows, each a list of numbers, split when first
-    used. A block of only these keeps its text, to read by column (see
+    """A NUMBERS token's rows, each a list of its values' text, split
+    when first used. A block of only these keeps its text, to read by column (see
     `item_table.read_rows`)."""
 
     __slots__ = ("_text", "_rows")
@@ -33,7 +33,7 @@ class NumberRows(Sequence):
     def __init__(self, text: str | Span) -> None:
         # A `Span` keeps the text out of memory until it's read.
         self._text = text
-        self._rows: list[list[int | float]] | None = None
+        self._rows: list[list[str]] | None = None
 
     @property
     def raw_text(self) -> str:
@@ -50,24 +50,24 @@ class NumberRows(Sequence):
         return text
 
     @property
-    def rows(self) -> list[list[int | float]]:
+    def rows(self) -> list[list[str]]:
+        """The lines' values, as text: only a row's schema can tell a
+        number from a name that looks like one (a boundname ``1.50``)."""
         if self._rows is None:
-            # blank and comment-only lines aren't rows. (A comment's text
-            # may have changed in `text` -- it's skipped.)
-            lines = [
-                values
-                for line in self.text.split("\n")
-                if (values := line.split()) and values[0][0] not in "#!"
-            ]
-            try:
-                self._rows = [[parse_number(v) for v in values] for values in lines]
-            except ValueError:
+            # blank and comment-only lines aren't rows.
+            text = self.raw_text.replace(",", " ")
+            if "*" in text and (
+                tok := next((v for v in text.split() if "*" in v and v[0] not in "#!"), None)
+            ):
                 # NUMBERS takes repeat counts, for arrays (see `array_values`)
-                if (tok := next((v for vs in lines for v in vs if "*" in v), None)) is None:
-                    raise
                 raise ValueError(
                     f"repeat count {tok!r} in a list row: MF6 reads them only in an array's values"
-                ) from None
+                )
+            self._rows = [
+                values
+                for line in text.split("\n")
+                if (values := line.split()) and values[0][0] not in "#!"
+            ]
         return self._rows
 
     def __len__(self) -> int:
@@ -79,7 +79,7 @@ class NumberRows(Sequence):
     def __getitem__(self, i):  # type: ignore[override]
         return self.rows[i]
 
-    def __iter__(self) -> Iterator[list[int | float]]:
+    def __iter__(self) -> Iterator[list[str]]:
         return iter(self.rows)
 
     def __eq__(self, other: object) -> bool:
