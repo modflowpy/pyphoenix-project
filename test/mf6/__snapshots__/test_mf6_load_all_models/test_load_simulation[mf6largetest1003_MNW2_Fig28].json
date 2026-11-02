@@ -12,7 +12,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -21,7 +21,7 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
@@ -41,7 +41,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rcha0>"
+      "<Rcha rch-1>"
     ],
     "riv": [],
     "save_flows": false,
@@ -49,7 +49,7 @@
     "sto": "<Sto sto>",
     "uzf": [],
     "wel": [
-      "<Wel wel0>"
+      "<Wel wel-1>"
     ],
     "workspace": "<workspace>"
   },
@@ -184,7 +184,7 @@
     "name": "obs",
     "print_input": false
   },
-  "simulation/GWF_1/chd0": {
+  "simulation/GWF_1/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -237,7 +237,7 @@
       "nrow": 30
     },
     "filename": "MNW2-Fig28.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,
@@ -379,7 +379,7 @@
     "head_file": "MNW2-Fig28.hds",
     "name": "oc"
   },
-  "simulation/GWF_1/rcha0": {
+  "simulation/GWF_1/rch-1": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -392,7 +392,7 @@
     "export_array_netcdf": false,
     "filename": "MNW2-Fig28.rch",
     "fixed_cell": true,
-    "name": "rcha0",
+    "name": "rch-1",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,
@@ -439,7 +439,7 @@
     "storagecoefficient": false,
     "sy": "float64[334560] ff9856b4091cd415"
   },
-  "simulation/GWF_1/wel0": {
+  "simulation/GWF_1/wel-1": {
     "__type__": "Wel",
     "_stress_period_data": {
       "1": {
@@ -475,13 +475,13 @@
     "filename": "MNW2-Fig28.wel",
     "flow_reduction_length": false,
     "mover": false,
-    "name": "wel0",
+    "name": "wel-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": false,
     "ts": []
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "backtracking_number": 0,
     "backtracking_reduction_factor": "0.6",
@@ -492,7 +492,7 @@
     "inner_dvclose": "1e-06",
     "inner_maximum": 100,
     "linear_acceleration": "cg",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "1e-06",
     "outer_maximum": 30,
     "print_option": "summary",

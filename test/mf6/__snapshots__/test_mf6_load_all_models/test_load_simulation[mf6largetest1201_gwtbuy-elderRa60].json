@@ -4,7 +4,7 @@
     "continue_": false,
     "dims": {},
     "exchanges": [
-      "<Gwfgwt gwfgwt0>"
+      "<Gwfgwt gwfgwt-1>"
     ],
     "filename": "mfsim.nam",
     "maxerrors": 1000,
@@ -15,8 +15,8 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>",
-      "<Ims ims1>"
+      "<Ims ims-1>",
+      "<Ims ims-2>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -244,13 +244,13 @@
     "storagecoefficient": false,
     "sy": "float64[4576] 6f2bb436ea32419d"
   },
-  "simulation/gwfgwt0": {
+  "simulation/gwfgwt-1": {
     "__type__": "Gwfgwt",
     "dims": {},
     "exgmnamea": "gwf_elder",
     "exgmnameb": "gwt_elder",
     "filename": "elder.gwfgwt",
-    "name": "gwfgwt0"
+    "name": "gwfgwt-1"
   },
   "simulation/gwt_elder": {
     "__type__": "Gwt",
@@ -519,14 +519,14 @@
     "filename": "gwt_elder.oc",
     "name": "oc"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "dims": {},
     "filename": "gwf_elder.ims",
     "inner_dvclose": "1e-09",
     "inner_maximum": 300,
     "linear_acceleration": "bicgstab",
-    "name": "ims0",
+    "name": "ims-1",
     "no_ptc": {
       "__type__": "NoPtc",
       "no_ptc_option": "true"
@@ -547,14 +547,14 @@
     ],
     "under_relaxation": "dbd"
   },
-  "simulation/ims1": {
+  "simulation/ims-2": {
     "__type__": "Ims",
     "dims": {},
     "filename": "gwt_elder.ims",
     "inner_dvclose": "1e-09",
     "inner_maximum": 300,
     "linear_acceleration": "bicgstab",
-    "name": "ims1",
+    "name": "ims-2",
     "outer_dvclose": "1e-08",
     "outer_maximum": 100,
     "print_option": "all",
