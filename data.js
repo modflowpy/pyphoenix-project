@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793141219047,
+  "lastUpdate": 1793629171445,
   "repoUrl": "https://github.com/modflowpy/pyphoenix-project",
   "entries": {
     "flopy4 benchmarks": [
@@ -272,6 +272,106 @@ window.BENCHMARK_DATA = {
             "value": 1.261884479999992,
             "unit": "s",
             "extra": "AMD EPYC 7763 64-Core Processor, Linux, Python 3.11.16"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "wpbonelli",
+            "username": "wpbonelli",
+            "email": "wbonelli@ucar.edu"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "752028f552662a67aab89940f0637852b736a0d7",
+          "message": "misc (#532)\n\n* revise simplify default package name/path rules #495 to follow MF6's default naming rules\n* check string keys from the DFN pk/fk metadata",
+          "timestamp": "2026-11-02T12:36:28Z",
+          "url": "https://github.com/modflowpy/pyphoenix-project/commit/752028f552662a67aab89940f0637852b736a0d7"
+        },
+        "date": 1793629169095,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "load (standard): flopy4",
+            "value": 0.22316711199999872,
+            "unit": "s",
+            "extra": "AMD EPYC 9V45 96-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load (standard): flopy4 / flopy3",
+            "value": 0.27065521211302074,
+            "unit": "ratio",
+            "extra": "AMD EPYC 9V45 96-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load (large): flopy4",
+            "value": 4.6846002290000115,
+            "unit": "s",
+            "extra": "AMD EPYC 9V45 96-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load (large): flopy4 / flopy3",
+            "value": 0.2496648406498084,
+            "unit": "ratio",
+            "extra": "AMD EPYC 9V45 96-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load-materialize (standard): flopy4",
+            "value": 0.2678767310000012,
+            "unit": "s",
+            "extra": "AMD EPYC 9V45 96-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load-materialize (standard): flopy4 / flopy3",
+            "value": 0.21180678129413685,
+            "unit": "ratio",
+            "extra": "AMD EPYC 9V45 96-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load-materialize (large): flopy4",
+            "value": 6.107205644999965,
+            "unit": "s",
+            "extra": "AMD EPYC 9V45 96-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load-materialize (large): flopy4 / flopy3",
+            "value": 0.312430109545782,
+            "unit": "ratio",
+            "extra": "AMD EPYC 9V45 96-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "write (standard): flopy4",
+            "value": 0.6960549450000002,
+            "unit": "s",
+            "extra": "AMD EPYC 9V45 96-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "write (standard): flopy4 / flopy3",
+            "value": 0.360786710948489,
+            "unit": "ratio",
+            "extra": "AMD EPYC 9V45 96-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "write (large): flopy4",
+            "value": 10.825767976999941,
+            "unit": "s",
+            "extra": "AMD EPYC 9V45 96-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "write (large): flopy4 / flopy3",
+            "value": 0.5187781001729915,
+            "unit": "ratio",
+            "extra": "AMD EPYC 9V45 96-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "cold start: flopy4",
+            "value": 0.9394271170000081,
+            "unit": "s",
+            "extra": "AMD EPYC 9V45 96-Core Processor, Linux, Python 3.11.16"
           }
         ]
       }
