@@ -199,13 +199,27 @@ def integer(
     index: Index = False,
     pk: bool = False,
     fk: str | None = None,
+    allow_zero: bool = False,
     time_series: bool = False,
     **kwargs: Unpack[FieldKwargs],
 ) -> Any:
-    """An integer. An ``index`` is 1-based in the file, 0-based in memory."""
+    """An integer. An ``index`` is 1-based in the file, 0-based in memory.
+    A key (``pk``, or ``fk``, the path of the key it names) is checked on
+    write (see `flopy4.mf6.keys`); an fk that may ``allow_zero`` takes 0 in
+    the file, -1 in memory, for no row (LAK's ``lakeout``)."""
+    if allow_zero and not (fk and index is True):
+        raise ValueError("allow_zero is only for an index fk")
     if time_series:
         _ts_converter(kwargs, to_ts_value)
-    return _field("integer", kwargs, index=index, pk=pk, fk=fk, time_series=time_series)
+    return _field(
+        "integer",
+        kwargs,
+        index=index,
+        pk=pk,
+        fk=fk,
+        allow_zero=allow_zero,
+        time_series=time_series,
+    )
 
 
 def double(*, time_series: bool = False, **kwargs: Unpack[FieldKwargs]) -> Any:

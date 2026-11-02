@@ -88,7 +88,11 @@ class Sfr(Package):
     class Connectiondata(Item):
         ifno: int = integer(index=True, fk="packagedata.ifno")
         ic: tuple[tuple[int, int], ...] = array(
-            default=(), index="signed", shape=("packagedata.ncon(ifno)",), optional=True
+            default=(),
+            index="signed",
+            fk="packagedata.ifno",
+            shape=("packagedata.ncon(ifno)",),
+            optional=True,
         )
 
     @attrs.define

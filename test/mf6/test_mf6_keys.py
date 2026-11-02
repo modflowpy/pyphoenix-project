@@ -1,5 +1,5 @@
-"""String keys (MVR's packages and model names, HPC's model names) are
-checked when written: see `flopy4.mf6.keys`."""
+"""Keys (MVR's packages and model names, HPC's model names, LAK's and SFR's
+feature numbers) are checked when written: see `flopy4.mf6.keys`."""
 
 import pytest
 
@@ -134,3 +134,90 @@ def test_exchange_mvr_keys(tmp_path):
 def test_exchange_mvr_key_errors(tmp_path, packages, moves, error):
     mvr = _exchange_mvr(tmp_path, packages, moves)
     assert key_errors(mvr) == [error]
+
+
+# Integer keys are 0-based indices in memory; an fk that may allow_zero is
+# -1 (0 in the file) for no row.
+
+
+def _lak(outlets=(), periods=()):
+    from flopy4.mf6.gwf import Lak
+
+    return Lak(
+        nlakes=2,
+        noutlets=len(outlets),
+        packagedata=[(0, 1.0, 1), (1, 1.0, 1)],
+        outlets=[(*o, "SPECIFIED", 0.0, 0.0, 0.0, 0.0) for o in outlets] or None,
+        stress_period_data={0: list(periods)} if periods else None,
+    )
+
+
+def test_lak_keys():
+    lak = _lak(
+        outlets=[(0, 0, 1), (1, 1, -1)],  # lakeout -1: out of the model
+        periods=[(1, "STATUS", "ACTIVE"), (1, "RATE", 1.0)],
+    )
+    assert key_errors(lak) == []
+
+
+@pytest.mark.parametrize(
+    "outlets, periods, error",
+    [
+        ([(0, 0, 1), (0, 1, 0)], [], "Lak.outlets: outletno 0 is listed more than once"),
+        ([(0, 2, 1)], [], "Lak.outlets: lakein 2 isn't in packagedata"),
+        ([(0, -1, 1)], [], "Lak.outlets: lakein -1 isn't in packagedata"),
+        ([(0, 0, 1)], [(5, "STAGE", 1.0)], "period 0: lakeno 5 isn't in packagedata"),
+        ([(0, 0, 1)], [(3, "RATE", 1.0)], "period 0: outletno 3 isn't in outlets"),
+    ],
+)
+def test_lak_key_errors(outlets, periods, error):
+    (actual,) = key_errors(_lak(outlets, periods))
+    assert actual.endswith(error)
+
+
+@pytest.mark.parametrize("ivertcon, errors", [(-1, []), (1, []), (2, ["ivertcon 2"])])
+def test_uzf_ivertcon(ivertcon, errors):
+    from flopy4.mf6.gwf import Uzf
+
+    uzf = Uzf(
+        nuzfcells=2,
+        packagedata=[
+            (0, (0, 0, 0), 1, ivertcon, 0.1, 1.0, 0.05, 0.3, 0.2, 3.5),
+            (1, (1, 0, 0), 0, -1, 0.1, 1.0, 0.05, 0.3, 0.2, 3.5),
+        ],
+    )
+    assert [e.split(": ")[1].split(" isn't")[0] for e in key_errors(uzf)] == errors
+
+
+def _sfr(ic):
+    from flopy4.mf6.gwf import Sfr
+
+    reach = (1.0, 1.0, 0.001, 0.0, 1.0, 1.0, 0.03, 1, 1.0, 0)
+    return Sfr(
+        nreaches=2,
+        packagedata=[(0, (0, 0, 0), *reach), (1, (0, 0, 1), *reach)],
+        connectiondata=[(0, ic), (1, (1,))],  # reach 2's upstream is reach 1
+    )
+
+
+def test_sfr_ic_keys():
+    # -2: reach 2 (1 in memory), downstream; the fk is on the magnitude
+    assert key_errors(_sfr((-2,))) == []
+
+
+def test_sfr_ic_key_errors():
+    assert key_errors(_sfr((-3,))) == ["Sfr.connectiondata: ic 2 isn't in packagedata"]
+
+
+def test_chf_cross_section_keys(tmp_path):
+    """A CDB's cross section is a row of the model's CXS, a sibling."""
+    from flopy4.mf6.chf import Chf
+    from flopy4.mf6.chf.cdb import Cdb
+    from flopy4.mf6.chf.cxs import Cxs
+
+    chf = Chf(name="m")
+    Cxs(parent=chf, nsections=1, npoints=2, packagedata=[(0, 2)])
+    cdb = Cdb(parent=chf, stress_period_data={0: [[(0,), 0, 1.0], [(1,), 1, 1.0]]})
+    assert key_errors(cdb) == [
+        "Cdb.stress_period_data: period 0: idcxs 1 isn't in packagedata of cxs 'cxs'"
+    ]
