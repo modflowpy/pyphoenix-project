@@ -38,8 +38,13 @@ class Uzf(Package):
     }
 
     key_sets: ClassVar[dict[str, str]] = {
+        "bound": "packagedata.ifno",
         "mover_provider": "packagedata.ifno",
         "mover_receiver": "packagedata.ifno",
+    }
+    key_set_when: ClassVar[dict[str, str]] = {
+        "mover_provider": "mover",
+        "mover_receiver": "mover",
     }
 
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {

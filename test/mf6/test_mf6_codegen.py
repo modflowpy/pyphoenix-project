@@ -939,7 +939,7 @@ def test_canonical_shape_rejects_unmatched():
         ("gwf-dis", {"ncpl": "nrow * ncol", "nodes": "nlay * nrow * ncol", "ncelldim": "3"}),
         ("gwf-disv", {"nodes": "nlay * ncpl", "ncelldim": "2"}),
         ("gwf-disu", {"ncelldim": "1", "njas": "(nja - nodes) / 2"}),
-        ("gwf-lak", {}),  # sum(packagedata.nlakeconn) isn't arithmetic
+        ("gwf-lak", {"nlakeconn": "sum(packagedata.nlakeconn)"}),  # a list column's sum
     ],
 )
 def test_derived_dims(all_dfns, name, derived):

@@ -393,16 +393,21 @@ def dynamically_named_array(f) -> tuple[Array, str] | None:
 
 # A function call in a dimension expression, as in LAK's sum(...)
 _DIM_CALL = re.compile(r"\w\s*\(")
+# A sum over a list's column, as LAK's ``sum(packagedata.nlakeconn)``
+_DIM_SUM = re.compile(r"sum\(\w+\.\w+\)")
 
 
 def derived_dims(component: Component) -> dict[str, str]:
-    """A component's arithmetic derived dimensions, name -> expression, e.g.
+    """A component's derived dimensions, name -> expression: arithmetic, e.g.
     gwf-dis's ``{"ncpl": "nrow * ncol", "nodes": "nlay * nrow * ncol",
-    "ncelldim": "3"}``. Other expressions (LAK's ``sum(...)``, ``len(...)``)
-    are left out."""
+    "ncelldim": "3"}``, or a list column's sum, LAK's ``{"nlakeconn":
+    "sum(packagedata.nlakeconn)"}``. Other expressions (``len(...)``) are
+    left out."""
     dims = {}
     for name, dim in (component.dims or {}).items():
-        if dim.value == name or _DIM_CALL.search(dim.value):
+        if dim.value == name:
+            continue
+        if _DIM_CALL.search(dim.value) and not _DIM_SUM.fullmatch(dim.value):
             continue
         dims[name] = dim.value
     return dims
@@ -980,16 +985,17 @@ def feature_id_column(
     optional: bool = False,
     time_series: bool = False,
 ) -> ItemColumn:
-    """A 1-based index column, maybe a key: a ``pk``, or an ``fk``, which
-    may ``allow_zero`` for no row (LAK's ``lakeout``), or a ``key`` role
-    with a ``scope`` or ``rule``."""
+    """A 1-based index column, maybe a key: a ``pk``, an ``fk``, which
+    may ``allow_zero`` for no row (LAK's ``lakeout``), or both, either
+    within a ``scope`` (MAW's angledata ``icon``, within ``ifno``); or a
+    ``key`` role with a ``scope`` or ``rule``."""
     meta: dict = {"index": True}
+    if pk:
+        meta["pk"] = True
     if fk:
         meta["fk"] = fk
         if allow_zero:
             meta["allow_zero"] = True
-    elif pk:
-        meta["pk"] = True
     for name_, value in (("key", key), ("scope", scope), ("rule", rule)):
         if value:
             meta[name_] = value

@@ -186,10 +186,9 @@ def string(
     be empty, unless ``empty_is_none``, when an empty string is no value.
     A key (``pk``, or ``fk``, the path of the key it names) may be unique
     only within the value of another column, its ``scope`` (MVR's
-    ``pname`` within ``mname``), or an fk may have a ``rule`` instead; see
-    `flopy4.mf6.keys`."""
-    if scope and rule:
-        raise ValueError("a key has a scope or a rule, not both")
+    ``pname`` within ``mname``). An fk may have a ``rule``, which picks the
+    component it names in, or with a scope narrows its keys (MVR's
+    ``pname``, packages with ``mover`` on); see `flopy4.mf6.keys`."""
     if time_series:
         _ts_converter(kwargs, to_ts_value)
     if empty_is_none:
@@ -213,17 +212,19 @@ def integer(
     """An integer. An ``index`` is 1-based in the file, 0-based in memory.
     A key (``pk``, or ``fk``, the path of the key it names) is checked on
     write (see `flopy4.mf6.keys`); an fk that may ``allow_zero`` is None for
-    no row (0 in the file), as a cellid's no cell (LAK's ``lakeout``). An
-    index may name a ``key`` role instead, in the component its ``scope``
-    column or ``rule`` picks."""
+    no row (0 in the file), as a cellid's no cell (LAK's ``lakeout``). A
+    key may be unique only within the value of another column, its
+    ``scope`` (LAK's connection ``iconn`` within ``ifno``). An index may
+    name a ``key`` role instead, in the component its ``scope`` column or
+    ``rule`` picks."""
     if allow_zero and not (fk and index is True):
         raise ValueError("allow_zero is only for an index fk")
     if key and (fk or index is not True):
         raise ValueError("a key is only for an index without an fk path")
     if key and not (scope or rule):
         raise ValueError("a key needs a scope or a rule")
-    if scope and (rule or not key):
-        raise ValueError("an integer's scope is only for a key, without a rule")
+    if scope and not (key or pk or fk):
+        raise ValueError("an integer's scope is only for a key")
     if time_series:
         _ts_converter(kwargs, to_ts_value)
     return _field(

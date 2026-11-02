@@ -55,8 +55,13 @@ class Sfr(Package):
     }
 
     key_sets: ClassVar[dict[str, str]] = {
+        "bound": "packagedata.ifno",
         "mover_provider": "packagedata.ifno",
         "mover_receiver": "packagedata.ifno",
+    }
+    key_set_when: ClassVar[dict[str, str]] = {
+        "mover_provider": "mover",
+        "mover_receiver": "mover",
     }
 
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
@@ -103,7 +108,7 @@ class Sfr(Package):
     @attrs.define
     class Diversions(Item):
         ifno: int = integer(index=True, fk="packagedata.ifno")
-        idv: int = integer(index=True)
+        idv: int = integer(index=True, pk=True, scope="ifno")
         iconr: int = integer(index=True, fk="packagedata.ifno")
         cprior: str = string()
 
@@ -155,7 +160,7 @@ class Sfr(Package):
     @attrs.define
     class Diversion(Item):
         _keyword: ClassVar[str] = "diversion"
-        idv: int = integer(index=True)
+        idv: int = integer(index=True, fk="diversions.idv", scope="ifno")
         divflow: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define

@@ -15,22 +15,35 @@ that may ``allow_zero`` is None (0 in the file) for no row (LAK's
 ``lakeout``), as a cellid's no cell. An index array column's fk applies to each element (SFR's
 ``ic``), a signed index's to its magnitude.
 
-An fk may have a ``rule`` instead of a scope (see modflow-devtools'
-``RULES``); unknown rules are skipped:
+An fk may have a ``rule`` (see modflow-devtools' ``RULES``); unknown
+rules are skipped. Without a scope, a rule picks the component the fk
+names in; with one, the scope picks it and the rule narrows its keys:
 
 - ``exchange_models``: one of the binding exchange's models.
 - ``flow_model``: checked in the flow model paired with this transport
   model by an exchange; unchecked if there is none.
 - ``ssm_package``: checked in the flow package the parent's binding row
-  names.
+  names, unless an advanced transport package (LKT, SFT, ...) is paired
+  with it, when MF6 ignores the SPC file (tsp-ssm.f90:195, tsp-apt.f90:343).
+- ``mover_enabled``: the package named plays a mover role, i.e. has
+  ``mover`` on (MVR's ``pname``, gwf-mvr.f90:942-971).
 
 An integer fk may name a ``key`` role instead of a path, checked in the
 component its scope or rule picks, at that component's ``key_sets`` path
 (``block.column``, or ``<=dim`` for a row position). The component must
-play the role, and for a mover role have ``mover`` on; if a rule picks a
-component without the role, the check is skipped (MF6 ignores it,
-tsp-ssm.f90:195)."""
+play the role: declare it, with the option its ``key_set_when`` names on
+(``mover`` for the mover roles). If a rule picks a component without the
+role, the check is skipped.
 
+A key in a union column's arm (SFR's period ``diversion`` ``idv``) is
+checked among that arm's rows, and its scope may name a column of the
+enclosing row (``ifno``).
+
+A key set of several paths is unique across them, as a supertype table's
+key: SSM's ``source`` names a flow package once in ``sources`` and
+``fileinput`` together (tsp-ssm.f90:814-821, 912-919)."""
+
+from types import SimpleNamespace
 from typing import Any, Iterable, Optional
 
 import attrs
@@ -38,9 +51,6 @@ import attrs
 from flopy4.mf6.item import item_list_type
 from flopy4.mf6.item_table import ItemTable
 from flopy4.spec import reference_names
-
-# Roles that need the component's ``mover`` option on.
-_MOVER_ROLES = ("mover_provider", "mover_receiver")
 
 
 def key_errors(pkg: Any) -> list[str]:
@@ -62,13 +72,73 @@ def key_errors(pkg: Any) -> list[str]:
                 else:
                     rows_ = rows
                 errors += _row_errors(pkg, where, cls, rows_)
+    return errors + _key_set_errors(pkg)
+
+
+def _key_set_errors(pkg) -> list[str]:
+    """Keys in more than one of a key set's several paths (SSM's
+    ``source``: ``sources.pname`` and ``fileinput.pname``)."""
+    errors = []
+    for role, paths in getattr(type(pkg), "key_sets", {}).items():
+        if isinstance(paths, str) or not _plays(pkg, role):
+            continue
+        seen: dict[Any, str] = {}
+        for path in paths:
+            block, column = path.split(".")
+            for value in _block_values(pkg, block, column):
+                if value is None:
+                    continue
+                key = _norm((value,))
+                if key in seen and seen[key] != block:
+                    errors.append(
+                        f"{type(pkg).__name__}.{block}: {column} {value!r} is also in {seen[key]}"
+                    )
+                seen.setdefault(key, block)
     return errors
+
+
+def _block_values(component, block: str, column: str) -> list:
+    """The ``column`` values of the component's ``block`` list rows."""
+    values = []
+    for f in attrs.fields(type(component)):
+        if f.metadata.get("block") != block or item_list_type(f.type) is None:
+            continue
+        for _, rows in _groups(getattr(component, f.name)):
+            values += _values(rows, column)
+    return values
 
 
 def _row_errors(pkg, where: str, cls, rows) -> list[str]:
     columns = {col.name: col for col in cls.fields()}
-    errors = []
+    errors = _column_errors(pkg, where, columns, rows)
     for col in columns.values():
+        if col.metadata.get("type") == "union" and not col.metadata.get("union"):
+            errors += _arm_errors(pkg, where, columns, rows, col.name)
+    return errors
+
+
+def _arm_errors(pkg, where: str, columns: dict, rows, name: str) -> list[str]:
+    """Keys in the arms of the union column ``name``: each arm's rows, with
+    the enclosing row's columns there for a scope to name (SFR's period
+    ``diversion`` ``idv``, within the row's ``ifno``)."""
+    by_arm: dict[Any, list] = {}
+    for row, value in zip(_dicts(rows, columns), _values(rows, name)):
+        if attrs.has(type(value)):
+            arm_values = {f.name: getattr(value, f.name) for f in attrs.fields(type(value))}
+            by_arm.setdefault(type(value), []).append(SimpleNamespace(**{**row, **arm_values}))
+    errors = []
+    for arm, arm_rows in by_arm.items():
+        arm_columns = {c.name: c for c in arm.fields()}
+        visible = {**columns, **arm_columns}
+        errors += _column_errors(pkg, where, visible, arm_rows, check=arm_columns)
+    return errors
+
+
+def _column_errors(pkg, where: str, columns: dict, rows, check: dict | None = None) -> list[str]:
+    """Keys of the columns ``check`` (default: all ``columns``) that aren't
+    unique or name no row; a scope may name any of ``columns``."""
+    errors = []
+    for col in (columns if check is None else check).values():
         meta = col.metadata
         if meta.get("type") not in ("string", "integer", "array"):
             continue
@@ -93,6 +163,45 @@ def _row_errors(pkg, where: str, cls, rows) -> list[str]:
             errors += dangling
             if rule == "exchange_models" and not dangling:
                 errors += _unbound(pkg, where, col.name, [k[1] for k in keys])
+            if rule == "mover_enabled" and not dangling:
+                errors += _not_movers(pkg, where, columns, rows, col.name)
+    return errors
+
+
+_MOVER_ROLES = ("mover_provider", "mover_receiver")
+
+
+def _plays(component, role: str) -> bool:
+    """Whether the component declares ``role`` and the option its
+    ``key_set_when`` names, if any, is on."""
+    if role not in getattr(type(component), "key_sets", {}):
+        return False
+    when = getattr(type(component), "key_set_when", {}).get(role)
+    return when is None or bool(getattr(component, when, False))
+
+
+def _off(component, roles: Iterable[str]) -> Optional[str]:
+    """The option that would switch on one of ``roles`` the component
+    declares but doesn't play, if any."""
+    whens = getattr(type(component), "key_set_when", {})
+    for role in roles:
+        if role in getattr(type(component), "key_sets", {}) and role in whens:
+            return whens[role]
+    return None
+
+
+def _not_movers(pkg, where: str, columns: dict, rows, name: str) -> list[str]:
+    """Packages the column ``name`` names that play no mover role (MVR's
+    ``pname``). Rows naming no package are skipped."""
+    scope = columns[name].metadata.get("scope")
+    errors = []
+    for row in _dicts(rows, columns):
+        instance = _instance(pkg, columns, row, name)
+        if instance is None or any(_plays(instance, r) for r in _MOVER_ROLES):
+            continue
+        what = _describe(name, scope, (row.get(scope) if scope else None, row[name]))
+        off = _off(instance, _MOVER_ROLES)
+        errors.append(f"{where}: {what} " + (f"hasn't {off} on" if off else "isn't a mover"))
     return errors
 
 
@@ -135,26 +244,35 @@ def _role_errors(pkg, where: str, columns: dict, rows, name: str) -> list[str]:
         what = _describe(name, None, (None, value))
         if id(instance) not in found:
             path = getattr(type(instance), "key_sets", {}).get(role)
-            found[id(instance)] = (None, "") if path is None else _role_keys(instance, path)
-            if path is not None and role in _MOVER_ROLES and not instance.mover:
-                errors.append(f"{where}: {what} is in {_label(instance)}, which hasn't mover on")
+            plays = path is not None and _plays(instance, role)
+            found[id(instance)] = (
+                (None, "") if path is None or not plays else _role_keys(instance, path)
+            )
         keys, missing = found[id(instance)]
         if keys is None and scope is None:
             continue
         if keys is None:
-            role_ = role.replace("_", " ")
-            errors.append(f"{where}: {what} is in {_label(instance)}, which isn't a {role_}")
+            off = _off(instance, (role,))
+            why = f"hasn't {off} on" if off else f"isn't a {role.replace('_', ' ')}"
+            errors.append(f"{where}: {what} is in {_label(instance)}, which {why}")
         elif int(value) not in keys:
             errors.append(f"{where}: {what} isn't {missing}")
     return errors
 
 
-def _role_keys(component, path: str) -> tuple[set | range, str]:
+def _role_keys(component, path: str | tuple[str, ...]) -> tuple[set | range, str]:
     """The component's keys at ``path``, and where they are. ``<=dim`` is
-    row positions below ``dim``, or below the longest list if unset."""
+    row positions below ``dim``, or below the longest list if unset.
+    Several ``block.column`` paths are their union."""
+    if isinstance(path, tuple):
+        parts = [_role_keys(component, p) for p in path]
+        return set().union(*(k for k, _ in parts)), " or ".join(w for _, w in parts)
     if path.startswith("<="):
         dim = path[2:]
-        n = component.resolve_dims(dim).get(dim)
+        # its own (LAK's derived nlakeconn), or a provider's
+        n = getattr(component, dim, None)
+        if not isinstance(n, int):
+            n = component.resolve_dims(dim).get(dim)
         if not isinstance(n, int):
             n = _longest(component)
         return range(n), f"below the {dim} of {_label(component)} ({n})"
@@ -233,6 +351,24 @@ def _flow_model(pkg, dfn_name: str) -> Any:
 
 
 def _ssm_package(pkg) -> Any:
+    """The package named by the parent's row holding this package, or None,
+    also if an advanced transport package in the parent's model is paired
+    with it (by ``flow_package_name``, else the same name), since MF6 then
+    ignores this package."""
+    package = _binding_package(pkg)
+    model = getattr(pkg._parent, "_parent", None)
+    if package is None or model is None or not package.name:
+        return package
+    for sibling in model._children.values():
+        if "flow_package_name" not in attrs.fields_dict(type(sibling)):
+            continue
+        paired = sibling.flow_package_name or sibling.name
+        if paired and paired.lower() == package.name.lower():
+            return None
+    return package
+
+
+def _binding_package(pkg) -> Any:
     """The package named by the parent's row holding this package, or None."""
     parent = pkg._parent
     if parent is None:

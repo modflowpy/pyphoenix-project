@@ -46,11 +46,23 @@ class {{ spec.class_name }}({% for m in spec.mixins %}{{ m }}, {% endfor %}{{ sp
 
 {% endif %}
 {% if spec.key_sets %}
-    key_sets: ClassVar[dict[str, str]] = {
+{% set several = spec.key_sets.values() | reject("string") | list %}
+    key_sets: ClassVar[dict[str, {{ "str | tuple[str, ...]" if several else "str" }}]] = {
 {% for role, path in spec.key_sets.items() %}
+{% if path is string %}
         "{{ role }}": "{{ path }}",
+{% else %}
+        "{{ role }}": ({% for p in path %}"{{ p }}", {% endfor %}),
+{% endif %}
 {% endfor %}
     }
+{% if spec.key_set_when %}
+    key_set_when: ClassVar[dict[str, str]] = {
+{% for role, when in spec.key_set_when.items() %}
+        "{{ role }}": "{{ when }}",
+{% endfor %}
+    }
+{% endif %}
 
 {% endif %}
 {% if spec.legacy_kwargs %}
