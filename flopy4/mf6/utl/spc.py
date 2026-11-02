@@ -34,7 +34,7 @@ class Spc(Package):
 
     @attrs.define
     class StressPeriodData(Item):
-        bndno: int = integer(index=True, pk=True)
+        bndno: int = integer(index=True, pk=True, key="bound", rule="ssm_package")
         spcsetting: "Spc.Concentration | Spc.Temperature" = union()
 
     print_input: bool = keyword(

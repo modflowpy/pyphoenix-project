@@ -192,6 +192,8 @@ class ComponentSpec:
     exports: list[str] = dc_field(default_factory=list)
     # flopy3's constructor keywords, deprecated: name -> Legacy(...) source
     legacy_kwargs: dict[str, str] = dc_field(default_factory=dict)
+    # role -> key path
+    key_sets: dict[str, str] = dc_field(default_factory=dict)
 
 
 # Column-schema-dict builders
@@ -283,13 +285,17 @@ def _item_columns(
         elif isinstance(f, CellID):
             item = filters.cellid_column(name, f.model, allow_zero=f.allow_zero, optional=optional)
         elif col.is_index:
-            fk = f.fk.path if getattr(f, "fk", None) else None
+            key = getattr(f, "fk", None)
+            fk = key.path if key else None
             pk = not fk and bool(getattr(f, "pk", False))
             item = filters.feature_id_column(
                 name,
                 fk=fk,
                 pk=pk,
                 allow_zero=getattr(f, "allow_zero", False),
+                key=key.key if key else None,
+                scope=key.scope if key and key.key else None,
+                rule=key.rule if key else None,
                 optional=optional,
                 time_series=ts,
             )
@@ -2114,6 +2120,7 @@ def build_component_spec(
         has_readarray_period=bool(_readarray_period_fields),
         exports=_exports,
         legacy_kwargs=legacy_kwargs,
+        key_sets={role: ks.path for role, ks in sorted((component.keys or {}).items())},
     )
 
 

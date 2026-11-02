@@ -54,6 +54,11 @@ class Sfr(Package):
         "wet-width": (("index",), ("string",)),
     }
 
+    key_sets: ClassVar[dict[str, str]] = {
+        "mover_provider": "packagedata.ifno",
+        "mover_receiver": "packagedata.ifno",
+    }
+
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
         "perioddata": Legacy("stress_period_data"),
     }

@@ -178,6 +178,7 @@ def string(
     pk: bool = False,
     fk: str | None = None,
     scope: str | None = None,
+    rule: str | None = None,
     empty_is_none: bool = False,
     **kwargs: Unpack[FieldKwargs],
 ) -> Any:
@@ -185,13 +186,16 @@ def string(
     be empty, unless ``empty_is_none``, when an empty string is no value.
     A key (``pk``, or ``fk``, the path of the key it names) may be unique
     only within the value of another column, its ``scope`` (MVR's
-    ``pname`` within ``mname``); see `flopy4.mf6.keys`."""
+    ``pname`` within ``mname``), or an fk may have a ``rule`` instead; see
+    `flopy4.mf6.keys`."""
+    if scope and rule:
+        raise ValueError("a key has a scope or a rule, not both")
     if time_series:
         _ts_converter(kwargs, to_ts_value)
     if empty_is_none:
         _convert_first(kwargs, _empty_to_none)
     _validate(kwargs, _not_empty)
-    return _field("string", kwargs, time_series=time_series, pk=pk, fk=fk, scope=scope)
+    return _field("string", kwargs, time_series=time_series, pk=pk, fk=fk, scope=scope, rule=rule)
 
 
 def integer(
@@ -200,15 +204,26 @@ def integer(
     pk: bool = False,
     fk: str | None = None,
     allow_zero: bool = False,
+    key: str | None = None,
+    scope: str | None = None,
+    rule: str | None = None,
     time_series: bool = False,
     **kwargs: Unpack[FieldKwargs],
 ) -> Any:
     """An integer. An ``index`` is 1-based in the file, 0-based in memory.
     A key (``pk``, or ``fk``, the path of the key it names) is checked on
     write (see `flopy4.mf6.keys`); an fk that may ``allow_zero`` is None for
-    no row (0 in the file), as a cellid's no cell (LAK's ``lakeout``)."""
+    no row (0 in the file), as a cellid's no cell (LAK's ``lakeout``). An
+    index may name a ``key`` role instead, in the component its ``scope``
+    column or ``rule`` picks."""
     if allow_zero and not (fk and index is True):
         raise ValueError("allow_zero is only for an index fk")
+    if key and (fk or index is not True):
+        raise ValueError("a key is only for an index without an fk path")
+    if key and not (scope or rule):
+        raise ValueError("a key needs a scope or a rule")
+    if scope and (rule or not key):
+        raise ValueError("an integer's scope is only for a key, without a rule")
     if time_series:
         _ts_converter(kwargs, to_ts_value)
     return _field(
@@ -218,6 +233,9 @@ def integer(
         pk=pk,
         fk=fk,
         allow_zero=allow_zero,
+        key=key,
+        scope=scope,
+        rule=rule,
         time_series=time_series,
     )
 

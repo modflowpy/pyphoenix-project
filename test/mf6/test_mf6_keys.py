@@ -4,7 +4,7 @@ feature numbers) are checked when written: see `flopy4.mf6.keys`."""
 import pytest
 
 from flopy4.mf6.exg.gwfgwf import Gwfgwf
-from flopy4.mf6.gwf import Dis, Drn, Gwf, Ic, Mvr, Npf, Wel
+from flopy4.mf6.gwf import Dis, Drn, Gwf, Ic, Lak, Mvr, Npf, Wel
 from flopy4.mf6.ims import Ims
 from flopy4.mf6.keys import key_errors
 from flopy4.mf6.simulation import Simulation
@@ -17,6 +17,7 @@ def _gwf(name):
     Npf(parent=gwf)
     Wel(parent=gwf, name="wel", mover=True, stress_period_data={0: [((0, 0, 0), -1.0)]})
     Drn(parent=gwf, name="drn", mover=True, stress_period_data={0: [((0, 0, 1), 1.0, 1.0)]})
+    Lak(parent=gwf, name="lak", mover=True, nlakes=1, packagedata=[(0, 1.0, 1)])
     return gwf
 
 
@@ -42,7 +43,7 @@ def _sim(tmp_path, *models, **kwargs):
 
 def test_model_mvr_keys():
     gwf = _gwf("flow")
-    mvr = _mvr([("wel",), ("DRN",)], [("WEL", 0, "drn", 0, "FACTOR", 1.0)])
+    mvr = _mvr([("wel",), ("LAK",)], [("WEL", 0, "lak", 0, "FACTOR", 1.0)])
     mvr.parent = gwf
     assert key_errors(mvr) == []
 
@@ -82,7 +83,7 @@ def test_mvr_key_error_on_write(tmp_path):
         gwf.write()
 
 
-def _exchange_mvr(tmp_path, packages, moves):
+def _exchange_mvr(tmp_path, packages, moves, extra=()):
     a, b = _gwf("a"), _gwf("b")
     mvr = _mvr(packages, moves, modelnames=True)
     exg = Gwfgwf(
@@ -91,7 +92,7 @@ def _exchange_mvr(tmp_path, packages, moves):
         exchangedata=[((0, 0, 1), (0, 0, 0), 1, 0.5, 0.5, 1.0)],
         mvr=mvr,
     )
-    _sim(tmp_path, a, b, exchanges=[exg])
+    _sim(tmp_path, a, b, *extra, exchanges=[exg])
     return mvr
 
 
@@ -100,8 +101,8 @@ def test_exchange_mvr_keys(tmp_path):
     provider and receiver name a model's package."""
     mvr = _exchange_mvr(
         tmp_path,
-        [("a", "wel"), ("B", "wel"), ("b", "drn")],
-        [("a", "wel", 0, "b", "DRN", 0, "FACTOR", 1.0)],
+        [("a", "wel"), ("B", "wel"), ("b", "lak")],
+        [("a", "wel", 0, "b", "LAK", 0, "FACTOR", 1.0)],
     )
     assert key_errors(mvr) == []
 
@@ -224,3 +225,85 @@ def test_chf_cross_section_keys(tmp_path):
     assert key_errors(cdb) == [
         "Cdb.stress_period_data: period 0: idcxs 1 isn't in packagedata of cxs 'cxs'"
     ]
+
+
+@pytest.mark.parametrize(
+    "move, error",
+    [
+        (("wel", 1, "lak", 0), "id1 1 isn't below the maxbound of wel 'wel' (1)"),
+        (("lak", 0, "lak", 0), "id1 0 isn't in outlets of lak 'lak'"),
+        (("wel", 0, "lak", 1), "id2 1 isn't in packagedata of lak 'lak'"),
+        (("wel", 0, "wel", 0), "id2 0 is in wel 'wel', which isn't a mover receiver"),
+    ],
+)
+def test_model_mvr_id_errors(move, error):
+    gwf = _gwf("flow")
+    mvr = _mvr([("wel",), ("lak",)], [(*move, "FACTOR", 1.0)])
+    mvr.parent = gwf
+    assert key_errors(mvr) == [f"Mvr.stress_period_data: period 0: {error}"]
+
+
+def test_exchange_mvr_model_outside_exchange(tmp_path):
+    """An exchange's mover names only the exchange's models."""
+    mvr = _exchange_mvr(tmp_path, [("a", "wel")], [], extra=[_gwf("c")])
+    mvr.packages = [("c", "wel")]
+    assert key_errors(mvr) == ["Mvr.packages: mname 'c' isn't a model of gwfgwf 'gwfgwf-1' (a, b)"]
+
+
+def test_model_mvr_mover_off():
+    """Movers need MOVER on."""
+    gwf = _gwf("flow")
+    gwf.wel[0].mover = False
+    mvr = _mvr([("wel",), ("lak",)], [("wel", 0, "lak", 0, "FACTOR", 1.0)])
+    mvr.parent = gwf
+    assert key_errors(mvr) == [
+        "Mvr.stress_period_data: period 0: id1 0 is in wel 'wel', which hasn't mover on"
+    ]
+
+
+def _transport(tmp_path, pname="wel", bndno=0, exchange=True):
+    from flopy4.mf6.exg.gwfgwt import Gwfgwt
+    from flopy4.mf6.gwt import Dis as GwtDis
+    from flopy4.mf6.gwt import Gwt, Ssm
+    from flopy4.mf6.utl.spc import Spc
+
+    gwf = _gwf("flow")
+    gwt = Gwt(name="trans", dis=GwtDis(nlay=1, nrow=1, ncol=2))
+    spc = Spc(maxbound=1, stress_period_data={0: [(bndno, Spc.Concentration(1.0))]})
+    ssm = Ssm(parent=gwt, fileinput=[(pname, spc)])
+    exchanges = [Gwfgwt(exgmnamea=gwf, exgmnameb=gwt)] if exchange else []
+    _sim(tmp_path, gwf, gwt, exchanges=exchanges)
+    return ssm, spc
+
+
+def test_ssm_spc_keys(tmp_path):
+    ssm, spc = _transport(tmp_path)
+    assert spc._parent is ssm
+    assert key_errors(ssm) == []
+    assert key_errors(spc) == []
+
+
+def test_ssm_pname_not_in_flow_model(tmp_path):
+    ssm, spc = _transport(tmp_path, pname="riv")
+    assert key_errors(ssm) == ["Ssm.fileinput: pname 'riv' isn't in packages of gwf 'flow'"]
+    assert key_errors(spc) == []  # reported by SSM
+
+
+def test_ssm_pname_without_exchange(tmp_path):
+    """Without an exchange there's no flow model to check against."""
+    ssm, spc = _transport(tmp_path, pname="riv", exchange=False)
+    assert key_errors(ssm) == []
+    assert key_errors(spc) == []
+
+
+def test_spc_bndno_past_bounds(tmp_path):
+    _, spc = _transport(tmp_path, bndno=1)
+    assert key_errors(spc) == [
+        "Spc.stress_period_data: period 0: bndno 1 isn't below the maxbound of wel 'wel' (1)"
+    ]
+
+
+def test_spc_on_advanced_package(tmp_path):
+    """MF6 ignores SPC on advanced packages, so it isn't checked."""
+    _, spc = _transport(tmp_path, pname="lak", bndno=5)
+    assert key_errors(spc) == []

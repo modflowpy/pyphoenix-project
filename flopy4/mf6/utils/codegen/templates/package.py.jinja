@@ -45,6 +45,14 @@ class {{ spec.class_name }}({% for m in spec.mixins %}{{ m }}, {% endfor %}{{ sp
     }
 
 {% endif %}
+{% if spec.key_sets %}
+    key_sets: ClassVar[dict[str, str]] = {
+{% for role, path in spec.key_sets.items() %}
+        "{{ role }}": "{{ path }}",
+{% endfor %}
+    }
+
+{% endif %}
 {% if spec.legacy_kwargs %}
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
 {% for old, legacy in spec.legacy_kwargs.items() %}

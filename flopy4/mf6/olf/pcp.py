@@ -24,6 +24,10 @@ class Pcp(Package):
         "pcp": (("cellid",), ("string",)),
     }
 
+    key_sets: ClassVar[dict[str, str]] = {
+        "bound": "<=maxbound",
+    }
+
     @attrs.define
     class StressPeriodData(Item):
         cellid: tuple[int, ...] = cellid_()
