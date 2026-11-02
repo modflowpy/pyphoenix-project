@@ -62,6 +62,10 @@ class Lak(Package):
         "mover_provider": "outlets.outletno",
         "mover_receiver": "packagedata.ifno",
     }
+    key_set_when: ClassVar[dict[str, str]] = {
+        "mover_provider": "mover",
+        "mover_receiver": "mover",
+    }
 
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
         "perioddata": Legacy("stress_period_data"),

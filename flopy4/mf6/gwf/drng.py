@@ -27,6 +27,9 @@ class Drng(Package):
         "bound": "<=maxbound",
         "mover_provider": "<=maxbound",
     }
+    key_set_when: ClassVar[dict[str, str]] = {
+        "mover_provider": "mover",
+    }
 
     readarraygrid: bool = keyword(
         default=True,

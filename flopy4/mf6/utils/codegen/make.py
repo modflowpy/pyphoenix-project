@@ -194,6 +194,8 @@ class ComponentSpec:
     legacy_kwargs: dict[str, str] = dc_field(default_factory=dict)
     # role -> key path
     key_sets: dict[str, str | tuple[str, ...]] = dc_field(default_factory=dict)
+    # role -> the keyword option switching it on, if any
+    key_set_when: dict[str, str] = dc_field(default_factory=dict)
 
 
 # Column-schema-dict builders
@@ -2121,6 +2123,9 @@ def build_component_spec(
         exports=_exports,
         legacy_kwargs=legacy_kwargs,
         key_sets={role: ks.path for role, ks in sorted((component.keys or {}).items())},
+        key_set_when={
+            role: ks.when for role, ks in sorted((component.keys or {}).items()) if ks.when
+        },
     )
 
 

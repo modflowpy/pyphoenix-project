@@ -25,14 +25,15 @@ names in; with one, the scope picks it and the rule narrows its keys:
 - ``ssm_package``: checked in the flow package the parent's binding row
   names, unless an advanced transport package (LKT, SFT, ...) is paired
   with it, when MF6 ignores the SPC file (tsp-ssm.f90:195, tsp-apt.f90:343).
-- ``mover_enabled``: the package named has ``mover`` on (MVR's ``pname``,
-  gwf-mvr.f90:942-971).
+- ``mover_enabled``: the package named plays a mover role, i.e. has
+  ``mover`` on (MVR's ``pname``, gwf-mvr.f90:942-971).
 
 An integer fk may name a ``key`` role instead of a path, checked in the
 component its scope or rule picks, at that component's ``key_sets`` path
 (``block.column``, or ``<=dim`` for a row position). The component must
-play the role; if a rule picks a component without the role, the check is
-skipped.
+play the role: declare it, with the option its ``key_set_when`` names on
+(``mover`` for the mover roles). If a rule picks a component without the
+role, the check is skipped.
 
 A key in a union column's arm (SFR's period ``diversion`` ``idv``) is
 checked among that arm's rows, and its scope may name a column of the
@@ -78,8 +79,8 @@ def _key_set_errors(pkg) -> list[str]:
     """Keys in more than one of a key set's several paths (SSM's
     ``source``: ``sources.pname`` and ``fileinput.pname``)."""
     errors = []
-    for paths in getattr(type(pkg), "key_sets", {}).values():
-        if isinstance(paths, str):
+    for role, paths in getattr(type(pkg), "key_sets", {}).items():
+        if isinstance(paths, str) or not _plays(pkg, role):
             continue
         seen: dict[Any, str] = {}
         for path in paths:
@@ -163,21 +164,44 @@ def _column_errors(pkg, where: str, columns: dict, rows, check: dict | None = No
             if rule == "exchange_models" and not dangling:
                 errors += _unbound(pkg, where, col.name, [k[1] for k in keys])
             if rule == "mover_enabled" and not dangling:
-                errors += _mover_off(pkg, where, columns, rows, col.name)
+                errors += _not_movers(pkg, where, columns, rows, col.name)
     return errors
 
 
-def _mover_off(pkg, where: str, columns: dict, rows, name: str) -> list[str]:
-    """Packages the column ``name`` names that haven't ``mover`` on (MVR's
+_MOVER_ROLES = ("mover_provider", "mover_receiver")
+
+
+def _plays(component, role: str) -> bool:
+    """Whether the component declares ``role`` and the option its
+    ``key_set_when`` names, if any, is on."""
+    if role not in getattr(type(component), "key_sets", {}):
+        return False
+    when = getattr(type(component), "key_set_when", {}).get(role)
+    return when is None or bool(getattr(component, when, False))
+
+
+def _off(component, roles: Iterable[str]) -> Optional[str]:
+    """The option that would switch on one of ``roles`` the component
+    declares but doesn't play, if any."""
+    whens = getattr(type(component), "key_set_when", {})
+    for role in roles:
+        if role in getattr(type(component), "key_sets", {}) and role in whens:
+            return whens[role]
+    return None
+
+
+def _not_movers(pkg, where: str, columns: dict, rows, name: str) -> list[str]:
+    """Packages the column ``name`` names that play no mover role (MVR's
     ``pname``). Rows naming no package are skipped."""
     scope = columns[name].metadata.get("scope")
     errors = []
     for row in _dicts(rows, columns):
         instance = _instance(pkg, columns, row, name)
-        if instance is None or getattr(instance, "mover", False):
+        if instance is None or any(_plays(instance, r) for r in _MOVER_ROLES):
             continue
         what = _describe(name, scope, (row.get(scope) if scope else None, row[name]))
-        errors.append(f"{where}: {what} hasn't mover on")
+        off = _off(instance, _MOVER_ROLES)
+        errors.append(f"{where}: {what} " + (f"hasn't {off} on" if off else "isn't a mover"))
     return errors
 
 
@@ -220,13 +244,17 @@ def _role_errors(pkg, where: str, columns: dict, rows, name: str) -> list[str]:
         what = _describe(name, None, (None, value))
         if id(instance) not in found:
             path = getattr(type(instance), "key_sets", {}).get(role)
-            found[id(instance)] = (None, "") if path is None else _role_keys(instance, path)
+            plays = path is not None and _plays(instance, role)
+            found[id(instance)] = (
+                (None, "") if path is None or not plays else _role_keys(instance, path)
+            )
         keys, missing = found[id(instance)]
         if keys is None and scope is None:
             continue
         if keys is None:
-            role_ = role.replace("_", " ")
-            errors.append(f"{where}: {what} is in {_label(instance)}, which isn't a {role_}")
+            off = _off(instance, (role,))
+            why = f"hasn't {off} on" if off else f"isn't a {role.replace('_', ' ')}"
+            errors.append(f"{where}: {what} is in {_label(instance)}, which {why}")
         elif int(value) not in keys:
             errors.append(f"{where}: {what} isn't {missing}")
     return errors

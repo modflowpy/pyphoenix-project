@@ -250,15 +250,48 @@ def test_exchange_mvr_model_outside_exchange(tmp_path):
     assert key_errors(mvr) == ["Mvr.packages: mname 'c' isn't a model of gwfgwf 'gwfgwf-1' (a, b)"]
 
 
-@pytest.mark.parametrize("period", [[("wel", 0, "lak", 0, "FACTOR", 1.0)], []])
-def test_model_mvr_mover_off(period):
+@pytest.mark.parametrize(
+    "period, also",
+    [
+        (
+            [("wel", 0, "lak", 0, "FACTOR", 1.0)],
+            ["Mvr.stress_period_data: period 0: id1 0 is in wel 'wel', which hasn't mover on"],
+        ),
+        ([], []),
+    ],
+)
+def test_model_mvr_mover_off(period, also):
     """A mover's packages need MOVER on (rule mover_enabled), whether or not
     a period row names them."""
     gwf = _gwf("flow")
     gwf.wel[0].mover = False
     mvr = _mvr([("wel",), ("lak",)], period)
     mvr.parent = gwf
-    assert key_errors(mvr) == ["Mvr.packages: pname 'wel' hasn't mover on"]
+    assert key_errors(mvr) == ["Mvr.packages: pname 'wel' hasn't mover on", *also]
+
+
+def test_model_mvr_role_off():
+    """A package plays the mover roles only with MOVER on (the key sets'
+    ``when``), so a period row naming one fails too."""
+    gwf = _gwf("flow")
+    gwf.lak[0].mover = False
+    mvr = _mvr([("wel",), ("lak",)], [("wel", 0, "lak", 0, "FACTOR", 1.0)])
+    mvr.parent = gwf
+    assert key_errors(mvr) == [
+        "Mvr.packages: pname 'lak' hasn't mover on",
+        "Mvr.stress_period_data: period 0: id2 0 is in lak 'lak', which hasn't mover on",
+    ]
+
+
+def test_model_mvr_not_mover():
+    """A package with no mover roles can't be listed (rule mover_enabled)."""
+    from flopy4.mf6.gwf import Chd
+
+    gwf = _gwf("flow")
+    Chd(parent=gwf, name="chd", stress_period_data={0: [((0, 0, 1), 1.0)]})
+    mvr = _mvr([("wel",), ("chd",)], [])
+    mvr.parent = gwf
+    assert key_errors(mvr) == ["Mvr.packages: pname 'chd' isn't a mover"]
 
 
 def test_exchange_mvr_mover_off(tmp_path):

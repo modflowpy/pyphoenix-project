@@ -29,6 +29,9 @@ class Riv(Package):
         "bound": "<=maxbound",
         "mover_provider": "<=maxbound",
     }
+    key_set_when: ClassVar[dict[str, str]] = {
+        "mover_provider": "mover",
+    }
 
     @attrs.define
     class StressPeriodData(Item):
