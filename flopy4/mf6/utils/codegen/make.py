@@ -193,7 +193,7 @@ class ComponentSpec:
     # flopy3's constructor keywords, deprecated: name -> Legacy(...) source
     legacy_kwargs: dict[str, str] = dc_field(default_factory=dict)
     # role -> key path
-    key_sets: dict[str, str] = dc_field(default_factory=dict)
+    key_sets: dict[str, str | tuple[str, ...]] = dc_field(default_factory=dict)
 
 
 # Column-schema-dict builders

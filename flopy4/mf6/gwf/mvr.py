@@ -25,7 +25,9 @@ class Mvr(Package):
             "mname",
             "pname",
         )
-        pname: str = string(pk=True, fk="gwf-nam.packages.pname", scope="mname")
+        pname: str = string(
+            pk=True, fk="gwf-nam.packages.pname", rule="mover_enabled", scope="mname"
+        )
         mname: Optional[str] = string(
             default=None, fk="sim-nam.models.mname", rule="exchange_models", when="modelnames"
         )

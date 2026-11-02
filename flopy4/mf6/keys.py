@@ -15,8 +15,9 @@ that may ``allow_zero`` is None (0 in the file) for no row (LAK's
 ``lakeout``), as a cellid's no cell. An index array column's fk applies to each element (SFR's
 ``ic``), a signed index's to its magnitude.
 
-An fk may have a ``rule`` instead of a scope (see modflow-devtools'
-``RULES``); unknown rules are skipped:
+An fk may have a ``rule`` (see modflow-devtools' ``RULES``); unknown
+rules are skipped. Without a scope, a rule picks the component the fk
+names in; with one, the scope picks it and the rule narrows its keys:
 
 - ``exchange_models``: one of the binding exchange's models.
 - ``flow_model``: checked in the flow model paired with this transport
@@ -24,21 +25,22 @@ An fk may have a ``rule`` instead of a scope (see modflow-devtools'
 - ``ssm_package``: checked in the flow package the parent's binding row
   names, unless an advanced transport package (LKT, SFT, ...) is paired
   with it, when MF6 ignores the SPC file (tsp-ssm.f90:195, tsp-apt.f90:343).
+- ``mover_enabled``: the package named has ``mover`` on (MVR's ``pname``,
+  gwf-mvr.f90:942-971).
 
 An integer fk may name a ``key`` role instead of a path, checked in the
 component its scope or rule picks, at that component's ``key_sets`` path
 (``block.column``, or ``<=dim`` for a row position). The component must
-play the role, and for a mover role have ``mover`` on; if a rule picks a
-component without the role, the check is skipped.
+play the role; if a rule picks a component without the role, the check is
+skipped.
 
 A key in a union column's arm (SFR's period ``diversion`` ``idv``) is
 checked among that arm's rows, and its scope may name a column of the
 enclosing row (``ifno``).
 
-Some keys are unique across lists, which a pk can't say (see
-modflow-devtools' dfnspec.md, "Consumer checks"): SSM names a flow package
-once in ``sources`` and ``fileinput`` together (tsp-ssm.f90:814-821,
-912-919)."""
+A key set of several paths is unique across them, as a supertype table's
+key: SSM's ``source`` names a flow package once in ``sources`` and
+``fileinput`` together (tsp-ssm.f90:814-821, 912-919)."""
 
 from types import SimpleNamespace
 from typing import Any, Iterable, Optional
@@ -48,15 +50,6 @@ import attrs
 from flopy4.mf6.item import item_list_type
 from flopy4.mf6.item_table import ItemTable
 from flopy4.spec import reference_names
-
-# Roles that need the component's ``mover`` option on.
-_MOVER_ROLES = ("mover_provider", "mover_receiver")
-
-# Lists whose keys are unique across them, by DFN: (list, column) pairs.
-_SHARED_KEYS: dict[str, tuple[tuple[str, str], ...]] = {
-    "gwt-ssm": (("sources", "pname"), ("fileinput", "pname")),
-    "gwe-ssm": (("sources", "pname"), ("fileinput", "pname")),
-}
 
 
 def key_errors(pkg: Any) -> list[str]:
@@ -78,26 +71,40 @@ def key_errors(pkg: Any) -> list[str]:
                 else:
                     rows_ = rows
                 errors += _row_errors(pkg, where, cls, rows_)
-    return errors + _shared_key_errors(pkg)
+    return errors + _key_set_errors(pkg)
 
 
-def _shared_key_errors(pkg) -> list[str]:
-    """Keys given in more than one of the lists in `_SHARED_KEYS`."""
-    lists = _SHARED_KEYS.get(getattr(type(pkg), "dfn_name", ""), ())
-    seen: dict[Any, str] = {}
+def _key_set_errors(pkg) -> list[str]:
+    """Keys in more than one of a key set's several paths (SSM's
+    ``source``: ``sources.pname`` and ``fileinput.pname``)."""
     errors = []
-    for list_name, column in lists:
-        rows = getattr(pkg, list_name, None)
-        for value in [] if rows is None else _values(rows, column):
-            if value is None:
-                continue
-            key = _norm((value,))
-            if key in seen and seen[key] != list_name:
-                errors.append(
-                    f"{type(pkg).__name__}.{list_name}: {column} {value!r} is also in {seen[key]}"
-                )
-            seen.setdefault(key, list_name)
+    for paths in getattr(type(pkg), "key_sets", {}).values():
+        if isinstance(paths, str):
+            continue
+        seen: dict[Any, str] = {}
+        for path in paths:
+            block, column = path.split(".")
+            for value in _block_values(pkg, block, column):
+                if value is None:
+                    continue
+                key = _norm((value,))
+                if key in seen and seen[key] != block:
+                    errors.append(
+                        f"{type(pkg).__name__}.{block}: {column} {value!r} is also in {seen[key]}"
+                    )
+                seen.setdefault(key, block)
     return errors
+
+
+def _block_values(component, block: str, column: str) -> list:
+    """The ``column`` values of the component's ``block`` list rows."""
+    values = []
+    for f in attrs.fields(type(component)):
+        if f.metadata.get("block") != block or item_list_type(f.type) is None:
+            continue
+        for _, rows in _groups(getattr(component, f.name)):
+            values += _values(rows, column)
+    return values
 
 
 def _row_errors(pkg, where: str, cls, rows) -> list[str]:
@@ -113,7 +120,7 @@ def _arm_errors(pkg, where: str, columns: dict, rows, name: str) -> list[str]:
     """Keys in the arms of the union column ``name``: each arm's rows, with
     the enclosing row's columns there for a scope to name (SFR's period
     ``diversion`` ``idv``, within the row's ``ifno``)."""
-    by_arm: dict[type, list] = {}
+    by_arm: dict[Any, list] = {}
     for row, value in zip(_dicts(rows, columns), _values(rows, name)):
         if attrs.has(type(value)):
             arm_values = {f.name: getattr(value, f.name) for f in attrs.fields(type(value))}
@@ -155,6 +162,22 @@ def _column_errors(pkg, where: str, columns: dict, rows, check: dict | None = No
             errors += dangling
             if rule == "exchange_models" and not dangling:
                 errors += _unbound(pkg, where, col.name, [k[1] for k in keys])
+            if rule == "mover_enabled" and not dangling:
+                errors += _mover_off(pkg, where, columns, rows, col.name)
+    return errors
+
+
+def _mover_off(pkg, where: str, columns: dict, rows, name: str) -> list[str]:
+    """Packages the column ``name`` names that haven't ``mover`` on (MVR's
+    ``pname``). Rows naming no package are skipped."""
+    scope = columns[name].metadata.get("scope")
+    errors = []
+    for row in _dicts(rows, columns):
+        instance = _instance(pkg, columns, row, name)
+        if instance is None or getattr(instance, "mover", False):
+            continue
+        what = _describe(name, scope, (row.get(scope) if scope else None, row[name]))
+        errors.append(f"{where}: {what} hasn't mover on")
     return errors
 
 
@@ -198,8 +221,6 @@ def _role_errors(pkg, where: str, columns: dict, rows, name: str) -> list[str]:
         if id(instance) not in found:
             path = getattr(type(instance), "key_sets", {}).get(role)
             found[id(instance)] = (None, "") if path is None else _role_keys(instance, path)
-            if path is not None and role in _MOVER_ROLES and not instance.mover:
-                errors.append(f"{where}: {what} is in {_label(instance)}, which hasn't mover on")
         keys, missing = found[id(instance)]
         if keys is None and scope is None:
             continue
@@ -211,9 +232,13 @@ def _role_errors(pkg, where: str, columns: dict, rows, name: str) -> list[str]:
     return errors
 
 
-def _role_keys(component, path: str) -> tuple[set | range, str]:
+def _role_keys(component, path: str | tuple[str, ...]) -> tuple[set | range, str]:
     """The component's keys at ``path``, and where they are. ``<=dim`` is
-    row positions below ``dim``, or below the longest list if unset."""
+    row positions below ``dim``, or below the longest list if unset.
+    Several ``block.column`` paths are their union."""
+    if isinstance(path, tuple):
+        parts = [_role_keys(component, p) for p in path]
+        return set().union(*(k for k, _ in parts)), " or ".join(w for _, w in parts)
     if path.startswith("<="):
         dim = path[2:]
         # its own (LAK's derived nlakeconn), or a provider's

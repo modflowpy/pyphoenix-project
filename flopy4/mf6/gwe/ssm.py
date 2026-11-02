@@ -15,6 +15,13 @@ class Ssm(Package):
     dfn_name: ClassVar[str] = "gwe-ssm"
     ftype: ClassVar[str] = "SSM6"
 
+    key_sets: ClassVar[dict[str, str | tuple[str, ...]]] = {
+        "source": (
+            "sources.pname",
+            "fileinput.pname",
+        ),
+    }
+
     @attrs.define
     class Sources(Item):
         pname: str = string(pk=True, fk="gwf-nam.packages.pname", rule="flow_model")

@@ -250,15 +250,29 @@ def test_exchange_mvr_model_outside_exchange(tmp_path):
     assert key_errors(mvr) == ["Mvr.packages: mname 'c' isn't a model of gwfgwf 'gwfgwf-1' (a, b)"]
 
 
-def test_model_mvr_mover_off():
-    """Movers need MOVER on."""
+@pytest.mark.parametrize("period", [[("wel", 0, "lak", 0, "FACTOR", 1.0)], []])
+def test_model_mvr_mover_off(period):
+    """A mover's packages need MOVER on (rule mover_enabled), whether or not
+    a period row names them."""
     gwf = _gwf("flow")
     gwf.wel[0].mover = False
-    mvr = _mvr([("wel",), ("lak",)], [("wel", 0, "lak", 0, "FACTOR", 1.0)])
+    mvr = _mvr([("wel",), ("lak",)], period)
     mvr.parent = gwf
-    assert key_errors(mvr) == [
-        "Mvr.stress_period_data: period 0: id1 0 is in wel 'wel', which hasn't mover on"
-    ]
+    assert key_errors(mvr) == ["Mvr.packages: pname 'wel' hasn't mover on"]
+
+
+def test_exchange_mvr_mover_off(tmp_path):
+    a, b = _gwf("a"), _gwf("b")
+    a.wel[0].mover = False
+    mvr = _mvr([("a", "wel"), ("b", "wel")], [], modelnames=True)
+    exg = Gwfgwf(
+        exgmnamea=a,
+        exgmnameb=b,
+        exchangedata=[((0, 0, 1), (0, 0, 0), 1, 0.5, 0.5, 1.0)],
+        mvr=mvr,
+    )
+    _sim(tmp_path, a, b, exchanges=[exg])
+    assert key_errors(mvr) == ["Mvr.packages: pname 'wel' (mname 'a') hasn't mover on"]
 
 
 def _transport(tmp_path, pname="wel", bndno=0, exchange=True):

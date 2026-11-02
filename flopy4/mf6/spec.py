@@ -186,10 +186,9 @@ def string(
     be empty, unless ``empty_is_none``, when an empty string is no value.
     A key (``pk``, or ``fk``, the path of the key it names) may be unique
     only within the value of another column, its ``scope`` (MVR's
-    ``pname`` within ``mname``), or an fk may have a ``rule`` instead; see
-    `flopy4.mf6.keys`."""
-    if scope and rule:
-        raise ValueError("a key has a scope or a rule, not both")
+    ``pname`` within ``mname``). An fk may have a ``rule``, which picks the
+    component it names in, or with a scope narrows its keys (MVR's
+    ``pname``, packages with ``mover`` on); see `flopy4.mf6.keys`."""
     if time_series:
         _ts_converter(kwargs, to_ts_value)
     if empty_is_none:
@@ -224,8 +223,8 @@ def integer(
         raise ValueError("a key is only for an index without an fk path")
     if key and not (scope or rule):
         raise ValueError("a key needs a scope or a rule")
-    if scope and (rule or not (key or pk or fk)):
-        raise ValueError("an integer's scope is only for a key, without a rule")
+    if scope and not (key or pk or fk):
+        raise ValueError("an integer's scope is only for a key")
     if time_series:
         _ts_converter(kwargs, to_ts_value)
     return _field(
