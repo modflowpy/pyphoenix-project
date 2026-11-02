@@ -497,8 +497,7 @@ def test_transform_gwf_wel_file(model_workspace):
     assert len(spd[0]) == 4
     assert len(spd[1]) == 4
 
-    # Check specific values from the file (text: a list row's values
-    # are untyped until structured)
+    # Check specific values from the file (text until structured)
     # First well: 2 3 4 -3.5e4
     assert [int(v) for v in spd[0][:3]] == [2, 3, 4]  # layer, row, col
     assert float(spd[0][3]) == -3.5e4  # q

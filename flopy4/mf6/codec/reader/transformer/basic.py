@@ -24,9 +24,7 @@ class BasicTransformer(Transformer):
     Basic transformer for MF6 input files. Works only with the basic
     grammar, parsing bytes (`get_basic_parser(..., use_bytes=True)`) with
     `SOURCE` set to them. Yields blocks simply as collections of lines of
-    tokens, each its text: the schema, not the parser, tells a number
-    from a name that looks like one (a boundname `1.50`), when the
-    blocks are structured.
+    tokens, as text (see `from_text`).
     """
 
     def start(self, items: list[Any]) -> dict[str, Any]:
@@ -97,8 +95,7 @@ class BasicTransformer(Transformer):
         return NumberRows(Span(buffer, start, end, encoding))
 
     def QUOTED_WORD(self, token: Token) -> str:
-        # Without its quotes, as MF6 reads it. (Every token is text; the
-        # schema decides what's a number, as MF6 does, quoted or not.)
+        # Without its quotes, as MF6 reads it.
         return _text(token)[1:-1]
 
     def CNAME(self, token: Token) -> str:

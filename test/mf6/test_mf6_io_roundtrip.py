@@ -645,9 +645,8 @@ def test_hand_written_boundnames_load(tmp_path):
 )
 def test_unquoted_number_like_names_load_as_written(tmp_path, rows):
     """A boundname, obsname or observation id that looks like a number
-    (`1.50`, `1d0`) loads as its text, unquoted: only the schema tells
-    a number from a name, and the reader keeps tokens as text for it.
-    Numbers in a real column still read as numbers, D exponents too."""
+    (`1.50`, `1d0`) loads as written, unquoted. Real columns still read
+    as numbers, D exponents too."""
     sim, _ = _ghb_sim(tmp_path, [("a",), ("b",)], obs=[("1.50", "1.50")])
     sim.write()
     ghb_file = next(tmp_path.glob("*.ghb"))

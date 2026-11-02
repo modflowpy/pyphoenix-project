@@ -24,8 +24,8 @@ class Span(NamedTuple):
 
 
 class NumberRows(Sequence):
-    """A NUMBERS token's rows, each a list of its values' text, split
-    when first used. A block of only these keeps its text, to read by column (see
+    """A NUMBERS token's rows, as text, split when first used. A block
+    of only these keeps its text, to read by column (see
     `item_table.read_rows`)."""
 
     __slots__ = ("_text", "_rows")
@@ -51,8 +51,6 @@ class NumberRows(Sequence):
 
     @property
     def rows(self) -> list[list[str]]:
-        """The lines' values, as text: only a row's schema can tell a
-        number from a name that looks like one (a boundname ``1.50``)."""
         if self._rows is None:
             # blank and comment-only lines aren't rows.
             text = self.raw_text.replace(",", " ")

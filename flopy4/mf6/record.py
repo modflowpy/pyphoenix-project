@@ -76,11 +76,9 @@ def _words(t: Any) -> tuple[str, ...]:
 def _coerce(token: Any, f: attrs.Attribute) -> Any:
     """Cast a raw token to a field's declared type (time_series falls back
     to the raw string if it isn't a float). Only Optional[X] (a single
-    non-None union arm) is unwrapped -- a genuine multi-type union like
-    Union[float, str] is deliberately ambiguous: a token is a number if it
-    reads as one, else left as it is --
-    but a word a ``Literal`` arm allows is tried first, matched in any case
-    (``Union[Literal["NONE"], float]``: NONE, or else a number)."""
+    non-None union arm) is unwrapped; a multi-type union goes to
+    `from_text`. A word a ``Literal`` arm allows is tried first, in any
+    case (``Union[Literal["NONE"], float]``: NONE, or else a number)."""
     if f.metadata.get("time_series"):
         try:
             return fortran_float(token) if isinstance(token, str) else float(token)
@@ -95,7 +93,7 @@ def _coerce(token: Any, f: attrs.Attribute) -> Any:
                 return word
             args = [a for a in args if get_origin(a) is not Literal]
         if len(args) != 1:
-            return from_text(token, t)  # a number if an arm is one and it reads as one
+            return from_text(token, t)
         t = args[0]
     if t in (int, "int"):
         return int(fortran_float(str(token)))

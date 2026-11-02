@@ -32,21 +32,18 @@ NUMBER = re.compile(r"[+-]?(\d+(\.\d*)?|\.\d+)([eEdD][+-]?\d+)?")
 
 
 def number_or_text(value: Any) -> Any:
-    """A token as a number if it reads as one, else as it is: for a value
-    whose type allows either (a time series name or a number)."""
+    """A token as a number if it reads as one, else unchanged."""
     if isinstance(value, str) and NUMBER.fullmatch(value):
         return parse_number(value)
     return value
 
 
 def from_text(value: Any, t: Any) -> Any:
-    """A token read from a file, converted to the type ``t``: the reader
-    keeps tokens as text, since only the schema can tell ``1.50`` the
-    number from ``1.50`` the name. Anything but text passes through.
-    A union tries a ``Literal`` arm's words (in any case), then a number
-    if an arm is numeric and the token reads as that arm's kind (an int
-    arm alone takes only integers), else keeps the text.
-    A type it doesn't know gets a number if the token reads as one."""
+    """Convert a token read from a file to type ``t``. The reader keeps
+    tokens as text, since only the schema can tell the number ``1.50``
+    from the name ``1.50``. Non-text values pass through. A union takes a
+    ``Literal`` word (any case), then a number its numeric arm accepts,
+    else the text."""
     if not isinstance(value, str):
         return value
     if isinstance(t, str):

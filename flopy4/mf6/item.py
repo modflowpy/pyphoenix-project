@@ -267,7 +267,7 @@ def _token_fits(token: Any, kind: type) -> bool:
         return True
     if isinstance(token, str):
         try:
-            fortran_float(token)  # with a D exponent too, as MF6 reads one
+            fortran_float(token)
             return True
         except ValueError:
             return False
@@ -299,7 +299,7 @@ def _read_unions(
     indexes for a package keyed by one, e.g. LAK's lake number, or an
     exchange; cellids otherwise), so a row unlike its parent's (CSUB's
     cellid observations) still reads by its width. A number no arm fits is
-    kept as is (from a file, its text: an id `1.50`). Unknown grid width: any of 3, 2 or 1."""
+    kept as is. Unknown grid width: any of 3, 2 or 1."""
     widths = (ncelldim,) if ncelldim else (3, 2, 1)
 
     def arms(kinds: tuple[str, ...], pos: int):
@@ -325,7 +325,7 @@ def _read_unions(
                         yield tuple(int(fortran_float(str(t))) - 1 for t in cell), w, cost
                         fits = True
         if numeric and not fits and forms is None:
-            yield tok, 1, 10  # as written (text from a file)
+            yield tok, 1, 10
 
     def solve(i: int, pos: int, form: "tuple[str, ...] | None") -> "tuple[int, list] | None":
         if i == len(fields):

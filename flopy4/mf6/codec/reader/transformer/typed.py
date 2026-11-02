@@ -23,8 +23,7 @@ def _is_records(item: Any) -> bool:
 
 
 def record_rows(text: str) -> list[list[str]]:
-    """RECORDS' rows, each a list of its values' text as `record` reads
-    them. Blank and comment-only lines aren't rows."""
+    """RECORDS' rows, as text. Blank and comment-only lines aren't rows."""
     rows = []
     for line in text.replace(",", " ").split("\n"):
         if (tokens := line.split()) and tokens[0][0] not in "#!":
@@ -234,9 +233,7 @@ class TypedTransformer(Transformer):
         return fortran_float(items[0])
 
     def number(self, items: list[Any]) -> str:
-        """A number-like token where the grammar doesn't type it (a list
-        row's value, a string field's), as its text: only the schema can
-        tell ``1.50`` the number from ``1.50`` the name."""
+        """A number-like token the grammar doesn't type, as text."""
         return str(items[0])
 
     def data(self, items: list[Any]) -> np.ndarray:

@@ -25,9 +25,8 @@ from flopy4.utils import fortran_float, number_or_text
 
 
 def _numbers(rows):
-    """Rows (or one row) with their number-like text as numbers, as the
-    parser typed them before it kept tokens as text: to check the values
-    a writer wrote, whatever their format."""
+    """Rows (or one row) with number-like text as numbers, to compare
+    written values regardless of format."""
     if isinstance(rows, str):
         return number_or_text(rows)
     return [_numbers(r) for r in rows]
@@ -86,7 +85,7 @@ END griddata
     assert "dimensions" in result
     assert "griddata" in result
     assert result["options"] == [["print_input"]]
-    # tokens as text: the schema, not the parser, says what's a number
+    # tokens stay text until structured
     assert result["dimensions"] == [["ncol", "10"], ["nrow", "10"], ["nlay", "1"]]
     assert result["griddata"] == [
         ["delr"],
@@ -117,8 +116,8 @@ END options
 
 def test_loads_number_only_lines():
     # Lines of only numbers are read in bulk (NUMBERS), and must read
-    # as any other line would: each value its text as written, blank
-    # and comment-only lines dropped, a line with anything else on it whole.
+    # as any other line would: values as text, blank and comment-only
+    # lines dropped.
     mf6_input = """
 BEGIN griddata
   botm
