@@ -1,4 +1,3 @@
-import re
 from contextvars import ContextVar
 from mmap import mmap
 from typing import Any
@@ -6,20 +5,10 @@ from typing import Any
 from lark import Token, Transformer
 
 from flopy4.mf6.codec.reader.transformer.rows import BlockRows, NumberRows, Span
-from flopy4.utils import parse_number
+from flopy4.utils import NUMBER, parse_number
 
 # The buffer being parsed and its encoding (see `BasicTransformer`).
 SOURCE: ContextVar[tuple[bytes | mmap, str]] = ContextVar("SOURCE")
-
-# A whole token that's a number, allowing Fortran `D` exponents (`1D-5`).
-_NUMBER = re.compile(r"[+-]?(\d+(\.\d*)?|\.\d+)([eEdD][+-]?\d+)?")
-
-
-def _value(value: str) -> str | int | float:
-    """A token's value: a number if it's one, else the word."""
-    if _NUMBER.fullmatch(value):
-        return parse_number(value)
-    return value
 
 
 class _RecordRows(list):
@@ -35,7 +24,7 @@ class BasicTransformer(Transformer):
     Basic transformer for MF6 input files. Works only with the basic
     grammar, parsing bytes (`get_basic_parser(..., use_bytes=True)`) with
     `SOURCE` set to them. Yields blocks simply as collections of lines of
-    tokens.
+    tokens, as text (see `from_text`).
     """
 
     def start(self, items: list[Any]) -> dict[str, Any]:
@@ -76,8 +65,8 @@ class BasicTransformer(Transformer):
         # record header (OBS's "CONTINUOUS FILEOUT <file> [BINARY]") is kept
         # whole, in its own case.
         name, *rest = items
-        if rest and isinstance(rest[0], (int, float)):
-            return f"{name} {rest[0]}"
+        if rest and NUMBER.fullmatch(rest[0]):
+            return f"{name} {parse_number(rest[0])}"
         if rest:
             return " ".join([str(name), *map(str, rest)])
         return str(name)
@@ -85,8 +74,8 @@ class BasicTransformer(Transformer):
     def line(self, items: list[Any]) -> list[Any]:
         return [_text(i) if isinstance(i, Token) else i for i in items]
 
-    def TOKEN(self, token: Token) -> str | int | float:
-        return _value(_text(token))
+    def TOKEN(self, token: Token) -> str:
+        return _text(token)
 
     def RECORDS(self, token: Token) -> _RecordRows:
         # Each line a row, as `line` reads it; blank and comment-only lines
@@ -94,7 +83,7 @@ class BasicTransformer(Transformer):
         rows = _RecordRows()
         for line in _text(token).replace(",", " ").split("\n"):
             if (values := line.split()) and values[0][0] not in "#!":
-                rows.append([_value(v) for v in values])
+                rows.append(values)
         return rows
 
     def NUMBERS(self, token: Token) -> NumberRows:
@@ -106,7 +95,7 @@ class BasicTransformer(Transformer):
         return NumberRows(Span(buffer, start, end, encoding))
 
     def QUOTED_WORD(self, token: Token) -> str:
-        # Quoting forces string interpretation even if content looks numeric.
+        # Without its quotes, as MF6 reads it.
         return _text(token)[1:-1]
 
     def CNAME(self, token: Token) -> str:

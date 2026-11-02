@@ -3,6 +3,7 @@
 import re
 from pathlib import Path
 from pprint import pprint
+from typing import Any, Literal, Optional, Union
 
 import dask.array as da
 import numpy as np
@@ -20,7 +21,44 @@ from flopy4.mf6.gwf import Chd, Dis, Ghb, Npf, Oc
 from flopy4.mf6.ims import Ims
 from flopy4.mf6.load_context import LoadContext
 from flopy4.mf6.utl.obs import Obs
-from flopy4.utils import fortran_float
+from flopy4.utils import fortran_float, number_or_text
+
+
+def _numbers(rows):
+    """Rows (or one row) with number-like text as numbers, to compare
+    written values regardless of format."""
+    if isinstance(rows, str):
+        return number_or_text(rows)
+    return [_numbers(r) for r in rows]
+
+
+@pytest.mark.parametrize(
+    "token, t, expected",
+    [
+        ("1.50", str, "1.50"),
+        ("1.50", float, 1.5),
+        ("1D-5", float, 1e-5),
+        ("1.0+1", float, 10.0),
+        ("3", int, 3),
+        ("3.0", int, 3),
+        ("x.dat", Path, Path("x.dat")),
+        ("1.50", Optional[str], "1.50"),
+        ("none", Union[Literal["NONE"], float], "NONE"),
+        ("2.5", Union[Literal["NONE"], float], 2.5),
+        ("1d0", Union[float, str], 1.0),
+        ("rate", Union[float, str], "rate"),
+        ("7", Union[int, str], 7),
+        ("1.50", Union[int, str], "1.50"),
+        ("1.50", Any, 1.5),
+        (1.5, str, 1.5),  # not text: as is
+    ],
+)
+def test_from_text(token, t, expected):
+    """A file's token converts by the type the schema gives it."""
+    from flopy4.utils import from_text
+
+    value = from_text(token, t)
+    assert value == expected and type(value) is type(expected)
 
 
 def test_loads_dis_generic_simple():
@@ -47,8 +85,14 @@ END griddata
     assert "dimensions" in result
     assert "griddata" in result
     assert result["options"] == [["print_input"]]
-    assert result["dimensions"] == [["ncol", 10], ["nrow", 10], ["nlay", 1]]
-    assert result["griddata"] == [["delr"], ["constant", 100.0], ["delc"], ["constant", 100.0]]
+    # tokens stay text until structured
+    assert result["dimensions"] == [["ncol", "10"], ["nrow", "10"], ["nlay", "1"]]
+    assert result["griddata"] == [
+        ["delr"],
+        ["constant", "100.0"],
+        ["delc"],
+        ["constant", "100.0"],
+    ]
 
 
 def test_loads_number_only_as_whole_token():
@@ -65,15 +109,15 @@ END options
     assert result["options"] == [
         ["start_date_time", "1997-07-16T19:20:30.45+01:00"],
         ["ts6", "filein", "1model.ts"],
-        ["x", 1, 2.5, 0.5, 7.0, 1e5, 3],
-        ["y", -5, 2, -1500.0, 1e-5, 8.2e-4],
+        ["x", "1", "2.5", ".5", "7.", "1e5", "3"],
+        ["y", "-5", "+2", "-1.5e3", "1D-5", "8.2d-4"],
     ]
 
 
 def test_loads_number_only_lines():
     # Lines of only numbers are read in bulk (NUMBERS), and must read
-    # as any other line would: each value int or float as written, blank
-    # and comment-only lines dropped, a line with anything else on it whole.
+    # as any other line would: values as text, blank and comment-only
+    # lines dropped.
     mf6_input = """
 BEGIN griddata
   botm
@@ -93,16 +137,15 @@ END griddata
     result = loads(mf6_input)
     assert result["griddata"] == [
         ["botm"],
-        ["INTERNAL", "FACTOR", 1.0],
-        [1, 2, 3],
-        [4.5, 0.5, 1.0, -2],
-        [1e-5, 2000.0, 300.0],
-        [1, 2, 3, "bname"],
-        [1, 2],
-        ["1-2", 3],
-        [1, 2],
+        ["INTERNAL", "FACTOR", "1.0"],
+        ["1", "2", "3"],
+        ["4.5", ".5", "1.", "-2"],
+        ["1D-5", "2d3", "+3e2"],
+        ["1", "2", "3", "bname"],
+        ["1", "2"],
+        ["1-2", "3"],
+        ["1", "2"],
     ]
-    assert [type(v) for v in result["griddata"][3]] == [float, float, float, int]
 
 
 # What MF6 reads from an array's text, inline or in a file, checked with
@@ -305,16 +348,16 @@ END period
 
     result = loads(mf6_input)
     assert result["period 1"] == [
-        [1, "inflow", 0.0],
-        [2, "status", "ACTIVE", 1e-5],
-        [3, 1.0, "end"],
-        [4, 5, 6],
-        [7, "quoted word", 1],
-        [8, "x", 2],
-        ["endpoint", 1, 2],
-        [2, "begin", "sp", 1],
-        ["1997-07-16T19:20:30", 7],
-        [100000.0, "e", 2],
+        ["1", "inflow", "0.0"],
+        ["2", "status", "ACTIVE", "1D-5"],
+        ["3", "1.0", "end"],
+        ["4", "5", "6"],
+        ["7", "quoted word", "1"],
+        ["8", "x", "2"],
+        ["endpoint", "1", "2"],
+        ["2", "begin", "sp", "1"],
+        ["1997-07-16T19:20:30", "7"],
+        ["1e5", "e", "2"],
     ]
     tree = get_basic_parser().parse(mf6_input)
     tokens = [t for t in tree.scan_values(lambda v: isinstance(v, Token)) if t.type == "RECORDS"]
@@ -459,7 +502,7 @@ def test_dumps_dis_with_constant_arrays(dis_with_constant_arrays):
     pprint(loaded)
 
     assert ["LENGTH_UNITS", "feet"] in loaded["OPTIONS"]
-    assert loaded["DIMENSIONS"] == [["NLAY", 2], ["NROW", 10], ["NCOL", 10]]
+    assert _numbers(loaded["DIMENSIONS"]) == [["NLAY", 2], ["NROW", 10], ["NCOL", 10]]
     assert ["DELR"] in loaded["GRIDDATA"]
     assert ["DELC"] in loaded["GRIDDATA"]
 
@@ -548,13 +591,13 @@ def test_dumps_disv_with_constant_arrays(disv_with_constant_arrays):
     pprint(loaded)
 
     assert ["LENGTH_UNITS", "feet"] in loaded["OPTIONS"]
-    assert loaded["DIMENSIONS"] == [["NLAY", 3], ["NCPL", 1], ["NVERT", 4]]
+    assert _numbers(loaded["DIMENSIONS"]) == [["NLAY", 3], ["NCPL", 1], ["NVERT", 4]]
     assert ["TOP"] in loaded["GRIDDATA"]
     assert ["BOTM", "LAYERED"] in loaded["GRIDDATA"]
-    assert ["CONSTANT", 30.0] in loaded["GRIDDATA"]
-    assert ["CONSTANT", 20.0] in loaded["GRIDDATA"]
-    assert ["CONSTANT", 10.0] in loaded["GRIDDATA"]
-    assert ["CONSTANT", 0.0] in loaded["GRIDDATA"]
+    assert ["CONSTANT", 30.0] in _numbers(loaded["GRIDDATA"])
+    assert ["CONSTANT", 20.0] in _numbers(loaded["GRIDDATA"])
+    assert ["CONSTANT", 10.0] in _numbers(loaded["GRIDDATA"])
+    assert ["CONSTANT", 0.0] in _numbers(loaded["GRIDDATA"])
 
 
 def test_dumps_disv_with_layered_arrays(disv_with_constant_arrays):
@@ -657,7 +700,7 @@ def test_disv_vertices_roundtrip(disv_with_constant_arrays):
     assert "END VERTICES" in dumped
 
     loaded = loads(dumped)
-    vertices = loaded["VERTICES"]
+    vertices = _numbers(loaded["VERTICES"])
     assert len(vertices) == 4
     # iv values are 1-based in the MF6 file
     assert vertices[0][0] == 1
@@ -710,7 +753,7 @@ def test_disu_round_trip():
     assert list(raw)[-4:] == ["GRIDDATA", "CONNECTIONDATA", "VERTICES", "CELL2D"]
     # ja is 0-based, 1-based in the file
     conn = raw["CONNECTIONDATA"]
-    assert conn[conn.index(["JA"]) + 2] == [1, 2, 2, 1]
+    assert _numbers(conn[conn.index(["JA"]) + 2]) == [1, 2, 2, 1]
 
     disu2 = structure_component(raw, Disu)
     for name in ("top", "bot", "area", "iac", "ja", "ihc", "cl12", "hwva"):
@@ -738,7 +781,7 @@ def test_gnc_round_trip(dims):
     )
     assert (gnc.numgnc, gnc.numalphaj) == (2, 2)
     raw = loads(dumps(unstructure_component(gnc)))
-    assert raw["GNCDATA"] == [
+    assert _numbers(raw["GNCDATA"]) == [
         [1, 1, 2, 1, 1, 3, 1, 2, 2, 1, 2, 3, 0.25, 0.25],
         [1, 2, 2, 1, 2, 3, 1, 1, 2, 0, 0, 0, 0.5, 0.0],
     ]
@@ -768,7 +811,7 @@ def test_evt_segments_round_trip():
     )
     assert evt.nseg == 3
     raw = loads(dumps(unstructure_component(evt)))
-    assert raw["PERIOD 1"][0] == [1, 1, 1, 59.0, 0.01, 6.0, 0.5, 0.9, 1.0, 0.7]
+    assert _numbers(raw["PERIOD 1"][0]) == [1, 1, 1, 59.0, 0.01, 6.0, 0.5, 0.9, 1.0, 0.7]
     evt2 = structure_component(
         raw, Evt, context=LoadContext(dims={"nlay": 1, "nrow": 1, "ncol": 2})
     )
@@ -786,7 +829,7 @@ def test_ts_round_trip():
         timeseries=[(0.0, (1.0, 2.0)), (10.0, (3.0, 4.0))],
     )
     raw = loads(dumps(unstructure_component(ts)))
-    assert raw["TIMESERIES"] == [[0.0, 1.0, 2.0], [10.0, 3.0, 4.0]]
+    assert _numbers(raw["TIMESERIES"]) == [[0.0, 1.0, 2.0], [10.0, 3.0, 4.0]]
     ts2 = structure_component(raw, Ts)
     assert ts2.time_series_name == ts.time_series_name
     assert ts2.timeseries == ts.timeseries
@@ -911,7 +954,7 @@ def test_series_attributes_from_values():
     assert ts.sfacrecord_single == Ts.SfacrecordSingle(sfacval=2.0)
     assert Ts(sfac=(1.0, 2.0)).sfac == Ts.Sfac(sfacval=(1.0, 2.0))
     raw = loads(dumps(unstructure_component(ts)))
-    assert raw["ATTRIBUTES"] == [
+    assert _numbers(raw["ATTRIBUTES"]) == [
         ["NAMES", "a", "b"],
         ["METHODS", "linear", "stepwise"],
         ["SFAC", 2.0],
@@ -1064,7 +1107,7 @@ def test_maw_round_trip():
         },
     )
     raw = loads(dumps(unstructure_component(maw)))
-    assert raw["CONNECTIONDATA"][1] == [1, 2, 2, 1, 1, 0.0, -10.0, 1.0, 0.2]
+    assert _numbers(raw["CONNECTIONDATA"][1]) == [1, 2, 2, 1, 1, 0.0, -10.0, 1.0, 0.2]
     maw2 = structure_component(
         raw, Maw, context=LoadContext(dims={"nlay": 2, "nrow": 1, "ncol": 2})
     )
@@ -1083,7 +1126,7 @@ def test_hfb_round_trip():
     )
     assert hfb.maxhfb == 2
     raw = loads(dumps(unstructure_component(hfb)))
-    assert raw["PERIOD 1"][0] == [1, 1, 1, 1, 1, 2, 0.001]
+    assert _numbers(raw["PERIOD 1"][0]) == [1, 1, 1, 1, 1, 2, 0.001]
     hfb2 = structure_component(
         raw, Hfb, context=LoadContext(dims={"nlay": 1, "nrow": 2, "ncol": 2})
     )
@@ -1104,7 +1147,7 @@ def test_uzf_round_trip():
     )
     raw = loads(dumps(unstructure_component(uzf)))
     # ivertcon 1 -> 2; None (no underlying cell) -> 0
-    assert [r[3] for r in raw["PACKAGEDATA"]] == [2, 0]
+    assert [r[3] for r in _numbers(raw["PACKAGEDATA"])] == [2, 0]
     uzf2 = structure_component(raw, Uzf, context=LoadContext(dims={"nodes": 2}))
     assert uzf2.packagedata == uzf.packagedata
     assert uzf2.stress_period_data == uzf.stress_period_data
@@ -1127,7 +1170,7 @@ def test_sfr_connections_round_trip():
     # ints as in the file: 1-based, signed
     assert Sfr(packagedata=sfr.packagedata, connectiondata=[(0, -2), (1, 1, -3), (2, 2)]) == sfr
     raw = loads(dumps(unstructure_component(sfr)))
-    assert raw["CONNECTIONDATA"] == [[1, -2], [2, 1, -3], [3, 2]]
+    assert _numbers(raw["CONNECTIONDATA"]) == [[1, -2], [2, 1, -3], [3, 2]]
     sfr2 = structure_component(
         raw, Sfr, context=LoadContext(dims={"nlay": 1, "nrow": 1, "ncol": 3})
     )
@@ -1173,7 +1216,7 @@ def test_sfr_unconnected_reach_round_trip():
     )
     raw = loads(dumps(unstructure_component(sfr)))
     # no cell is zeros, of the grid's width (here from the other row's)
-    assert raw["PACKAGEDATA"][1][1:4] == [0, 0, 0]
+    assert _numbers(raw["PACKAGEDATA"][1][1:4]) == [0, 0, 0]
     context = LoadContext(dims={"nlay": 1, "nrow": 1, "ncol": 1})
     sfr2 = structure_component(raw, Sfr, context=context)
     assert sfr2.packagedata == sfr.packagedata
@@ -1200,8 +1243,8 @@ def test_sfr_all_unconnected_reaches_round_trip():
         connectiondata=[(0, ()), (1, ())],
     )
     raw = loads(dumps(unstructure_component(sfr)))
-    assert raw["PACKAGEDATA"][0][1:4] == [0, 0, 0]
-    assert raw["PACKAGEDATA"][1][1:4] == [0, 0, 0]
+    assert _numbers(raw["PACKAGEDATA"][0][1:4]) == [0, 0, 0]
+    assert _numbers(raw["PACKAGEDATA"][1][1:4]) == [0, 0, 0]
     context = LoadContext(dims={"nlay": 1, "nrow": 1, "ncol": 1})
     sfr2 = structure_component(raw, Sfr, context=context)
     assert sfr2.packagedata == sfr.packagedata
@@ -1230,7 +1273,7 @@ def test_lak_outlet_no_lake_round_trip(tmp_path, lakeout):
     assert col.tolist() == [FILL_INT64 if o is None else o for o in lakeout]
     file = [0 if o is None else o + 1 for o in lakeout]
     raw = loads(dumps(unstructure_component(lak)))
-    assert [r[2] for r in raw["OUTLETS"]] == file
+    assert [r[2] for r in raw["OUTLETS"]] == [str(o) for o in file]
 
     path = tmp_path / "m.lak"
     path.write_text(dumps(unstructure_component(lak)))
@@ -1272,7 +1315,7 @@ def test_cellid_no_cell_needs_allow_zero():
 def test_loads_block_header_remark():
     # MF6 ignores anything after the block index (MAW's legacy STEADY-STATE)
     raw = loads("BEGIN PERIOD 1 STEADY-STATE\n  1 RATE -1.0\nEND PERIOD\n")
-    assert raw == {"PERIOD 1": [[1, "RATE", -1.0]]}
+    assert raw == {"PERIOD 1": [["1", "RATE", "-1.0"]]}
 
 
 def test_record_flag_options():
@@ -1534,7 +1577,7 @@ def test_rcha_irch_round_trip():
     raw = loads(dumps(unstructure_component(rch)))
     # irch is 0-based, 1-based in the file
     period = raw["PERIOD 1"]
-    assert period[period.index(["IRCH"]) + 2] == [1, 2, 1]
+    assert _numbers(period[period.index(["IRCH"]) + 2]) == [1, 2, 1]
     assert ["IRCH"] not in raw["PERIOD 2"]
 
     rch2 = structure_component(raw, Rcha, context=LoadContext(dims=dims))
@@ -4912,7 +4955,7 @@ def test_bang_comment_and_block_keyword_remarks():
 
     raw = loads("BEGIN TIMESERIES\n! time rate\n0.0 1.0 begin SP 1\n1.0 2.0 end\nEND TIMESERIES\n")
     rows = [r for r in raw["TIMESERIES"] if r]
-    assert rows == [[0.0, 1.0, "begin", "SP", 1], [1.0, 2.0, "end"]]
+    assert rows == [["0.0", "1.0", "begin", "SP", "1"], ["1.0", "2.0", "end"]]
 
 
 @pytest.mark.parametrize(
@@ -5067,8 +5110,8 @@ def test_obs_header_blocks_round_trip(tmp_path):
         (["lake-1", "3"], 3, "index", "lake-1", 2),
         # CSUB: indexes by default, but a row as wide as a cellid is one
         (["1", "2", "3"], 3, "index", (0, 1, 2), None),
-        # UZF's water-content depth fits no arm: kept as is
-        (["2", "0.5"], 3, "index", 1, 0.5),
+        # UZF's water-content depth fits no arm: kept as written
+        (["2", "0.5"], 3, "index", 1, "0.5"),
         # no grid: a cellid as wide as the row
         (["1", "2", "3"], 0, "cellid", (0, 1, 2), None),
     ],
@@ -5229,12 +5272,12 @@ def test_ts_from_series():
     assert ts.time_series_name.time_series_names == ("stage", "inflow")
     assert [r.ts_time for r in ts.timeseries] == [0.0, 10.0]
     raw = loads(dumps(unstructure_component(ts)))
-    assert raw["ATTRIBUTES"] == [
+    assert _numbers(raw["ATTRIBUTES"]) == [
         ["NAMES", "stage", "inflow"],
         ["METHODS", "linear", "stepwise"],
         ["SFAC", 2.0],
     ]
-    assert raw["TIMESERIES"] == [[0.0, 12.5, 2.0], [10.0, 10.0, 1.0]]
+    assert _numbers(raw["TIMESERIES"]) == [[0.0, 12.5, 2.0], [10.0, 10.0, 1.0]]
     pd.testing.assert_frame_equal(
         structure_component(raw, Ts).to_dataframe(), df.sort_index(), check_names=False
     )
@@ -5315,7 +5358,7 @@ def test_load_file_matches_loads(tmp_path, map_any_file, newline):
         raw = load(f)
     # read after the file is closed: the parse keeps what it needs
     assert raw == loads(_MAPPED_INPUT)
-    assert raw["period 1"][0] == [1, 1, 1, -100.0, "well a"]
+    assert raw["period 1"][0] == ["1", "1", "1", "-1.0D2", "well a"]
     assert isinstance(raw["period 1"].parts[2], NumberRows)
     assert isinstance(raw["period 1"].parts[2]._text.buffer, mmap) == (newline == "\n")
     assert raw["period 1"].parts[2].text.split() == ["2", "1", "1", "3", "4.0"]

@@ -97,7 +97,7 @@ _REMARK.-1: /[^\s,]+/
 _remark: _REMARK+
 // Without its line ending, which each block's field list takes so the
 // state after it is that block's (see macros.jinja's field_list).
-open_close_redirect: "open/close"i filename [_remark]
+open_close_redirect: "open/close"i filename [binary] [_remark]
 
 // A line ending plus any blank and comment-only lines after it, like
 // NUMBERS' and RECORDS' tails, so two _NLs never come in a row: between

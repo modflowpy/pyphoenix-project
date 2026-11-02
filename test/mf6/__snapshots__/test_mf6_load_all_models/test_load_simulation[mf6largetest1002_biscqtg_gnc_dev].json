@@ -1,0 +1,346 @@
+{
+  "simulation": {
+    "__type__": "Simulation",
+    "continue_": false,
+    "dims": {},
+    "exchanges": [],
+    "filename": "mfsim.nam",
+    "models": [
+      "<Gwf Biscayne>"
+    ],
+    "mxiter": 1,
+    "nocheck": false,
+    "print_input": false,
+    "solutiongroup": [
+      "<Ims ims-1>"
+    ],
+    "tdis": "<Tdis tdis>",
+    "workspace": "<workspace>"
+  },
+  "simulation/Biscayne": {
+    "__type__": "Gwf",
+    "api": [],
+    "chd": [
+      "<Chd chd-1>"
+    ],
+    "dims": {},
+    "dis": "<Disu disu>",
+    "drn": [],
+    "evt": [
+      "<Evt evt-1>"
+    ],
+    "filename": "biscayne.nam",
+    "ghb": [],
+    "gnc": "<Gnc gnc>",
+    "ic": "<Ic ic>",
+    "lak": [],
+    "maw": [],
+    "name": "Biscayne",
+    "npf": "<Npf npf>",
+    "oc": "<Oc oc>",
+    "print_flows": false,
+    "print_input": false,
+    "rch": [
+      "<Rch rch-1>"
+    ],
+    "riv": [
+      "<Riv riv-1>"
+    ],
+    "save_flows": false,
+    "sfr": [],
+    "sto": "<Sto sto>",
+    "uzf": [],
+    "wel": [
+      "<Wel wel-1>"
+    ],
+    "workspace": "<workspace>"
+  },
+  "simulation/Biscayne/chd-1": {
+    "__type__": "Chd",
+    "_stress_period_data": {
+      "0": {
+        "__table__": "StressPeriodData",
+        "aux": "float64[3536, 0] da39a3ee5e6b4b0d",
+        "boundname": "21216 chars ca6cbcc81e1d47a7",
+        "cellid": "int64[3536, 1] 0dee1e2119ebea66",
+        "head": "float64[3536] a94196bfed271de5",
+        "n": 3536
+      }
+    },
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 1,
+      "nja": 559955,
+      "nodes": 106257
+    },
+    "filename": "biscayne.chd",
+    "name": "chd-1",
+    "print_flows": false,
+    "print_input": false,
+    "save_flows": true,
+    "ts": []
+  },
+  "simulation/Biscayne/disu": {
+    "__type__": "Disu",
+    "area": "float64[106257] 96f49f84adddf573",
+    "bot": "float64[106257] aa69699d813051c8",
+    "cl12": "float64[559955] d60f665651d42709",
+    "dims": {},
+    "export_array_ascii": false,
+    "filename": "biscayne.disu",
+    "hwva": "float64[559955] d812122f0e8d3d1e",
+    "iac": "int64[106257] 81e7e0014378623d",
+    "ihc": "int64[559955] a30445e10d2d8a01",
+    "ja": "int64[559955] f085efd66db11267",
+    "name": "disu",
+    "nja": 559955,
+    "nodes": 106257,
+    "nogrb": false,
+    "top": "float64[106257] 1ff07629fe3cb439",
+    "vertical_offset_tolerance": "0.0"
+  },
+  "simulation/Biscayne/evt-1": {
+    "__type__": "Evt",
+    "_stress_period_data": "46490 chars 34afe9cce5fb16d6",
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 1,
+      "nja": 559955,
+      "nodes": 106257
+    },
+    "filename": "biscayne.evt",
+    "fixed_cell": true,
+    "name": "evt-1",
+    "print_flows": false,
+    "print_input": false,
+    "save_flows": true,
+    "surf_rate_specified": false,
+    "ts": []
+  },
+  "simulation/Biscayne/gnc": {
+    "__type__": "Gnc",
+    "dims": {
+      "ncelldim": 1,
+      "nja": 559955,
+      "nodes": 106257
+    },
+    "explicit": false,
+    "filename": "biscayne.gnc",
+    "gncdata": {
+      "__table__": "Gncdata",
+      "alphasj": "float64[48780, 2] 985bad5a0016dbcc",
+      "cellidm": "int64[48780, 1] 7172d2705349753e",
+      "cellidn": "int64[48780, 1] 2589612442f08f69",
+      "cellidsj": "int64[48780, 2, 1] 5d7b353379813cd9",
+      "n": 48780
+    },
+    "name": "gnc",
+    "numalphaj": 2,
+    "numgnc": 48780,
+    "print_flows": false,
+    "print_input": true
+  },
+  "simulation/Biscayne/ic": {
+    "__type__": "Ic",
+    "dims": {
+      "ncelldim": 1,
+      "nja": 559955,
+      "nodes": 106257
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "biscayne.ic",
+    "name": "ic",
+    "strt": "float64[106257] b1ad79ad050874c8"
+  },
+  "simulation/Biscayne/npf": {
+    "__type__": "Npf",
+    "dims": {
+      "ncelldim": 1,
+      "nja": 559955,
+      "nodes": 106257
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "biscayne.npf",
+    "highest_cell_saturation": false,
+    "icelltype": "int64[106257] 693c536fc6d657c6",
+    "k": "float64[106257] a250ea40f89752e7",
+    "k22overk": false,
+    "k33": "float64[106257] 0426b0dc4454abfc",
+    "k33overk": false,
+    "name": "npf",
+    "perched": false,
+    "print_flows": false,
+    "save_flows": false,
+    "save_saturation": false,
+    "save_specific_discharge": false,
+    "thickstrt": false
+  },
+  "simulation/Biscayne/oc": {
+    "__type__": "Oc",
+    "_stress_period_data": {
+      "0": [
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        }
+      ],
+      "1": {
+        "__table__": "Print",
+        "n": 1,
+        "ocsetting": [
+          "ALL"
+        ],
+        "rtype": [
+          "BUDGET"
+        ]
+      },
+      "99": [
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "HEAD"
+        },
+        {
+          "__type__": "Save",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        },
+        {
+          "__type__": "Print",
+          "ocsetting": "ALL",
+          "rtype": "BUDGET"
+        }
+      ]
+    },
+    "budget_file": "biscayne.cbb",
+    "dims": {
+      "ncelldim": 1,
+      "nja": 559955,
+      "nodes": 106257
+    },
+    "filename": "biscayne.oc",
+    "head_file": "biscayne.hds",
+    "name": "oc"
+  },
+  "simulation/Biscayne/rch-1": {
+    "__type__": "Rch",
+    "_stress_period_data": "13488 chars 93cd309fc6823898",
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 1,
+      "nja": 559955,
+      "nodes": 106257
+    },
+    "filename": "biscayne.rch",
+    "fixed_cell": true,
+    "name": "rch-1",
+    "print_flows": false,
+    "print_input": false,
+    "save_flows": true,
+    "ts": []
+  },
+  "simulation/Biscayne/riv-1": {
+    "__type__": "Riv",
+    "_stress_period_data": "31890 chars 038fa56fb318e987",
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 1,
+      "nja": 559955,
+      "nodes": 106257
+    },
+    "filename": "biscayne.riv",
+    "mover": false,
+    "name": "riv-1",
+    "print_flows": false,
+    "print_input": false,
+    "save_flows": true,
+    "ts": []
+  },
+  "simulation/Biscayne/sto": {
+    "__type__": "Sto",
+    "dims": {
+      "ncelldim": 1,
+      "nja": 559955,
+      "nodes": 106257
+    },
+    "export_array_ascii": false,
+    "export_array_netcdf": false,
+    "filename": "biscayne.sto",
+    "iconvert": "int64[106257] 693c536fc6d657c6",
+    "name": "sto",
+    "save_flows": false,
+    "ss": "float64[106257] 0426b0dc4454abfc",
+    "ss_confined_only": false,
+    "storagecoefficient": false,
+    "sy": "float64[106257] a9091ad3440c4245"
+  },
+  "simulation/Biscayne/wel-1": {
+    "__type__": "Wel",
+    "_stress_period_data": "21890 chars 33bc58c23050b4d5",
+    "boundnames": false,
+    "dims": {
+      "ncelldim": 1,
+      "nja": 559955,
+      "nodes": 106257
+    },
+    "filename": "biscayne.wel",
+    "flow_reduction_length": false,
+    "mover": false,
+    "name": "wel-1",
+    "print_flows": false,
+    "print_input": false,
+    "save_flows": true,
+    "ts": []
+  },
+  "simulation/ims-1": {
+    "__type__": "Ims",
+    "dims": {},
+    "filename": "biscayne.ims",
+    "inner_dvclose": "1e-06",
+    "inner_maximum": 100,
+    "linear_acceleration": "bicgstab",
+    "name": "ims-1",
+    "number_orthogonalizations": 2,
+    "outer_dvclose": "1e-06",
+    "outer_maximum": 500,
+    "print_option": "summary",
+    "rclose": {
+      "__type__": "Rclose",
+      "inner_rclose": "1000000.0",
+      "rclose_option": null
+    },
+    "relaxation_factor": "0.97",
+    "slnmnames": [
+      "Biscayne"
+    ],
+    "under_relaxation": "none"
+  },
+  "simulation/tdis": {
+    "__type__": "Tdis",
+    "dims": {},
+    "filename": "biscayne.tdis",
+    "name": "tdis",
+    "nper": 100,
+    "perioddata": {
+      "__table__": "Perioddata",
+      "n": 100,
+      "nstp": "int64[100] 17ad917dd61502a1",
+      "perlen": "float64[100] fe0e420a6aff8c6f",
+      "tsmult": "float64[100] fe0e420a6aff8c6f"
+    },
+    "time_units": "DAYS"
+  }
+}

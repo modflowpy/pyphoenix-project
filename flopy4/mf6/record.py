@@ -22,6 +22,7 @@ import attrs
 import numpy as np
 
 from flopy4.spec import is_array
+from flopy4.utils import fortran_float, from_text
 
 
 def _resolve_sibling_class(cls: type, name: str) -> Any | None:
@@ -75,13 +76,12 @@ def _words(t: Any) -> tuple[str, ...]:
 def _coerce(token: Any, f: attrs.Attribute) -> Any:
     """Cast a raw token to a field's declared type (time_series falls back
     to the raw string if it isn't a float). Only Optional[X] (a single
-    non-None union arm) is unwrapped -- a genuine multi-type union like
-    Union[float, str] is deliberately ambiguous and left as the raw token --
-    but a word a ``Literal`` arm allows is tried first, matched in any case
-    (``Union[Literal["NONE"], float]``: NONE, or else a number)."""
+    non-None union arm) is unwrapped; a multi-type union goes to
+    `from_text`. A word a ``Literal`` arm allows is tried first, in any
+    case (``Union[Literal["NONE"], float]``: NONE, or else a number)."""
     if f.metadata.get("time_series"):
         try:
-            return float(token)
+            return fortran_float(token) if isinstance(token, str) else float(token)
         except (ValueError, TypeError):
             return str(token)
     t = f.type
@@ -93,12 +93,12 @@ def _coerce(token: Any, f: attrs.Attribute) -> Any:
                 return word
             args = [a for a in args if get_origin(a) is not Literal]
         if len(args) != 1:
-            return token
+            return from_text(token, t)
         t = args[0]
     if t in (int, "int"):
-        return int(float(str(token)))
+        return int(fortran_float(str(token)))
     if t in (float, "float"):
-        return float(token)
+        return fortran_float(token) if isinstance(token, str) else float(token)
     if t in (str, "str"):
         return str(token)
     if t in (Path, "Path"):
@@ -116,9 +116,9 @@ def _elem_coerce(token: Any, f: attrs.Attribute) -> Any:
     args = get_args(t)
     elem_t = args[0] if args else str
     if elem_t is int:
-        return int(float(str(token)))
+        return int(fortran_float(str(token)))
     if elem_t is float:
-        return float(token)
+        return fortran_float(token) if isinstance(token, str) else float(token)
     return token
 
 

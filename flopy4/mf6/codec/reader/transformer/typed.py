@@ -1,4 +1,3 @@
-import re
 from pathlib import Path
 from typing import Any
 
@@ -23,17 +22,12 @@ def _is_records(item: Any) -> bool:
     return isinstance(item, Token) and item.type.rsplit("__", 1)[-1] == "RECORDS"
 
 
-# A whole token that's a number, as typed.lark's number terminals take one.
-_NUMBER = re.compile(r"[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?")
-
-
-def record_rows(text: str) -> list[list[Any]]:
-    """RECORDS' rows, each a list of numbers and words as `record`
-    reads them. Blank and comment-only lines aren't rows."""
+def record_rows(text: str) -> list[list[str]]:
+    """RECORDS' rows, as text. Blank and comment-only lines aren't rows."""
     rows = []
     for line in text.replace(",", " ").split("\n"):
         if (tokens := line.split()) and tokens[0][0] not in "#!":
-            rows.append([parse_number(t) if _NUMBER.fullmatch(t) else t for t in tokens])
+            rows.append(tokens)
     return rows
 
 
@@ -238,9 +232,9 @@ class TypedTransformer(Transformer):
     def double(self, items: list[Any]) -> float:
         return fortran_float(items[0])
 
-    def number(self, items: list[Any]) -> int | float:
-        """Handle generic number (could be int or float)."""
-        return parse_number(str(items[0]))
+    def number(self, items: list[Any]) -> str:
+        """A number-like token the grammar doesn't type, as text."""
+        return str(items[0])
 
     def data(self, items: list[Any]) -> np.ndarray:
         if not any(_is_numbers(i) for i in items):

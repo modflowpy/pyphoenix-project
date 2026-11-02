@@ -35,7 +35,7 @@
     "rclose": {
       "__type__": "Rclose",
       "inner_rclose": "10000000000.0",
-      "rclose_option": "50000.0"
+      "rclose_option": "50000.000"
     },
     "relaxation_factor": "0.0",
     "reordering_method": "rcm",

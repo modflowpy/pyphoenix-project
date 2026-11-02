@@ -497,18 +497,14 @@ def test_transform_gwf_wel_file(model_workspace):
     assert len(spd[0]) == 4
     assert len(spd[1]) == 4
 
-    # Check specific values from the file
+    # Check specific values from the file (text until structured)
     # First well: 2 3 4 -3.5e4
-    assert spd[0][0] == 2  # layer
-    assert spd[0][1] == 3  # row
-    assert spd[0][2] == 4  # col
-    assert spd[0][3] == -3.5e4  # q
+    assert [int(v) for v in spd[0][:3]] == [2, 3, 4]  # layer, row, col
+    assert float(spd[0][3]) == -3.5e4  # q
 
     # Second well: 2 8 4 -3.5e4
-    assert spd[1][0] == 2  # layer
-    assert spd[1][1] == 8  # row
-    assert spd[1][2] == 4  # col
-    assert spd[1][3] == -3.5e4  # q
+    assert [int(v) for v in spd[1][:3]] == [2, 8, 4]
+    assert float(spd[1][3]) == -3.5e4
 
 
 @pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-bcf2ss-p01a"], indirect=True)
@@ -850,7 +846,7 @@ def test_typed_loads_fortran_real_forms_in_list_rows_as_words():
         "BEGIN period 1\n  1 1 1 1.0+1 1-2\nEND period\n",
         "gwf-chd",
     )
-    assert result["period 1"]["stress_period_data"] == [[1, 1, 1, "1.0+1", "1-2"]]
+    assert result["period 1"]["stress_period_data"] == [["1", "1", "1", "1.0+1", "1-2"]]
 
 
 def test_typed_loads_iso_datetime():
@@ -902,24 +898,25 @@ def test_typed_loads_begin_or_end_after_row_start():
 
     ts = "BEGIN TIMESERIES\n  0.0 1.0 begin SP 1\n  1.0 2.0 end\nEND TIMESERIES\n"
     typed = loads_typed(ts, "utl-ts")["timeseries"]["stress_period_data"]
-    assert typed == [[0.0, 1.0, "begin", "SP", 1], [1.0, 2.0, "end"]]
+    assert typed == [["0.0", "1.0", "begin", "SP", "1"], ["1.0", "2.0", "end"]]
 
 
 def test_typed_loads_bang_comment_after_number():
     """A `!` comment ends a token, like `#`: a number right before one is
-    still a number."""
+    still a whole token."""
     from flopy4.mf6.codec.reader import loads, loads_typed
 
     ghb = "BEGIN PERIOD 1\n  1 1 1 1.0 10.0!note\nEND PERIOD\n"
     rows = loads_typed(ghb, "gwf-ghb")["period 1"]["stress_period_data"]
-    assert rows == [[1, 1, 1, 1.0, 10.0]]
+    assert rows == [["1", "1", "1", "1.0", "10.0"]]
     assert rows == loads(ghb)["PERIOD 1"]
 
 
 def test_typed_loads_number_lines_as_text():
     """A list's rows that are only numbers come back as their text (a
     NumberRows), as from the basic grammar, and a comment-only line
-    doesn't split a list. Rows with words among them are a list."""
+    doesn't split a list. Rows with words among them are a list. Values
+    are text either way: a list row's are untyped until structured."""
     from flopy4.mf6.codec.reader import loads, loads_typed
     from flopy4.mf6.codec.reader.transformer.rows import NumberRows
 
@@ -930,23 +927,23 @@ def test_typed_loads_number_lines_as_text():
     typed, basic = loads_typed(ghb, "gwf-ghb"), loads(ghb)
     rows = typed["period 1"]["stress_period_data"]
     assert isinstance(rows, NumberRows)
-    assert rows == [[1, 1, 1, 1.0, 10.0], [1, 1, 2, 10.0, 10.0]]
+    assert rows == [["1", "1", "1", "1.0", "10.0"], ["1", "1", "2", "1.0D1", "10.0"]]
     assert rows == basic["PERIOD 1"]
     rows = typed["period 2"]["stress_period_data"]
-    assert rows == [[1, 1, 1, 1.0, 10.0, "a"], [1, 1, 2, 1.0, 10.0]]
+    assert rows == [["1", "1", "1", "1.0", "10.0", "a"], ["1", "1", "2", "1.0", "10.0"]]
     assert rows == basic["PERIOD 2"]
 
     # a block's list other than a period's
     disv = "BEGIN VERTICES\n  1 0.0 0.0\n  2 1.0 0.0\nEND VERTICES\n"
     assert loads_typed(disv, "gwf-disv")["vertices"]["stress_period_data"] == [
-        [1, 0.0, 0.0],
-        [2, 1.0, 0.0],
+        ["1", "0.0", "0.0"],
+        ["2", "1.0", "0.0"],
     ]
 
 
 def test_typed_loads_records():
     """Rows of words and numbers lex as one token (RECORDS) but read as
-    they would by value: a line with a quoted word or a trailing comment
+    they would token by token: a line with a quoted word or a trailing comment
     still reads, and `end` after a row's first token is a word."""
     from flopy4.mf6.codec.reader import loads_typed, parser
 
@@ -956,11 +953,11 @@ def test_typed_loads_records():
     )
     rows = loads_typed(sfr, "gwf-sfr")["period 1"]["stress_period_data"]
     assert rows == [
-        [1, "inflow", 0.0],
-        [1, "status", "active", 2, "a b", 3],
-        [2, "rainfall", 1.0],
-        [2, "stage", 1.5],
-        [3, "end", 1],
+        ["1", "inflow", "0.0"],
+        ["1", "status", "active", "2", "a b", "3"],
+        ["2", "rainfall", "1.0"],
+        ["2", "stage", "1.5"],
+        ["3", "end", "1"],
     ]
     tokens = parser.get_typed_parser("gwf-sfr").lex("BEGIN PERIOD 1\n  1 inflow 0.0\nEND PERIOD\n")
     assert "RECORDS" in [t.type.rsplit("__", 1)[-1] for t in tokens]

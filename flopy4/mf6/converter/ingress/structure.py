@@ -43,7 +43,7 @@ from flopy4.mf6.record import Record
 from flopy4.mf6.spec import repeating_array_key_type, to_field_type
 from flopy4.mf6.write_context import ArrayIO, ListIO, WriteContext, array_hash, list_hash
 from flopy4.spec import is_array, referenced
-from flopy4.utils import fortran_float, unwrap_optional
+from flopy4.utils import fortran_float, from_text, unwrap_optional
 
 
 def _inner_class_type(field_type) -> type[Record] | None:
@@ -250,7 +250,7 @@ def _apply_factor(values: np.ndarray, vrow: list) -> np.ndarray:
     tokens = [str(t) for t in vrow[1:]]
     for j, tok in enumerate(tokens):
         if tok.upper() == "FACTOR" and j + 1 < len(tokens):
-            factor = float(tokens[j + 1])
+            factor = fortran_float(tokens[j + 1])
             if values.dtype == np.int64:
                 return values * int(factor)
             return values * factor
@@ -271,7 +271,7 @@ def _control_io(vrow: list, values: np.ndarray) -> ArrayIO:
     iprn = None
     for j, tok in enumerate(tokens):
         if tok.upper() == "IPRN" and j + 1 < len(tokens):
-            iprn = int(float(tokens[j + 1]))
+            iprn = int(fortran_float(tokens[j + 1]))
             break
     if kind == "INTERNAL":
         return ArrayIO(iprn=iprn, format="internal")
@@ -327,7 +327,7 @@ def _read_control_record(
     vrow = rows[i]
     kind = _leading_word(vrow)
     if kind == "CONSTANT":
-        v = int(vrow[1]) if dtype == np.int64 else float(vrow[1])
+        v = from_text(vrow[1], int if dtype == np.int64 else float)
         return np.full(length, v, dtype=dtype), i + 1
     if kind == "OPEN/CLOSE":
         # read only the values the array needs; a file may hold more
@@ -579,7 +579,7 @@ def _parse_readarray_period_block(
             if _leading_word(rows[i]) == "CONSTANT":
                 # one value for the period, kept as a 0-d array, as a
                 # scalar given at construction is (period_arrays._as_array)
-                v = int(rows[i][1]) if dtype == np.int64 else float(rows[i][1])
+                v = from_text(rows[i][1], int if dtype == np.int64 else float)
                 value = np.asarray(v, dtype=dtype)
                 _record_array_io(arrays, (key,), [_control_io(rows[i], value)])
                 i += 1
@@ -1095,13 +1095,14 @@ def structure_component(
             elif get_origin(t) in (list, np.ndarray, npt.NDArray):
                 # inline arrays (AUXILIARY's names), even with one element; numpy
                 # >= 2.5's NDArray[X] has origin NDArray, not ndarray
-                kwargs[init_key] = list(row[1:])
-            elif t is str:
-                # a numeric-looking string (e.g. a bare year for
-                # START_DATE_TIME) tokenizes as a number
-                kwargs[init_key] = str(row[1])
+                args = get_args(t)
+                elem = args[-1] if get_origin(t) is not list else (args[0] if args else Any)
+                if get_origin(elem) is np.dtype:
+                    elem = get_args(elem)[0] if get_args(elem) else Any
+                elem = {np.int64: int, np.float64: float, np.str_: str}.get(elem, elem)
+                kwargs[init_key] = [from_text(v, elem) for v in row[1:]]
             else:
-                kwargs[init_key] = row[1]
+                kwargs[init_key] = from_text(row[1], t)
 
     item_types = [ic for _, ic in block_item_fields.values()]
     if period_item_cls is not None:

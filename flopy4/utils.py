@@ -27,6 +27,64 @@ def parse_number(value: str) -> int | float:
         return fortran_float(value)
 
 
+# A whole token that's a number, allowing Fortran `D` exponents (`1D-5`).
+NUMBER = re.compile(r"[+-]?(\d+(\.\d*)?|\.\d+)([eEdD][+-]?\d+)?")
+
+
+def number_or_text(value: Any) -> Any:
+    """A token as a number if it reads as one, else unchanged."""
+    if isinstance(value, str) and NUMBER.fullmatch(value):
+        return parse_number(value)
+    return value
+
+
+def from_text(value: Any, t: Any) -> Any:
+    """Convert a token read from a file to type ``t``. The reader keeps
+    tokens as text, since only the schema can tell the number ``1.50``
+    from the name ``1.50``. Non-text values pass through. A union takes a
+    ``Literal`` word (any case), then a number its numeric arm accepts,
+    else the text."""
+    if not isinstance(value, str):
+        return value
+    if isinstance(t, str):
+        t = {"int": int, "float": float, "str": str, "bool": bool, "Path": Path}.get(t, t)
+    origin = typing.get_origin(t)
+    if origin is typing.Literal:
+        return value.upper() if value.upper() in typing.get_args(t) else value
+    if is_union(t):
+        args = [a for a in typing.get_args(t) if a is not type(None)]
+        if len(args) == 1:
+            return from_text(value, args[0])
+        words = {
+            w for a in args if typing.get_origin(a) is typing.Literal for w in typing.get_args(a)
+        }
+        if value.upper() in words:
+            return value.upper()
+        numeric = [a for a in args if a in (int, float)]
+        if numeric and NUMBER.fullmatch(value):
+            if float in numeric:
+                return parse_number(value) if int in numeric else fortran_float(value)
+            if value.lstrip("+-").isdigit():
+                return int(value)
+        return value
+    if t is int:
+        try:
+            return int(value)
+        except ValueError:
+            return int(fortran_float(value))
+    if t is float:
+        return fortran_float(value)
+    if t is bool:
+        return True
+    if t is str:
+        return value
+    if t is Path:
+        return Path(value)
+    if t is Any or t is typing.Any or t is None:
+        return number_or_text(value)
+    return value
+
+
 # A real with a signed exponent but no letter, e.g. ``1.0+1`` (= 10.0).
 _BARE_EXPONENT = re.compile(r"([+-]?(?:\d+\.?\d*|\.\d+))([+-]\d+)")
 # ``D`` exponents as ``E``, for `str.translate`.
