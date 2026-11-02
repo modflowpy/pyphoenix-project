@@ -102,9 +102,9 @@
     " IC6 test004_lpfss_nr.ic ic",
     " NPF6 test004_lpfss_nr.npf npf",
     " OC6 test004_lpfss_nr.oc oc",
-    " RCH6 test004_lpfss_nr.rch rcha0",
-    " RIV6 test004_lpfss_nr.riv riv0",
-    " WEL6 test004_lpfss_nr.wel wel0",
+    " RCH6 test004_lpfss_nr.rch rch-1",
+    " RIV6 test004_lpfss_nr.riv riv-1",
+    " WEL6 test004_lpfss_nr.wel wel-1",
     "END PACKAGES"
   ],
   "test004_lpfss_nr.npf": [

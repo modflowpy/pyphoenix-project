@@ -177,17 +177,21 @@ def string(
     time_series: bool = False,
     pk: bool = False,
     fk: str | None = None,
+    scope: str | None = None,
     empty_is_none: bool = False,
     **kwargs: Unpack[FieldKwargs],
 ) -> Any:
     """A string. A time series one may name a time series instead. It can't
-    be empty, unless ``empty_is_none``, when an empty string is no value."""
+    be empty, unless ``empty_is_none``, when an empty string is no value.
+    A key (``pk``, or ``fk``, the path of the key it names) may be unique
+    only within the value of another column, its ``scope`` (MVR's
+    ``pname`` within ``mname``); see `flopy4.mf6.keys`."""
     if time_series:
         _ts_converter(kwargs, to_ts_value)
     if empty_is_none:
         _convert_first(kwargs, _empty_to_none)
     _validate(kwargs, _not_empty)
-    return _field("string", kwargs, time_series=time_series, pk=pk, fk=fk)
+    return _field("string", kwargs, time_series=time_series, pk=pk, fk=fk, scope=scope)
 
 
 def integer(

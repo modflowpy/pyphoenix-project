@@ -12,7 +12,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -21,7 +21,7 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
@@ -44,11 +44,11 @@
     "sto": "<Sto sto>",
     "uzf": [],
     "wel": [
-      "<Wel wel0>"
+      "<Wel wel-1>"
     ],
     "workspace": "<workspace>"
   },
-  "simulation/GWF_1/chd0": {
+  "simulation/GWF_1/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -70,7 +70,7 @@
       "nrow": 775
     },
     "filename": "mfusg_C.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": true,
     "print_input": false,
     "save_flows": true,
@@ -207,7 +207,7 @@
     "storagecoefficient": false,
     "sy": "float64[582025] 8e32b8808a7463a8"
   },
-  "simulation/GWF_1/wel0": {
+  "simulation/GWF_1/wel-1": {
     "__type__": "Wel",
     "_stress_period_data": {
       "1": {
@@ -233,20 +233,20 @@
     "filename": "mfusg_C.wel",
     "flow_reduction_length": false,
     "mover": false,
-    "name": "wel0",
+    "name": "wel-1",
     "print_flows": false,
     "print_input": false,
     "save_flows": false,
     "ts": []
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "dims": {},
     "filename": "mfusg_C.ims",
     "inner_dvclose": "1e-06",
     "inner_maximum": 50,
     "linear_acceleration": "cg",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "1e-06",
     "outer_maximum": 100,
     "print_option": "summary",

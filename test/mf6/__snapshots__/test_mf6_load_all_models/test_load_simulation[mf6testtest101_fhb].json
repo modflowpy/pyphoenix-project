@@ -12,12 +12,12 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -25,7 +25,7 @@
     "inner_dvclose": "1e-06",
     "inner_maximum": 100,
     "linear_acceleration": "cg",
-    "name": "ims0",
+    "name": "ims-1",
     "number_orthogonalizations": 2,
     "outer_dvclose": "1e-05",
     "outer_maximum": 120,
@@ -71,7 +71,7 @@
     "dims": {},
     "dis": "<Dis dis>",
     "drn": [
-      "<Drn drn0>"
+      "<Drn drn-1>"
     ],
     "evt": [],
     "filename": "test_fhb.nam",
@@ -134,10 +134,10 @@
     "print_input": true,
     "save_flows": false,
     "ts": [
-      "<Ts ts0>"
+      "<Ts ts-1>"
     ]
   },
-  "simulation/test_fhb/CHD-HEAD(FHB)/ts0": {
+  "simulation/test_fhb/CHD-HEAD(FHB)/ts-1": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -152,7 +152,7 @@
       "__type__": "InterpolationMethodrecordSingle",
       "interpolation_method_single": "LINEAREND"
     },
-    "name": "ts0",
+    "name": "ts-1",
     "sfacrecord_single": {
       "__type__": "SfacrecordSingle",
       "sfacval": "1.2"
@@ -209,10 +209,10 @@
     "print_input": true,
     "save_flows": false,
     "ts": [
-      "<Ts ts0>"
+      "<Ts ts-1>"
     ]
   },
-  "simulation/test_fhb/WEL-FLOWS(FHB)/ts0": {
+  "simulation/test_fhb/WEL-FLOWS(FHB)/ts-1": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -227,7 +227,7 @@
       "__type__": "InterpolationMethodrecordSingle",
       "interpolation_method_single": "LINEAR"
     },
-    "name": "ts0",
+    "name": "ts-1",
     "sfacrecord_single": {
       "__type__": "SfacrecordSingle",
       "sfacval": "1.1"
@@ -262,7 +262,7 @@
     "nrow": 3,
     "top": "float64[30] 95ddcd2482edd7c0"
   },
-  "simulation/test_fhb/drn0": {
+  "simulation/test_fhb/drn-1": {
     "__type__": "Drn",
     "_stress_period_data": {
       "0": {
@@ -289,14 +289,14 @@
     },
     "filename": "test_fhb.drn",
     "mover": false,
-    "name": "drn0",
+    "name": "drn-1",
     "obs": "<Obs obs>",
     "print_flows": false,
     "print_input": false,
     "save_flows": false,
     "ts": []
   },
-  "simulation/test_fhb/drn0/obs": {
+  "simulation/test_fhb/drn-1/obs": {
     "__type__": "Obs",
     "continuous": {
       "__table__": "ContinuousBlock",

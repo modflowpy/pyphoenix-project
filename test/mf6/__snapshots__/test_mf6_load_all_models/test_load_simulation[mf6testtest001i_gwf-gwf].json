@@ -4,15 +4,15 @@
     "continue_": false,
     "dims": {},
     "exchanges": [
-      "<Gwfgwf gwfgwf0>",
-      "<Gwfgwf gwfgwf1>",
-      "<Gwfgwf gwfgwf2>",
-      "<Gwfgwf gwfgwf3>",
-      "<Gwfgwf gwfgwf4>",
-      "<Gwfgwf gwfgwf5>",
-      "<Gwfgwf gwfgwf6>",
-      "<Gwfgwf gwfgwf7>",
-      "<Gwfgwf gwfgwf8>"
+      "<Gwfgwf gwfgwf-1>",
+      "<Gwfgwf gwfgwf-2>",
+      "<Gwfgwf gwfgwf-3>",
+      "<Gwfgwf gwfgwf-4>",
+      "<Gwfgwf gwfgwf-5>",
+      "<Gwfgwf gwfgwf-6>",
+      "<Gwfgwf gwfgwf-7>",
+      "<Gwfgwf gwfgwf-8>",
+      "<Gwfgwf gwfgwf-9>"
     ],
     "filename": "mfsim.nam",
     "memory_print_option": "ALL",
@@ -31,7 +31,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -40,7 +40,7 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
@@ -64,7 +64,7 @@
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/flow-l1/chd0": {
+  "simulation/flow-l1/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -89,7 +89,7 @@
       "nrow": 1
     },
     "filename": "flow-l1.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,
@@ -1309,7 +1309,7 @@
     "head_file": "flow-l9.hds",
     "name": "oc"
   },
-  "simulation/gwfgwf0": {
+  "simulation/gwfgwf-1": {
     "__type__": "Gwfgwf",
     "auxiliary": [
       "ANGLDEGX",
@@ -1343,7 +1343,7 @@
     "exgmnamea": "flow-l1",
     "exgmnameb": "flow-l2",
     "filename": "flow-1.exg",
-    "name": "gwfgwf0",
+    "name": "gwfgwf-1",
     "newton": false,
     "nexg": 10,
     "print_flows": false,
@@ -1351,7 +1351,7 @@
     "save_flows": false,
     "xt3d": false
   },
-  "simulation/gwfgwf1": {
+  "simulation/gwfgwf-2": {
     "__type__": "Gwfgwf",
     "auxiliary": [
       "ANGLDEGX",
@@ -1385,7 +1385,7 @@
     "exgmnamea": "flow-l2",
     "exgmnameb": "flow-l3",
     "filename": "flow-2.exg",
-    "name": "gwfgwf1",
+    "name": "gwfgwf-2",
     "newton": false,
     "nexg": 10,
     "print_flows": false,
@@ -1393,7 +1393,7 @@
     "save_flows": false,
     "xt3d": false
   },
-  "simulation/gwfgwf2": {
+  "simulation/gwfgwf-3": {
     "__type__": "Gwfgwf",
     "auxiliary": [
       "ANGLDEGX",
@@ -1427,7 +1427,7 @@
     "exgmnamea": "flow-l3",
     "exgmnameb": "flow-l4",
     "filename": "flow-3.exg",
-    "name": "gwfgwf2",
+    "name": "gwfgwf-3",
     "newton": false,
     "nexg": 10,
     "print_flows": false,
@@ -1435,7 +1435,7 @@
     "save_flows": false,
     "xt3d": false
   },
-  "simulation/gwfgwf3": {
+  "simulation/gwfgwf-4": {
     "__type__": "Gwfgwf",
     "auxiliary": [
       "ANGLDEGX",
@@ -1469,7 +1469,7 @@
     "exgmnamea": "flow-l4",
     "exgmnameb": "flow-l5",
     "filename": "flow-4.exg",
-    "name": "gwfgwf3",
+    "name": "gwfgwf-4",
     "newton": false,
     "nexg": 10,
     "print_flows": false,
@@ -1477,7 +1477,7 @@
     "save_flows": false,
     "xt3d": false
   },
-  "simulation/gwfgwf4": {
+  "simulation/gwfgwf-5": {
     "__type__": "Gwfgwf",
     "auxiliary": [
       "ANGLDEGX",
@@ -1511,7 +1511,7 @@
     "exgmnamea": "flow-l5",
     "exgmnameb": "flow-l6",
     "filename": "flow-5.exg",
-    "name": "gwfgwf4",
+    "name": "gwfgwf-5",
     "newton": false,
     "nexg": 10,
     "print_flows": false,
@@ -1519,7 +1519,7 @@
     "save_flows": false,
     "xt3d": false
   },
-  "simulation/gwfgwf5": {
+  "simulation/gwfgwf-6": {
     "__type__": "Gwfgwf",
     "auxiliary": [
       "ANGLDEGX",
@@ -1553,7 +1553,7 @@
     "exgmnamea": "flow-l6",
     "exgmnameb": "flow-l7",
     "filename": "flow-6.exg",
-    "name": "gwfgwf5",
+    "name": "gwfgwf-6",
     "newton": false,
     "nexg": 10,
     "print_flows": false,
@@ -1561,7 +1561,7 @@
     "save_flows": false,
     "xt3d": false
   },
-  "simulation/gwfgwf6": {
+  "simulation/gwfgwf-7": {
     "__type__": "Gwfgwf",
     "auxiliary": [
       "ANGLDEGX",
@@ -1595,7 +1595,7 @@
     "exgmnamea": "flow-l7",
     "exgmnameb": "flow-l8",
     "filename": "flow-7.exg",
-    "name": "gwfgwf6",
+    "name": "gwfgwf-7",
     "newton": false,
     "nexg": 10,
     "print_flows": false,
@@ -1603,7 +1603,7 @@
     "save_flows": false,
     "xt3d": false
   },
-  "simulation/gwfgwf7": {
+  "simulation/gwfgwf-8": {
     "__type__": "Gwfgwf",
     "auxiliary": [
       "ANGLDEGX",
@@ -1637,7 +1637,7 @@
     "exgmnamea": "flow-l8",
     "exgmnameb": "flow-l9",
     "filename": "flow-8.exg",
-    "name": "gwfgwf7",
+    "name": "gwfgwf-8",
     "newton": false,
     "nexg": 10,
     "print_flows": false,
@@ -1645,7 +1645,7 @@
     "save_flows": false,
     "xt3d": false
   },
-  "simulation/gwfgwf8": {
+  "simulation/gwfgwf-9": {
     "__type__": "Gwfgwf",
     "auxiliary": [
       "ANGLDEGX",
@@ -1679,7 +1679,7 @@
     "exgmnamea": "flow-l9",
     "exgmnameb": "flow-l10",
     "filename": "flow-9.exg",
-    "name": "gwfgwf8",
+    "name": "gwfgwf-9",
     "newton": false,
     "nexg": 10,
     "print_flows": false,
@@ -1687,7 +1687,7 @@
     "save_flows": false,
     "xt3d": false
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -1695,7 +1695,7 @@
     "inner_dvclose": "1e-06",
     "inner_maximum": 30,
     "linear_acceleration": "cg",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "9.9999997e-06",
     "outer_maximum": 50,
     "print_option": "all",

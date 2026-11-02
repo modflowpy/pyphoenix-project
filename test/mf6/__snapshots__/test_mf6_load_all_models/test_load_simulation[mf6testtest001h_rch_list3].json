@@ -12,7 +12,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -21,7 +21,7 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
@@ -38,7 +38,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rch rch0>"
+      "<Rch rch-1>"
     ],
     "riv": [],
     "save_flows": false,
@@ -47,7 +47,7 @@
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/flow15/chd0": {
+  "simulation/flow15/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -72,7 +72,7 @@
       "nrow": 1
     },
     "filename": "flow15_constant.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,
@@ -176,7 +176,7 @@
     "head_file": "flow15_flow.hds",
     "name": "oc"
   },
-  "simulation/flow15/rch0": {
+  "simulation/flow15/rch-1": {
     "__type__": "Rch",
     "_stress_period_data": {
       "0": {
@@ -289,15 +289,15 @@
     },
     "filename": "flow15.rch",
     "fixed_cell": true,
-    "name": "rch0",
+    "name": "rch-1",
     "print_flows": true,
     "print_input": false,
     "save_flows": false,
     "ts": [
-      "<Ts ts0>"
+      "<Ts ts-1>"
     ]
   },
-  "simulation/flow15/rch0/ts0": {
+  "simulation/flow15/rch-1/ts-1": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -314,7 +314,7 @@
         "STEPWISE"
       ]
     },
-    "name": "ts0",
+    "name": "ts-1",
     "time_series_name": {
       "__type__": "TimeSeriesName",
       "time_series_names": [
@@ -328,7 +328,7 @@
       "ts_time": "float64[2] 60a7b15f5b46a13c"
     }
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -336,7 +336,7 @@
     "inner_dvclose": "1e-06",
     "inner_maximum": 30,
     "linear_acceleration": "cg",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "9.9999997e-06",
     "outer_maximum": 50,
     "print_option": "all",

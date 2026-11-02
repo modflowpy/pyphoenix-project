@@ -12,12 +12,12 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -25,7 +25,7 @@
     "inner_dvclose": "1e-07",
     "inner_maximum": 100,
     "linear_acceleration": "bicgstab",
-    "name": "ims0",
+    "name": "ims-1",
     "number_orthogonalizations": 2,
     "outer_dvclose": "1e-06",
     "outer_maximum": 200,
@@ -49,7 +49,7 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
@@ -67,21 +67,21 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rcha0>"
+      "<Rcha rch-1>"
     ],
     "riv": [
-      "<Riv riv0>"
+      "<Riv riv-1>"
     ],
     "save_flows": true,
     "sfr": [],
     "sto": "<Sto sto>",
     "uzf": [],
     "wel": [
-      "<Wel wel0>"
+      "<Wel wel-1>"
     ],
     "workspace": "<workspace>"
   },
-  "simulation/secp_mf6/chd0": {
+  "simulation/secp_mf6/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -103,15 +103,15 @@
       "nrow": 130
     },
     "filename": "secp_mf6.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": false,
     "ts": [
-      "<Ts ts0>"
+      "<Ts ts-1>"
     ]
   },
-  "simulation/secp_mf6/chd0/ts0": {
+  "simulation/secp_mf6/chd-1/ts-1": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -126,7 +126,7 @@
       "__type__": "InterpolationMethodrecordSingle",
       "interpolation_method_single": "linearend"
     },
-    "name": "ts0",
+    "name": "ts-1",
     "time_series_name": {
       "__type__": "TimeSeriesName",
       "time_series_names": "29376 chars fd7cdf2ec3ebac06"
@@ -238,7 +238,7 @@
     "head_file": "secp_mf6_secp.hds",
     "name": "oc"
   },
-  "simulation/secp_mf6/rcha0": {
+  "simulation/secp_mf6/rch-1": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -251,7 +251,7 @@
     "export_array_netcdf": false,
     "filename": "secp_mf6.rch",
     "fixed_cell": true,
-    "name": "rcha0",
+    "name": "rch-1",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,
@@ -259,7 +259,7 @@
     "save_flows": false,
     "tas": []
   },
-  "simulation/secp_mf6/riv0": {
+  "simulation/secp_mf6/riv-1": {
     "__type__": "Riv",
     "_stress_period_data": {
       "0": {
@@ -289,7 +289,7 @@
     },
     "filename": "secp_mf6.riv6",
     "mover": false,
-    "name": "riv0",
+    "name": "riv-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": false,
@@ -332,7 +332,7 @@
     "storagecoefficient": false,
     "sy": "float64[572000] 95fb8ad05a2d4c9b"
   },
-  "simulation/secp_mf6/wel0": {
+  "simulation/secp_mf6/wel-1": {
     "__type__": "Wel",
     "_stress_period_data": {
       "0": {
@@ -399,7 +399,7 @@
     "filename": "secp_mf6.wel",
     "flow_reduction_length": false,
     "mover": false,
-    "name": "wel0",
+    "name": "wel-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,

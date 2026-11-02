@@ -144,7 +144,7 @@
     " NPF6 test036_twrihfb_nr.npf npf",
     " OC6 test036_twrihfb_nr.oc oc",
     " RCH6 test036_twrihfb_nr.rch RCH",
-    " WEL6 test036_twrihfb_nr.wel wel0",
+    " WEL6 test036_twrihfb_nr.wel wel-1",
     "END PACKAGES"
   ],
   "test036_twrihfb_nr.npf": [

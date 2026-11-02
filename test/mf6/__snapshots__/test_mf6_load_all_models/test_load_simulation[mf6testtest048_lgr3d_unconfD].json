@@ -4,7 +4,7 @@
     "continue_": false,
     "dims": {},
     "exchanges": [
-      "<Gwfgwf gwfgwf0>"
+      "<Gwfgwf gwfgwf-1>"
     ],
     "filename": "mfsim.nam",
     "models": [
@@ -15,7 +15,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -159,7 +159,7 @@
     },
     "name": "oc"
   },
-  "simulation/gwfgwf0": {
+  "simulation/gwfgwf-1": {
     "__type__": "Gwfgwf",
     "boundnames": false,
     "dims": {},
@@ -179,7 +179,7 @@
     "exgmnameb": "child",
     "filename": "simulation.exg",
     "gnc": "<Gnc gnc>",
-    "name": "gwfgwf0",
+    "name": "gwfgwf-1",
     "newton": true,
     "nexg": 112,
     "print_flows": true,
@@ -187,7 +187,7 @@
     "save_flows": true,
     "xt3d": false
   },
-  "simulation/gwfgwf0/gnc": {
+  "simulation/gwfgwf-1/gnc": {
     "__type__": "Gnc",
     "dims": {},
     "explicit": false,
@@ -463,7 +463,7 @@
     "print_flows": true,
     "print_input": true
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -471,7 +471,7 @@
     "inner_dvclose": "1e-07",
     "inner_maximum": 500,
     "linear_acceleration": "bicgstab",
-    "name": "ims0",
+    "name": "ims-1",
     "number_orthogonalizations": 2,
     "outer_dvclose": "1e-06",
     "outer_maximum": 100,
@@ -498,7 +498,7 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
@@ -526,7 +526,7 @@
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/parent/chd0": {
+  "simulation/parent/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -563,7 +563,7 @@
       "nrow": 7
     },
     "filename": "parent.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": false,

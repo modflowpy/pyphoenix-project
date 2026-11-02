@@ -172,7 +172,7 @@
     "BEGIN PACKAGES",
     " DIS6 test_fhb.dis dis",
     " CHD6 test_fhb.fhb.chd CHD-HEAD(FHB)",
-    " DRN6 test_fhb.drn drn0",
+    " DRN6 test_fhb.drn drn-1",
     " IC6 test_fhb.ic ic",
     " NPF6 test_fhb.npf npf",
     " OC6 test_fhb.oc oc",

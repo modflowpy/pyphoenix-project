@@ -101,12 +101,12 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 sfr_hole.dis dis",
-    " CHD6 sfr_hole.chd chd0",
+    " CHD6 sfr_hole.chd chd-1",
     " IC6 sfr_hole.ic ic",
     " NPF6 sfr_hole.npf npf",
     " OC6 sfr_hole.oc oc",
     " SFR6 sfr_hole.sfr SFR_1",
-    " WEL6 sfr_hole.wel wel0",
+    " WEL6 sfr_hole.wel wel-1",
     "END PACKAGES"
   ],
   "sfr_hole.npf": [

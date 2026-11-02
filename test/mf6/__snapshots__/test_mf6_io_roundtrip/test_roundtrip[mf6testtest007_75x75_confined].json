@@ -79,12 +79,12 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 mf6.dis dis",
-    " CHD6 mf6.chd chd0",
+    " CHD6 mf6.chd chd-1",
     " IC6 mf6.ic ic",
     " NPF6 mf6.npf npf",
     " OC6 mf6.oc oc",
     " STO6 mf6.sto sto",
-    " WEL6 mf6.wel wel0",
+    " WEL6 mf6.wel wel-1",
     "END PACKAGES"
   ],
   "mf6.npf": [

@@ -12,7 +12,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -21,7 +21,7 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
@@ -48,12 +48,12 @@
     "sfr": [],
     "sto": "<Sto sto>",
     "uzf": [
-      "<Uzf uzf0>"
+      "<Uzf uzf-1>"
     ],
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/GWF_1/chd0": {
+  "simulation/GWF_1/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -77,7 +77,7 @@
       "nrow": 1
     },
     "filename": "test001e_UZF_TS.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": true,
     "print_input": false,
     "save_flows": false,
@@ -266,7 +266,7 @@
     "storagecoefficient": false,
     "sy": "float64[9] e15e06c9d6bf7d5a"
   },
-  "simulation/GWF_1/uzf0": {
+  "simulation/GWF_1/uzf-1": {
     "__type__": "Uzf",
     "_stress_period_data": {
       "0": {
@@ -540,7 +540,7 @@
     "filename": "test001e_UZF_TS.uzf",
     "linear_gwet": true,
     "mover": false,
-    "name": "uzf0",
+    "name": "uzf-1",
     "ntrailwaves": 10,
     "nuzfcells": 9,
     "nwavesets": 40,
@@ -577,12 +577,12 @@
     "simulate_gwseep": true,
     "square_gwet": false,
     "ts": [
-      "<Ts ts0>"
+      "<Ts ts-1>"
     ],
     "unsat_etae": false,
     "unsat_etwc": false
   },
-  "simulation/GWF_1/uzf0/obs": {
+  "simulation/GWF_1/uzf-1/obs": {
     "__type__": "Obs",
     "continuous": {
       "__table__": "ContinuousBlock",
@@ -636,7 +636,7 @@
     "name": "obs",
     "print_input": false
   },
-  "simulation/GWF_1/uzf0/ts0": {
+  "simulation/GWF_1/uzf-1/ts-1": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -660,7 +660,7 @@
         "stepwise"
       ]
     },
-    "name": "ts0",
+    "name": "ts-1",
     "time_series_name": {
       "__type__": "TimeSeriesName",
       "time_series_names": [
@@ -681,7 +681,7 @@
       "ts_time": "float64[2] 9b0ddd17d6b7ab75"
     }
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "complexity": "moderate",
     "dims": {},
@@ -689,7 +689,7 @@
     "inner_dvclose": "1e-09",
     "inner_maximum": 50,
     "linear_acceleration": "bicgstab",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "1e-06",
     "outer_maximum": 100,
     "print_option": "summary",

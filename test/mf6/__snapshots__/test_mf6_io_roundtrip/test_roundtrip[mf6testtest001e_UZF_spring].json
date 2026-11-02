@@ -109,12 +109,12 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 test001e_UZF.dis dis",
-    " CHD6 test001e_UZF.chd chd0",
+    " CHD6 test001e_UZF.chd chd-1",
     " IC6 test001e_UZF.ic ic",
     " NPF6 test001e_UZF.npf npf",
     " OC6 test001e_UZF.oc oc",
     " STO6 test001e_UZF.sto sto",
-    " UZF6 test001e_UZF.uzf uzf0",
+    " UZF6 test001e_UZF.uzf uzf-1",
     "END PACKAGES"
   ],
   "test001e_UZF.npf": [

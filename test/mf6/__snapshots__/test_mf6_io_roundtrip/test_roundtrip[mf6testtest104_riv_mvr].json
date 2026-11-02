@@ -171,11 +171,11 @@
     " DIS6 rivmvr.dis dis",
     " CHD6 rivmvr.ibound.chd CHD-FROM-IBOUND",
     " IC6 rivmvr.ic ic",
-    " MAW6 rivmvr.maw maw0",
+    " MAW6 rivmvr.maw maw-1",
     " MVR6 rivmvr.mvr mvr",
     " NPF6 rivmvr.npf npf",
     " OC6 rivmvr.oc oc",
-    " RIV6 rivmvr.riv riv0",
+    " RIV6 rivmvr.riv riv-1",
     "END PACKAGES"
   ],
   "rivmvr.npf": [

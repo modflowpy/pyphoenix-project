@@ -184,7 +184,7 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 parent.dis dis",
-    " CHD6 parent.chd chd0",
+    " CHD6 parent.chd chd-1",
     " IC6 parent.ic ic",
     " NPF6 parent.npf npf",
     " OC6 parent.oc oc",

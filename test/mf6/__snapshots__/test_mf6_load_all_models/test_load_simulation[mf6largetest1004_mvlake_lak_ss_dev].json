@@ -12,19 +12,19 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
     "filename": "mv.ims",
     "inner_dvclose": "1e-09",
     "inner_maximum": 50,
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "1e-08",
     "outer_maximum": 17000,
     "print_option": "summary",
@@ -49,7 +49,7 @@
     "ghb": [],
     "ic": "<Ic ic>",
     "lak": [
-      "<Lak lak0>"
+      "<Lak lak-1>"
     ],
     "list_": "mv.lst",
     "maw": [],
@@ -59,16 +59,16 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rcha0>"
+      "<Rcha rch-1>"
     ],
     "riv": [
-      "<Riv riv0>"
+      "<Riv riv-1>"
     ],
     "save_flows": false,
     "sfr": [],
     "uzf": [],
     "wel": [
-      "<Wel wel0>"
+      "<Wel wel-1>"
     ],
     "workspace": "<workspace>"
   },
@@ -109,7 +109,7 @@
     "name": "ic",
     "strt": "float64[5000] e52fb5ba3b76c691"
   },
-  "simulation/mv/lak0": {
+  "simulation/mv/lak-1": {
     "__type__": "Lak",
     "_stress_period_data": {
       "0": [
@@ -155,7 +155,7 @@
     "filename": "mv.lak",
     "implicit": false,
     "mover": false,
-    "name": "lak0",
+    "name": "lak-1",
     "nlakes": 1,
     "noutlets": 0,
     "ntables": 1,
@@ -180,13 +180,13 @@
       "__table__": "Tables",
       "ifno": "int64[1] 05fe405753166f12",
       "laktab": [
-        "<Laktab laktab0>"
+        "<Laktab laktab-1>"
       ],
       "n": 1
     },
     "ts": []
   },
-  "simulation/mv/lak0/laktab0": {
+  "simulation/mv/lak-1/laktab-1": {
     "__type__": "Laktab",
     "dims": {
       "ncelldim": 3,
@@ -197,7 +197,7 @@
       "nrow": 40
     },
     "filename": "lak.table.ref",
-    "name": "laktab0",
+    "name": "laktab-1",
     "ncol": 3,
     "nrow": 151,
     "table": {
@@ -209,7 +209,7 @@
       "volume": "float64[151] 38a4295117eaaf32"
     }
   },
-  "simulation/mv/lak0/obs": {
+  "simulation/mv/lak-1/obs": {
     "__type__": "Obs",
     "continuous": {
       "__table__": "ContinuousBlock",
@@ -328,7 +328,7 @@
     },
     "name": "oc"
   },
-  "simulation/mv/rcha0": {
+  "simulation/mv/rch-1": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -341,7 +341,7 @@
     "export_array_netcdf": false,
     "filename": "mv.rch",
     "fixed_cell": false,
-    "name": "rcha0",
+    "name": "rch-1",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,
@@ -351,7 +351,7 @@
     "save_flows": true,
     "tas": []
   },
-  "simulation/mv/riv0": {
+  "simulation/mv/riv-1": {
     "__type__": "Riv",
     "_stress_period_data": {
       "0": {
@@ -395,13 +395,13 @@
     },
     "filename": "mv.riv",
     "mover": false,
-    "name": "riv0",
+    "name": "riv-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,
     "ts": []
   },
-  "simulation/mv/wel0": {
+  "simulation/mv/wel-1": {
     "__type__": "Wel",
     "_stress_period_data": {
       "0": {
@@ -453,7 +453,7 @@
     "filename": "mv.wel",
     "flow_reduction_length": false,
     "mover": false,
-    "name": "wel0",
+    "name": "wel-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,

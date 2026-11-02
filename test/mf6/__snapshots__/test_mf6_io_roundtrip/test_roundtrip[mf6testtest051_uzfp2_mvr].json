@@ -239,7 +239,7 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 uzfp2_mvr.dis dis",
-    " GHB6 uzfp2_mvr.ghb ghb0",
+    " GHB6 uzfp2_mvr.ghb ghb-1",
     " IC6 uzfp2_mvr.ic ic",
     " MVR6 uzfp2_mvr.mvr mvr",
     " NPF6 uzfp2_mvr.npf npf",
@@ -247,7 +247,7 @@
     " SFR6 uzfp2_mvr.sfr SFR_1",
     " STO6 uzfp2_mvr.sto sto",
     " UZF6 uzfp2_mvr.uzf UZF_1",
-    " WEL6 uzfp2_mvr.wel wel0",
+    " WEL6 uzfp2_mvr.wel wel-1",
     "END PACKAGES"
   ],
   "uzfp2_mvr.npf": [

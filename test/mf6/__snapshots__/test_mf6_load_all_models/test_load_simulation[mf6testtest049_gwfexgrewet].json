@@ -4,8 +4,8 @@
     "continue_": false,
     "dims": {},
     "exchanges": [
-      "<Gwfgwf gwfgwf0>",
-      "<Gwfgwf gwfgwf1>"
+      "<Gwfgwf gwfgwf-1>",
+      "<Gwfgwf gwfgwf-2>"
     ],
     "filename": "mfsim.nam",
     "models": [
@@ -17,7 +17,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -26,7 +26,7 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
@@ -50,7 +50,7 @@
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/Model_01/chd0": {
+  "simulation/Model_01/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -94,7 +94,7 @@
       "nrow": 1
     },
     "filename": "model1.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": true,
     "print_input": false,
     "save_flows": false,
@@ -335,7 +335,7 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
@@ -359,7 +359,7 @@
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/Model_03/chd0": {
+  "simulation/Model_03/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -403,7 +403,7 @@
       "nrow": 1
     },
     "filename": "model3.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": true,
     "print_input": false,
     "save_flows": false,
@@ -508,7 +508,7 @@
     "head_file": "model3.hds",
     "name": "oc"
   },
-  "simulation/gwfgwf0": {
+  "simulation/gwfgwf-1": {
     "__type__": "Gwfgwf",
     "boundnames": false,
     "dims": {},
@@ -529,7 +529,7 @@
     "exgmnamea": "Model_01",
     "exgmnameb": "Model_02",
     "filename": "simulation_1to2.exg",
-    "name": "gwfgwf0",
+    "name": "gwfgwf-1",
     "newton": false,
     "nexg": 1,
     "print_flows": false,
@@ -537,7 +537,7 @@
     "save_flows": false,
     "xt3d": false
   },
-  "simulation/gwfgwf1": {
+  "simulation/gwfgwf-2": {
     "__type__": "Gwfgwf",
     "boundnames": false,
     "dims": {},
@@ -558,7 +558,7 @@
     "exgmnamea": "Model_02",
     "exgmnameb": "Model_03",
     "filename": "simulation_2to3.exg",
-    "name": "gwfgwf1",
+    "name": "gwfgwf-2",
     "newton": false,
     "nexg": 1,
     "print_flows": false,
@@ -566,7 +566,7 @@
     "save_flows": false,
     "xt3d": false
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -574,7 +574,7 @@
     "inner_dvclose": "1e-06",
     "inner_maximum": 30,
     "linear_acceleration": "bicgstab",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "9.9999997e-06",
     "outer_maximum": 50,
     "print_option": "summary",

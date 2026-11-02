@@ -669,7 +669,7 @@ def test_quickstart_grid(function_tmpdir):
     # No maxbound supplied -- the DIMENSIONS block must not be written at
     # all (MF6 defaults MAXBOUND to NCPL internally for READARRAYGRID
     # packages; the block is not merely allowed to be empty, it is omitted).
-    chdg_text = (function_tmpdir / f"{gwf_name}.chdg0.chd").read_text()
+    chdg_text = (function_tmpdir / f"{gwf_name}.chd-1.chd").read_text()
     assert "DIMENSIONS" not in chdg_text
 
 
@@ -732,7 +732,7 @@ def test_quickstart_grid_explicit_maxbound(function_tmpdir):
 
     sim.write()
 
-    chdg_text = (function_tmpdir / f"{gwf_name}.chdg0.chd").read_text()
+    chdg_text = (function_tmpdir / f"{gwf_name}.chd-1.chd").read_text()
     assert "BEGIN DIMENSIONS" in chdg_text
     assert "MAXBOUND 2" in chdg_text
 
@@ -822,7 +822,7 @@ def test_quickstart_netcdf(function_tmpdir):
     with open(function_tmpdir / f"{gwf_name}.ic", "r") as fh:
         lines = fh.readlines()
         assert " STRT NETCDF\n" in lines
-    with open(function_tmpdir / f"{gwf_name}.chdg0.chd", "r") as fh:
+    with open(function_tmpdir / f"{gwf_name}.chd-1.chd", "r") as fh:
         lines = fh.readlines()
         assert " HEAD NETCDF\n" in lines
 
@@ -835,7 +835,7 @@ def test_quickstart_netcdf(function_tmpdir):
     assert ("ic_strt") in ds
     assert ("npf_icelltype") in ds
     assert ("npf_k") in ds
-    assert ("chdg0_head") in ds
+    assert ("chd-1_head") in ds
 
     assert np.allclose(ds["dis_delr"].values.ravel(), np.asarray(dis.delr).ravel())
     assert np.allclose(ds["dis_delc"].values.ravel(), np.asarray(dis.delc).ravel())
@@ -845,7 +845,7 @@ def test_quickstart_netcdf(function_tmpdir):
     assert np.allclose(ds["ic_strt"].values.ravel(), ic.strt)
     assert np.allclose(ds["npf_icelltype"].values.ravel(), npf.icelltype)
     assert np.allclose(ds["npf_k"].values.ravel(), npf.k)
-    assert np.allclose(ds["chdg0_head"].values.ravel(), chd.period_array("head").ravel())
+    assert np.allclose(ds["chd-1_head"].values.ravel(), chd.period_array("head").ravel())
 
     # requires mf6 extended to run
     # sim.run()
@@ -935,7 +935,7 @@ def test_quickstart_netcdf_mesh(function_tmpdir):
     with open(function_tmpdir / f"{gwf_name}.ic", "r") as fh:
         lines = fh.readlines()
         assert " STRT NETCDF\n" in lines
-    with open(function_tmpdir / f"{gwf_name}.chdg0.chd", "r") as fh:
+    with open(function_tmpdir / f"{gwf_name}.chd-1.chd", "r") as fh:
         lines = fh.readlines()
         assert " HEAD NETCDF\n" in lines
 
@@ -948,7 +948,7 @@ def test_quickstart_netcdf_mesh(function_tmpdir):
     assert ("ic_strt_l1") in ds
     assert ("npf_icelltype_l1") in ds
     assert ("npf_k_l1") in ds
-    assert ("chdg0_head_l1") in ds
+    assert ("chd-1_head_l1") in ds
 
     assert np.allclose(ds["dis_delr"].values, dis.delr)
     assert np.allclose(ds["dis_delc"].values, dis.delc)
@@ -958,7 +958,7 @@ def test_quickstart_netcdf_mesh(function_tmpdir):
     assert np.allclose(ds["ic_strt_l1"].values.ravel(), np.asarray(ic.strt).ravel())
     assert np.allclose(ds["npf_icelltype_l1"].values.ravel(), np.asarray(npf.icelltype).ravel())
     assert np.allclose(ds["npf_k_l1"].values.ravel(), np.asarray(npf.k).ravel())
-    assert np.allclose(ds["chdg0_head_l1"].values.ravel(), chd.period_array("head").ravel())
+    assert np.allclose(ds["chd-1_head_l1"].values.ravel(), chd.period_array("head").ravel())
 
     # requires mf6 extended to run
     # sim.run()
@@ -1398,10 +1398,10 @@ def test_gwf_mvr(function_tmpdir):
         parent=gwf,
         maxpackages=2,
         maxmvr=1,
-        packages={"pname": np.array(["wel0", "drn0"], dtype=object)},
+        packages={"pname": np.array(["wel-1", "drn-1"], dtype=object)},
         stress_period_data={
             0: {
-                "pname1": np.array(["wel0"], dtype=object),
+                "pname1": np.array(["wel-1"], dtype=object),
                 # 0-based Python-side index (the first boundary in wel0/
                 # drn0's own list) -- id1/id2 are DFN numeric_index fields
                 # (gwf-mvr.dfn: "the first well has an identifier of one"),
@@ -1409,7 +1409,7 @@ def test_gwf_mvr(function_tmpdir):
                 # +1-at-write-time conversion every other index/fk column
                 # uses, not a value supplied 1-based directly.
                 "id1": np.array([0], dtype=np.int64),
-                "pname2": np.array(["drn0"], dtype=object),
+                "pname2": np.array(["drn-1"], dtype=object),
                 "id2": np.array([0], dtype=np.int64),
                 "mvrtype": np.array(["FACTOR"], dtype=object),
                 "value": np.array([0.5]),
@@ -1428,12 +1428,12 @@ def test_gwf_mvr(function_tmpdir):
     assert content.index("BEGIN PACKAGES") < content.index("BEGIN PERIOD")
 
     # PACKAGES block: both packages listed (from pname array)
-    assert "wel0" in content
-    assert "drn0" in content
+    assert "wel-1" in content
+    assert "drn-1" in content
 
     # PERIOD block: full record with all six columns in order
     # (pname1 id1 pname2 id2 mvrtype value)
-    assert "wel0 1 drn0 1 FACTOR 0.5" in content
+    assert "wel-1 1 drn-1 1 FACTOR 0.5" in content
 
 
 def test_gwt_basic(function_tmpdir):
@@ -2912,7 +2912,7 @@ def test_rcha_tas_reference_netcdf(function_tmpdir):
     assert "RECHARGE NETCDF" in period1
     assert (function_tmpdir / tas.filename).exists()
 
-    recharge = xr.load_dataset(nc_fpth, mask_and_scale=False)["rcha0_recharge"].values
+    recharge = xr.load_dataset(nc_fpth, mask_and_scale=False)["rch-1_recharge"].values
     assert (recharge[0] == FILL_DNODATA).all()
     assert np.allclose(recharge[1], 2e-3)
 

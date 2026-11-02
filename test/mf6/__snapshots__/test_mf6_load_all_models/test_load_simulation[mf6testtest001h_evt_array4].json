@@ -12,7 +12,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -21,13 +21,13 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
     "drn": [],
     "evt": [
-      "<Evta evta0>"
+      "<Evta evt-1>"
     ],
     "filename": "flow15.nam",
     "ghb": [],
@@ -47,7 +47,7 @@
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/flow15/chd0": {
+  "simulation/flow15/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -72,7 +72,7 @@
       "nrow": 1
     },
     "filename": "flow15_constant.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,
@@ -95,7 +95,7 @@
     "nrow": 1,
     "top": "float64[10] 7880455745addd07"
   },
-  "simulation/flow15/evta0": {
+  "simulation/flow15/evt-1": {
     "__type__": "Evta",
     "aux": {
       "0": {
@@ -132,7 +132,7 @@
     "export_array_netcdf": false,
     "filename": "flow15.evt",
     "fixed_cell": true,
-    "name": "evta0",
+    "name": "evt-1",
     "print_flows": true,
     "print_input": false,
     "rate": {
@@ -152,11 +152,11 @@
       "0": "float64[1] b4cefc24dd2adb27"
     },
     "tas": [
-      "<Tas tas0>",
-      "<Tas tas1>"
+      "<Tas tas-1>",
+      "<Tas tas-2>"
     ]
   },
-  "simulation/flow15/evta0/tas0": {
+  "simulation/flow15/evt-1/tas-1": {
     "__type__": "Tas",
     "dims": {
       "ncelldim": 3,
@@ -171,7 +171,7 @@
       "__type__": "InterpolationMethod",
       "interpolation_method": "STEPWISE"
     },
-    "name": "tas0",
+    "name": "tas-1",
     "tas_array": "234 chars 5198a121149b0de5",
     "time_series_name": {
       "__type__": "TimeSeriesName",
@@ -180,7 +180,7 @@
       ]
     }
   },
-  "simulation/flow15/evta0/tas1": {
+  "simulation/flow15/evt-1/tas-2": {
     "__type__": "Tas",
     "dims": {
       "ncelldim": 3,
@@ -195,7 +195,7 @@
       "__type__": "InterpolationMethod",
       "interpolation_method": "STEPWISE"
     },
-    "name": "tas1",
+    "name": "tas-2",
     "sfac": {
       "__type__": "Sfac",
       "sfacval": "float64[1] 8f688ce4f0389109"
@@ -292,7 +292,7 @@
     "head_file": "flow15_flow.hds",
     "name": "oc"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -300,7 +300,7 @@
     "inner_dvclose": "1e-06",
     "inner_maximum": 30,
     "linear_acceleration": "cg",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "9.9999997e-06",
     "outer_maximum": 50,
     "print_option": "all",

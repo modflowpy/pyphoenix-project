@@ -105,11 +105,11 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 nwtp3.dis dis",
-    " CHD6 nwtp3.chd chd0",
+    " CHD6 nwtp3.chd chd-1",
     " IC6 nwtp3.ic ic",
     " NPF6 nwtp3.npf npf",
     " OC6 nwtp3.oc oc",
-    " RCH6 nwtp3_Rlow.rch rcha0",
+    " RCH6 nwtp3_Rlow.rch rch-1",
     "END PACKAGES"
   ],
   "nwtp3.npf": [

@@ -60,11 +60,11 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 keatinglike.dis dis",
-    " CHD6 keatinglike.chd chd0",
+    " CHD6 keatinglike.chd chd-1",
     " IC6 keatinglike.ic ic",
     " NPF6 keatinglike.npf npf",
     " OC6 keatinglike.oc oc",
-    " RCH6 keatinglike.rch rch0",
+    " RCH6 keatinglike.rch rch-1",
     "END PACKAGES"
   ],
   "keatinglike.npf": [

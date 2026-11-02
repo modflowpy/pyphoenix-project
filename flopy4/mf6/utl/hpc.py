@@ -15,7 +15,7 @@ class Hpc(Package):
 
     @attrs.define
     class Partitions(Item):
-        mname: str = string()
+        mname: str = string(fk="sim-nam.models.mname")
         mrank: int = integer()
 
     print_table: bool = keyword(

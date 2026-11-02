@@ -12,7 +12,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -27,7 +27,7 @@
     "evt": [],
     "filename": "test032.nam",
     "ghb": [
-      "<Ghb ghb0>"
+      "<Ghb ghb-1>"
     ],
     "ic": "<Ic ic>",
     "lak": [],
@@ -41,7 +41,7 @@
     "riv": [],
     "save_flows": false,
     "sfr": [
-      "<Sfr sfr0>"
+      "<Sfr sfr-1>"
     ],
     "uzf": [],
     "wel": [],
@@ -65,7 +65,7 @@
     "nrow": 1,
     "top": "float64[10] 865e87f5dbb37c47"
   },
-  "simulation/GWF_1/ghb0": {
+  "simulation/GWF_1/ghb-1": {
     "__type__": "Ghb",
     "_stress_period_data": {
       "0": {
@@ -92,7 +92,7 @@
     },
     "filename": "test032.ghb",
     "mover": false,
-    "name": "ghb0",
+    "name": "ghb-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": false,
@@ -183,7 +183,7 @@
     "head_file": "test032.hds",
     "name": "oc"
   },
-  "simulation/GWF_1/sfr0": {
+  "simulation/GWF_1/sfr-1": {
     "__type__": "Sfr",
     "_stress_period_data": {
       "0": {
@@ -235,7 +235,7 @@
     },
     "filename": "test032.sfr8",
     "mover": false,
-    "name": "sfr0",
+    "name": "sfr-1",
     "nreaches": 10,
     "packagedata": {
       "__table__": "Packagedata",
@@ -289,10 +289,10 @@
     "save_flows": false,
     "storage": false,
     "ts": [
-      "<Ts ts0>"
+      "<Ts ts-1>"
     ]
   },
-  "simulation/GWF_1/sfr0/ts0": {
+  "simulation/GWF_1/sfr-1/ts-1": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -310,7 +310,7 @@
         "stepwise"
       ]
     },
-    "name": "ts0",
+    "name": "ts-1",
     "time_series_name": {
       "__type__": "TimeSeriesName",
       "time_series_names": [
@@ -325,7 +325,7 @@
       "ts_time": "float64[2] adabbda6bfa55a60"
     }
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "backtracking_number": 0,
     "backtracking_reduction_factor": "0.7",
@@ -336,7 +336,7 @@
     "inner_dvclose": "1e-05",
     "inner_maximum": 10,
     "linear_acceleration": "cg",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "1e-05",
     "outer_maximum": 12625,
     "print_option": "summary",

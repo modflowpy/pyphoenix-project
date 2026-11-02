@@ -119,14 +119,14 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 twrihfb2015.dis dis",
-    " CHD6 twrihfb2015_constant.chd chd0",
-    " DRN6 twrihfb2015.drn drn0",
+    " CHD6 twrihfb2015_constant.chd chd-1",
+    " DRN6 twrihfb2015.drn drn-1",
     " HFB6 twrihfb2015.hfb hfb",
     " IC6 twrihfb2015.ic ic",
     " NPF6 twrihfb2015.npf npf",
     " OC6 twrihfb2015.oc oc",
-    " RCH6 twrihfb2015.rch rcha0",
-    " WEL6 twrihfb2015.wel wel0",
+    " RCH6 twrihfb2015.rch rch-1",
+    " WEL6 twrihfb2015.wel wel-1",
     "END PACKAGES"
   ],
   "twrihfb2015.npf": [

@@ -447,15 +447,15 @@ def test_flopy3_export(tmp_path):
     assert shp_mpth.exists()
     gdf = gwf3.to_geodataframe()
     assert gdf.crs.to_epsg() == 3070
-    assert {"top", "botm", "strt", "chd0_head_0_0"} <= set(gdf.columns)
-    assert gdf["chd0_head_0_0"].dropna().tolist() == [1.0, 0.0]
+    assert {"top", "botm", "strt", "chd-1_head_0_0"} <= set(gdf.columns)
+    assert gdf["chd-1_head_0_0"].dropna().tolist() == [1.0, 0.0]
     # constants, given or defaults, filled to the grid
     assert gdf["strt"].tolist() == [5.0] * 100
     assert gdf["k"].tolist() == [1.0] * 100
     assert gdf["icelltype"].tolist() == [0] * 100
     assert "delr" not in gdf  # not a value per cell
-    assert "chd0_boundname_0_0" not in gdf  # not a number
-    assert "chd0_head_0_0" not in gwf3.to_geodataframe(package_names=["ic"])
+    assert "chd-1_boundname_0_0" not in gdf  # not a number
+    assert "chd-1_head_0_0" not in gwf3.to_geodataframe(package_names=["ic"])
 
     # package shapefile export
     shp_ppth = Path(tmp_path / "flopy3_package" / "shape" / "flopy3_package.shp")

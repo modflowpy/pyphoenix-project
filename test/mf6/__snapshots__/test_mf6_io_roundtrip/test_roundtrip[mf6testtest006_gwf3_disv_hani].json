@@ -90,12 +90,12 @@
     "",
     "BEGIN PACKAGES",
     " DISV6 flow.disv disv",
-    " CHD6 flow.chd chd0",
+    " CHD6 flow.chd chd-1",
     " GNC6 flow.gnc gnc",
     " IC6 flow.ic ic",
     " NPF6 flow.npf npf",
     " OC6 flow.oc oc",
-    " RCH6 flow.rch rch0",
+    " RCH6 flow.rch rch-1",
     "END PACKAGES"
   ],
   "flow.npf": [

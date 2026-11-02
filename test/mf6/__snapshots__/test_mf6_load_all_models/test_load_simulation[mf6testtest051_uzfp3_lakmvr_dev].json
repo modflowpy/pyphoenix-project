@@ -12,12 +12,12 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -25,7 +25,7 @@
     "inner_dvclose": "1e-06",
     "inner_maximum": 100,
     "linear_acceleration": "cg",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "1e-05",
     "outer_maximum": 100,
     "print_option": "summary",
@@ -69,7 +69,7 @@
     "evt": [],
     "filename": "uzfp3_lakmvr.nam",
     "ghb": [
-      "<Ghb ghb0>"
+      "<Ghb ghb-1>"
     ],
     "ic": "<Ic ic>",
     "lak": [
@@ -94,7 +94,7 @@
       "<Uzf UZF_1>"
     ],
     "wel": [
-      "<Wel wel0>"
+      "<Wel wel-1>"
     ],
     "workspace": "<workspace>"
   },
@@ -366,7 +366,7 @@
     "nrow": 15,
     "top": "float64[150] 556b3670a83b717f"
   },
-  "simulation/uzfp3_lakmvr/ghb0": {
+  "simulation/uzfp3_lakmvr/ghb-1": {
     "__type__": "Ghb",
     "_stress_period_data": {
       "0": {
@@ -393,7 +393,7 @@
     },
     "filename": "uzfp3_lakmvr.ghb",
     "mover": false,
-    "name": "ghb0",
+    "name": "ghb-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": false,
@@ -600,7 +600,7 @@
     "storagecoefficient": false,
     "sy": "float64[300] 65156b101a71ecd0"
   },
-  "simulation/uzfp3_lakmvr/wel0": {
+  "simulation/uzfp3_lakmvr/wel-1": {
     "__type__": "Wel",
     "_stress_period_data": {
       "0": {
@@ -762,7 +762,7 @@
     "filename": "uzfp3_lakmvr.wel",
     "flow_reduction_length": false,
     "mover": false,
-    "name": "wel0",
+    "name": "wel-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": false,

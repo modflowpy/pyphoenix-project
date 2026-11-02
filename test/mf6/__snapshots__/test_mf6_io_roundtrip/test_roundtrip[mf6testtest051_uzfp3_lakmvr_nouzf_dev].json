@@ -190,7 +190,7 @@
     "BEGIN PACKAGES",
     " DIS6 uzfp3_lakmvr_nouzf.dis dis",
     " EVT6 uzfp3_lakmvr_nouzf.evt EVT",
-    " GHB6 uzfp3_lakmvr_nouzf.ghb ghb0",
+    " GHB6 uzfp3_lakmvr_nouzf.ghb ghb-1",
     " IC6 uzfp3_lakmvr_nouzf.ic ic",
     " LAK6 uzfp3_lakmvr_nouzf.lak LAK_1",
     " MVR6 uzfp3_lakmvr_nouzf.mvr mvr",
@@ -199,7 +199,7 @@
     " RCH6 uzfp3_lakmvr_nouzf.rch RCH",
     " SFR6 uzfp3_lakmvr_nouzf.sfr SFR_1",
     " STO6 uzfp3_lakmvr_nouzf.sto sto",
-    " WEL6 uzfp3_lakmvr_nouzf.wel wel0",
+    " WEL6 uzfp3_lakmvr_nouzf.wel wel-1",
     "END PACKAGES"
   ],
   "uzfp3_lakmvr_nouzf.npf": [

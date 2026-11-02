@@ -87,11 +87,11 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 model.dis dis",
-    " CHD6 model.chd chd0",
+    " CHD6 model.chd chd-1",
     " IC6 model.ic ic",
     " NPF6 model.npf npf",
     " OC6 model.oc oc",
-    " WEL6 model.wel wel0",
+    " WEL6 model.wel wel-1",
     "END PACKAGES"
   ],
   "model.npf": [

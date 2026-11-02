@@ -12,12 +12,12 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "complexity": "moderate",
     "dims": {},
@@ -25,7 +25,7 @@
     "inner_dvclose": "0.00050000004",
     "inner_maximum": 200,
     "linear_acceleration": "bicgstab",
-    "name": "ims0",
+    "name": "ims-1",
     "number_orthogonalizations": 5,
     "outer_dvclose": "0.05",
     "outer_maximum": 2000,
@@ -67,15 +67,15 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
     "drn": [
-      "<Drn drn0>"
+      "<Drn drn-1>"
     ],
     "evt": [
-      "<Evta evta0>"
+      "<Evta evt-1>"
     ],
     "filename": "v6.nam",
     "ghb": [],
@@ -93,19 +93,19 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rcha0>"
+      "<Rcha rch-1>"
     ],
     "riv": [],
     "save_flows": false,
     "sfr": [
-      "<Sfr sfr0>"
+      "<Sfr sfr-1>"
     ],
     "sto": "<Sto sto>",
     "uzf": [],
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/v6/chd0": {
+  "simulation/v6/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -127,7 +127,7 @@
       "nrow": 565
     },
     "filename": "v6.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": true,
     "print_input": false,
     "save_flows": false,
@@ -151,7 +151,7 @@
     "nrow": 565,
     "top": "float64[449175] 5d63a44274257d2b"
   },
-  "simulation/v6/drn0": {
+  "simulation/v6/drn-1": {
     "__type__": "Drn",
     "_stress_period_data": {
       "0": {
@@ -175,13 +175,13 @@
     },
     "filename": "v6.drn",
     "mover": false,
-    "name": "drn0",
+    "name": "drn-1",
     "print_flows": false,
     "print_input": false,
     "save_flows": true,
     "ts": []
   },
-  "simulation/v6/evta0": {
+  "simulation/v6/evt-1": {
     "__type__": "Evta",
     "depth": {
       "0": "float64[449175] b6e5462ae9ad5345"
@@ -197,7 +197,7 @@
     "export_array_netcdf": false,
     "filename": "v6.evt",
     "fixed_cell": true,
-    "name": "evta0",
+    "name": "evt-1",
     "print_flows": false,
     "print_input": false,
     "rate": {
@@ -331,7 +331,7 @@
     },
     "name": "oc"
   },
-  "simulation/v6/rcha0": {
+  "simulation/v6/rch-1": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -344,7 +344,7 @@
     "export_array_netcdf": false,
     "filename": "v6.rch",
     "fixed_cell": false,
-    "name": "rcha0",
+    "name": "rch-1",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,
@@ -354,7 +354,7 @@
     "save_flows": true,
     "tas": []
   },
-  "simulation/v6/sfr0": {
+  "simulation/v6/sfr-1": {
     "__type__": "Sfr",
     "_stress_period_data": {
       "0": {
@@ -381,7 +381,7 @@
     },
     "filename": "v6.sfr",
     "mover": false,
-    "name": "sfr0",
+    "name": "sfr-1",
     "nreaches": 10461,
     "packagedata": {
       "__table__": "Packagedata",

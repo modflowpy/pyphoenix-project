@@ -103,13 +103,13 @@ def test_boundnames_are_a_coordinate():
 
 
 def test_time_series_value_is_nan_with_its_name():
-    chd = Chd(stress_period_data={0: [((0, 0, 0), "ts1"), ((0, 0, 1), 2.0)]}, dims=DIMS)
+    chd = Chd(stress_period_data={0: [((0, 0, 0), "ts-2"), ((0, 0, 1), 2.0)]}, dims=DIMS)
     ds = chd.to_xarray()
     assert np.isnan(ds["head"].values[0, 0, 0, 0])
-    assert ds.coords["head_ts"].values[0, 0, 0, 0] == "ts1"
+    assert ds.coords["head_ts"].values[0, 0, 0, 0] == "ts-2"
     assert pd.isnull(ds.coords["head_ts"].values[0, 0, 0, 1])
     round_trips(chd)
-    assert chd.stress_period_data[0][0].head == TimeSeriesRef("ts1")
+    assert chd.stress_period_data[0][0].head == TimeSeriesRef("ts-2")
 
 
 @pytest.mark.parametrize("sparse", [False, True])
@@ -117,7 +117,7 @@ def test_time_series_round_trips_netcdf(tmp_path, sparse):
     """NetCDF saves a cell without a series as '', which loads as none."""
     import xarray as xr
 
-    chd = Chd(stress_period_data={0: [((0, 0, 0), "ts1"), ((0, 0, 1), 2.0)]}, dims=DIMS)
+    chd = Chd(stress_period_data={0: [((0, 0, 0), "ts-2"), ((0, 0, 1), 2.0)]}, dims=DIMS)
     expected = chd.stress_period_data
     ds = chd.to_xarray(sparse=sparse)
     ds.drop_attrs().to_netcdf(path := tmp_path / "chd.nc")
@@ -199,13 +199,13 @@ def test_duplicates_must_be_known():
 
 
 def test_summing_a_time_series_raises():
-    wel = Wel(stress_period_data={0: [((0, 0, 0), "ts1"), ((0, 0, 0), -2.0)]}, dims=DIMS)
+    wel = Wel(stress_period_data={0: [((0, 0, 0), "ts-2"), ((0, 0, 0), -2.0)]}, dims=DIMS)
     with pytest.raises(ValueError, match="can't be summed"):
         wel.to_xarray(duplicates="sum")
 
 
 def test_periods_past_nper_are_dropped():
-    wel = Wel(stress_period_data={3: [((0, 0, 0), "ts1"), ((0, 0, 1), -1.0)]}, dims=DIMS)
+    wel = Wel(stress_period_data={3: [((0, 0, 0), "ts-2"), ((0, 0, 1), -1.0)]}, dims=DIMS)
     with pytest.warns(UserWarning, match="past NPER"):
         ds = wel.to_xarray()
     assert (ds["q"].values == NODATA).all()
@@ -218,7 +218,7 @@ def test_periods_past_nper_are_dropped():
 def wells_by_column():
     """Rows held as columns: repeats, a series, boundnames, aux."""
     spd = {
-        0: [((0, 0, 0), -1.0, (1.0,), "a"), ((0, 1, 2), "ts1", (2.0,), None)],
+        0: [((0, 0, 0), -1.0, (1.0,), "a"), ((0, 1, 2), "ts-2", (2.0,), None)],
         2: [((0, 0, 1), -1.0, (3.0,), "b"), ((0, 0, 1), -2.0, (4.0,), "c")],
     }
     wel = Wel(stress_period_data=spd, auxiliary=["conc"], boundnames=True, dims=DIMS)
@@ -367,7 +367,7 @@ def test_maw_word_or_number_setting_is_an_object_variable():
             lambda: Chd(
                 boundnames=True,
                 stress_period_data={
-                    0: [((0, 0, 0), 1.0, (), "a"), ((0, 0, 0), "ts1")],
+                    0: [((0, 0, 0), 1.0, (), "a"), ((0, 0, 0), "ts-2")],
                     2: [],
                 },
                 dims=DIMS,

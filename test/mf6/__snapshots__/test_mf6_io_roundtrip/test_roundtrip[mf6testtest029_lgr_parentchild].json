@@ -42,7 +42,7 @@
     " IC6 CHILD.ic ic",
     " NPF6 CHILD.npf npf",
     " OC6 CHILD.oc oc",
-    " WEL6 CHILD.wel wel0",
+    " WEL6 CHILD.wel wel-1",
     "END PACKAGES"
   ],
   "CHILD.npf": [
@@ -152,7 +152,7 @@
     " IC6 PARENT.ic ic",
     " NPF6 PARENT.npf npf",
     " OC6 PARENT.oc oc",
-    " WEL6 PARENT.wel wel0",
+    " WEL6 PARENT.wel wel-1",
     "END PACKAGES"
   ],
   "PARENT.npf": [

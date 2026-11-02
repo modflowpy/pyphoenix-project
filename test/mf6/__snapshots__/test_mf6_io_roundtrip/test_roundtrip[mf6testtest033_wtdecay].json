@@ -125,7 +125,7 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 test033.dis dis",
-    " GHB6 test033.ghb ghb0",
+    " GHB6 test033.ghb ghb-1",
     " IC6 test033.ic ic",
     " NPF6 test033.npf npf",
     " OC6 test033.oc oc",

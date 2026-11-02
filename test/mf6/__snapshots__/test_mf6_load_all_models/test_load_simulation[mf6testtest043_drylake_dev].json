@@ -12,12 +12,12 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -25,7 +25,7 @@
     "inner_dvclose": "1e-06",
     "inner_maximum": 100,
     "linear_acceleration": "cg",
-    "name": "ims0",
+    "name": "ims-1",
     "number_orthogonalizations": 2,
     "outer_dvclose": "1e-05",
     "outer_maximum": 500,
@@ -51,7 +51,7 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
@@ -61,7 +61,7 @@
     "ghb": [],
     "ic": "<Ic ic>",
     "lak": [
-      "<Lak lak0>"
+      "<Lak lak-1>"
     ],
     "maw": [],
     "name": "ls",
@@ -77,7 +77,7 @@
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/ls/chd0": {
+  "simulation/ls/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -116,7 +116,7 @@
       "nrow": 5
     },
     "filename": "drylake.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": false,
     "print_input": true,
     "save_flows": false,
@@ -156,7 +156,7 @@
     "name": "ic",
     "strt": "float64[50] 5bb164f74a07a0f8"
   },
-  "simulation/ls/lak0": {
+  "simulation/ls/lak-1": {
     "__type__": "Lak",
     "_stress_period_data": {
       "0": [
@@ -203,7 +203,7 @@
     "filename": "drylake.lak",
     "implicit": false,
     "mover": false,
-    "name": "lak0",
+    "name": "lak-1",
     "nlakes": 1,
     "noutlets": 0,
     "obs": "<Obs obs>",
@@ -224,7 +224,7 @@
     "save_flows": false,
     "ts": []
   },
-  "simulation/ls/lak0/obs": {
+  "simulation/ls/lak-1/obs": {
     "__type__": "Obs",
     "continuous": {
       "__table__": "ContinuousBlock",

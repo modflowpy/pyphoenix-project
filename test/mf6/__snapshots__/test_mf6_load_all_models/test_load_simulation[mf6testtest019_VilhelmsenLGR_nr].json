@@ -4,7 +4,7 @@
     "continue_": false,
     "dims": {},
     "exchanges": [
-      "<Gwfgwf gwfgwf0>"
+      "<Gwfgwf gwfgwf-1>"
     ],
     "filename": "mfsim.nam",
     "models": [
@@ -15,7 +15,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -33,7 +33,7 @@
     "ic": "<Ic ic>",
     "lak": [],
     "maw": [
-      "<Maw maw0>"
+      "<Maw maw-1>"
     ],
     "name": "CHILD",
     "newtonoptions": {
@@ -45,10 +45,10 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rcha0>"
+      "<Rcha rch-1>"
     ],
     "riv": [
-      "<Riv riv0>"
+      "<Riv riv-1>"
     ],
     "save_flows": false,
     "sfr": [],
@@ -89,7 +89,7 @@
     "name": "ic",
     "strt": "float64[175500] d4789056ace364d4"
   },
-  "simulation/CHILD/maw0": {
+  "simulation/CHILD/maw-1": {
     "__type__": "Maw",
     "_stress_period_data": {
       "0": {
@@ -127,7 +127,7 @@
     "flow_correction": false,
     "flowing_wells": false,
     "mover": false,
-    "name": "maw0",
+    "name": "maw-1",
     "nmawwells": 3,
     "no_well_storage": true,
     "non_vertical_wells": false,
@@ -223,7 +223,7 @@
     "head_file": "Child_GN.hds",
     "name": "oc"
   },
-  "simulation/CHILD/rcha0": {
+  "simulation/CHILD/rch-1": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -236,7 +236,7 @@
     "export_array_netcdf": false,
     "filename": "Child_GN.rch",
     "fixed_cell": false,
-    "name": "rcha0",
+    "name": "rch-1",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,
@@ -246,7 +246,7 @@
     "save_flows": true,
     "tas": []
   },
-  "simulation/CHILD/riv0": {
+  "simulation/CHILD/riv-1": {
     "__type__": "Riv",
     "_stress_period_data": {
       "0": {
@@ -271,7 +271,7 @@
     },
     "filename": "Child_GN.riv",
     "mover": false,
-    "name": "riv0",
+    "name": "riv-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,
@@ -290,8 +290,8 @@
     "ic": "<Ic ic>",
     "lak": [],
     "maw": [
-      "<Maw maw0>",
-      "<Maw maw1>"
+      "<Maw maw-1>",
+      "<Maw maw-2>"
     ],
     "name": "PARENT",
     "newtonoptions": {
@@ -303,10 +303,10 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rcha0>"
+      "<Rcha rch-1>"
     ],
     "riv": [
-      "<Riv riv0>"
+      "<Riv riv-1>"
     ],
     "save_flows": false,
     "sfr": [],
@@ -348,7 +348,7 @@
     "name": "ic",
     "strt": "float64[26901] 1db0c1f3896f1873"
   },
-  "simulation/PARENT/maw0": {
+  "simulation/PARENT/maw-1": {
     "__type__": "Maw",
     "_stress_period_data": {
       "0": {
@@ -399,7 +399,7 @@
     "flow_correction": false,
     "flowing_wells": false,
     "mover": false,
-    "name": "maw0",
+    "name": "maw-1",
     "nmawwells": 3,
     "no_well_storage": true,
     "non_vertical_wells": false,
@@ -429,7 +429,7 @@
     "save_flows": false,
     "ts": []
   },
-  "simulation/PARENT/maw1": {
+  "simulation/PARENT/maw-2": {
     "__type__": "Maw",
     "_stress_period_data": {
       "0": {
@@ -467,7 +467,7 @@
     "flow_correction": false,
     "flowing_wells": false,
     "mover": false,
-    "name": "maw1",
+    "name": "maw-2",
     "nmawwells": 1,
     "no_well_storage": true,
     "non_vertical_wells": false,
@@ -559,7 +559,7 @@
     "head_file": "TM9_parent_GN.hds",
     "name": "oc"
   },
-  "simulation/PARENT/rcha0": {
+  "simulation/PARENT/rch-1": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -572,7 +572,7 @@
     "export_array_netcdf": false,
     "filename": "TM9_parent_GN.rch",
     "fixed_cell": false,
-    "name": "rcha0",
+    "name": "rch-1",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,
@@ -582,7 +582,7 @@
     "save_flows": true,
     "tas": []
   },
-  "simulation/PARENT/riv0": {
+  "simulation/PARENT/riv-1": {
     "__type__": "Riv",
     "_stress_period_data": {
       "0": {
@@ -641,13 +641,13 @@
     },
     "filename": "TM9_parent_GN.riv",
     "mover": false,
-    "name": "riv0",
+    "name": "riv-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,
     "ts": []
   },
-  "simulation/gwfgwf0": {
+  "simulation/gwfgwf-1": {
     "__type__": "Gwfgwf",
     "boundnames": false,
     "dims": {},
@@ -666,7 +666,7 @@
     "exgmnamea": "PARENT",
     "exgmnameb": "CHILD",
     "filename": "parent-child.gwfexg",
-    "name": "gwfgwf0",
+    "name": "gwfgwf-1",
     "newton": false,
     "nexg": 8400,
     "print_flows": false,
@@ -674,7 +674,7 @@
     "save_flows": true,
     "xt3d": false
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "csv_inner_output_file": "tm9.inner.ims.csv",
     "csv_outer_output_file": "tm9.outer.ims.csv",
@@ -683,7 +683,7 @@
     "inner_dvclose": "1e-06",
     "inner_maximum": 200,
     "linear_acceleration": "bicgstab",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "1e-05",
     "outer_maximum": 100,
     "print_option": "all",

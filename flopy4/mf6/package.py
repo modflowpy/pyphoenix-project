@@ -32,6 +32,7 @@ from flopy4.mf6.item import (
     union_value,
 )
 from flopy4.mf6.item_table import ItemTable
+from flopy4.mf6.keys import key_errors
 from flopy4.mf6.load_context import LoadContext
 from flopy4.mf6.period_arrays import (
     check_grid_periods,
@@ -690,7 +691,14 @@ class Package(Component, ABC):
         self._check_tas_refs()
         self._check_ts_refs()
         self._check_obs_ids()
+        self._check_keys()
         super().write(format=format, context=context)
+
+    def _check_keys(self) -> None:
+        """Raise if a string key is repeated or names nothing (see
+        `flopy4.mf6.keys`), which MF6 would fail on."""
+        if errors := key_errors(self):
+            raise ValueError("Invalid keys: " + "; ".join(errors))
 
     def _check_periods(self) -> None:
         """Raise if a fill-forward field's period key isn't a 0-based period
@@ -844,12 +852,12 @@ class Package(Component, ABC):
         return _pkg
 
     def default_filename(self) -> str:
-        """``{stem}.{name}.{ext}``: ``model.wel0.wel``, ``sim.ims0.ims``,
+        """``{stem}.{name}.{ext}``: ``model.wel-1.wel``, ``sim.ims-1.ims``,
         or ``{stem}.{ext}`` when the name is the extension (``model.dis``).
 
         The stem is the parent's name, or for a package named by a file
         record (TS, OBS, ...) the parent's ``{stem}.{name}``
-        (``model.wel0.ts0.ts``, ``model.csub.obs``). The extension is the
+        (``model.wel-1.ts-1.ts``, ``model.csub.obs``). The extension is the
         name-file ftype, lowercase, without the ``6`` (a CHDG file is
         ``.chd``). Names are unique among siblings, so default filenames
         can't collide.
@@ -880,12 +888,6 @@ class Package(Component, ABC):
         else:
             return self._name_or_class()
         return f"{stem}.{self._name_or_class()}"
-
-    def _file_ext(self) -> str:
-        """The default filename's extension: the name-file ftype,
-        lowercase, without the ``6``s or an exchange's hyphen
-        (``CHD6`` -> ``chd``, ``GWF6-GWF6`` -> ``gwfgwf``)."""
-        return self.ftype.lower().replace("6", "").replace("-", "")
 
     def to_dict(self, blocks: bool = False, strict: bool = False) -> dict:
         """Convert to a dictionary of field values.

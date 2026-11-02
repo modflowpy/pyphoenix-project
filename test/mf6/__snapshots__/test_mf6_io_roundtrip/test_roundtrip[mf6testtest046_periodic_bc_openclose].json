@@ -299,7 +299,7 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 pbc.dis dis",
-    " CHD6 pbc.chd chd0",
+    " CHD6 pbc.chd chd-1",
     " IC6 pbc.ic ic",
     " NPF6 pbc.npf npf",
     " OC6 pbc.oc oc",

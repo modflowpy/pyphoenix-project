@@ -326,8 +326,8 @@ def test_mf6_reads_list_files(function_tmpdir, list_format):
     sim = _sim(external)
     sim.write(context=WriteContext(list_format=list_format))
     suffix = ".bin (BINARY)" if list_format == "binary" else ".txt"
-    assert f"OPEN/CLOSE gwf_wel0_wel_stress_period_data_p2{suffix}" in _lines(
-        external / "gwf.wel0.wel", "OPEN/CLOSE"
+    assert f"OPEN/CLOSE gwf_wel-1_wel_stress_period_data_p2{suffix}" in _lines(
+        external / "gwf.wel-1.wel", "OPEN/CLOSE"
     )
     assert _lines(external / "gwf.oc", "OPEN/CLOSE") == [
         "OPEN/CLOSE gwf_oc_stress_period_data_p1.txt"

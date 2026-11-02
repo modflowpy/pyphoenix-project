@@ -105,11 +105,11 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 test034_nwtp2.dis dis",
-    " CHD6 test034_nwtp2_constant.chd chd0",
+    " CHD6 test034_nwtp2_constant.chd chd-1",
     " IC6 test034_nwtp2.ic ic",
     " NPF6 test034_nwtp2.npf npf",
     " OC6 test034_nwtp2.oc oc",
-    " RCH6 test034_nwtp2.rch rcha0",
+    " RCH6 test034_nwtp2.rch rch-1",
     " STO6 test034_nwtp2.sto sto",
     " OBS6 test034_nwtp2.obs obs",
     "END PACKAGES"

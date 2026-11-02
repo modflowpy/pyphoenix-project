@@ -12,12 +12,12 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -25,7 +25,7 @@
     "inner_dvclose": "1e-05",
     "inner_maximum": 100,
     "linear_acceleration": "cg",
-    "name": "ims0",
+    "name": "ims-1",
     "number_orthogonalizations": 2,
     "outer_dvclose": "0.0001",
     "outer_maximum": 150,
@@ -70,11 +70,11 @@
     "dis": "<Dis dis>",
     "drn": [],
     "evt": [
-      "<Evta evta0>"
+      "<Evta evt-1>"
     ],
     "filename": "test1ss_ic.nam",
     "ghb": [
-      "<Ghb ghb0>"
+      "<Ghb ghb-1>"
     ],
     "ic": "<Ic ic>",
     "lak": [],
@@ -85,7 +85,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rcha0>"
+      "<Rcha rch-1>"
     ],
     "riv": [],
     "save_flows": false,
@@ -180,7 +180,7 @@
     "nrow": 15,
     "top": "float64[150] 556b3670a83b717f"
   },
-  "simulation/test1ss_ic/evta0": {
+  "simulation/test1ss_ic/evt-1": {
     "__type__": "Evta",
     "depth": {
       "0": "float64[1] 6e834c27afb79741"
@@ -196,7 +196,7 @@
     "export_array_netcdf": false,
     "filename": "test1ss_ic.evt",
     "fixed_cell": true,
-    "name": "evta0",
+    "name": "evt-1",
     "print_flows": false,
     "print_input": true,
     "rate": {
@@ -209,7 +209,7 @@
     },
     "tas": []
   },
-  "simulation/test1ss_ic/ghb0": {
+  "simulation/test1ss_ic/ghb-1": {
     "__type__": "Ghb",
     "_stress_period_data": {
       "0": {
@@ -236,7 +236,7 @@
     },
     "filename": "test1ss_ic.ghb",
     "mover": false,
-    "name": "ghb0",
+    "name": "ghb-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": false,
@@ -338,7 +338,7 @@
     },
     "name": "oc"
   },
-  "simulation/test1ss_ic/rcha0": {
+  "simulation/test1ss_ic/rch-1": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -351,7 +351,7 @@
     "export_array_netcdf": false,
     "filename": "test1ss_ic.rch",
     "fixed_cell": true,
-    "name": "rcha0",
+    "name": "rch-1",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,

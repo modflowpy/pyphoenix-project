@@ -12,7 +12,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -45,7 +45,7 @@
     "sto": "<Sto sto>",
     "uzf": [],
     "wel": [
-      "<Wel wel0>"
+      "<Wel wel-1>"
     ],
     "workspace": "<workspace>"
   },
@@ -290,7 +290,7 @@
     "storagecoefficient": false,
     "sy": "float64[800] 792547c5259dcbbf"
   },
-  "simulation/GWF_1/wel0": {
+  "simulation/GWF_1/wel-1": {
     "__type__": "Wel",
     "_stress_period_data": {
       "0": {
@@ -536,19 +536,19 @@
     "filename": "model.wel",
     "flow_reduction_length": false,
     "mover": false,
-    "name": "wel0",
+    "name": "wel-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,
     "ts": [
-      "<Ts ts0>",
-      "<Ts ts1>",
-      "<Ts ts2>",
-      "<Ts ts3>",
-      "<Ts ts4>"
+      "<Ts ts-1>",
+      "<Ts ts-2>",
+      "<Ts ts-3>",
+      "<Ts ts-4>",
+      "<Ts ts-5>"
     ]
   },
-  "simulation/GWF_1/wel0/ts0": {
+  "simulation/GWF_1/wel-1/ts-1": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -563,7 +563,7 @@
       "__type__": "InterpolationMethodrecordSingle",
       "interpolation_method_single": "LINEAR"
     },
-    "name": "ts0",
+    "name": "ts-1",
     "time_series_name": {
       "__type__": "TimeSeriesName",
       "time_series_names": [
@@ -577,7 +577,7 @@
       "ts_time": "float64[10] 4c25f080400f92c3"
     }
   },
-  "simulation/GWF_1/wel0/ts1": {
+  "simulation/GWF_1/wel-1/ts-2": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -592,7 +592,7 @@
       "__type__": "InterpolationMethodrecordSingle",
       "interpolation_method_single": "LINEAR"
     },
-    "name": "ts1",
+    "name": "ts-2",
     "time_series_name": {
       "__type__": "TimeSeriesName",
       "time_series_names": [
@@ -606,7 +606,7 @@
       "ts_time": "float64[13] aeb555f340f65abf"
     }
   },
-  "simulation/GWF_1/wel0/ts2": {
+  "simulation/GWF_1/wel-1/ts-3": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -621,7 +621,7 @@
       "__type__": "InterpolationMethodrecordSingle",
       "interpolation_method_single": "LINEAR"
     },
-    "name": "ts2",
+    "name": "ts-3",
     "time_series_name": {
       "__type__": "TimeSeriesName",
       "time_series_names": [
@@ -635,7 +635,7 @@
       "ts_time": "float64[7] 39e09e074084c140"
     }
   },
-  "simulation/GWF_1/wel0/ts3": {
+  "simulation/GWF_1/wel-1/ts-4": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -650,7 +650,7 @@
       "__type__": "InterpolationMethodrecordSingle",
       "interpolation_method_single": "STEPWISE"
     },
-    "name": "ts3",
+    "name": "ts-4",
     "time_series_name": {
       "__type__": "TimeSeriesName",
       "time_series_names": [
@@ -664,7 +664,7 @@
       "ts_time": "float64[15] 74b900b927f0eedf"
     }
   },
-  "simulation/GWF_1/wel0/ts4": {
+  "simulation/GWF_1/wel-1/ts-5": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -679,7 +679,7 @@
       "__type__": "InterpolationMethodrecordSingle",
       "interpolation_method_single": "STEPWISE"
     },
-    "name": "ts4",
+    "name": "ts-5",
     "time_series_name": {
       "__type__": "TimeSeriesName",
       "time_series_names": [
@@ -693,14 +693,14 @@
       "ts_time": "float64[10] 36f9a517e6e76ed5"
     }
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "dims": {},
     "filename": "model.ims",
     "inner_dvclose": "0.0001",
     "inner_maximum": 100,
     "linear_acceleration": "cg",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "0.0001",
     "outer_maximum": 500,
     "print_option": "summary",

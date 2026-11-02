@@ -4,7 +4,7 @@
     "continue_": false,
     "dims": {},
     "exchanges": [
-      "<Gwfgwf gwfgwf0>"
+      "<Gwfgwf gwfgwf-1>"
     ],
     "filename": "mfsim.nam",
     "models": [
@@ -15,7 +15,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -42,7 +42,7 @@
     "riv": [],
     "save_flows": false,
     "sfr": [
-      "<Sfr sfr0>"
+      "<Sfr sfr-1>"
     ],
     "uzf": [],
     "wel": [],
@@ -147,7 +147,7 @@
     "head_file": "ex3_child.hds",
     "name": "oc"
   },
-  "simulation/CHILD/sfr0": {
+  "simulation/CHILD/sfr-1": {
     "__type__": "Sfr",
     "_stress_period_data": {
       "0": {
@@ -175,7 +175,7 @@
     "filename": "ex3_child.sfr",
     "maximum_depth_change": "0.0001",
     "mover": true,
-    "name": "sfr0",
+    "name": "sfr-1",
     "nreaches": 89,
     "packagedata": {
       "__table__": "Packagedata",
@@ -206,8 +206,8 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>",
-      "<Chd chd1>"
+      "<Chd chd-1>",
+      "<Chd chd-2>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
@@ -227,13 +227,13 @@
     "riv": [],
     "save_flows": false,
     "sfr": [
-      "<Sfr sfr0>"
+      "<Sfr sfr-1>"
     ],
     "uzf": [],
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/PARENT/chd0": {
+  "simulation/PARENT/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -255,13 +255,13 @@
       "nrow": 15
     },
     "filename": "ex3_parent-left.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,
     "ts": []
   },
-  "simulation/PARENT/chd1": {
+  "simulation/PARENT/chd-2": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -283,7 +283,7 @@
       "nrow": 15
     },
     "filename": "ex3_parent-right.chd",
-    "name": "chd1",
+    "name": "chd-2",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,
@@ -389,7 +389,7 @@
     "head_file": "ex3_parent.hds",
     "name": "oc"
   },
-  "simulation/PARENT/sfr0": {
+  "simulation/PARENT/sfr-1": {
     "__type__": "Sfr",
     "_stress_period_data": {
       "0": {
@@ -706,7 +706,7 @@
     "filename": "ex3_parent.sfr",
     "maximum_depth_change": "0.0001",
     "mover": true,
-    "name": "sfr0",
+    "name": "sfr-1",
     "nreaches": 18,
     "packagedata": {
       "__table__": "Packagedata",
@@ -752,7 +752,7 @@
     "storage": false,
     "ts": []
   },
-  "simulation/gwfgwf0": {
+  "simulation/gwfgwf-1": {
     "__type__": "Gwfgwf",
     "boundnames": false,
     "dims": {},
@@ -773,7 +773,7 @@
     "filename": "simulation.exg",
     "gnc": "<Gnc gnc>",
     "mvr": "<Mvr mvr>",
-    "name": "gwfgwf0",
+    "name": "gwfgwf-1",
     "newton": false,
     "nexg": 666,
     "print_flows": true,
@@ -781,7 +781,7 @@
     "save_flows": false,
     "xt3d": false
   },
-  "simulation/gwfgwf0/gnc": {
+  "simulation/gwfgwf-1/gnc": {
     "__type__": "Gnc",
     "dims": {},
     "explicit": false,
@@ -800,7 +800,7 @@
     "print_flows": true,
     "print_input": true
   },
-  "simulation/gwfgwf0/mvr": {
+  "simulation/gwfgwf-1/mvr": {
     "__type__": "Mvr",
     "_stress_period_data": {
       "0": {
@@ -852,14 +852,14 @@
     "print_flows": true,
     "print_input": true
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "dims": {},
     "filename": "ex3_parent.ims",
     "inner_dvclose": "0.0001",
     "inner_maximum": 500,
     "linear_acceleration": "bicgstab",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "0.0001",
     "outer_maximum": 25,
     "print_option": "summary",

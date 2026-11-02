@@ -12,7 +12,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -27,7 +27,7 @@
     "evt": [],
     "filename": "test033.nam",
     "ghb": [
-      "<Ghb ghb0>"
+      "<Ghb ghb-1>"
     ],
     "ic": "<Ic ic>",
     "lak": [],
@@ -68,7 +68,7 @@
     "nrow": 151,
     "top": "float64[22801] f8880cb15749fd24"
   },
-  "simulation/GWF_1/ghb0": {
+  "simulation/GWF_1/ghb-1": {
     "__type__": "Ghb",
     "_stress_period_data": {
       "0": {
@@ -92,7 +92,7 @@
     },
     "filename": "test033.ghb",
     "mover": false,
-    "name": "ghb0",
+    "name": "ghb-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": false,
@@ -196,7 +196,7 @@
     "storagecoefficient": false,
     "sy": "float64[22801] 40f1c3e229d2ef8b"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "backtracking_number": 20,
     "backtracking_reduction_factor": "0.6",
@@ -207,7 +207,7 @@
     "inner_dvclose": "1e-05",
     "inner_maximum": 200,
     "linear_acceleration": "bicgstab",
-    "name": "ims0",
+    "name": "ims-1",
     "number_orthogonalizations": 7,
     "outer_dvclose": "0.001",
     "outer_maximum": 500,

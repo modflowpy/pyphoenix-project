@@ -12,12 +12,12 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -25,7 +25,7 @@
     "inner_dvclose": "1e-06",
     "inner_maximum": 100,
     "linear_acceleration": "cg",
-    "name": "ims0",
+    "name": "ims-1",
     "number_orthogonalizations": 2,
     "outer_dvclose": "1e-05",
     "outer_maximum": 500,
@@ -51,7 +51,7 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
@@ -61,7 +61,7 @@
     "ghb": [],
     "ic": "<Ic ic>",
     "lak": [
-      "<Lak lak0>"
+      "<Lak lak-1>"
     ],
     "maw": [],
     "name": "lake0_e",
@@ -78,7 +78,7 @@
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/lake0_e/chd0": {
+  "simulation/lake0_e/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -138,15 +138,15 @@
       "nrow": 5
     },
     "filename": "lake0_embedded.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": false,
     "print_input": true,
     "save_flows": false,
     "ts": [
-      "<Ts ts0>"
+      "<Ts ts-1>"
     ]
   },
-  "simulation/lake0_e/chd0/ts0": {
+  "simulation/lake0_e/chd-1/ts-1": {
     "__type__": "Ts",
     "dims": {
       "ncelldim": 3,
@@ -163,7 +163,7 @@
         "linear"
       ]
     },
-    "name": "ts0",
+    "name": "ts-1",
     "time_series_name": {
       "__type__": "TimeSeriesName",
       "time_series_names": [
@@ -211,7 +211,7 @@
     "name": "ic",
     "strt": "float64[25] d0510308133a7a1f"
   },
-  "simulation/lake0_e/lak0": {
+  "simulation/lake0_e/lak-1": {
     "__type__": "Lak",
     "_stress_period_data": {
       "0": {
@@ -250,7 +250,7 @@
     "filename": "lake0_embedded.lak",
     "implicit": false,
     "mover": false,
-    "name": "lak0",
+    "name": "lak-1",
     "nlakes": 3,
     "noutlets": 0,
     "ntables": 3,
@@ -276,15 +276,15 @@
       "__table__": "Tables",
       "ifno": "int64[3] ab2fa50ae23ce035",
       "laktab": [
-        "<Laktab laktab0>",
-        "<Laktab laktab1>",
-        "<Laktab laktab2>"
+        "<Laktab laktab-1>",
+        "<Laktab laktab-2>",
+        "<Laktab laktab-3>"
       ],
       "n": 3
     },
     "ts": []
   },
-  "simulation/lake0_e/lak0/laktab0": {
+  "simulation/lake0_e/lak-1/laktab-1": {
     "__type__": "Laktab",
     "dims": {
       "ncelldim": 3,
@@ -295,7 +295,7 @@
       "nrow": 5
     },
     "filename": "l1_table.ref",
-    "name": "laktab0",
+    "name": "laktab-1",
     "ncol": 4,
     "nrow": 7,
     "table": {
@@ -307,7 +307,7 @@
       "volume": "float64[7] 69e2c7a6ee9f5260"
     }
   },
-  "simulation/lake0_e/lak0/laktab1": {
+  "simulation/lake0_e/lak-1/laktab-2": {
     "__type__": "Laktab",
     "dims": {
       "ncelldim": 3,
@@ -318,7 +318,7 @@
       "nrow": 5
     },
     "filename": "l2_table.ref",
-    "name": "laktab1",
+    "name": "laktab-2",
     "ncol": 5,
     "nrow": 7,
     "table": {
@@ -330,7 +330,7 @@
       "volume": "float64[7] 52645fd5b65c6a95"
     }
   },
-  "simulation/lake0_e/lak0/laktab2": {
+  "simulation/lake0_e/lak-1/laktab-3": {
     "__type__": "Laktab",
     "dims": {
       "ncelldim": 3,
@@ -341,7 +341,7 @@
       "nrow": 5
     },
     "filename": "l3_table.ref",
-    "name": "laktab2",
+    "name": "laktab-3",
     "ncol": 5,
     "nrow": 9,
     "table": {
@@ -353,7 +353,7 @@
       "volume": "float64[9] f5937ab1287d7009"
     }
   },
-  "simulation/lake0_e/lak0/obs": {
+  "simulation/lake0_e/lak-1/obs": {
     "__type__": "Obs",
     "continuous": {
       "__table__": "ContinuousBlock",

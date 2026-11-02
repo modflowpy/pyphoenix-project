@@ -84,7 +84,7 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 model1.dis dis",
-    " CHD6 model1.chd chd0",
+    " CHD6 model1.chd chd-1",
     " IC6 model1.ic ic",
     " NPF6 model1.npf npf",
     " OC6 model1.oc oc",

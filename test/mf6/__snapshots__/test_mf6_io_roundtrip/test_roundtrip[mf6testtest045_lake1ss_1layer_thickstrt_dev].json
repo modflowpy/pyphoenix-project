@@ -131,7 +131,7 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 lakeex1b_1layerc.dis dis",
-    " CHD6 lakeex1b_1layerc.chd chd0",
+    " CHD6 lakeex1b_1layerc.chd chd-1",
     " EVT6 lakeex1b_1layerc.evt EVT",
     " IC6 lakeex1b_1layerc.ic ic",
     " LAK6 lakeex1b_1layerc.lak LAK_1",

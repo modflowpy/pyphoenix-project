@@ -4,7 +4,7 @@
     "continue_": true,
     "dims": {},
     "exchanges": [
-      "<Gwfgwt gwfgwt0>"
+      "<Gwfgwt gwfgwt-1>"
     ],
     "filename": "mfsim.nam",
     "maxerrors": 1000,
@@ -15,8 +15,8 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>",
-      "<Ims ims1>"
+      "<Ims ims-1>",
+      "<Ims ims-2>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -269,13 +269,13 @@
     },
     "name": "oc"
   },
-  "simulation/gwfgwt0": {
+  "simulation/gwfgwt-1": {
     "__type__": "Gwfgwt",
     "dims": {},
     "exgmnamea": "gwf_goswami",
     "exgmnameb": "gwt_goswami",
     "filename": "goswami.gwfgwt",
-    "name": "gwfgwt0"
+    "name": "gwfgwt-1"
   },
   "simulation/gwt_goswami": {
     "__type__": "Gwt",
@@ -472,14 +472,14 @@
       ]
     }
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "dims": {},
     "filename": "gwf_goswami.ims",
     "inner_dvclose": "1e-09",
     "inner_maximum": 300,
     "linear_acceleration": "bicgstab",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "0.0001",
     "outer_maximum": 100,
     "print_option": "all",
@@ -496,14 +496,14 @@
     ],
     "under_relaxation": "none"
   },
-  "simulation/ims1": {
+  "simulation/ims-2": {
     "__type__": "Ims",
     "dims": {},
     "filename": "gwt_goswami.ims",
     "inner_dvclose": "1e-09",
     "inner_maximum": 300,
     "linear_acceleration": "bicgstab",
-    "name": "ims1",
+    "name": "ims-2",
     "outer_dvclose": "1e-08",
     "outer_maximum": 100,
     "print_option": "all",

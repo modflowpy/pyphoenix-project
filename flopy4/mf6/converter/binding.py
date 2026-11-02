@@ -1,6 +1,6 @@
 """Binding rows: the rows naming a component's children in its name file
-(a simulation's ``GWF6 model.nam model``, a model's ``CHD6 model.chd
-chd0``). A child field's ``row`` (see `flopy4.mf6.spec.child`), generated
+(a simulation's ``GWF6 model.nam model``, a model's ``CHD6 model.chd-1.chd
+chd-1``). A child field's ``row`` (see `flopy4.mf6.spec.child`), generated
 from the DFN, names the child attribute each column holds: ``ftype``,
 ``filename``, ``name``, or a reference field."""
 

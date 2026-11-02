@@ -109,9 +109,9 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 model1.dis dis",
-    " CHD6 model1.chd chd0",
+    " CHD6 model1.chd chd-1",
     " IC6 model1.ic ic",
-    " MAW6 model1.maw maw0",
+    " MAW6 model1.maw maw-1",
     " NPF6 model1.npf npf",
     " OC6 model1.oc oc",
     "END PACKAGES"
@@ -212,7 +212,7 @@
     "BEGIN PACKAGES",
     " DIS6 model2.dis dis",
     " IC6 model2.ic ic",
-    " MAW6 model2.maw maw0",
+    " MAW6 model2.maw maw-1",
     " NPF6 model2.npf npf",
     " OC6 model2.oc oc",
     "END PACKAGES"

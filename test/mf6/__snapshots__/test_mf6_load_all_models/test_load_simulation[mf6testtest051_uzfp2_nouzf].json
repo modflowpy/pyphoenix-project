@@ -12,12 +12,12 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "backtracking_number": 0,
     "backtracking_reduction_factor": "0.7",
@@ -29,7 +29,7 @@
     "inner_dvclose": "1e-05",
     "inner_maximum": 100,
     "linear_acceleration": "cg",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "1e-05",
     "outer_maximum": 100,
     "print_option": "summary",
@@ -77,7 +77,7 @@
     ],
     "filename": "uzfp2_nouzf.nam",
     "ghb": [
-      "<Ghb ghb0>"
+      "<Ghb ghb-1>"
     ],
     "ic": "<Ic ic>",
     "lak": [],
@@ -99,7 +99,7 @@
     "sto": "<Sto sto>",
     "uzf": [],
     "wel": [
-      "<Wel wel0>"
+      "<Wel wel-1>"
     ],
     "workspace": "<workspace>"
   },
@@ -237,7 +237,7 @@
     "nrow": 15,
     "top": "float64[150] 556b3670a83b717f"
   },
-  "simulation/uzfp2_nouzf/ghb0": {
+  "simulation/uzfp2_nouzf/ghb-1": {
     "__type__": "Ghb",
     "_stress_period_data": {
       "0": {
@@ -264,7 +264,7 @@
     },
     "filename": "uzfp2_nouzf.ghb",
     "mover": false,
-    "name": "ghb0",
+    "name": "ghb-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": false,
@@ -414,7 +414,7 @@
     "storagecoefficient": false,
     "sy": "float64[150] 837f288590c22f6b"
   },
-  "simulation/uzfp2_nouzf/wel0": {
+  "simulation/uzfp2_nouzf/wel-1": {
     "__type__": "Wel",
     "_stress_period_data": {
       "0": {
@@ -576,7 +576,7 @@
     "filename": "uzfp2_nouzf.wel",
     "flow_reduction_length": false,
     "mover": false,
-    "name": "wel0",
+    "name": "wel-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": false,

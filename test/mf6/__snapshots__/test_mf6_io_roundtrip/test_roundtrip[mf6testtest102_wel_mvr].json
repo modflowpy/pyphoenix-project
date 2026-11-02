@@ -168,11 +168,11 @@
     " DIS6 welmvr.dis dis",
     " CHD6 welmvr.ibound.chd CHD-FROM-IBOUND",
     " IC6 welmvr.ic ic",
-    " MAW6 welmvr.maw maw0",
+    " MAW6 welmvr.maw maw-1",
     " MVR6 welmvr.mvr mvr",
     " NPF6 welmvr.npf npf",
     " OC6 welmvr.oc oc",
-    " WEL6 welmvr.wel wel0",
+    " WEL6 welmvr.wel wel-1",
     "END PACKAGES"
   ],
   "welmvr.npf": [

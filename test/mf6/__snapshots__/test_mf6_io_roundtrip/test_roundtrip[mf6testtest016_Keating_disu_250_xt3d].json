@@ -78,11 +78,11 @@
     "",
     "BEGIN PACKAGES",
     " DISU6 keating.disu disu",
-    " GHB6 keating.ghb ghb0",
+    " GHB6 keating.ghb ghb-1",
     " IC6 keating.ic ic",
     " NPF6 keating.npf npf",
     " OC6 keating.oc oc",
-    " RCH6 keating.rch rch0",
+    " RCH6 keating.rch rch-1",
     "END PACKAGES"
   ],
   "keating.npf": [

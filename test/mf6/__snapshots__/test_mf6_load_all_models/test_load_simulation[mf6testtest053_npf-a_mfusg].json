@@ -12,12 +12,12 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -25,7 +25,7 @@
     "inner_dvclose": "1e-05",
     "inner_maximum": 30,
     "linear_acceleration": "bicgstab",
-    "name": "ims0",
+    "name": "ims-1",
     "no_ptc": {
       "__type__": "NoPtc",
       "no_ptc_option": null
@@ -60,7 +60,7 @@
     "evt": [],
     "filename": "mf6.nam",
     "ghb": [
-      "<Ghb ghb0>"
+      "<Ghb ghb-1>"
     ],
     "ic": "<Ic ic>",
     "lak": [],
@@ -76,16 +76,16 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rcha0>"
+      "<Rcha rch-1>"
     ],
     "riv": [
-      "<Riv riv0>"
+      "<Riv riv-1>"
     ],
     "save_flows": false,
     "sfr": [],
     "uzf": [],
     "wel": [
-      "<Wel wel0>"
+      "<Wel wel-1>"
     ],
     "workspace": "<workspace>"
   },
@@ -106,7 +106,7 @@
     "nrow": 20,
     "top": "float64[500] 6800e8768fc5527c"
   },
-  "simulation/mf6/ghb0": {
+  "simulation/mf6/ghb-1": {
     "__type__": "Ghb",
     "_stress_period_data": {
       "0": {
@@ -132,7 +132,7 @@
     },
     "filename": "mf6.ghb",
     "mover": false,
-    "name": "ghb0",
+    "name": "ghb-1",
     "print_flows": false,
     "print_input": true,
     "save_flows": false,
@@ -231,7 +231,7 @@
     },
     "name": "oc"
   },
-  "simulation/mf6/rcha0": {
+  "simulation/mf6/rch-1": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -244,7 +244,7 @@
     "export_array_netcdf": false,
     "filename": "mf6.rch",
     "fixed_cell": false,
-    "name": "rcha0",
+    "name": "rch-1",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,
@@ -254,7 +254,7 @@
     "save_flows": false,
     "tas": []
   },
-  "simulation/mf6/riv0": {
+  "simulation/mf6/riv-1": {
     "__type__": "Riv",
     "_stress_period_data": {
       "0": {
@@ -281,13 +281,13 @@
     },
     "filename": "mf6.riv",
     "mover": false,
-    "name": "riv0",
+    "name": "riv-1",
     "print_flows": false,
     "print_input": true,
     "save_flows": false,
     "ts": []
   },
-  "simulation/mf6/wel0": {
+  "simulation/mf6/wel-1": {
     "__type__": "Wel",
     "_stress_period_data": {
       "0": {
@@ -313,7 +313,7 @@
     "filename": "mf6.wel",
     "flow_reduction_length": false,
     "mover": false,
-    "name": "wel0",
+    "name": "wel-1",
     "print_flows": false,
     "print_input": true,
     "save_flows": false,

@@ -4,7 +4,7 @@
     "continue_": false,
     "dims": {},
     "exchanges": [
-      "<Gwfgwf gwfgwf0>"
+      "<Gwfgwf gwfgwf-1>"
     ],
     "filename": "mfsim.nam",
     "models": [
@@ -14,12 +14,12 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
   },
-  "simulation/gwfgwf0": {
+  "simulation/gwfgwf-1": {
     "__type__": "Gwfgwf",
     "boundnames": false,
     "dims": {},
@@ -38,7 +38,7 @@
     "exgmnamea": "pbc",
     "exgmnameb": "pbc",
     "filename": "pbc.exg",
-    "name": "gwfgwf0",
+    "name": "gwfgwf-1",
     "newton": false,
     "nexg": 190,
     "print_flows": true,
@@ -46,7 +46,7 @@
     "save_flows": true,
     "xt3d": false
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -54,7 +54,7 @@
     "inner_dvclose": "1e-06",
     "inner_maximum": 300,
     "linear_acceleration": "cg",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "9.9999997e-06",
     "outer_maximum": 50,
     "print_option": "all",
@@ -72,7 +72,7 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
@@ -96,7 +96,7 @@
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/pbc/chd0": {
+  "simulation/pbc/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -118,7 +118,7 @@
       "nrow": 1
     },
     "filename": "pbc.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": false,

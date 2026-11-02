@@ -146,7 +146,7 @@ def test_param_nomesh():
     context = {
         "modelname": "gwfmodel",
         "gridtype": "structured",
-        "package_name": "welg0",
+        "package_name": "wel-1",
         "package_type": "gwf-welg",
         "dims": [1, 1, 1, 1],
     }
@@ -282,7 +282,7 @@ def test_package_mesh():
             ],
         },
         {
-            "package_name": "rcha0",
+            "package_name": "rch-1",
             "package_type": "gwf-rcha",
             "params": [
                 {"name": "recharge"},
@@ -338,12 +338,12 @@ def test_package_mesh():
         elif p["package_type"] == "gwf-rcha":
             # TODO: still write model attrs?
             assert len(ds.attrs) == 0
-            assert "rcha0_recharge" in ds
-            assert "rcha0_irch" in ds
-            assert np.allclose(ds["rcha0_recharge"].values, FILL_DNODATA)
-            assert np.allclose(ds["rcha0_irch"].values, FILL_INT64)
-            assert ds["rcha0_recharge"].dims == ("time", "nmesh_face")
-            assert ds["rcha0_irch"].dims == ("time", "nmesh_face")
+            assert "rch-1_recharge" in ds
+            assert "rch-1_irch" in ds
+            assert np.allclose(ds["rch-1_recharge"].values, FILL_DNODATA)
+            assert np.allclose(ds["rch-1_irch"].values, FILL_INT64)
+            assert ds["rch-1_recharge"].dims == ("time", "nmesh_face")
+            assert ds["rch-1_irch"].dims == ("time", "nmesh_face")
             assert ds.sizes["time"] == 2
             assert ds.sizes["nmesh_face"] == 4
             assert len(ds) == 2
@@ -360,7 +360,7 @@ def test_param_mesh():
         "mesh": "layered",
         "modelname": "gwfmodel",
         "gridtype": "structured",
-        "package_name": "welg0",
+        "package_name": "wel-1",
         "package_type": "gwf-welg",
         "dims": [1, 2, 1, 1],
     }
@@ -412,7 +412,7 @@ def test_from_model_aux_variable_per_name():
     with pytest.warns(UserWarning, match="past NPER"):
         ds = NetCDFModel.from_model(gwf).to_xarray()
     for n, name in enumerate(["a1", "a2"]):
-        var = ds[f"welg0_{name}"]
+        var = ds[f"wel-1_{name}"]
         assert var.attrs["modflow_iaux"] == n + 1
         assert var.values[0].ravel()[0] == n + 1.0
         assert (var.values[1] == NODATA).all()
@@ -421,7 +421,7 @@ def test_from_model_aux_variable_per_name():
         ds = NetCDFModel.from_model(gwf, netcdf_format=NetCDFFormat.LAYERED_MESH).to_xarray()
     for n, name in enumerate(["a1", "a2"]):
         for k in range(2):
-            assert ds[f"welg0_{name}_l{k + 1}"].attrs["modflow_iaux"] == n + 1
+            assert ds[f"wel-1_{name}_l{k + 1}"].attrs["modflow_iaux"] == n + 1
 
 
 def test_from_model_periods_past_nper_dropped():
@@ -432,4 +432,4 @@ def test_from_model_periods_past_nper_dropped():
     with pytest.warns(UserWarning, match=r"periods \[3\] are past NPER \(2\)"):
         ds = NetCDFModel.from_model(gwf).to_xarray()
     assert ds.sizes["time"] == 2
-    assert np.allclose(ds["chdg0_head"].values[0].ravel()[:2], [1.0, 2.0])
+    assert np.allclose(ds["chd-1_head"].values[0].ravel()[:2], [1.0, 2.0])

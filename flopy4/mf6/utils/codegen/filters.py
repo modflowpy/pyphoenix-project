@@ -934,18 +934,35 @@ def value_column(
     optional: bool = False,
     time_series: bool = False,
     when: str | None = None,
+    meta: dict | None = None,
 ) -> ItemColumn:
-    """A plain scalar. A time series value may also be a series reference."""
+    """A plain scalar. A time series value may also be a series reference.
+    ``meta`` is any more field metadata (a string key's, see `string_key`)."""
     py_type = "Union[float, TimeSeriesRef]" if time_series else _DFN_PY.get(dfn_type, "float")
     return attr_column(
         name,
         py_type,
         _DFN_FN.get(dfn_type, "double"),
-        {},
+        meta or {},
         optional=optional,
         time_series=time_series,
         when=when,
     )
+
+
+def string_key(field: FieldV3) -> dict:
+    """A string column's key metadata: ``pk``, ``fk`` (the target's path)
+    and the ``scope`` column that qualifies either (MVR's ``pname``, by
+    ``mname``). A pk and fk on one column share a scope."""
+    pk, fk = getattr(field, "pk", None), getattr(field, "fk", None)
+    meta: dict = {}
+    if pk is not None:
+        meta["pk"] = True
+    if fk is not None:
+        meta["fk"] = fk.path
+    if scope := (pk and pk.scope) or (fk and fk.scope):
+        meta["scope"] = scope
+    return meta
 
 
 def feature_id_column(

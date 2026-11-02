@@ -12,19 +12,19 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
     "filename": "mv.ims",
     "inner_dvclose": "1e-06",
     "inner_maximum": 100,
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "1e-05",
     "outer_maximum": 12000,
     "print_option": "summary",
@@ -49,7 +49,7 @@
     "ghb": [],
     "ic": "<Ic ic>",
     "lak": [
-      "<Lak lak0>"
+      "<Lak lak-1>"
     ],
     "list_": "mv.lst",
     "maw": [],
@@ -59,17 +59,17 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rcha0>"
+      "<Rcha rch-1>"
     ],
     "riv": [],
     "save_flows": true,
     "sfr": [
-      "<Sfr sfr0>"
+      "<Sfr sfr-1>"
     ],
     "sto": "<Sto sto>",
     "uzf": [],
     "wel": [
-      "<Wel wel0>"
+      "<Wel wel-1>"
     ],
     "workspace": "<workspace>"
   },
@@ -110,7 +110,7 @@
     "name": "ic",
     "strt": "float64[5000] e52fb5ba3b76c691"
   },
-  "simulation/mv/lak0": {
+  "simulation/mv/lak-1": {
     "__type__": "Lak",
     "_stress_period_data": {
       "0": [
@@ -156,7 +156,7 @@
     "filename": "mv.lak",
     "implicit": false,
     "mover": false,
-    "name": "lak0",
+    "name": "lak-1",
     "nlakes": 1,
     "noutlets": 0,
     "obs": "<Obs obs>",
@@ -178,7 +178,7 @@
     "stage_file": "lake_harbaugh.stage.bin",
     "ts": []
   },
-  "simulation/mv/lak0/obs": {
+  "simulation/mv/lak-1/obs": {
     "__type__": "Obs",
     "continuous": {
       "__table__": "ContinuousBlock",
@@ -335,7 +335,7 @@
     },
     "name": "oc"
   },
-  "simulation/mv/rcha0": {
+  "simulation/mv/rch-1": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -348,7 +348,7 @@
     "export_array_netcdf": false,
     "filename": "mv.rch",
     "fixed_cell": false,
-    "name": "rcha0",
+    "name": "rch-1",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,
@@ -358,7 +358,7 @@
     "save_flows": false,
     "tas": []
   },
-  "simulation/mv/sfr0": {
+  "simulation/mv/sfr-1": {
     "__type__": "Sfr",
     "boundnames": false,
     "connectiondata": {
@@ -377,7 +377,7 @@
     },
     "filename": "mv.sfr",
     "mover": true,
-    "name": "sfr0",
+    "name": "sfr-1",
     "nreaches": 18,
     "obs": "<Obs obs>",
     "packagedata": {
@@ -425,7 +425,7 @@
     "ts": [],
     "unit_conversion": "128390.0"
   },
-  "simulation/mv/sfr0/obs": {
+  "simulation/mv/sfr-1/obs": {
     "__type__": "Obs",
     "continuous": {
       "__table__": "ContinuousBlock",
@@ -537,7 +537,7 @@
     "storagecoefficient": false,
     "sy": "float64[5000] 34180ed3a46722b0"
   },
-  "simulation/mv/wel0": {
+  "simulation/mv/wel-1": {
     "__type__": "Wel",
     "_stress_period_data": {
       "0": {
@@ -589,7 +589,7 @@
     "filename": "mv.wel",
     "flow_reduction_length": false,
     "mover": false,
-    "name": "wel0",
+    "name": "wel-1",
     "print_flows": false,
     "print_input": true,
     "save_flows": false,

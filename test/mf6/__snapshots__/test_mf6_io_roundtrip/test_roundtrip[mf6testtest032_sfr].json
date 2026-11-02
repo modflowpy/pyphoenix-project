@@ -119,11 +119,11 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 test032.dis dis",
-    " GHB6 test032.ghb ghb0",
+    " GHB6 test032.ghb ghb-1",
     " IC6 test032.ic ic",
     " NPF6 test032.npf npf",
     " OC6 test032.oc oc",
-    " SFR6 test032.sfr8 sfr0",
+    " SFR6 test032.sfr8 sfr-1",
     "END PACKAGES"
   ],
   "test032.npf": [

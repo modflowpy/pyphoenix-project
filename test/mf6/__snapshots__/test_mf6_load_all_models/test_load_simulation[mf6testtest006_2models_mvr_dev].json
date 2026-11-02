@@ -4,7 +4,7 @@
     "continue_": false,
     "dims": {},
     "exchanges": [
-      "<Gwfgwf gwfgwf0>"
+      "<Gwfgwf gwfgwf-1>"
     ],
     "filename": "mfsim.nam",
     "models": [
@@ -15,7 +15,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -33,7 +33,7 @@
     "ic": "<Ic ic>",
     "lak": [],
     "maw": [
-      "<Maw maw0>"
+      "<Maw maw-1>"
     ],
     "name": "CHILD",
     "newtonoptions": {
@@ -85,7 +85,7 @@
     "name": "ic",
     "strt": "float64[81] e8de88ca8ee842f2"
   },
-  "simulation/CHILD/maw0": {
+  "simulation/CHILD/maw-1": {
     "__type__": "Maw",
     "_stress_period_data": {
       "0": {
@@ -123,7 +123,7 @@
     "flow_correction": false,
     "flowing_wells": false,
     "mover": true,
-    "name": "maw0",
+    "name": "maw-1",
     "nmawwells": 1,
     "no_well_storage": false,
     "non_vertical_wells": false,
@@ -219,7 +219,7 @@
     "__type__": "Gwf",
     "api": [],
     "chd": [
-      "<Chd chd0>"
+      "<Chd chd-1>"
     ],
     "dims": {},
     "dis": "<Dis dis>",
@@ -230,7 +230,7 @@
     "ic": "<Ic ic>",
     "lak": [],
     "maw": [
-      "<Maw maw0>"
+      "<Maw maw-1>"
     ],
     "name": "PARENT",
     "newtonoptions": {
@@ -249,7 +249,7 @@
     "wel": [],
     "workspace": "<workspace>"
   },
-  "simulation/PARENT/chd0": {
+  "simulation/PARENT/chd-1": {
     "__type__": "Chd",
     "_stress_period_data": {
       "0": {
@@ -286,7 +286,7 @@
       "nrow": 7
     },
     "filename": "model1.chd",
-    "name": "chd0",
+    "name": "chd-1",
     "print_flows": true,
     "print_input": true,
     "save_flows": true,
@@ -326,7 +326,7 @@
     "name": "ic",
     "strt": "float64[49] cae03e8a718e8432"
   },
-  "simulation/PARENT/maw0": {
+  "simulation/PARENT/maw-1": {
     "__type__": "Maw",
     "_stress_period_data": {
       "0": {
@@ -364,7 +364,7 @@
     "flow_correction": false,
     "flowing_wells": false,
     "mover": true,
-    "name": "maw0",
+    "name": "maw-1",
     "nmawwells": 1,
     "no_well_storage": false,
     "non_vertical_wells": false,
@@ -456,7 +456,7 @@
     "head_file": "model1.hds",
     "name": "oc"
   },
-  "simulation/gwfgwf0": {
+  "simulation/gwfgwf-1": {
     "__type__": "Gwfgwf",
     "auxiliary": [
       "testaux"
@@ -480,7 +480,7 @@
     "filename": "simulation.exg",
     "gnc": "<Gnc gnc>",
     "mvr": "<Mvr mvr>",
-    "name": "gwfgwf0",
+    "name": "gwfgwf-1",
     "newton": false,
     "nexg": 36,
     "print_flows": true,
@@ -488,7 +488,7 @@
     "save_flows": true,
     "xt3d": false
   },
-  "simulation/gwfgwf0/gnc": {
+  "simulation/gwfgwf-1/gnc": {
     "__type__": "Gnc",
     "dims": {},
     "explicit": false,
@@ -568,7 +568,7 @@
     "print_flows": true,
     "print_input": true
   },
-  "simulation/gwfgwf0/mvr": {
+  "simulation/gwfgwf-1/mvr": {
     "__type__": "Mvr",
     "_stress_period_data": {
       "0": {
@@ -615,14 +615,14 @@
     "print_flows": true,
     "print_input": true
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "dims": {},
     "filename": "simulation.ims",
     "inner_dvclose": "1e-08",
     "inner_maximum": 1000,
     "linear_acceleration": "bicgstab",
-    "name": "ims0",
+    "name": "ims-1",
     "outer_dvclose": "1e-08",
     "outer_maximum": 1000,
     "print_option": "summary",

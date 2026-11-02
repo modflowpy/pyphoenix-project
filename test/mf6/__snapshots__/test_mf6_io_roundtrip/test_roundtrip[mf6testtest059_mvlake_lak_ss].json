@@ -126,12 +126,12 @@
     "BEGIN PACKAGES",
     " DIS6 mv.dis dis",
     " IC6 mv.ic ic",
-    " LAK6 mv.lak lak0",
+    " LAK6 mv.lak lak-1",
     " NPF6 mv.npf npf",
     " OC6 mv.oc oc",
-    " RCH6 mv.rch rcha0",
-    " RIV6 mv.riv riv0",
-    " WEL6 mv.wel wel0",
+    " RCH6 mv.rch rch-1",
+    " RIV6 mv.riv riv-1",
+    " WEL6 mv.wel wel-1",
     "END PACKAGES"
   ],
   "mv.npf": [

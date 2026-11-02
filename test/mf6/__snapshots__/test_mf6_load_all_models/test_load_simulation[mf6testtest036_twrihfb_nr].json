@@ -12,12 +12,12 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -25,7 +25,7 @@
     "inner_dvclose": "1e-06",
     "inner_maximum": 50,
     "linear_acceleration": "bicgstab",
-    "name": "ims0",
+    "name": "ims-1",
     "number_orthogonalizations": 5,
     "outer_dvclose": "1e-06",
     "outer_maximum": 100,
@@ -97,7 +97,7 @@
     "sfr": [],
     "uzf": [],
     "wel": [
-      "<Wel wel0>"
+      "<Wel wel-1>"
     ],
     "workspace": "<workspace>"
   },
@@ -350,7 +350,7 @@
     },
     "name": "oc"
   },
-  "simulation/twrihfb_nr/wel0": {
+  "simulation/twrihfb_nr/wel-1": {
     "__type__": "Wel",
     "_stress_period_data": {
       "0": {
@@ -390,7 +390,7 @@
     "filename": "test036_twrihfb_nr.wel",
     "flow_reduction_length": false,
     "mover": false,
-    "name": "wel0",
+    "name": "wel-1",
     "print_flows": false,
     "print_input": true,
     "save_flows": false,

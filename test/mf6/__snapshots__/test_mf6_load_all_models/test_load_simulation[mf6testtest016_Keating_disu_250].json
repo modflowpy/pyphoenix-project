@@ -12,7 +12,7 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
@@ -27,7 +27,7 @@
     "evt": [],
     "filename": "keating.nam",
     "ghb": [
-      "<Ghb ghb0>"
+      "<Ghb ghb-1>"
     ],
     "gnc": "<Gnc gnc>",
     "ic": "<Ic ic>",
@@ -43,7 +43,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rch rch0>"
+      "<Rch rch-1>"
     ],
     "riv": [],
     "save_flows": false,
@@ -89,7 +89,7 @@
       "yv": "float64[162] 2b262c7e96f0d700"
     }
   },
-  "simulation/GWF_1/ghb0": {
+  "simulation/GWF_1/ghb-1": {
     "__type__": "Ghb",
     "_stress_period_data": {
       "0": {
@@ -117,7 +117,7 @@
     },
     "filename": "keating.ghb",
     "mover": false,
-    "name": "ghb0",
+    "name": "ghb-1",
     "print_flows": false,
     "print_input": false,
     "save_flows": false,
@@ -222,7 +222,7 @@
     "head_file": "keating.hds",
     "name": "oc"
   },
-  "simulation/GWF_1/rch0": {
+  "simulation/GWF_1/rch-1": {
     "__type__": "Rch",
     "_stress_period_data": {
       "0": {
@@ -247,13 +247,13 @@
     },
     "filename": "keating.rch",
     "fixed_cell": false,
-    "name": "rch0",
+    "name": "rch-1",
     "print_flows": false,
     "print_input": false,
     "save_flows": false,
     "ts": []
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "backtracking_number": 20,
     "backtracking_reduction_factor": "0.2",
@@ -264,7 +264,7 @@
     "inner_dvclose": "1e-05",
     "inner_maximum": 100,
     "linear_acceleration": "bicgstab",
-    "name": "ims0",
+    "name": "ims-1",
     "no_ptc": {
       "__type__": "NoPtc",
       "no_ptc_option": null

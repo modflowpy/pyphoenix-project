@@ -12,12 +12,12 @@
     "nocheck": false,
     "print_input": false,
     "solutiongroup": [
-      "<Ims ims0>"
+      "<Ims ims-1>"
     ],
     "tdis": "<Tdis tdis>",
     "workspace": "<workspace>"
   },
-  "simulation/ims0": {
+  "simulation/ims-1": {
     "__type__": "Ims",
     "complexity": "simple",
     "dims": {},
@@ -25,7 +25,7 @@
     "inner_dvclose": "0.0001",
     "inner_maximum": 100,
     "linear_acceleration": "cg",
-    "name": "ims0",
+    "name": "ims-1",
     "number_orthogonalizations": 2,
     "outer_dvclose": "0.001",
     "outer_maximum": 10000,
@@ -56,7 +56,7 @@
     "ghb": [],
     "ic": "<Ic ic>",
     "lak": [
-      "<Lak lak0>"
+      "<Lak lak-1>"
     ],
     "maw": [],
     "name": "lakeex4",
@@ -65,7 +65,7 @@
     "print_flows": false,
     "print_input": false,
     "rch": [
-      "<Rcha rcha0>"
+      "<Rcha rch-1>"
     ],
     "riv": [],
     "save_flows": false,
@@ -136,7 +136,7 @@
     "name": "ic",
     "strt": "float64[6624] e939affa2498c7d8"
   },
-  "simulation/lakeex4/lak0": {
+  "simulation/lakeex4/lak-1": {
     "__type__": "Lak",
     "_stress_period_data": {
       "0": {
@@ -174,7 +174,7 @@
     "filename": "lakeex4.lak",
     "implicit": false,
     "mover": false,
-    "name": "lak0",
+    "name": "lak-1",
     "nlakes": 2,
     "noutlets": 0,
     "obs": "<Obs obs>",
@@ -196,7 +196,7 @@
     "save_flows": false,
     "ts": []
   },
-  "simulation/lakeex4/lak0/obs": {
+  "simulation/lakeex4/lak-1/obs": {
     "__type__": "Obs",
     "continuous": {
       "__table__": "ContinuousBlock",
@@ -318,7 +318,7 @@
     },
     "name": "oc"
   },
-  "simulation/lakeex4/rcha0": {
+  "simulation/lakeex4/rch-1": {
     "__type__": "Rcha",
     "dims": {
       "ncelldim": 3,
@@ -331,7 +331,7 @@
     "export_array_netcdf": false,
     "filename": "lakeex4.rch",
     "fixed_cell": true,
-    "name": "rcha0",
+    "name": "rch-1",
     "print_flows": false,
     "print_input": false,
     "readasarrays": true,

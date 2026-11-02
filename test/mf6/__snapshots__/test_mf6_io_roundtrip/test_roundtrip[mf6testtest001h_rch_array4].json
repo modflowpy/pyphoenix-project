@@ -57,11 +57,11 @@
     "",
     "BEGIN PACKAGES",
     " DIS6 flow15.dis dis",
-    " CHD6 flow15_constant.chd chd0",
+    " CHD6 flow15_constant.chd chd-1",
     " IC6 flow15.ic ic",
     " NPF6 flow15.npf npf",
     " OC6 flow15.oc oc",
-    " RCH6 flow15.rch rcha0",
+    " RCH6 flow15.rch rch-1",
     "END PACKAGES"
   ],
   "flow15.npf": [
