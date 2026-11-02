@@ -376,9 +376,13 @@ def _in_columns(cls: "type[Item]", fields: list[attrs.Attribute]) -> list[attrs.
 
 
 def _is_row_key(f: attrs.Attribute) -> bool:
-    """A pk/fk or cellid column identifying the row (e.g. SFR's ifno, TVK's
-    cellid). These precede a union arm's _keyword; every other field follows
-    it, including other index columns (`ifno DIVERSION idv divflow`)."""
+    """A pk/fk or cellid column identifying the row (e.g. SFR's ifno, LAK's
+    lakeno, TVK's cellid). These precede a union arm's _keyword; every
+    other field follows it, including other index columns and a key scoped
+    by the row's (SFR's idv, a diversion within ifno: `ifno DIVERSION idv
+    divflow`)."""
+    if f.metadata.get("scope") and not f.metadata.get("key"):
+        return False
     return bool(f.metadata.get("pk") or f.metadata.get("fk") or is_cellid(f))
 
 

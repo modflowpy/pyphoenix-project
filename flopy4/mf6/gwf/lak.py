@@ -6,6 +6,7 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
+from flopy4.dimensions import DerivedDim
 from flopy4.mf6._types import TimeSeriesRef, to_array
 from flopy4.mf6.item import Item
 from flopy4.mf6.legacy import Legacy
@@ -57,6 +58,7 @@ class Lak(Package):
     }
 
     key_sets: ClassVar[dict[str, str]] = {
+        "bound": "<=nlakeconn",
         "mover_provider": "outlets.outletno",
         "mover_receiver": "packagedata.ifno",
     }
@@ -80,7 +82,7 @@ class Lak(Package):
     @attrs.define
     class Connectiondata(Item):
         ifno: int = integer(index=True, fk="packagedata.ifno")
-        iconn: int = integer(index=True)
+        iconn: int = integer(index=True, pk=True, scope="ifno")
         cellid: tuple[int, ...] = cellid_()
         claktype: str = string()
         bedleak: Union[Literal["NONE"], float] = union("keyword", "double")
@@ -355,6 +357,8 @@ class Lak(Package):
         block="period",
         fill_forward=True,
     )
+
+    nlakeconn = DerivedDim("sum(packagedata.nlakeconn)")
 
 
 LakPackagedata = Lak.Packagedata

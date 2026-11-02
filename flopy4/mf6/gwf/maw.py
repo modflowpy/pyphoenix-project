@@ -6,6 +6,7 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
+from flopy4.dimensions import DerivedDim
 from flopy4.mf6._types import TimeSeriesRef, to_array
 from flopy4.mf6.item import Item
 from flopy4.mf6.legacy import Legacy
@@ -48,6 +49,7 @@ class Maw(Package):
     }
 
     key_sets: ClassVar[dict[str, str]] = {
+        "bound": "<=ngwfnodes",
         "mover_provider": "packagedata.ifno",
         "mover_receiver": "packagedata.ifno",
     }
@@ -74,7 +76,7 @@ class Maw(Package):
     @attrs.define
     class Connectiondata(Item):
         ifno: int = integer(index=True, fk="packagedata.ifno")
-        icon: int = integer(index=True)
+        icon: int = integer(index=True, pk=True, scope="ifno")
         cellid: tuple[int, ...] = cellid_()
         scrn_top: float = double()
         scrn_bot: float = double()
@@ -84,7 +86,7 @@ class Maw(Package):
     @attrs.define
     class Angledata(Item):
         ifno: int = integer(index=True, fk="packagedata.ifno")
-        icon: int = integer(index=True)
+        icon: int = integer(index=True, pk=True, fk="connectiondata.icon", scope="ifno")
         angle: float = double()
         conn_length: Optional[float] = double(default=None, optional=True)
 
@@ -288,6 +290,8 @@ class Maw(Package):
         block="period",
         fill_forward=True,
     )
+
+    ngwfnodes = DerivedDim("sum(packagedata.ngwfnodes)")
 
 
 MawPackagedata = Maw.Packagedata

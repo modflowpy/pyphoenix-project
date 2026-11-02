@@ -12,8 +12,9 @@ class DerivedDim:
     """A dimension computed from others on the same component, read-only.
 
     Declared in generated classes from the DFN's dimension expressions, e.g.
-    `ncpl = DerivedDim("nrow * ncol")`. Reads as None until every dimension
-    it depends on is set.
+    `ncpl = DerivedDim("nrow * ncol")`, or a list column's sum, LAK's
+    `nlakeconn = DerivedDim("sum(packagedata.nlakeconn)")`. Reads as None
+    until every dimension or list it depends on is set.
     """
 
     def __init__(self, expr: str) -> None:
@@ -26,10 +27,24 @@ class DerivedDim:
     def __get__(self, instance: Any, owner: type | None = None) -> Any:
         if instance is None:
             return self
-        return dim_value(self.expr, lookup=lambda name: getattr(instance, name))
+        return dim_value(self.expr, lookup=lambda name: _lookup(instance, name))
 
     def __set__(self, instance: Any, value: Any) -> None:
         raise AttributeError(f"{self.name} is derived ({self.expr}) and can't be set")
+
+
+def _lookup(instance: Any, name: str) -> Any:
+    """A dimension's value, or for ``list.column``, the column's values
+    (None if the list isn't set)."""
+    if "." not in name:
+        return getattr(instance, name)
+    list_name, column = name.split(".")
+    rows = getattr(instance, list_name)
+    if rows is None:
+        return None
+    if hasattr(rows, "values") and not isinstance(rows, (list, dict)):
+        return rows.values(column)  # an ItemTable
+    return [getattr(r, column) for r in rows]
 
 
 @runtime_checkable

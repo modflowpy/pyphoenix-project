@@ -303,7 +303,98 @@ def test_spc_bndno_past_bounds(tmp_path):
     ]
 
 
+# Connection and diversion numbers are unique within their feature
+# (`pk = {scope = "ifno"}`), and referenced with it.
+
+
+def _lak_connections(connections):
+    from flopy4.mf6.gwf import Lak
+
+    conn = ("VERTICAL", 0.1, 0.0, 0.0, 0.0, 0.0)
+    return Lak(
+        nlakes=2,
+        packagedata=[(0, 1.0, 2), (1, 1.0, 1)],
+        connectiondata=[
+            (lake, iconn, (0, 0, i), *conn) for i, (lake, iconn) in enumerate(connections)
+        ],
+    )
+
+
+def test_lak_connection_keys():
+    # each lake numbers its own connections
+    assert key_errors(_lak_connections([(0, 0), (0, 1), (1, 0)])) == []
+
+
+def test_lak_connection_repeated():
+    assert key_errors(_lak_connections([(0, 0), (0, 0), (1, 0)])) == [
+        "Lak.connectiondata: iconn 0 (ifno 0) is listed more than once"
+    ]
+
+
+def test_maw_angle_names_a_connection():
+    from flopy4.mf6.gwf import Maw
+
+    maw = Maw(
+        nmawwells=2,
+        packagedata=[(0, 0.1, 0.0, 1.0, "THIEM", 2), (1, 0.1, 0.0, 1.0, "THIEM", 1)],
+        connectiondata=[
+            (0, 0, (0, 0, 0), 1.0, 0.0, 1.0, 0.2),
+            (0, 1, (0, 0, 1), 1.0, 0.0, 1.0, 0.2),
+            (1, 0, (0, 0, 1), 1.0, 0.0, 1.0, 0.2),
+        ],
+        angledata=[(0, 1, 30.0), (1, 1, 30.0)],  # well 2 has one connection
+    )
+    assert key_errors(maw) == ["Maw.angledata: icon 1 (ifno 1) isn't in connectiondata"]
+
+
+def _sfr_diversions(periods=()):
+    from flopy4.mf6.gwf import Sfr
+
+    reach = (1.0, 1.0, 0.001, 0.0, 1.0, 1.0, 0.03, 1, 1.0)
+    return Sfr(
+        nreaches=2,
+        packagedata=[(0, (0, 0, 0), *reach, 1), (1, (0, 0, 1), *reach, 0)],
+        connectiondata=[(0, (-2,)), (1, (1,))],
+        diversions=[(0, 0, 1, "UPTO")],
+        stress_period_data={0: [(r, Sfr.Diversion(d, 1.0)) for r, d in periods]} or None,
+    )
+
+
+def test_sfr_period_diversion_keys():
+    assert key_errors(_sfr_diversions([(0, 0)])) == []
+
+
+@pytest.mark.parametrize(
+    "periods, error",
+    [
+        ([(0, 1)], "idv 1 (ifno 0) isn't in diversions"),
+        # reach 2 has no diversions; its diversion 1 isn't reach 1's
+        ([(1, 0)], "idv 0 (ifno 1) isn't in diversions"),
+    ],
+)
+def test_sfr_period_diversion_errors(periods, error):
+    assert key_errors(_sfr_diversions(periods)) == [f"Sfr.stress_period_data: period 0: {error}"]
+
+
+def test_ssm_package_in_both_lists(tmp_path):
+    ssm, _ = _transport(tmp_path)
+    ssm.sources = [("wel", "AUX", "conc")]
+    assert key_errors(ssm) == ["Ssm.fileinput: pname 'wel' is also in sources"]
+
+
 def test_spc_on_advanced_package(tmp_path):
-    """MF6 ignores SPC on advanced packages, so it isn't checked."""
-    _, spc = _transport(tmp_path, pname="lak", bndno=5)
+    """SPC on an advanced package numbers its bounds: LAK's connections."""
+    _, spc = _transport(tmp_path, pname="lak", bndno=1)
+    assert key_errors(spc) == [
+        "Spc.stress_period_data: period 0: bndno 1 isn't below the nlakeconn of lak 'lak' (1)"
+    ]
+
+
+def test_spc_on_advanced_package_with_apt(tmp_path):
+    """MF6 ignores SPC on a flow package an advanced transport package is
+    paired with, so it isn't checked."""
+    from flopy4.mf6.gwt import Lkt
+
+    ssm, spc = _transport(tmp_path, pname="lak", bndno=5)
+    Lkt(parent=ssm._parent, name="lkt", flow_package_name="lak")
     assert key_errors(spc) == []

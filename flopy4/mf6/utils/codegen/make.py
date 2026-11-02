@@ -285,16 +285,16 @@ def _item_columns(
         elif isinstance(f, CellID):
             item = filters.cellid_column(name, f.model, allow_zero=f.allow_zero, optional=optional)
         elif col.is_index:
-            key = getattr(f, "fk", None)
-            fk = key.path if key else None
-            pk = not fk and bool(getattr(f, "pk", False))
+            key, pkey = getattr(f, "fk", None), getattr(f, "pk", None)
             item = filters.feature_id_column(
                 name,
-                fk=fk,
-                pk=pk,
+                fk=key.path if key else None,
+                pk=pkey is not None,
                 allow_zero=getattr(f, "allow_zero", False),
                 key=key.key if key else None,
-                scope=key.scope if key and key.key else None,
+                # a pk and fk on one column share their scope (MAW's
+                # angledata icon, within ifno)
+                scope=(key and key.scope) or (pkey and pkey.scope) or None,
                 rule=key.rule if key else None,
                 optional=optional,
                 time_series=ts,

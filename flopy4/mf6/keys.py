@@ -22,15 +22,25 @@ An fk may have a ``rule`` instead of a scope (see modflow-devtools'
 - ``flow_model``: checked in the flow model paired with this transport
   model by an exchange; unchecked if there is none.
 - ``ssm_package``: checked in the flow package the parent's binding row
-  names.
+  names, unless an advanced transport package (LKT, SFT, ...) is paired
+  with it, when MF6 ignores the SPC file (tsp-ssm.f90:195, tsp-apt.f90:343).
 
 An integer fk may name a ``key`` role instead of a path, checked in the
 component its scope or rule picks, at that component's ``key_sets`` path
 (``block.column``, or ``<=dim`` for a row position). The component must
 play the role, and for a mover role have ``mover`` on; if a rule picks a
-component without the role, the check is skipped (MF6 ignores it,
-tsp-ssm.f90:195)."""
+component without the role, the check is skipped.
 
+A key in a union column's arm (SFR's period ``diversion`` ``idv``) is
+checked among that arm's rows, and its scope may name a column of the
+enclosing row (``ifno``).
+
+Some keys are unique across lists, which a pk can't say (see
+modflow-devtools' dfnspec.md, "Consumer checks"): SSM names a flow package
+once in ``sources`` and ``fileinput`` together (tsp-ssm.f90:814-821,
+912-919)."""
+
+from types import SimpleNamespace
 from typing import Any, Iterable, Optional
 
 import attrs
@@ -41,6 +51,12 @@ from flopy4.spec import reference_names
 
 # Roles that need the component's ``mover`` option on.
 _MOVER_ROLES = ("mover_provider", "mover_receiver")
+
+# Lists whose keys are unique across them, by DFN: (list, column) pairs.
+_SHARED_KEYS: dict[str, tuple[tuple[str, str], ...]] = {
+    "gwt-ssm": (("sources", "pname"), ("fileinput", "pname")),
+    "gwe-ssm": (("sources", "pname"), ("fileinput", "pname")),
+}
 
 
 def key_errors(pkg: Any) -> list[str]:
@@ -62,13 +78,59 @@ def key_errors(pkg: Any) -> list[str]:
                 else:
                     rows_ = rows
                 errors += _row_errors(pkg, where, cls, rows_)
+    return errors + _shared_key_errors(pkg)
+
+
+def _shared_key_errors(pkg) -> list[str]:
+    """Keys given in more than one of the lists in `_SHARED_KEYS`."""
+    lists = _SHARED_KEYS.get(getattr(type(pkg), "dfn_name", ""), ())
+    seen: dict[Any, str] = {}
+    errors = []
+    for list_name, column in lists:
+        rows = getattr(pkg, list_name, None)
+        for value in [] if rows is None else _values(rows, column):
+            if value is None:
+                continue
+            key = _norm((value,))
+            if key in seen and seen[key] != list_name:
+                errors.append(
+                    f"{type(pkg).__name__}.{list_name}: {column} {value!r} is also in {seen[key]}"
+                )
+            seen.setdefault(key, list_name)
     return errors
 
 
 def _row_errors(pkg, where: str, cls, rows) -> list[str]:
     columns = {col.name: col for col in cls.fields()}
-    errors = []
+    errors = _column_errors(pkg, where, columns, rows)
     for col in columns.values():
+        if col.metadata.get("type") == "union" and not col.metadata.get("union"):
+            errors += _arm_errors(pkg, where, columns, rows, col.name)
+    return errors
+
+
+def _arm_errors(pkg, where: str, columns: dict, rows, name: str) -> list[str]:
+    """Keys in the arms of the union column ``name``: each arm's rows, with
+    the enclosing row's columns there for a scope to name (SFR's period
+    ``diversion`` ``idv``, within the row's ``ifno``)."""
+    by_arm: dict[type, list] = {}
+    for row, value in zip(_dicts(rows, columns), _values(rows, name)):
+        if attrs.has(type(value)):
+            arm_values = {f.name: getattr(value, f.name) for f in attrs.fields(type(value))}
+            by_arm.setdefault(type(value), []).append(SimpleNamespace(**{**row, **arm_values}))
+    errors = []
+    for arm, arm_rows in by_arm.items():
+        arm_columns = {c.name: c for c in arm.fields()}
+        visible = {**columns, **arm_columns}
+        errors += _column_errors(pkg, where, visible, arm_rows, check=arm_columns)
+    return errors
+
+
+def _column_errors(pkg, where: str, columns: dict, rows, check: dict | None = None) -> list[str]:
+    """Keys of the columns ``check`` (default: all ``columns``) that aren't
+    unique or name no row; a scope may name any of ``columns``."""
+    errors = []
+    for col in (columns if check is None else check).values():
         meta = col.metadata
         if meta.get("type") not in ("string", "integer", "array"):
             continue
@@ -154,7 +216,10 @@ def _role_keys(component, path: str) -> tuple[set | range, str]:
     row positions below ``dim``, or below the longest list if unset."""
     if path.startswith("<="):
         dim = path[2:]
-        n = component.resolve_dims(dim).get(dim)
+        # its own (LAK's derived nlakeconn), or a provider's
+        n = getattr(component, dim, None)
+        if not isinstance(n, int):
+            n = component.resolve_dims(dim).get(dim)
         if not isinstance(n, int):
             n = _longest(component)
         return range(n), f"below the {dim} of {_label(component)} ({n})"
@@ -233,6 +298,24 @@ def _flow_model(pkg, dfn_name: str) -> Any:
 
 
 def _ssm_package(pkg) -> Any:
+    """The package named by the parent's row holding this package, or None,
+    also if an advanced transport package in the parent's model is paired
+    with it (by ``flow_package_name``, else the same name), since MF6 then
+    ignores this package."""
+    package = _binding_package(pkg)
+    model = getattr(pkg._parent, "_parent", None)
+    if package is None or model is None or not package.name:
+        return package
+    for sibling in model._children.values():
+        if "flow_package_name" not in attrs.fields_dict(type(sibling)):
+            continue
+        paired = sibling.flow_package_name or sibling.name
+        if paired and paired.lower() == package.name.lower():
+            return None
+    return package
+
+
+def _binding_package(pkg) -> Any:
     """The package named by the parent's row holding this package, or None."""
     parent = pkg._parent
     if parent is None:

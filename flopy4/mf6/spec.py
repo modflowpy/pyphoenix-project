@@ -213,16 +213,18 @@ def integer(
     """An integer. An ``index`` is 1-based in the file, 0-based in memory.
     A key (``pk``, or ``fk``, the path of the key it names) is checked on
     write (see `flopy4.mf6.keys`); an fk that may ``allow_zero`` is None for
-    no row (0 in the file), as a cellid's no cell (LAK's ``lakeout``). An
-    index may name a ``key`` role instead, in the component its ``scope``
-    column or ``rule`` picks."""
+    no row (0 in the file), as a cellid's no cell (LAK's ``lakeout``). A
+    key may be unique only within the value of another column, its
+    ``scope`` (LAK's connection ``iconn`` within ``ifno``). An index may
+    name a ``key`` role instead, in the component its ``scope`` column or
+    ``rule`` picks."""
     if allow_zero and not (fk and index is True):
         raise ValueError("allow_zero is only for an index fk")
     if key and (fk or index is not True):
         raise ValueError("a key is only for an index without an fk path")
     if key and not (scope or rule):
         raise ValueError("a key needs a scope or a rule")
-    if scope and (rule or not key):
+    if scope and (rule or not (key or pk or fk)):
         raise ValueError("an integer's scope is only for a key, without a rule")
     if time_series:
         _ts_converter(kwargs, to_ts_value)
