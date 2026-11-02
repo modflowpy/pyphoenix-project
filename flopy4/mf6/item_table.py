@@ -130,6 +130,8 @@ def _fit(f: attrs.Attribute, values: list, width: int | None = None) -> np.ndarr
 def _column_of(f: attrs.Attribute, values: list) -> np.ndarray | None:
     """A field's values as a column, or None if all are the default."""
     default = _default(f)
+    if _no_row(f) and f.default is attrs.NOTHING:
+        return _fit(f, values)  # None is no row, not a default
     if all(_is_default(v, default) for v in values):
         return None
     return _fit(f, values)
@@ -389,9 +391,6 @@ class ItemTable(MutableSequence):
                     # write zeros with -- fall back to the row path, which
                     # takes one
                     return None
-                if _no_row(f):
-                    cols.append([0] * self._n)  # every row's is None: no row
-                    continue
                 if (default := _default(f)) is None or default == ():
                     continue
                 return None

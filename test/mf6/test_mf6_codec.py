@@ -1211,7 +1211,7 @@ def test_sfr_all_unconnected_reaches_round_trip():
 def test_lak_outlet_no_lake_round_trip(tmp_path, lakeout):
     """An outlet to no lake is None, 0 in the file, as a cellid's no cell,
     and FILL_INT64 in its table's column, including when no outlet has a
-    lake (which the table's columns would otherwise leave out)."""
+    lake (still a column: None is no row, not a default)."""
     from flopy4.mf6.constants import FILL_INT64
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.gwf import Lak
@@ -1226,8 +1226,8 @@ def test_lak_outlet_no_lake_round_trip(tmp_path, lakeout):
 
     lak = lak_(lakeout)
     assert [o.lakeout for o in lak.outlets] == lakeout
-    if (col := lak.outlets.columns.get("lakeout")) is not None:
-        assert col.tolist() == [FILL_INT64 if o is None else o for o in lakeout]
+    col = lak.outlets.columns["lakeout"]
+    assert col.tolist() == [FILL_INT64 if o is None else o for o in lakeout]
     file = [0 if o is None else o + 1 for o in lakeout]
     raw = loads(dumps(unstructure_component(lak)))
     assert [r[2] for r in raw["OUTLETS"]] == file
@@ -1242,7 +1242,7 @@ def test_lak_outlet_no_lake_round_trip(tmp_path, lakeout):
 @pytest.mark.parametrize("ivertcon", [[1, None], [None, None]])
 def test_uzf_no_ivertcon_tokens(tmp_path, ivertcon):
     """An all-numbers table's tokens (`ItemTable.tokens`) write no row as
-    0, including when no row has one, and its columns read 0 as None."""
+    0, including when no row has one (still a column), and reads 0 as None."""
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.gwf import Uzf
 
@@ -1251,6 +1251,7 @@ def test_uzf_no_ivertcon_tokens(tmp_path, ivertcon):
             (i, (i,), 1, v, 0.001, 1.0, 0.05, 0.25, 0.05, 4.0) for i, v in enumerate(ivertcon)
         ],
     )
+    assert uzf.packagedata.columns["ivertcon"].dtype == np.int64
     tokens = uzf.packagedata.tokens()
     assert tokens is not None
     assert [r[3] for r in tokens] == [0 if v is None else v + 1 for v in ivertcon]

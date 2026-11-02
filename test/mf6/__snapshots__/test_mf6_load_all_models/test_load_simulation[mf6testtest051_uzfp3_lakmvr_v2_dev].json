@@ -184,7 +184,10 @@
       ],
       "invert": "float64[2] 4c182ffa552ac172",
       "lakein": "int64[2] 031ee8071545c35f",
-      "lakeout": "int64[2] 52e0e9d4f46c97ca",
+      "lakeout": [
+        null,
+        null
+      ],
       "n": 2,
       "outletno": "int64[2] 031ee8071545c35f",
       "rough": "float64[2] fdd8b9a7ee0f5cc6",
@@ -587,7 +590,7 @@
       "cellid": "int64[200, 3] 369213feec392cc6",
       "eps": "float64[200] 1577be77b6842f8e",
       "ifno": "int64[200] 3abe01fb3965aed8",
-      "ivertcon": "int64[200] 8c5dac73ee51ccb6",
+      "ivertcon": "1100 chars bc72eb116fa9416d",
       "landflag": "int64[200] 865cee10957c12cb",
       "n": 200,
       "surfdep": "float64[200] 2e859dc10f65f4d4",

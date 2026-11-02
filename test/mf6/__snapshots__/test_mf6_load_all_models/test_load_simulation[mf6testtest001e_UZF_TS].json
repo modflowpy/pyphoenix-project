@@ -561,7 +561,17 @@
       "cellid": "int64[9, 3] fc634eb290da1b51",
       "eps": "float64[9] 4de7d7d46a1f1338",
       "ifno": "int64[9] 2c20f0b4a4a0dabe",
-      "ivertcon": "int64[9] 7293193de6a5a76f",
+      "ivertcon": [
+        2,
+        3,
+        4,
+        5,
+        null,
+        null,
+        7,
+        8,
+        null
+      ],
       "landflag": "int64[9] 9b96d75905924027",
       "n": 9,
       "surfdep": "float64[9] b4673fb8d4b35fc1",
