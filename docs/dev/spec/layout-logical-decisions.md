@@ -1,17 +1,18 @@
 # Layout vs. logical: a rule for the MMP data questions
 
-Written 2026-11-03 against `develop` (`8d25e4b7`). Status: **proposal.**
+**Status: proposal.** Written 2026-11-03 against `develop` (`8d25e4b7`).
+
 Several open MMP issues are about the same thing: how far flopy4's object
 model should mirror MF6's file format, and where it should present the
-underlying data instead. This doc states one rule for that, from the #287
-work, and applies it to each issue. It feeds Track B and Track C of
-`docs/dev/mmp-plan.md`.
+underlying data instead. This doc states one rule for that, from the spec
+research, and applies it to each issue. It feeds Tracks A, B and C of the
+[MMP plan](../mmp-plan.md).
 
-The research behind the rule is in the working notes for discussion #287
-(`option-classification-results.md`, `constraint-audit-results.md`,
-`discussion-287-directions.md`, with the scripts and data in
-`option-classification/` and `constraint-audit/`). The parts this doc
-needs are summarized below.
+The research behind the rule is in this folder: concepts and hypotheses in
+[overview.md](overview.md), and the evidence in
+[option-classification.md](option-classification.md) and
+[constraint-audit.md](constraint-audit.md). The parts this doc needs are
+summarized below.
 
 ## The rule
 
@@ -36,8 +37,8 @@ Each of the 224 option names in the DFNs got a label by hand:
 | layout | 20 | `READASARRAYS`, `STORAGECOEFFICIENT`, `K22OVERK`, the unit factors |
 | mixed | 1 | CSUB `HEAD_BASED` |
 
-The split is clean: no layout option is triggered by, or triggers, a
-logical constraint. The only crossings are conditions on where a layout
+The split is clean: only one option is mixed, and no logical constraint
+is triggered by a layout option. The only crossings are conditions on where a layout
 conversion is defined, e.g. RCHA can't express two rates in one column.
 
 ### Derivation
@@ -164,8 +165,8 @@ whether and when to expand it.
   - Check shapes on attach, so an array that doesn't fit the grid fails
     there, not at write.
   - Leave `WriteContext` for overriding the encoding.
-- **Shares machinery with #259 and #287 step 4** (navigation over the
-  binding graph).
+- **Shares machinery with #259 and binding-graph navigation**
+  ([overview](overview.md#step-5-binding-graph-navigation) step 5).
 
 ### #259: parent/child initialization
 
@@ -179,8 +180,9 @@ supported, and the issue leans towards encouraging bottom-up.
 - **Decision:** keep both styles. Implement attach (`gwf.dis = ...`,
   `Dis(parent=gwf)`, `Gwf(dis=...)`) as one operation over the binding
   graph that updates both sides and runs #226's shape check. Design it
-  together with #287 step 4 (`Spc.target`, `Mvr.models`, `Obs.target`,
-  `Model.flow_model`), which needs the same graph.
+  together with binding-graph navigation (overview step 5: `Spc.target`,
+  `Mvr.models`, `Obs.target`, `Model.flow_model`), which needs the same
+  graph.
 - **Migration:** accept. flopy3's top-down style keeps working.
 
 ### Related: #240, #243
@@ -190,7 +192,7 @@ Settle them in export phase 1 (Track C), below.
 
 ## Track C: the representation
 
-`docs/dev/xarray-representation.md` already follows the rule for period
+[The xarray representation](../xarray/representation.md) already follows the rule for period
 data: stored as given, `dense()` a view, TS/TAS values kept as named
 references. It doesn't yet say how options appear. Add an Options section
 in export phase 1:
@@ -202,7 +204,7 @@ in export phase 1:
 | output | not on the package's data. A separate node, or left out. |
 | dynamic derivation | the rule, not its result: the aux variable carries its role (e.g. a multiplier). `dense()` doesn't apply it unless asked. |
 
-`tas-interpolation-plan.md`'s step view is a dynamic-derivation view
+[TAS interpolation](../xarray/tas-interpolation.md)'s step view is a dynamic-derivation view
 under this rule, so it should be opt-in, and `from_xarray` should never
 read its output back as input.
 
@@ -222,12 +224,12 @@ stable for a release or two.
 
 ## Not before MMP
 
-The rest of the #287 work is off the gate. None of it changes what
+The rest of the spec research is off the gate. None of it changes what
 testers write:
 
-- the DDL slice and parameter syntax (#287 steps 2–3);
-- conversions between layouts (RCH ↔ RCHA by densify and sparsify, step
-  5), which are additive;
+- the DDL slice and parameter syntax sketch (overview steps 3–4);
+- conversions between layouts (RCH ↔ RCHA by densify and sparsify,
+  overview step 6), which are additive;
 - logical annotations in the DFN schema, in devtools 2.0 if ready before
   the release candidates, otherwise in a later minor version;
 - `source`/derivation metadata for modflowapi's memory catalog;

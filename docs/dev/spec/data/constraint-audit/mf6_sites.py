@@ -1,4 +1,4 @@
-"""Pass 2, step 1-2 of constraint-audit-plan.md: extract and cluster MF6 error/warning sites.
+"""Extract and cluster MF6 error/warning sites (see docs/dev/spec/constraint-audit.md).
 
 Usage: python mf6_sites.py <modflow6 src dir> <out dir>
 Writes mf6-checks.csv (one row per store_error / store_warning site) and prints tallies.

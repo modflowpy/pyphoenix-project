@@ -1,4 +1,4 @@
-"""Pass 2 step 3 + pass 3 of constraint-audit-plan.md: hand-labelled sample of MF6 checks and
+"""Hand-labelled sample of MF6 checks and
 mf6io prose rules. Writes mf6-sample.csv and prints tallies.
 
 Usage: python sample.py <out dir>

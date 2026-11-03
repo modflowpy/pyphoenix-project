@@ -1,13 +1,14 @@
 # Evaluate time-array series in the period view
 
-Status: ready, not started (rechecked 2026-11-03 against develop `8d25e4b7`:
-no `Tas.average`, `step_array` or `dense_steps` yet; `period_array`,
-`period_arrays.dense` and `_check_tas_refs` are where the plan expects).
-Since written, #489 marks series values `NaN` in the xarray view with the
-series name in a `<name>_tas` coordinate; a step view could fill those.
-Written 2026-10-07, against develop `a6c52c8`. MF6 semantics checked
-in `../modflow6` (`src/Utilities/TimeSeries/TimeArraySeries.f90`,
-`TimeArraySeriesManager.f90`). Decisions are under "Decisions".
+Status: **ready, not started.** Checked 2026-11-03 against develop
+`8d25e4b7`: there's no `Tas.average`, `step_array` or `dense_steps` yet,
+and `period_array`, `period_arrays.dense` and `_check_tas_refs` are as the
+plan expects. MF6 semantics are from `src/Utilities/TimeSeries/`
+(`TimeArraySeries.f90`, `TimeArraySeriesManager.f90`). Decisions are under
+"Decisions".
+
+In the xarray view, series values are `NaN`, with the series name in a
+`<name>_tas` coordinate (#489). A step view could fill those.
 
 ## Problem
 

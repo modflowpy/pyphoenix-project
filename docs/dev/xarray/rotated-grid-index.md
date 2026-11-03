@@ -1,11 +1,8 @@
 # Grid coordinates, rotation and spatial selection
 
-This plan is the current version of two earlier ones:
+Status: **mostly done** (#469–#490). The "Next" list at the end is still live.
 
-- **The spatial index design** (`docs/dev/spatial-index-design.md` on `origin/xarray-index`, Nov 2025–Feb 2026), with upstream #207 (structured grid index), #208 (`.grid` accessor) and #120 (closed background). It proposed spatial dims for DIS, a `.grid` accessor, a custom `GeospatialIndex` (from flopy PR 2654), containment-vs-nearest point queries, z and ball queries.
-- **The rotated-grid selection plan** (this file's earlier form): local x/y plus a grid mapping for rotated DIS, world coordinates as an overlay.
-
-The "Where the old design stands" section below records what was kept, changed or dropped from the first.
+This plan supersedes the earlier spatial index design (`docs/dev/spatial-index-design.md` on the `origin/xarray-index` branch, Nov 2025–Feb 2026, with upstream #207 (structured grid index), #208 (`.grid` accessor) and #120 (closed background)). That design proposed spatial dims for DIS, a `.grid` accessor, a custom `GeospatialIndex` (from flopy PR 2654), containment-vs-nearest point queries, and z and ball queries. "Where the old design stands" below records what was kept, changed or dropped.
 
 ## Framing
 
@@ -60,7 +57,7 @@ No renaming of `x`/`y` is needed.
 - `projection`'s value is `1`. Its attrs are `xorigin`/`yorigin`/`angrot` always, plus `crs_wkt` (wrapped by `wrap_rotated_crs` when rotated) and `grid_mapping_name` with a CRS. Gridded variables name it in their `grid_mapping` attr, set by `index_xy`.
 - `xorigin`/`yorigin`/`angrot` stay: they're non-standard, but they're the only record of placement without a CRS.
 - The netCDF heads reader keeps the file's CRS attrs on `projection`; the grb still gives the placement.
-- The z coordinates come from the discretization's `top`/`botm` (package arrays, `StructuredGrid`/`VertexGrid`) or the grb's TOP/BOTM (heads, budgets), via `vertical.z_coords`. DIS/DISV `top` (size-1 `layer`) gets layer 0's, since it's the top layer's cells' tops. Other arrays with one layer's worth of values, such as RCHA/EVTA's, don't get them unless the model has one layer, since their layer depends on `irch`/`ievt` (see `rch-evt-layer-plan.md`). Each has a `long_name` ("cell top elevation" etc.). DISV arrays get the same three on `(layer, cell)`.
+- The z coordinates come from the discretization's `top`/`botm` (package arrays, `StructuredGrid`/`VertexGrid`) or the grb's TOP/BOTM (heads, budgets), via `vertical.z_coords`. DIS/DISV `top` (size-1 `layer`) gets layer 0's, since it's the top layer's cells' tops. Other arrays with one layer's worth of values, such as RCHA/EVTA's, don't get them unless the model has one layer, since their layer depends on `irch`/`ievt` (see [`rch-evt-layer.md`](rch-evt-layer.md)). Each has a `long_name` ("cell top elevation" etc.). DISV arrays get the same three on `(layer, cell)`.
 
 ## Selection
 
@@ -165,7 +162,7 @@ So a working `.sel(x=, y=, z=)` needs **one index owning `x`, `y`, `z`, `z_top` 
 - **Keyword:** users want `sel(z=...)`, so the index owns `z` too (the centres) and answers `z` labels with containment over its bounds, not with the centres.
 - **Partial selections:** `sel(x=...)` alone, `sel(y=..., z=...)`, slices of x/y (containment for scalars, by centre for slices, as now), and `method="nearest"` (x/y only).
 - **Everything `CellIndex` keeps working through:** `isel` (slices, arrays, and a single layer, after which z is 2-D), `align`/`concat` along `col`/`row` with edges (#486), `roll`, pickle, `chunk`, arithmetic.
-- **Arrays without z:** 1-layer arrays and RCHA/EVTA (see `rch-evt-layer-plan.md`) still need x/y selection, so the index must work with or without the z coordinates, or there are two index types.
+- **Arrays without z:** 1-layer arrays and RCHA/EVTA (see [`rch-evt-layer.md`](rch-evt-layer.md)) still need x/y selection, so the index must work with or without the z coordinates, or there are two index types.
 - **DISV:** no `CellIndex`; horizontal selection goes through xugrid. The index would need a cell-containment structure for `(cell)` too, or z stays accessor-only on DISV.
 - **netCDF:** like `CellIndex`, it isn't saved; reopened arrays need `index_xy` (Next item 2).
 - **Experimental API:** custom indexes over several coordinates and `IndexSelResult` are public but still evolving in xarray. Pin and test.
@@ -218,7 +215,7 @@ On `.grid`:
 
 ## Next
 
-In the order I'd take them:
+In suggested order:
 
 1. **DISV/DISU spatial selection.**
    - Add `numba_celltree` to the pixi dev env.

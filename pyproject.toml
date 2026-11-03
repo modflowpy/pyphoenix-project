@@ -102,6 +102,8 @@ line-length = 100
 target-version = "py311"
 include = ["pyproject.toml", "flopy4/**/*.py", "test/**/*.py", "benchmarks/**/*.py", "docs/**/*.py"]
 extend-include = ["docs/**/*.ipynb"]
+# one-off research scripts, kept as written so the results stay reproducible
+extend-exclude = ["docs/dev/spec/data"]
 
 [tool.ruff.lint]
 select = [

@@ -1,7 +1,7 @@
 # Generating classes into a user directory
 
-Status: idea, not planned. Written 2026-10-08, after the sync stack
-(`sync-contract` .. `sync-lazy-imports`). Revisit once `mf6 --spec` lands.
+Status: **idea, not planned.** Written 2026-10-08. Revisit once
+`mf6 --spec` lands.
 
 ## Today
 

@@ -1,6 +1,7 @@
 # Elevations for RCHA/EVTA arrays
 
-Follow-up to `z-attach` (z coordinates on arrays on the grid's layers).
+Status: **not started.** Follow-up to #490, which put z coordinates on
+arrays on the grid's layers.
 
 ## Where things stand
 

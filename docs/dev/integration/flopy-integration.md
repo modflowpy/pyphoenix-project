@@ -1,32 +1,14 @@
 # Integrating flopy4 into flopy
 
 How hard it will be to replace flopy's mf6 engine with this project's, and
-how to go about it. Written 2026-10-28 against pyphoenix `develop`
-(`000f63c3`) and flopy `develop` (`b9ee6fa2`, 3.12.0.dev0). Refreshed
-2026-11-03 against pyphoenix `develop` (`8d25e4b7`) and flopy `develop`
-(`aca52382`, 3.13.0.dev0, after the 3.12.0 release). Covers discussions
-#68 (rollout), #35 (MF6 versions) and #37 (refactoring 3.x), and issue
-#113 (flopy3 interfaces).
+how to go about it. Covers discussions #68 (rollout), #35 (MF6 versions)
+and #37 (refactoring 3.x), and issue #113 (flopy3 interfaces).
 
-### Since the first draft
-
-- flopy 3.12.0 is out, and `develop` now requires Python `>=3.12` and
-  numpy `>=2.2` (#2843, #2844, per SPEC 0). The dependency gap is
-  smaller: flopy4's numpy floor is a minor version above flopy's, not two
-  majors, and the Python mismatch is now only flopy4's `<3.14` cap.
-- `flopy4 mf6 sync --developmode` landed (#522), so MF6's CI switch no
-  longer waits on it.
-- The flopy3 adapter gained stress-period list data, geodataframe export,
-  `get_package` by name or type, and grids for every discretization
-  (#531). packagedata/connectiondata are still not wrapped, on purpose
-  (see 3.x item 2).
-- The devtools registry grew to 261 models; 260 are known to load.
-- Unchanged: the bare-list `stress_period_data` bug (re-run 2026-11-03,
-  same error), the git dependency on devtools (PyPI still has 1.9.2),
-  the exact xugrid pin (0.15.3 is still the latest release, so the pin
-  is current, just not a range), the `StructuredGrid` `ia`/`ja` TODO, and
-  the unchecked items in `docs/dev/test.md`. Nothing from "3.x work" has
-  started on flopy `develop`.
+**Status: direction proposed; the release shape is decided** (see
+[`mmp-plan.md`](../mmp-plan.md)). Facts are as of 2026-11-03, against
+pyphoenix `develop` (`8d25e4b7`) and flopy `develop` (`aca52382`,
+3.13.0.dev0, after the 3.12.0 release). Benchmark numbers are from
+2026-10-28 and weren't re-run.
 
 ## Summary
 
@@ -62,7 +44,7 @@ how to go about it. Written 2026-10-28 against pyphoenix `develop`
   change that isn't the swap itself to `develop`, and only then cut the
   branch, once MMP feedback has settled the API. Merge `develop` into it
   weekly.
-- **Release shape** (decided 2026-11-03; see `docs/dev/mmp-plan.md`).
+- **Release shape** (decided 2026-11-03; see [`mmp-plan.md`](../mmp-plan.md)).
   Alphas and betas, up to and including MMP, ship from this repo as
   `flopy4`, installed from GitHub, so testers can run both engines side by
   side. The 4.x branch ships release candidates `flopy==4.0.0rcN` (pip
@@ -116,8 +98,8 @@ Inside `flopy/mf6/utils`, the modules that work without the engine
   in `test/mf6/test_mf6_load_all_models.py`; the rest are `xfail`). As of
   2026-10-28 it loaded faster than flopy3 on 127 of the 165 benchmark
   models (median flopy4/flopy3 time ratio 0.44), and slower on large
-  inline arrays. The benchmarks weren't re-run for the refresh.
-- Not done yet (`docs/dev/test.md`): running a model written by flopy3
+  inline arrays.
+- Not done yet ([`test.md`](../test.md)): running a model written by flopy3
   and by flopy4 and comparing the results, round-trip tests over the
   corpus, and porting the flopy3 autotests and MF6 examples.
 - 1190 test functions (2157 collected with parameters).
@@ -152,7 +134,7 @@ Running a flopy3 quickstart against flopy4:
 | `MFSimulation(sim_name=, sim_ws=, exe_name=)` | `Simulation(name=, workspace=)` |
 | `ModflowGwfdis(gwf, ...)`: the parent positional | `Dis(parent=gwf, ...)`: keyword only |
 | `ModflowGwf(sim, modelname=)` | `Gwf(parent=sim, name=)` |
-| `stress_period_data=[...]` (a bare list for period 0) | raises (`'list' object has no attribute 'items'`). [`migrating.md`](docs/migrating.md) says a list means period 0, so this looks like a bug. |
+| `stress_period_data=[...]` (a bare list for period 0) | raises (`'list' object has no attribute 'items'`). [`migrating.md`](../../migrating.md) says a list means period 0, so this looks like a bug. |
 | `sim.write_simulation()` / `run_simulation()` | `write()` / `run()` |
 | `gwf.modelgrid` | `gwf.grid` |
 | `gwf.get_package("chd")`, `sim.get_model()` | `gwf["chd0"]` (`Flopy3Model` has `get_package`) |
@@ -226,7 +208,7 @@ early, with none of that.
 ### 3.x work
 
 This is what makes the 4.x swap mechanical. All of it lands on flopy
-`develop`, and none of it needs the new engine. It takes up #37's
+`develop`, and none of it needs the new engine. None of it has started yet. It takes up #37's
 refactoring list where it helps the swap.
 
 1. **Move engine-agnostic utilities out of `flopy/mf6`.** Move
@@ -291,7 +273,7 @@ flopy/
 
 Generated from the DFNs alongside the classes (so `sync` keeps it
 current), plus handwritten pieces for Simulation and Model.
-`flopy3-migration-plan.md` moves most of this into flopy4 itself, as
+[`flopy3-migration.md`](flopy3-migration.md) moves most of this into flopy4 itself, as
 runtime aliases before MMP. What's left for the 4.x compat layer is the
 generated `ModflowXxx` names, and whatever the migration plan classifies
 as compat-only.
@@ -312,17 +294,17 @@ as compat-only.
   is the array now); or (b) compat classes return a small read-only view
   with `.array`/`.get_data(kper)`. The new classes stay clean, but then
   the same package behaves differently depending on which class built
-  it. I lean toward (a) plus the legacy path. Decide with the scoreboard
+  it. Recommendation: (a) plus the legacy path. Decide with the scoreboard
   numbers, not ahead of them.
 - **`gwf.output.head()`**: `head` is a `DataArray` property in flopy4 and
   a method returning `HeadFile` in flopy3. Pick one before 4.0. Something
-  callable that also acts as a DataArray is possible but too clever. I'd
+  callable that also acts as a DataArray is possible but too clever. Recommendation:
   rename one side (e.g. flopy4's `output.head` → `output.heads`, or
   `output.head()` returning the DataArray) so compat can keep the old
   name.
 - **Rule**: same result or a clear error. Every compat class or method
   warns (`FutureWarning`, once per call site) and links to
-  `docs/migrating.md`. The migration plan refines this for the aliases
+  [`migrating.md`](../../migrating.md). The migration plan refines this for the aliases
   in flopy4: "accept" forms don't warn, "deprecate" forms warn with the
   same `FutureWarning`.
 
@@ -334,7 +316,7 @@ as compat-only.
 | B. old engine internals | `test_mf6_set_data_*`, `max_columns`, `header_preservation`, `DataStorageType`, external-file and `lazy_io` tests, `model_splitter`, much of `test_mf6.py` / `regression/test_mf6.py` | re-point to `flopy.mf6.legacy` (an import rewrite); they protect the frozen engine |
 | C. compat scoreboard | tier B's end-to-end tests (build/load → write → run → compare), MF6 autotests, modflow6-examples, all against `flopy.mf6` compat | report, don't gate: an `xfail(strict=False)` manifest like `test_mf6_load_all_models.py`. A test that starts passing gets pinned |
 | D. new engine | this repo's ~1190 tests, benchmarks | move in, must pass |
-| E. equivalence | every registry model: load/write/run with legacy and with new, compare heads and budgets; also compare written input files after normalization (by the option labels, `layout-logical-decisions.md` "Track A") | **the gate for MMP, and again for 4.0** |
+| E. equivalence | every registry model: load/write/run with legacy and with new, compare heads and budgets; also compare written input files after normalization (by the option labels, [`layout-logical-decisions.md`](../spec/layout-logical-decisions.md) "Track A") | **the gate for MMP, and again for 4.0** |
 
 The flopy tests aren't so tied to the old engine that they need
 rewriting. They split cleanly, and the ones that are tied (B) should
@@ -345,7 +327,7 @@ a red test there means the compat layer needs work or we should document
 a break.
 
 Start E here, before the branch: it's the open item in
-`docs/dev/test.md`, and it finds engine bugs, which the compat layer
+[`test.md`](../test.md), and it finds engine bugs, which the compat layer
 can't fix.
 
 ## MF6 versions in 4.x
@@ -357,7 +339,7 @@ developer step.
 - A 4.x release ships classes synced to the latest MF6 release.
   `flopy mf6 sync <version|develop|path>` regenerates them, plus the
   compat classes (they're generated too, so they're in
-  `GENERATED_FILES`). `docs/mf6-versions.md` comes over as is, renamed.
+  `GENERATED_FILES`). [`mf6-versions.md`](../../mf6-versions.md) comes over as is, renamed.
 - The legacy engine is frozen and doesn't sync. Say so in its docs.
 - **MF6's CI** replaces `update-flopy` (`generate_classes --dfnpath ...`)
   with `flopy mf6 sync doc/mf6io/mf6ivar/dfn --developmode`. Sync
@@ -365,7 +347,7 @@ developer step.
   them in the constructor table); `--developmode` (#522) keeps them. This
   is the first real user of decoupling, and the best test of it.
 - `sync` writes into site-packages. That's fine for 4.0. Revisit the
-  per-user directory (`user-dir-classes-plan.md`) once `mf6 --spec`
+  per-user directory ([`user-dir-classes.md`](../components/user-dir-classes.md)) once `mf6 --spec`
   lands, as that plan says.
 - `Simulation.run`'s version check comes over unchanged. Compat's
   `run_simulation` gets it too.
@@ -374,7 +356,8 @@ developer step.
 
 **Phase 0 (here, through MMP):**
 
-1. Fix the bare-list `stress_period_data` bug the probe found (still
+1. Fix the bare-list `stress_period_data` bug found by running a flopy3 quickstart
+   against flopy4 (still
    open on `8d25e4b7`).
 2. Equivalence harness (tier E) over the registry, starting with the
    models that both load.
@@ -388,7 +371,7 @@ developer step.
 5. Survey pyemu, modflow-setup and the MF6 repo's scripts for which
    flopy3 mf6 internals they use, to decide what goes in compat versus
    the legacy path.
-6. Shrink the flopy3 gap in flopy4 itself (`flopy3-migration-plan.md`:
+6. Shrink the flopy3 gap in flopy4 itself ([`flopy3-migration.md`](flopy3-migration.md):
    runtime aliases growing out of `flopy4/mf6/legacy.py`, the shared
    generated table, the `flopy4 migrate` codemod), and run its corpus
    scoreboard against MF6's autotests and the examples from here.
@@ -429,7 +412,7 @@ of Phases 0 and 1 can run at the same time.
 
 ### Parallel tracks
 
-Start them all at once. Letters match `docs/dev/mmp-plan.md`, which also
+Start them all at once. Letters match [`mmp-plan.md`](../mmp-plan.md), which also
 has the MMP-only tracks (B to E):
 
 | track | where | items | needed by |
@@ -441,10 +424,10 @@ has the MMP-only tracks (B to E):
 
 ### Before MMP
 
-Tracked in `docs/dev/mmp-plan.md`. From this plan: tier E passes on the
+Tracked in [`mmp-plan.md`](../mmp-plan.md). From this plan: tier E passes on the
 registry corpus, decision 3 (`output.head`) is made and implemented,
 since testers write code against it, and the migration scoreboard
-(`flopy3-migration-plan.md` step 8) runs from here.
+([`flopy3-migration.md`](flopy3-migration.md) step 8) runs from here.
 
 ### Before cutting `4.x`
 
@@ -519,7 +502,7 @@ move isn't a risk.
 ## Open decisions
 
 1. Legacy engine in 4.x: yes or no, its namespace, and how long it stays.
-   (I recommend yes, `flopy.mf6.legacy`, until 5.0.)
+   (Recommendation: yes, `flopy.mf6.legacy`, until 5.0.)
 2. Compat data access: (a) raise with a hint, or (b) views.
 3. `output.head`: which side renames.
 4. Whether to accept 4.x keywords in 3.x (3.x item 5).

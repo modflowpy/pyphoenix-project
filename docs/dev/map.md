@@ -35,11 +35,11 @@ All core and most peripheral functionality, and may involve:
 
 Release to wider test audience at USGS and Deltares via `pip install` from github URL. Begin beta versioning.
 
-What's left to reach the MMP, and in what order, is in [mmp-plan.md](mmp-plan.md).
+What's left to reach the MMP, and in what order, is in [mmp-plan.md](mmp-plan.md). All plans and design notes are listed in [plans.md](plans.md).
 
 ### Release candidates
 
-Integrated into the existing repository on a `4.x` branch, cut once MMP feedback has settled the API. Released as `flopy==4.0.0rcN` via PyPI and conda-forge. See `flopy-integration-plan.md`.
+Integrated into the existing repository on a `4.x` branch, cut once MMP feedback has settled the API. Released as `flopy==4.0.0rcN` via PyPI and conda-forge. See [`flopy-integration.md`](integration/flopy-integration.md).
 
 ### GA
 

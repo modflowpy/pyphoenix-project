@@ -1,5 +1,7 @@
 # Datetime period keys (#518), then `create_tdis` (#226)
 
+Status: **in progress** (#518, #226).
+
 ## Goal
 
 Let period-keyed package data (fill-forward fields: CHD/WEL/... lists,

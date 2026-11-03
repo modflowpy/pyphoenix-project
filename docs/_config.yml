@@ -2,6 +2,15 @@ title: flopy4 / pyphoenix
 author: MODFLOW Development Team
 logo: ""
 
+# plans and design notes are read in the source tree (see dev/plans.md)
+exclude_patterns:
+  - dev/plans.md
+  - dev/integration/*
+  - dev/xarray/*
+  - dev/components/*
+  - dev/spec/*
+  - dev/spec/**/*
+
 execute:
   execute_notebooks: "off"
 

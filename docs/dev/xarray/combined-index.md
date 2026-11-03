@@ -1,9 +1,12 @@
 # Combined grid index: rebuilding on `CellIndex`
 
-Notes from the dead-code review (develop @ 613b5c50). `flopy4/mf6/indexes.py`
-is being deleted. This covers what it would take to bring back a combined
-index on top of `CellIndex`, and how that compares to what we do now. It
-builds on `rotated-grid-index-plan.md` ("Why not an index (yet)"), which
+Status: **deferred.** Revisit if DISV needs its own index anyway (see
+[`package.md`](package.md), "xugrid").
+
+`flopy4/mf6/indexes.py`, an early xarray index prototype, was deleted in
+#510. This covers what it would take to bring back a combined index on top
+of `CellIndex`, and how that compares to what we do now. It
+builds on [`rotated-grid-index.md`](rotated-grid-index.md) ("Why not an index (yet)"), which
 already prototyped a z index.
 
 ## What `indexes.py` did
@@ -34,7 +37,7 @@ behave the same, with more code.
 A combined index only helps when the children **depend on each other**: one
 label's answer depends on what another label chose. On a DIS grid, z is the
 case that needs it. The layer containing z depends on which `(row, col)` x/y
-picked (see the `ZIndex` prototype in `rotated-grid-index-plan.md`). Merging
+picked (see the `ZIndex` prototype in [`rotated-grid-index.md`](rotated-grid-index.md)). Merging
 independent answers gives wrong results for scalar x/y and raises
 `IndexError` for lists.
 
@@ -50,7 +53,7 @@ one `sel` call.
   - `xindex: CellIndex | None` (on `col`)
   - `yindex: CellIndex | None` (on `row`)
   - `z_top`/`z_bot`: `Variable`s on `(layer, row, col)`, or `None` for
-    arrays without z (1-layer arrays, RCHA/EVTA; see `rch-evt-layer-plan.md`).
+    arrays without z (1-layer arrays, RCHA/EVTA; see [`rch-evt-layer.md`](rch-evt-layer.md)).
   - `z` (centres), which it owns so that `sel(z=...)` reaches it, but which
     it answers by containment over the bounds, not by centre.
 - Composition, not inheritance: x and y keep all their behaviour from

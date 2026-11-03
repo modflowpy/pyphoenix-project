@@ -25,10 +25,10 @@ package later is a packaging decision rather than a redesign.
      hand the representation to xugrid, rioxarray, cf_xarray or flopy3 in
      memory. Those libraries write their own files.
 
-   `docs/dev/xarray-representation.md` explains how netCDF, CF, UGRID, the
+   [`representation.md`](representation.md) explains how netCDF, CF, UGRID, the
    MF6 NetCDF format and the representation relate.
 3. **The boundary is a data contract, not an API.** The export schema from
-   `xarray-export-plan.md` phase 1 is the interface. flopy4 produces it;
+   [`export.md`](export.md) phase 1 is the interface. flopy4 produces it;
    the package (the accessor, `dense()`, the writers and adapters)
    consumes it, using
    only what's in the dataset. The export plan already states the rule:
@@ -49,26 +49,26 @@ This is the umbrella doc for direction: decisions, the boundary, when to
 extract, coordination, and all open questions. The other docs keep their
 scope:
 
-- **`docs/dev/xarray-representation.md`** is the spec: what the
+- **[`representation.md`](representation.md)** is the spec: what the
   representation is, how it relates to netCDF, CF, UGRID and MF6 NetCDF,
   and the notes on the MF6 NetCDF format.
-- **`xarray-export-plan.md`** is the implementation checklist for the
+- **[`export.md`](export.md)** is the implementation checklist for the
   export, the accessor and the cell layouts.
 - The plans below are where specific pieces were designed. The spec now
   summarizes what they decided.
 
 | Doc | Scope | Layer | Status |
 |---|---|---|---|
-| `xarray-export-plan.md` | lossless `to_xarray`/`from_xarray`, `dense()`, `flatten()` | flopy (export) + package (accessor) | Decided, not started. Phase 1 fills in the spec. Needs branch `to-xarray-constants` merged first. |
-| `rotated-grid-index-plan.md` | DIS coords, rotation, `CellIndex`, z selection, `.grid` accessor | package (grid) | Mostly done (#469–#490). Its Next list is still live; Next 1 (DISV) should follow the xugrid stance below. |
-| `rch-evt-layer-plan.md` | z coordinates for RCHA/EVTA arrays | package (grid) | Not started. |
-| `combined-index-notes.md` | a combined `GridIndex` on `CellIndex` | package (grid) | Deferred. Revisit if DISV needs its own index anyway (see xugrid). |
-| `datetime-periods-plan.md` | datetime period keys, `create_tdis` | flopy + package (time) | In progress (#518, #226). |
-| `tas-interpolation-plan.md` | time-array series in the dense view | package (time) | Ready, not started. Its step view is a dynamic-derivation view: opt-in, never read back by `from_xarray`. |
-| `layout-logical-decisions.md` | how options appear (logical as data, layout as encoding, output off the data); constants and dynamic derivations held as given | flopy (export) | Proposal. Feeds export phase 1. |
+| [`export.md`](export.md) | lossless `to_xarray`/`from_xarray`, `dense()`, `flatten()` | flopy (export) + package (accessor) | Decided, not started. Phase 1 fills in the spec. Needs branch `to-xarray-constants` merged first. |
+| [`rotated-grid-index.md`](rotated-grid-index.md) | DIS coords, rotation, `CellIndex`, z selection, `.grid` accessor | package (grid) | Mostly done (#469–#490). Its Next list is still live; Next 1 (DISV) should follow the xugrid stance below. |
+| [`rch-evt-layer.md`](rch-evt-layer.md) | z coordinates for RCHA/EVTA arrays | package (grid) | Not started. |
+| [`combined-index.md`](combined-index.md) | a combined `GridIndex` on `CellIndex` | package (grid) | Deferred. Revisit if DISV needs its own index anyway (see xugrid). |
+| [`datetime-periods.md`](datetime-periods.md) | datetime period keys, `create_tdis` | flopy + package (time) | In progress (#518, #226). |
+| [`tas-interpolation.md`](tas-interpolation.md) | time-array series in the dense view | package (time) | Ready, not started. Its step view is a dynamic-derivation view: opt-in, never read back by `from_xarray`. |
+| [`layout-logical-decisions.md`](../spec/layout-logical-decisions.md) | how options appear (logical as data, layout as encoding, output off the data); constants and dynamic derivations held as given | flopy (export) | Proposal. Feeds export phase 1. |
 | period lists (#476) | period lists in xarray, dense/sparse | flopy (encode) + package (densify) | Done. The spec's "Period data" records the result; the dense view becomes `dense()`. |
-| `docs/dev/spatial-index-design.md` on `origin/xarray-index` (#278) | original spatial index design | — | Superseded by `rotated-grid-index-plan.md`, whose Next 9 covers the housekeeping. |
-| `docs/dev/sdd.md` "Xarray conversion", "NetCDF" | SDD description | both | Update after export phase 1 (representation) and once the writers and adapters exist (NetCDF); see step 7. |
+| `docs/dev/spatial-index-design.md` on `origin/xarray-index` (#278) | original spatial index design | — | Superseded by [`rotated-grid-index.md`](rotated-grid-index.md), whose Next 9 covers the housekeeping. |
+| [`sdd.md`](../sdd.md) "Xarray conversion", "NetCDF" | SDD description | both | Update after export phase 1 (representation) and once the writers and adapters exist (NetCDF); see step 7. |
 | [xattree #36][x36] | functional rewrite of xattree | generic (A1) | Open. flopy4's `attrs_xarray.py` is the working prototype; see "xattree". |
 | #367 | attrs vs pydantic dataclasses | flopy (object model) | Stale. Its outcome decides whether xattree v2 is attrs-only. |
 
@@ -109,7 +109,7 @@ at all.
 ## The representation
 
 The contract from decision 3, specified in
-`docs/dev/xarray-representation.md`: grid dims and coordinates, the tree
+[`representation.md`](representation.md): grid dims and coordinates, the tree
 and type tags, period data as given (dense and flat are views), time, and
 attributes and fill values. Export plan phase 1 makes `to_xarray` produce
 it and settles the spec's open points as it goes.
@@ -127,7 +127,7 @@ section has the full picture; in short:
   `netcdf.py` writes today, restated as a fixed flattening of the grouped
   layout, aiming to be valid CF and UGRID. Readers reverse it and, while
   coverage is partial, merge in the fields that come from text input. CF
-  bounds come with it (`rotated-grid-index-plan.md` Next 3).
+  bounds come with it ([`rotated-grid-index.md`](rotated-grid-index.md) Next 3).
 - **Adapters:** `to_ugrid()`/`from_ugrid()` (xugrid, DISV and layered
   DIS), `to_rioxarray()` (structured grids; rioxarray takes a rotated
   affine transform but its 1-D x/y assume no rotation, so check this),
@@ -152,10 +152,10 @@ across models.
   returns xugrid objects from `to_xarray`. Don't merge it as is. Its useful
   parts (dropping hand-written UGRID attrs, keeping CF bounds) go into the
   UGRID adapter and the ungrouped mesh writer instead.
-- **DISV selection** (`rotated-grid-index-plan.md` Next 1): output readers
+- **DISV selection** ([`rotated-grid-index.md`](rotated-grid-index.md) Next 1): output readers
   return `UgridDataArray` today. For the representation, prefer a plain
   dataset with an index (an `NDPointIndex` for nearest, or our own
-  containment index, maybe the `combined-index-notes.md` design). Use
+  containment index, maybe the [`combined-index.md`](combined-index.md) design). Use
   `to_ugrid()` for anything xugrid does better (regridding, plotting).
 - **Watch xugrid #35 / PR #373** (custom indexes instead of wrapper types).
   If it lands, DISV could be "plain dataset plus xugrid's index", and the
@@ -236,7 +236,7 @@ provider/resolver protocols. Check this before extracting.
 Roughly in order. Each is small and fits the existing plans. None needs a
 new repo.
 
-1. **Finish the representation spec** (`docs/dev/xarray-representation.md`,
+1. **Finish the representation spec** ([`representation.md`](representation.md),
    drafted) as part of export plan phase 1, settling its open points (bool
    encoding, type tags, the float fill value).
 2. **Rename the accessor** from `.grid` to something distinctive (e.g.
@@ -256,7 +256,7 @@ new repo.
    above.
 6. **Lazy xugrid** everywhere in the subpackage, then decide whether it's
    an optional dependency.
-7. **Update `docs/dev/sdd.md`** ("Xarray conversion", "NetCDF") to describe
+7. **Update [`sdd.md`](../sdd.md)** ("Xarray conversion", "NetCDF") to describe
    the representation, the two MF6 NetCDF layouts, the adapters, and the
    boundary. The current "NetCDF" section ("adopt xugrid ... `.to_netcdf()`
    through the appropriate accessor") is close to right, except that xugrid
@@ -300,7 +300,7 @@ timing.
   is the ungrouped layout meant to cover the whole simulation, and would
   MF6 ever read a grouped one? Don't post without asking.
 - **xugrid**: follow #35 / #373. Report DISV edge-tie behaviour if it
-  differs from DIS (`rotated-grid-index-plan.md` Next 1).
+  differs from DIS ([`rotated-grid-index.md`](rotated-grid-index.md) Next 1).
 - **xattree**: ours, so no outside coordination, apart from where it lives
   (personal repo vs MODFLOW-ORG). Note in #36 that flopy4's `attrs_xarray.py`
   is the prototype, when there's something to point at. Don't post without
@@ -328,7 +328,7 @@ timing.
   Prefer not: the writers take the metadata from attrs that flopy puts on
   the representation, and devtools stays a flopy dependency only.
 - Representation for DIS2D/DISV2D/DISV1D (OLF/CHF).
-- When to get this branch's docs onto develop: now, as plans, or with
+- When to merge these plans onto develop: now, as plans, or with
   export phase 1.
 - attrs vs pydantic (#367): whether xattree v2 is attrs-only or works with
   any dataclass-like.

@@ -1,9 +1,9 @@
 # xarray export plan
 
 Status: design **decided** (2026-11-02), implementation not started. The
-spec it builds to is `docs/dev/xarray-representation.md`; the direction
+spec it builds to is [`representation.md`](representation.md); the direction
 and the higher-level open questions are in
-`xarray-package-plan.md`.
+[`package.md`](package.md).
 
 This started from a dead-code audit question: is the test-only half of
 the attrs/xarray layer (`mixins.py`, `protocols.py`, `dataset_to_attrs`,
@@ -35,7 +35,7 @@ replace it.
    does now. Filling forward is the accessor's job.
 5. **The complete export is writable to netCDF.** It is distinct from
    MF6's NetCDF input format (`flopy4/mf6/netcdf.py`, `NetCDFModel`), and
-   the docs must say which is which. `docs/dev/xarray-representation.md`
+   the docs must say which is which. [`representation.md`](representation.md)
    does: this is MF6 NetCDF (grouped), and `netcdf.py` writes MF6 NetCDF
    (ungrouped), a flattening of the same representation.
 6. **Keep `protocols.py`; put the methods on `Package`/`Context` directly;
@@ -49,7 +49,7 @@ replace it.
    on DISV. `grid.flatten()` gives the flat `node` view, as on DISU, and
    `grid.unflatten()` goes back. This is plain `stack`/`unstack`, not a
    custom index. The old "index mapping nodes to layer/row/col" (#207, see
-   `rotated-grid-index-plan.md`) was dropped in #469 and stays dropped.
+   [`rotated-grid-index.md`](rotated-grid-index.md)) was dropped in #469 and stays dropped.
 
 ## Where things stand
 
@@ -129,7 +129,7 @@ them directly.
   it. Keep DFN dims when the grid doesn't resolve. Record the grid sizes
   (`nlay`, `nrow`, `ncol`, ...) and `nper` in attrs so the accessor and
   the decoder have them.
-- **Options and constants as given** (`layout-logical-decisions.md`,
+- **Options and constants as given** ([`layout-logical-decisions.md`](../spec/layout-logical-decisions.md),
   "Track C"). Logical options are data or attrs on the node, layout
   options an encoding record (`encoding` or prefixed attrs, decide here),
   output options off the package's data. Write the Options section of
@@ -181,7 +181,7 @@ them directly.
 - Delete `Component._collect_child_griddata_datasets` and the merge in
   `Component.to_xarray`.
 - **Update callers**: `docs/examples/period-data.py` (+ the `.ipynb`), the
-  `to_xarray` example in `docs/dev/sdd.md`, and the tests in
+  `to_xarray` example in [`sdd.md`](../sdd.md), and the tests in
   `test/mf6/test_mf6_period_lists.py` and `test/mf6/test_mf6_component.py`
   that use `to_xarray` options or expect the view's shape. Check
   `flopy4/mf6/adapters.py` (it calls `attrs_to_dataset` directly) still
@@ -193,7 +193,7 @@ Decision 7. Both methods go on the `grid` accessor next to `dense()`,
 work on Dataset and DataArray, and compose with it
 (`ds.grid.dense().grid.flatten()`).
 
-How this fits `xarray-package-plan.md`:
+How this fits [`package.md`](package.md):
 
 - `flatten()`/`unflatten()` are views, like `dense()`. They belong to the
   package side (grid and data semantics), use only what's in the
@@ -330,7 +330,7 @@ References:
   `from_dataset`/`from_datatree`). Add `isinstance` checks to the tests.
 - Delete `flopy4/mixins.py`, and move the `Leaf`/`Node` tests in
   `test/test_attrs_xarray.py` off the mixins onto the plain functions.
-- Update `docs/dev/sdd.md` ("Xarray conversion") to describe the complete
+- Update [`sdd.md`](../sdd.md) ("Xarray conversion") to describe the complete
   export, the accessor view, and how both differ from MF6 NetCDF input.
 - Close the dead-code audit question (above): the layer was kept and finished.
 
@@ -341,7 +341,7 @@ References:
 - Whether the old instance `from_xarray` survives in any form (phase 2).
 - Whether `dense()` lives on DataArray too, or only on Dataset.
 - Names (`flatten()`/`unflatten()`, `node` vs `nodes`) are decided with
-  the accessor name; see `xarray-package-plan.md` "Open".
+  the accessor name; see [`package.md`](package.md) "Open".
 - Whether `.grid.sel(layer=, row=, col=)` and `.grid.sel(x=, y=)` should
   work on the flat view (map to `node` positions), or require
   `unflatten()` first.

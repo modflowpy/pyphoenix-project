@@ -3,9 +3,9 @@
 Status: **draft.** This is the spec the export work builds to. Each
 section says what exists today and what is planned. Where a point is still
 open, it says so; the open questions are collected in
-`xarray-package-plan.md` ("Open"). The design behind it is in
-`xarray-package-plan.md`, the implementation steps in
-`xarray-export-plan.md`, both at the repo root.
+[`package.md`](package.md) ("Open"). The design behind it is in
+[`package.md`](package.md), the implementation steps in
+[`export.md`](export.md).
 
 The representation is the in-memory form of an MF6 simulation as xarray
 objects: what flopy4's `to_xarray` produces, what `from_xarray` accepts, and
@@ -15,7 +15,7 @@ Files are written from it, and no file format is the representation itself.
 **"Layout" in this doc** means one of two things, always qualified: the
 two MF6 NetCDF *layouts* (grouped and ungrouped), and the two *cell
 layouts* (flat `node` and layered). Neither is the MF6 *file* layout of
-`layout-logical-decisions.md` (blocks, `CONSTANT`, `READASARRAYS`), which
+[`layout-logical-decisions.md`](../spec/layout-logical-decisions.md) (blocks, `CONSTANT`, `READASARRAYS`), which
 here is the encoding of options and arrays.
 
 ## How it relates to netCDF, CF, UGRID and the MF6 NetCDF format
@@ -259,7 +259,7 @@ anything is proposed upstream.
 
 ### Coordinates on a DIS array
 
-From `rotated-grid-index-plan.md`, where the design and its alternatives
+From [`rotated-grid-index.md`](rotated-grid-index.md), where the design and its alternatives
 are recorded.
 
 | Coord | Dims | Index | Rotated grid | Unrotated grid |
@@ -290,7 +290,7 @@ are recorded.
   `z_top[0] = top`, `z_top[k] = botm[k-1]` and `z_bot = botm`. They're on
   every array on the grid's layers. `top` gets layer 0's. RCHA/EVTA arrays
   don't get them unless the model has one layer, since the layer their
-  values go to depends on `irch`/`ievt` (`rch-evt-layer-plan.md`).
+  values go to depends on `irch`/`ievt` ([`rch-evt-layer.md`](rch-evt-layer.md)).
 
 ### DISV and DISU
 
@@ -298,7 +298,7 @@ are recorded.
   `angrot` about the origin), unindexed. `z`/`z_top`/`z_bot` on
   `(layer, cell)`. No containment index yet; whether DISV input gets an
   `NDPointIndex`, its own index, or goes through `to_ugrid()` is open
-  (`rotated-grid-index-plan.md` Next 1).
+  ([`rotated-grid-index.md`](rotated-grid-index.md) Next 1).
 - **DISU:** `x`/`y` on `node` from `cell2d`. Per-node z coordinates, from
   DISU's own `top`/`bot`, are open.
 
@@ -392,7 +392,7 @@ Partly open.
 
 - **`per`** is the 0-based stress period index, in list tables and in
   `<name>_period` labels.
-- **Datetime period keys** (`datetime-periods-plan.md`, #518): packages
+- **Datetime period keys** ([`datetime-periods.md`](datetime-periods.md), #518): packages
   may be keyed by datetimes. Keys stay as given and are resolved to `per`
   against TDIS when needed, so TDIS stays the one source of truth for what
   period *n* means.
@@ -402,7 +402,7 @@ Partly open.
   between them (the period of each step). Not built.
 - **Time-array series** stay NaN plus a name in the representation.
   Evaluating them (MF6 averages over each step, STEPWISE or LINEAR only) is
-  a view; see `tas-interpolation-plan.md`.
+  a view; see [`tas-interpolation.md`](tas-interpolation.md).
 - Whether the time code (TDIS to time coordinates, TAS evaluation) belongs
   to the package or to flopy is open, leaning package, since output readers
   need it too.
