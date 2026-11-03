@@ -1,8 +1,11 @@
 # The MF6 xarray representation
 
-Status: **draft.** Only the first section is written. The rest is an outline,
-to be filled in during `xarray-export-plan.md` phase 1. The design behind it
-is in `xarray-package-plan.md` at the repo root.
+Status: **draft.** This is the spec the export work builds to. Each
+section says what exists today and what is planned. Where a point is still
+open, it says so; the open questions are collected in
+`xarray-package-plan.md` ("Open"). The design behind it is in
+`xarray-package-plan.md`, the implementation steps in
+`xarray-export-plan.md`, both at the repo root.
 
 The representation is the in-memory form of an MF6 simulation as xarray
 objects: what flopy4's `to_xarray` produces, what `from_xarray` accepts, and
@@ -199,43 +202,217 @@ grouped one:
 - **A flattening rule for the whole simulation**, including how dims are
   named or shared across models.
 - **Structured identity:** separate model, package and tag attributes, or a
-  documented grammar for `modflow_input`, so the reader doesn't have to
-  guess package names.
+  documented grammar for `modflow_input`. Today the reader has to parse
+  `<model>/<package>/<tag>` strings, and the package name depends on the
+  namefile (or the name FloPy generated). The format sets no naming rules
+  beyond CF, so this attribute is the only reliable identity.
 - **Coverage:** list data, options and scalars, simulation-level
   components, DISU and DIS2D/DISV2D/DISV1D.
 - **CF/UGRID validity as a stated goal:** a `layer` dim rather than split
-  variables (or a documented reason for splitting), and 2-D auxiliary
-  coordinates for rotated grids.
+  variables (`npf_k_l1`, `z_l<n>`, each with a `layer` attr), or a
+  documented reason for splitting; 2-D auxiliary coordinates for rotated
+  grids, which without a CRS lose `axis`/`standard_name` today; and
+  bounds, `grid_mapping` and standard names throughout.
 - **Consistent fill values** per dtype.
 - **A time mapping** between period-sized input time and step-sized output
   time.
 - **Groups**, eventually, if MF6 is to read the grouped layout.
 
-These come from reading the wiki and need checking against the MF6 source,
+These come from reading the wiki (2026-11-03) and need checking against
+the MF6 source,
 and the coverage goal needs confirming with the MF6 developers, before
 anything is proposed upstream.
 
 ## Grid dims and coordinates
 
-To write. DIS from `rotated-grid-index-plan.md` "Coordinates on a DIS
-array". A table for DISV and DISU still needs writing. DIS2D/DISV2D/DISV1D
-are TBD.
+### Dims
+
+| Grid | Cell dims | Flat view | Status |
+|---|---|---|---|
+| DIS | `(layer, row, col)` | `node` | done (#469) |
+| DISV | `(layer, cell)` | `node` | done |
+| DISU | `(node,)` | (already flat) | done |
+| DIS2D, DISV2D, DISV1D (OLF, CHF) | TBD | TBD | open |
+
+- **Dims are named for the grid's axes**, not the DFN sizes (`nlay`,
+  `nrow`, `ncol`, `ncpl`, `nodes`), since they're typed in selections all
+  the time and xarray has no dim aliases. The DFN names appear only as
+  sizes in attrs, and as fallback dims for an array whose grid doesn't
+  resolve. The mapping is `flopy4.mf6.constants.GRID_DIMS`.
+- **`cell`, not `node`, on DISV**, because in UGRID a node is a vertex.
+  `node` means an MF6 user node: a cell numbered in 3-D, as on DISU.
+- **No index coordinates on `layer`/`row`/`col`/`cell`.** Positions are
+  the indices, 0-based (`isel`). Selecting by MF6's 1-based numbers is a
+  separate accessor method (`sel_cell`, planned).
+- **Arrays not on the cells** get one dim per shape name: DIS `delr` on
+  `col`, `delc` on `row`. Arrays with one layer's worth of values (DIS/DISV
+  `top`, RCHA `recharge`) keep a size-1 `layer` dim.
+- **The flat view** (`flatten()`/`unflatten()`, export plan phase 2b)
+  stacks the cell dims into `node`, layer slowest, so position `i` is user
+  node `i + 1`. It's a view, not stored.
+
+### Coordinates on a DIS array
+
+From `rotated-grid-index-plan.md`, where the design and its alternatives
+are recorded.
+
+| Coord | Dims | Index | Rotated grid | Unrotated grid |
+|---|---|---|---|---|
+| `x` | `col` | `CellIndex` | local, zero-based | world |
+| `y` | `row` | `CellIndex` | local, zero-based | world |
+| `dx`/`dy` | scalar if uniform, else `col`/`row` | none | cell sizes (`dy` negative) | same |
+| `projection` | scalar | none | grid mapping | grid mapping |
+| `x_world`/`y_world` | `(row, col)` | none | world centres | omitted (same as `x`/`y`) |
+| `z` | `(layer, row, col)` | none | cell-centre elevation | same |
+| `z_top`/`z_bot` | `(layer, row, col)` | none | cell top and bottom | same |
+
+- **`x`/`y` are in the grid's CRS.** Unrotated, that's the base CRS, so
+  they're world coordinates. Rotated, it's a derived CRS (an EPSG:9624
+  affine wrapping the base), so they're local. Rotation lives in the CRS,
+  not in the coordinate values. This is CF's `rotated_latitude_longitude`
+  pattern, and what MF6's own netCDF writer does.
+- **`projection`** has the value `1`, and attrs `xorigin`/`yorigin`/
+  `angrot` always, plus `crs_wkt` and `grid_mapping_name` when there's a
+  CRS. Gridded variables name it in their `grid_mapping` attr.
+  `xorigin`/`yorigin`/`angrot` aren't CF, but without a CRS they're the
+  only record of where the grid is.
+- **`CellIndex`** is a `PandasIndex` that also keeps each cell's edges.
+  `sel` without a `method` gives the cell containing the point. A point on
+  an edge goes to the lower-numbered cell (west, north), as in flopy3. A
+  point outside raises `KeyError`.
+- **z coordinates** come from `top`/`botm` (`vertical.z_coords`), with
+  `z_top[0] = top`, `z_top[k] = botm[k-1]` and `z_bot = botm`. They're on
+  every array on the grid's layers. `top` gets layer 0's. RCHA/EVTA arrays
+  don't get them unless the model has one layer, since the layer their
+  values go to depends on `irch`/`ievt` (`rch-evt-layer-plan.md`).
+
+### DISV and DISU
+
+- **DISV:** `x`/`y` on `cell`, world coordinates from `cell2d` (rotated by
+  `angrot` about the origin), unindexed. `z`/`z_top`/`z_bot` on
+  `(layer, cell)`. No containment index yet; whether DISV input gets an
+  `NDPointIndex`, its own index, or goes through `to_ugrid()` is open
+  (`rotated-grid-index-plan.md` Next 1).
+- **DISU:** `x`/`y` on `node` from `cell2d`. Per-node z coordinates, from
+  DISU's own `top`/`bot`, are open.
+
+### What isn't stored
+
+Indexes aren't written to files. An array read back from netCDF has its
+coordinates but needs `index_xy` (or an accessor method, planned) to get
+its `CellIndex` back. Cell bounds (`x_bnds`/`y_bnds`/`z_bnds`, CF
+`bounds`) are planned for the writers, so a file can be indexed without
+the GRB.
 
 ## Tree, names and type tags
 
-To write.
+Planned, in export plan phase 1. Today `attrs_to_datatree` names nodes by
+field and position (`models0`, `chd0`) and can't recover concrete types.
+
+- **Packages give an `xr.Dataset`, contexts an `xr.DataTree`.** The
+  simulation is the root. Models, exchanges, solutions and TDIS are its
+  children, and packages are children of their model. A package looks the
+  same whether exported alone or pulled out of its model's tree: it carries
+  its own grid coordinates.
+- **Nodes are named by the component's name** (`gwf_1/npf`), not by field
+  and position.
+- **Every node has a type tag**, `attrs["type"]`, so a reader can pick the
+  concrete class for `list[Model]` and union fields. Leaning toward the DFN
+  component name (`gwf-npf`), since it doesn't depend on Python; the class
+  path is the alternative (open).
+- **Grid metadata in attrs:** the grid type and sizes (`nlay`, `nrow`,
+  `ncol`, `ncpl`, `nodes`) and `nper`, so `dense()`, `unflatten()` and the
+  writers never need the DIS object.
+- **References** between components (a solution's models, an exchange's
+  models) are stored by name.
+- **Empty child lists** are omitted.
 
 ## Period data
 
-To write. Period arrays along `<name>_period`, and list data as a sparse
-table (see `period-lists-plan.md`).
+Data given per stress period is stored **as given**: only the periods the
+user set, never filled forward. Filling forward is a view (`dense()`).
+
+### Period arrays
+
+RCHA's `recharge`, WELG's `q` and the like (built, in `attrs_xarray`):
+
+- stacked along a `<name>_period` dim, labelled by the periods given;
+- a value from a time-array series is NaN, with the series' name in a
+  `<name>_tas` coordinate along `<name>_period` (`None` where a period has
+  no series).
+
+### Period lists
+
+CHD's, WEL's, SFR's stress period data (the sparse form is built, as
+`to_xarray(sparse=True)`; export phase 1 makes it the stored form):
+
+- a sparse table along an `entry` dim, one entry per row;
+- a `per` coordinate, 0-based;
+- one coordinate per cellid component: `cellid_layer`, `cellid_row`,
+  `cellid_col` on DIS;
+- a `setting` coordinate for keystring packages (SFR, LAK, MAW);
+- a variable per value column and per aux name. An array column (EVT's
+  `pxdp`) gets a dim sized from its `shape`;
+- a `<column>_ts` coordinate naming the time series where a value comes
+  from one (the value is NaN), and a `boundname` coordinate.
+
+Unset values are `FILL_DNODATA` (floats), `FILL_INT64` (ints) or `None`.
+
+**Other row lists** (TDIS `perioddata`, `packagedata`, `connectiondata`)
+get the same treatment along a `<field>_row` dim (planned).
+
+### The dense view
+
+`dense()` (planned, on the accessor; today it's `to_xarray()`'s default)
+places each period's rows by their key and fills forward:
+
+| Row key | Dense dims | Examples |
+|---|---|---|
+| one `cellid` | the grid | CHD, WEL, DRN |
+| a foreign key to another table | that table's dim (`nreaches`), or the grid with `grid=True` | SFR, LAK, MAW, UZF |
+| the package's own index | a dim named for it (`bndno`) | SPC |
+| anything else (two cellids, no key) | no dense form; the table as is | HFB, MVR, OC |
+
+- Periods fill forward as in MF6: a block replaces the last one, but a
+  keystring setting holds until it's set again.
+- Two rows in one cell raise, unless `duplicates="sum" | "first" | "last"`
+  merges them (lossy).
+- All of this is decided from field metadata (`cellid`, `fk`, `pk`,
+  `union`, `shape`), with no per-package code.
 
 ## Time
 
-To write. See `datetime-periods-plan.md`.
+Partly open.
+
+- **`per`** is the 0-based stress period index, in list tables and in
+  `<name>_period` labels.
+- **Datetime period keys** (`datetime-periods-plan.md`, #518): packages
+  may be keyed by datetimes. Keys stay as given and are resolved to `per`
+  against TDIS when needed, so TDIS stays the one source of truth for what
+  period *n* means.
+- **Time coordinates:** period start times come from TDIS
+  (`start_date_time` plus the cumulative `perlen` in `time_units`); output
+  is per time step. The representation should carry both and the mapping
+  between them (the period of each step). Not built.
+- **Time-array series** stay NaN plus a name in the representation.
+  Evaluating them (MF6 averages over each step, STEPWISE or LINEAR only) is
+  a view; see `tas-interpolation-plan.md`.
+- Whether the time code (TDIS to time coordinates, TAS evaluation) belongs
+  to the package or to flopy is open, leaning package, since output readers
+  need it too.
 
 ## Attributes and fill values
 
-To write.
+- **netCDF-safe attrs**, so the grouped layout is just `to_netcdf`: paths
+  as strings, references as names, `None` omitted, empty child lists
+  omitted. Bools are open: int8 with a flag, or a documented convention.
+- **Variable metadata** (`long_name`, `units` where known) is put on by
+  flopy from the DFNs. The package side doesn't read DFNs.
+- **Fill values:** one per dtype. Today the code uses `FILL_DNODATA`
+  (`3e30`, MF6's DNODATA) for unset floats in list data, `FILL_INT64`
+  (`-2147483647`, netCDF's int default) for ints, and `FILL_FLOAT64`
+  (`9.97e36`, netCDF's double default) when writing MF6 NetCDF. Which float
+  value the representation uses for "not set", and how it maps to
+  `_FillValue` on write, is open.
 
 [mf6nc]: https://github.com/MODFLOW-ORG/modflow6/wiki/MODFLOW-NetCDF-Format

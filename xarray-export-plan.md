@@ -1,17 +1,22 @@
 # xarray export plan
 
-Follows up dead-code audit item 5 (`dead-code-audit.md`). Status: design
-**decided** (2026-11-02), implementation not started. Nothing in `mixins.py`,
-`protocols.py` or the reverse half of `attrs_xarray.py` gets deleted, and
-no tests get dropped, except as the phases below say.
+Status: design **decided** (2026-11-02), implementation not started. The
+spec it builds to is `docs/dev/xarray-representation.md`; the direction
+and the higher-level open questions are in
+`xarray-package-plan.md`.
 
-Scratch scripts used for the comparison (rerun them to see current
-behavior):
-`/private/tmp/claude-502/-Users-wbonelli-dev-pyphoenix-project/3ec4ddc6-e42e-49eb-bc12-ce39a377ee2c/scratchpad/compare.py` and
-`/private/tmp/claude-502/-Users-wbonelli-dev-pyphoenix-project/3ec4ddc6-e42e-49eb-bc12-ce39a377ee2c/scratchpad/compare2.py`.
-They build a 1x4x5 DIS GWF model (NPF, IC, CHD, WEL, RCHA, OC, IMS, TDIS)
-and print `pkg.to_xarray()` next to `attrs_to_dataset(pkg)`, plus both
-round trips.
+This started from a dead-code audit question: is the test-only half of
+the attrs/xarray layer (`mixins.py`, `protocols.py`, `dataset_to_attrs`,
+`datatree_to_attrs`) the planned generic conversion layer, or leftover
+from before xattree was dropped (#356)? The answer is to keep it and
+finish it. Nothing in `mixins.py`, `protocols.py` or the reverse half of
+`attrs_xarray.py` gets deleted, and no tests get dropped, except as the
+phases below say.
+
+The comparison behind "Where things stand" used a 1x4x5 DIS GWF model
+(NPF, IC, CHD, WEL, RCHA, OC, IMS, TDIS), printing `pkg.to_xarray()` next
+to `attrs_to_dataset(pkg)`, plus both round trips. Phase 1's tests
+replace it.
 
 ## Decisions
 
@@ -80,7 +85,7 @@ sparse forms.
 - **No coordinates**, and arrays sit on flat DFN dims.
 - **Tdis appears twice** in `sim.to_xarray()`: as root vars, and as `/tdis`.
 
-### Already fixed (uncommitted on `develop`)
+### Already fixed (branch `to-xarray-constants`)
 
 `Package.to_dataarray` (and so the view) raised on structured DIS
 (reshaping `delr`/`delc` onto the grid) and on any scalar griddata field
@@ -90,11 +95,12 @@ shape (a 0-d array if the shape is unknown). Arrays not on the cells get
 one dim per shape name, via `_AXIS_DIMS` (`ncol` → `col`, `nrow` → `row`).
 Tests: `test_to_xarray_constants_attached_later` and
 `test_dis_to_xarray_axis_arrays` in `test/mf6/test_mf6_component.py`.
-Should go in as its own small PR before phase 1.
+Committed on local branch `to-xarray-constants` (`07679ca0`, off
+develop `000f63c3`). Should go in as its own small PR before phase 1.
 
 ## Phases
 
-Each phase is roughly one PR. Per `CLAUDE.local.md`, verify with
+Each phase is roughly one PR. Verify with
 `pixi run -e dev smoke` plus the test files touched; CI runs the rest.
 
 ### Phase 1: make the generic layer complete (`flopy4/attrs_xarray.py`)
@@ -319,7 +325,7 @@ References:
   `test/test_attrs_xarray.py` off the mixins onto the plain functions.
 - Update `docs/dev/sdd.md` ("Xarray conversion") to describe the complete
   export, the accessor view, and how both differ from MF6 NetCDF input.
-- Close audit item 5 in `dead-code-audit.md`, pointing here.
+- Close the dead-code audit question (above): the layer was kept and finished.
 
 ## Still open (decide during implementation)
 
@@ -327,9 +333,8 @@ References:
 - Type tag values: the DFN component name (`gwf-npf`) or the class path.
 - Whether the old instance `from_xarray` survives in any form (phase 2).
 - Whether `dense()` lives on DataArray too, or only on Dataset.
-- Names: `flatten()`/`unflatten()`, or something else. Also whether the
-  flat dim is `node` (DISU's, so a flat DIS looks like DISU) or `nodes`
-  (the DFN fallback). Pick one and make the fallback use it too.
+- Names (`flatten()`/`unflatten()`, `node` vs `nodes`) are decided with
+  the accessor name; see `xarray-package-plan.md` "Open".
 - Whether `.grid.sel(layer=, row=, col=)` and `.grid.sel(x=, y=)` should
   work on the flat view (map to `node` positions), or require
   `unflatten()` first.
