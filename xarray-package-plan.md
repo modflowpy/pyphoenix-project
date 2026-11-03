@@ -64,7 +64,8 @@ scope:
 | `rch-evt-layer-plan.md` | z coordinates for RCHA/EVTA arrays | package (grid) | Not started. |
 | `combined-index-notes.md` | a combined `GridIndex` on `CellIndex` | package (grid) | Deferred. Revisit if DISV needs its own index anyway (see xugrid). |
 | `datetime-periods-plan.md` | datetime period keys, `create_tdis` | flopy + package (time) | In progress (#518, #226). |
-| `tas-interpolation-plan.md` | time-array series in the dense view | package (time) | Ready, not started. |
+| `tas-interpolation-plan.md` | time-array series in the dense view | package (time) | Ready, not started. Its step view is a dynamic-derivation view: opt-in, never read back by `from_xarray`. |
+| `layout-logical-decisions.md` | how options appear (logical as data, layout as encoding, output off the data); constants and dynamic derivations held as given | flopy (export) | Proposal. Feeds export phase 1. |
 | period lists (#476) | period lists in xarray, dense/sparse | flopy (encode) + package (densify) | Done. The spec's "Period data" records the result; the dense view becomes `dense()`. |
 | `docs/dev/spatial-index-design.md` on `origin/xarray-index` (#278) | original spatial index design | — | Superseded by `rotated-grid-index-plan.md`, whose Next 9 covers the housekeeping. |
 | `docs/dev/sdd.md` "Xarray conversion", "NetCDF" | SDD description | both | Update after export phase 1 (representation) and once the writers and adapters exist (NetCDF); see step 7. |

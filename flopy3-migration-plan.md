@@ -1,6 +1,7 @@
 # flopy3 → flopy4 migration: aliases first, then a codemod
 
-Written 2026-11-03 against pyphoenix `develop` (`000f63c3`). Prompted by
+Written 2026-11-03 against pyphoenix `develop` (`000f63c3`); code
+references rechecked against `8d25e4b7`. Prompted by
 mjreno's flopy4 round-trip PRs on MF6 (MODFLOW-ORG/modflow6#3048, #3057,
 #3067). Counts of flopy3 keywords and of MF6 autotest usage are from
 `flopy-integration-plan.md`, not recounted here.
@@ -44,10 +45,10 @@ Each flopy3 → flopy4 difference falls into one of three groups:
 
 | flopy3 | flopy4 today | proposal | why |
 |---|---|---|---|
-| parent positional: `ModflowGwfdis(gwf, ...)` | `parent=` keyword only | **accept** | `kw_only=True` exists so attrs allows optional base fields before required subclass fields (`component.py:232`), not to stop positional use. `LegacyKwargs.__call__` can move one positional argument to `parent=` before attrs sees it. `Dis(gwf, nlay=3)` reads fine. |
+| parent positional: `ModflowGwfdis(gwf, ...)` | `parent=` keyword only | **accept** | `kw_only=True` exists so attrs allows optional base fields before required subclass fields (`component.py:235`), not to stop positional use. `LegacyKwargs.__call__` can move one positional argument to `parent=` before attrs sees it. `Dis(gwf, nlay=3)` reads fine. |
 | bare list `stress_period_data=[...]` | raises `'list' object has no attribute 'items'` | **accept (bug fix)** | `migrating.md` already says a list means period 0. |
 | `*_filerecord` / `*printrecord` (106 keywords), e.g. `head_filerecord="m.hds"` or `[("m.hds",)]` | `head_file=` | **deprecate** | `head_file` is better. Convert each flopy3 value shape (a string, a 1-tuple, a list of 1-tuples) to a path. These are generated `Legacy` entries like the period-data ones. |
-| `perioddata`, `steady_state`/`transient`, `saverecord`/`printrecord`, ... | `stress_period_data` | **deprecate** (done) | Already `LegacyKwargs` (`legacy.py`, `_LEGACY_PERIOD_KWARGS`). |
+| `perioddata`, `steady_state`/`transient`, `saverecord`/`printrecord`, ... | `stress_period_data` | **deprecate** (done) | Already `LegacyKwargs` (`legacy.py`, from `_LEGACY_PERIOD_KWARGS` in `utils/codegen/make.py`). |
 | `timeseries=`, `timearrayseries=`, `observations=` (66 keywords) | `ts` / `tas` / `obs` children | **deprecate** | flopy3 accepts a dict (`{"filename": ..., "timeseries": ..., ...}`) or a file name. The common shapes convert. Raise on any other shape. |
 | `maxbound=` (12) | derived from the data | **accept, check it** | Drop it if it agrees with the data, raise if it doesn't. A warning only adds noise: the value is redundant, not wrong. |
 | `pname=` | `name=` | **accept** | A synonym. |
@@ -63,7 +64,7 @@ Each flopy3 → flopy4 difference falls into one of three groups:
 | `ModflowGwf(sim, modelname=, model_nam_file=)` | `Gwf(parent=sim, name=)` | **deprecate** `modelname` | |
 | `MFSimulation.load(sim_ws=...)` | `Simulation.load(path_to_mfsim.nam)` | **accept a directory** | If the path is a directory, look for `mfsim.nam` in it. That's a good change regardless of migration. Keep `sim_ws=` as a deprecated keyword. |
 | `write_simulation()` / `run_simulation()` | `write()` / `run()` returning `None` | **deprecate** both | `run_simulation` returns `(success, buff)` as in flopy3, and `run` keeps its own return type. |
-| `get_package(name or type)`, `get_model(name)`, `get_package_list()` | `gwf["chd0"]` only | **accept, add to core** | They're useful lookups, not leftovers. `Flopy3Model` (`flopy4/mf6/adapters.py:186`) already has them, so move the logic into `ModelMethods` and `SimulationMethods`. |
+| `get_package(name or type)`, `get_model(name)`, `get_package_list()` | `gwf["chd0"]` only | **accept, add to core** | They're useful lookups, not leftovers. `Flopy3Model` (`flopy4/mf6/adapters.py:163-169`) already has `get_package` and `get_package_list`, so move the logic into `ModelMethods` and `SimulationMethods`, and add `get_model`. |
 | `gwf.modelgrid` | `gwf.grid` (`model_methods.py:11`) | **accept** `modelgrid` | It's the same object. Many plotting and export functions in flopy are written against `modelgrid`. |
 | `sim.register_ims_package(ims, [names])` | `ims.models = [...]` | **deprecate** | 340 MF6 test files use it. The method is one line. |
 | default file names: `m.chd`, then `m_0.chd`, ... | `m.chd0.chd`, `m.chd1.chd`; `s.ims0.ims` | **reconsider** | Leaving the first instance unsuffixed (`m.chd`, then `m.chd1.chd`) matches flopy3 in the common one-instance case, and it's tidier. Tests and scripts that reference files by name (observation and budget checks) then keep working. This changes file names in flopy4's own tests, so decide early. |
@@ -172,8 +173,10 @@ runtime-only on purpose.
 - **Corpus:** run the codemod on each MF6 autotest's `build_models`
   (local modflow6 checkout, not vendored), then run the result and
   compare heads and budgets against the flopy3 build, using the existing
-  framework comparison. Report the share that run unchanged, run after
-  the codemod, and remain flagged. Use it as a scoreboard (xfail
+  framework comparison. Report the share that run with only rules 1–2
+  (imports and class names; flopy4 has no `ModflowXxx` names, so nothing
+  runs fully unchanged before 4.x), run after the full codemod, and
+  remain flagged. Use it as a scoreboard (xfail
   manifest), not a gate, as with the compat tier in
   `flopy-integration-plan.md`.
 - **Examples:** the 76 modflow6-examples scripts as a second corpus. They
@@ -184,7 +187,9 @@ runtime-only on purpose.
 1. **Classify every difference.** Generate the full keyword diff (all
    1101 keywords across the 100 shared classes) and the method diff, and
    label each accept / deprecate / break. Resolve the 33 "other"
-   keywords. Write the result into `docs/migrating.md` as the reference
+   keywords. Include the data-shape changes from
+   `layout-logical-decisions.md` (STO `sc=`: accept; UZF placeholder
+   columns: deprecate). Write the result into `docs/migrating.md` as the reference
    table. *No code changes.*
 2. **Decisions that block Part 1:** default file naming, `output.head`
    (property or method), data access (Decision 2). Step 3 can start
@@ -227,6 +232,10 @@ becomes a convenience for users, not a prerequisite.
   plan says permanently for positional parent, `get_package` /
   `get_model`, `modelgrid`, `exe_name` and loading from a directory;
   they're good API, not leftovers.
+- Which warning class do "deprecate" aliases use? `DeprecationWarning` is
+  hidden outside `__main__` and tests, so most script users won't see it;
+  the integration plan's compat rule says `FutureWarning`. Pick one for
+  both.
 - Should the codemod live in flopy4 or in flopy 4.x next to the compat
   layer? In flopy4 for now; it moves with everything else at the merge.
 - When a flopy4 change breaks MF6's optional `fp4` jobs, who fixes it,

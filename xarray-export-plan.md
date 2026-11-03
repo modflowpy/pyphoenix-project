@@ -129,6 +129,13 @@ them directly.
   it. Keep DFN dims when the grid doesn't resolve. Record the grid sizes
   (`nlay`, `nrow`, `ncol`, ...) and `nper` in attrs so the accessor and
   the decoder have them.
+- **Options and constants as given** (`layout-logical-decisions.md`,
+  "Track C"). Logical options are data or attrs on the node, layout
+  options an encoding record (`encoding` or prefixed attrs, decide here),
+  output options off the package's data. Write the Options section of
+  the spec. A griddata constant stays a constant in the complete export
+  (0-d, marked), so `from_xarray` gives the constant back; only `dense()`
+  expands it. The `to-xarray-constants` fix is for the view.
 - **Tree nodes**: named by the component's name. Every node carries a
   type tag (e.g. `attrs["type"] = "gwf-npf"`, matching the namefile
   ftype convention if that's simpler) so the decoder can pick the concrete

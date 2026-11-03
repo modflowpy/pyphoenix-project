@@ -80,8 +80,9 @@ this doc.
 - [ ] API reference in the docs, public vs internal marked (NFR-1, NFR-6).
 - [ ] Concepts doc (#217), and `migrating.md` covering the compat layer.
 - [ ] Migration scoreboard running here against MF6's autotests and the
-  examples, so the release notes can say how much flopy3 code runs
-  unchanged and how much after `flopy4 migrate`.
+  examples, so the release notes can say how much flopy3 code runs with
+  only imports and class names changed, and how much after
+  `flopy4 migrate`.
 - [ ] Install from GitHub works on Windows, Linux and macOS (SYS-2), with
   the command documented.
 - [ ] MMP milestone triaged: each open issue fixed, decided, or moved.
@@ -152,6 +153,7 @@ From the plans this doc links to, ordered by when they're needed:
 | `output.head`: which side renames (integration 3) | MMP | `flopy-integration-plan.md` |
 | Remaining Track B API questions | MMP | Track B |
 | The layout/logical rule, and with it #226, #229, #259, #345, #523 | MMP; early, since Track B's other data questions follow from it | `layout-logical-decisions.md` |
+| Post #287 before the layout/logical decisions, so Deltares can weigh in on the rule? | before the layout/logical rule | `layout-logical-decisions.md` |
 | Default file names (`m.chd` vs `m.chd0.chd`) | the Part 1 aliases; decide early, it changes flopy4's own tests | `flopy3-migration-plan.md` |
 | FUNC-10 test matrix; FUNC-11 in or out of MMP | MMP | SRS |
 | Compat data access (integration 2) | `4.x` cut | `flopy-integration-plan.md` |

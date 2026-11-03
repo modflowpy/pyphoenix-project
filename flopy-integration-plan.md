@@ -154,8 +154,8 @@ Running a flopy3 quickstart against flopy4:
 | `ModflowGwf(sim, modelname=)` | `Gwf(parent=sim, name=)` |
 | `stress_period_data=[...]` (a bare list for period 0) | raises (`'list' object has no attribute 'items'`). [`migrating.md`](docs/migrating.md) says a list means period 0, so this looks like a bug. |
 | `sim.write_simulation()` / `run_simulation()` | `write()` / `run()` |
-| `gwf.modelgrid` | `gwf.dis.to_grid()` |
-| `gwf.get_package("chd")`, `sim.get_model()` | none (`gwf["chd0"]`) |
+| `gwf.modelgrid` | `gwf.grid` |
+| `gwf.get_package("chd")`, `sim.get_model()` | `gwf["chd0"]` (`Flopy3Model` has `get_package`) |
 | `gwf.output.head()` → `HeadFile` | `gwf.output.head` → `DataArray`, a property. **Same name, different kind of thing.** |
 | `npf.k.array`, `.get_data()`, `.set_data()` | `npf.k` is the value itself (a `float` here) |
 | `gwf.plot()`, `pkg.export()` | via `Flopy3Model` |
@@ -290,7 +290,12 @@ flopy/
 ### The compat layer
 
 Generated from the DFNs alongside the classes (so `sync` keeps it
-current), plus handwritten pieces for Simulation and Model:
+current), plus handwritten pieces for Simulation and Model.
+`flopy3-migration-plan.md` moves most of this into flopy4 itself, as
+runtime aliases before MMP. What's left for the 4.x compat layer is the
+generated `ModflowXxx` names, and whatever the migration plan classifies
+as compat-only.
+
 
 - **Constructors.** A `ModflowXxx` subclass or factory per component:
   the parent positional, the keyword renames in the table above, flopy3
@@ -317,7 +322,9 @@ current), plus handwritten pieces for Simulation and Model:
   name.
 - **Rule**: same result or a clear error. Every compat class or method
   warns (`FutureWarning`, once per call site) and links to
-  `docs/migrating.md`.
+  `docs/migrating.md`. The migration plan refines this for the aliases
+  in flopy4: "accept" forms don't warn, "deprecate" forms do. Which
+  warning class those use is open (see its open questions).
 
 ### Tests
 
@@ -327,7 +334,7 @@ current), plus handwritten pieces for Simulation and Model:
 | B. old engine internals | `test_mf6_set_data_*`, `max_columns`, `header_preservation`, `DataStorageType`, external-file and `lazy_io` tests, `model_splitter`, much of `test_mf6.py` / `regression/test_mf6.py` | re-point to `flopy.mf6.legacy` (an import rewrite); they protect the frozen engine |
 | C. compat scoreboard | tier B's end-to-end tests (build/load → write → run → compare), MF6 autotests, modflow6-examples, all against `flopy.mf6` compat | report, don't gate: an `xfail(strict=False)` manifest like `test_mf6_load_all_models.py`. A test that starts passing gets pinned |
 | D. new engine | this repo's ~1190 tests, benchmarks | move in, must pass |
-| E. equivalence | every registry model: load/write/run with legacy and with new, compare heads and budgets; also compare written input files after normalization | **the gate for 4.0** |
+| E. equivalence | every registry model: load/write/run with legacy and with new, compare heads and budgets; also compare written input files after normalization (by the option labels, `layout-logical-decisions.md` "Track A") | **the gate for MMP, and again for 4.0** |
 
 The flopy tests aren't so tied to the old engine that they need
 rewriting. They split cleanly, and the ones that are tied (B) should
@@ -381,10 +388,12 @@ developer step.
 5. Survey pyemu, modflow-setup and the MF6 repo's scripts for which
    flopy3 mf6 internals they use, to decide what goes in compat versus
    the legacy path.
-6. Build the compat layer here (generated constructors and the
-   Simulation/Model aliases, growing out of `flopy4/mf6/legacy.py`), and
-   run the tier C scoreboard against MF6's autotests and the examples
-   from here. Neither needs flopy's repo.
+6. Shrink the flopy3 gap in flopy4 itself (`flopy3-migration-plan.md`:
+   runtime aliases growing out of `flopy4/mf6/legacy.py`, the shared
+   generated table, the `flopy4 migrate` codemod), and run its corpus
+   scoreboard against MF6's autotests and the examples from here.
+   Neither needs flopy's repo. The generated `ModflowXxx` names wait for
+   the compat layer in Phase 2.
 7. Release `flopy4` alphas and betas from GitHub. MMP is the last beta.
 
 **Phase 1 (flopy `develop`, 3.x):** items 1 to 5 from "3.x work" (item 6,
@@ -399,8 +408,10 @@ on its own.
    (tier D). CI green.
 3. Implement the shared-code protocol (from 3.x item 2) for flopy4. Run
    tier A against both engines.
-4. Bring the compat layer over and add flopy's own tests to the tier C
-   scoreboard (MF6 autotests and examples already run from Phase 0).
+4. Bring the compat layer over (the `ModflowXxx` names, on top of the
+   aliases already in flopy4) and start the tier C scoreboard: flopy's
+   own tests, plus the MF6 autotests and examples unchanged. Phase 0's
+   scoreboard measured the aliases and the codemod, not the compat layer.
 5. Release candidates `4.0.0rc1…` once tiers A and D are green on
    `4.x`, from PyPI and conda-forge.
 
@@ -418,21 +429,22 @@ of Phases 0 and 1 can run at the same time.
 
 ### Parallel tracks
 
-Start all four at once:
+Start them all at once. Letters match `docs/dev/mmp-plan.md`, which also
+has the MMP-only tracks (B to E):
 
 | track | where | items | needed by |
 |---|---|---|---|
 | **A. Engine correctness** | here | bare-list bug, equivalence harness (tier E), then fixing what it finds | MMP. **Longest and least predictable; start first** |
-| **B. Packaging** | devtools, here | devtools release, drop the git dependency, xugrid range, Python 3.14, numpy floor | the first release candidate (GitHub installs don't need it) |
-| **C. 3.x prep** | flopy `develop` | 3.x items 1 to 5 | items 1 and 2 by the branch cut; items 3 to 5 can land later and merge into `4.x` weekly |
-| **D. Decisions and survey** | team | open decisions, downstream survey | decision 3 by MMP; 1, 2 and 6 by the branch cut; the rest as below |
+| **G. Packaging** | devtools, here | devtools release, drop the git dependency, xugrid range, Python 3.14, numpy floor | the first release candidate (GitHub installs don't need it) |
+| **F. 3.x prep** | flopy `develop` | 3.x items 1 to 5 | items 1 and 2 by the branch cut; items 3 to 5 can land later and merge into `4.x` weekly |
+| **Decisions and survey** | team | open decisions, downstream survey | decision 3 by MMP; 1, 2 and 6 by the branch cut; the rest as below |
 
 ### Before MMP
 
 Tracked in `docs/dev/mmp-plan.md`. From this plan: tier E passes on the
 registry corpus, decision 3 (`output.head`) is made and implemented,
-since testers write code against it, and the tier C scoreboard runs from
-here.
+since testers write code against it, and the migration scoreboard
+(`flopy3-migration-plan.md` step 8) runs from here.
 
 ### Before cutting `4.x`
 
