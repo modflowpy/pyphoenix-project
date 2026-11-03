@@ -323,8 +323,8 @@ as compat-only.
 - **Rule**: same result or a clear error. Every compat class or method
   warns (`FutureWarning`, once per call site) and links to
   `docs/migrating.md`. The migration plan refines this for the aliases
-  in flopy4: "accept" forms don't warn, "deprecate" forms do. Which
-  warning class those use is open (see its open questions).
+  in flopy4: "accept" forms don't warn, "deprecate" forms warn with the
+  same `FutureWarning`.
 
 ### Tests
 

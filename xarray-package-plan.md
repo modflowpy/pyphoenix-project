@@ -1,6 +1,6 @@
 # An MF6 xarray package: layering now, extraction later
 
-Written 2026-11-03, against develop `000f63c3`. Status: **direction agreed,
+Written 2026-11-03, against develop `8d25e4b7`. Status: **direction agreed,
 nothing scheduled.** Everything stays in flopy4 for now. This plan is about
 where to draw the boundary inside flopy4 so that pulling out a separate
 package later is a packaging decision rather than a redesign.

@@ -173,7 +173,7 @@ We also audited the constraints a valid simulation must satisfy, from formats an
 Proposed next steps:
 
 - **flopy4**:
-  - discriminated unions for component and row variants;
+  - separate classes for component variants (users write `Rcha`), discriminated at load by ftype and `READASARRAYS`, plus conversion between them; discriminated unions for row variants and typed slots;
   - the role registry and rule implementations (#535), extended to the newer spec features (`when` on key sets, keys scoped by enclosing records);
   - converting between variants (RCH↔RCHA, structured→UGRID) as a supported operation.
 - **Docs**: decide which variant examples show by default, and present the alternatives side by side.

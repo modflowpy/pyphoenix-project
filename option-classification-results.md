@@ -2,7 +2,7 @@
 
 Working notes, 2026-11-03. Carries out `option-classification-plan.md`.
 Data: `option-classification/options-labelled.csv` (one row per distinct name,
-with category, tags, evidence and notes) and `options-labelled.md`.
+with category, tags, evidence and notes) and `option-classification/options-labelled.md`.
 Scripts: `option-classification/inventory.py` (snapshots → `options.csv`) and `label.py` (labels → `options-labelled.*`).
 MF6 source checked at `~/dev/modflow6` `8aad7bc4a5`.
 

@@ -98,7 +98,8 @@ Applied to #287's examples:
   need a literal tag on the object itself, but the tag here (`pname1`) lives on a different
   row.
 - **flopy4 object model for #287:** discriminated unions are still the right tool for the
-  variants.
+  variants. (Superseded: `discussion-287-directions.md`, "How the tentative designs
+  change", keeps separate classes per variant, discriminated at load.)
 - **Spec vocabulary:** if #287 produces a spec construct for variants or option-conditional
   schema, check whether it can also express:
   - MOVER-on as a condition for role membership (the old `when`);

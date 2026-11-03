@@ -1,7 +1,6 @@
 # flopy3 → flopy4 migration: aliases first, then a codemod
 
-Written 2026-11-03 against pyphoenix `develop` (`000f63c3`); code
-references rechecked against `8d25e4b7`. Prompted by
+Written 2026-11-03 against pyphoenix `develop` (`8d25e4b7`). Prompted by
 mjreno's flopy4 round-trip PRs on MF6 (MODFLOW-ORG/modflow6#3048, #3057,
 #3067). Counts of flopy3 keywords and of MF6 autotest usage are from
 `flopy-integration-plan.md`, not recounted here.
@@ -35,8 +34,10 @@ Each flopy3 → flopy4 difference falls into one of three groups:
 
 - **Accept**: take the flopy3 form for good, with no warning. The
   difference was accidental, and the flopy3 form costs nothing.
-- **Deprecate**: take the flopy3 form with a `DeprecationWarning` that
-  names the replacement. The new form is better, but the old one is easy
+- **Deprecate**: take the flopy3 form with a `FutureWarning` that names
+  the replacement. Not `DeprecationWarning`: Python hides that outside
+  `__main__` and tests, so script users wouldn't see it. The 4.x compat
+  layer uses the same class. The new form is better, but the old one is easy
   to convert.
 - **Break**: the meaning changed. Raise an error with a hint, or document
   the change. The codemod flags these and doesn't rewrite them.
@@ -232,10 +233,6 @@ becomes a convenience for users, not a prerequisite.
   plan says permanently for positional parent, `get_package` /
   `get_model`, `modelgrid`, `exe_name` and loading from a directory;
   they're good API, not leftovers.
-- Which warning class do "deprecate" aliases use? `DeprecationWarning` is
-  hidden outside `__main__` and tests, so most script users won't see it;
-  the integration plan's compat rule says `FutureWarning`. Pick one for
-  both.
 - Should the codemod live in flopy4 or in flopy 4.x next to the compat
   layer? In flopy4 for now; it moves with everything else at the merge.
 - When a flopy4 change breaks MF6's optional `fp4` jobs, who fixes it,

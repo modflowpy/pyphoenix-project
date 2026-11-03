@@ -1,6 +1,6 @@
 # Evaluate time-array series in the period view
 
-Status: ready, not started (rechecked 2026-10-19 against develop `e0d94b86`:
+Status: ready, not started (rechecked 2026-11-03 against develop `8d25e4b7`:
 no `Tas.average`, `step_array` or `dense_steps` yet; `period_array`,
 `period_arrays.dense` and `_check_tas_refs` are where the plan expects).
 Since written, #489 marks series values `NaN` in the xarray view with the

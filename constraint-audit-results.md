@@ -3,7 +3,7 @@
 Working notes, 2026-11-03. Carries out `constraint-audit-plan.md`. MF6 at
 `8aad7bc4a5`, DFNs from the devtools dev3 snapshots.
 
-Data and scripts are in `constraint-audit/` (untracked):
+Data and scripts are in `constraint-audit/`:
 
 | File | What |
 |---|---|
