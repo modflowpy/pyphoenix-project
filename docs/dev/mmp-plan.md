@@ -79,8 +79,9 @@ this doc.
 - [ ] Datetime period keys (#518) in, or explicitly deferred.
 - [ ] API reference in the docs, public vs internal marked (NFR-1, NFR-6).
 - [ ] Concepts doc (#217), and `migrating.md` covering the compat layer.
-- [ ] Tier C scoreboard running here against MF6's autotests and the
-  examples, so the release notes can say how much flopy3 code runs.
+- [ ] Migration scoreboard running here against MF6's autotests and the
+  examples, so the release notes can say how much flopy3 code runs
+  unchanged and how much after `flopy4 migrate`.
 - [ ] Install from GitHub works on Windows, Linux and macOS (SYS-2), with
   the command documented.
 - [ ] MMP milestone triaged: each open issue fixed, decided, or moved.
@@ -96,7 +97,7 @@ after MMP is under "After MMP".
 | **B. API decisions** | `output.head` (integration decision 3); `get_package`/`modelgrid` on Model; `name` vs `sim_name`; accessor naming and `flatten()`/`node`; component naming (#258); parent/child init (#259); unified output loading (#342) | decided and implemented | `flopy-integration-plan.md` "Open decisions"; `xarray-package-plan.md` "Open" |
 | **C. Data and xarray** | `to-xarray-constants` fix; datetime period keys (#518, #226); lossless `to_xarray`/`from_xarray` and `dense()` (export phase 1); deferred external arrays (#516) | the fix, #518 and export phase 1; #516 for FUNC-8 | `xarray-export-plan.md`, `datetime-periods-plan.md`, `docs/dev/xarray-representation.md` |
 | **D. Docs** | API reference; concepts (#217); 3.x examples adapted; `migrating.md` for compat; SDD update once export phase 1 lands | all | `map.md`, `srs.md`, `sdd.md` |
-| **E. Compat layer** | generated `ModflowXxx` constructors and the Simulation/Model aliases, growing out of `flopy4/mf6/legacy.py`; tier C scoreboard against MF6 autotests and examples | running, with numbers | `flopy-integration-plan.md` "The compat layer" |
+| **E. Migration** | classify every flopy3 difference (accept, deprecate, break); runtime aliases in flopy4 itself (positional parent, `register_ims_package`, `write_simulation`, `get_package`, `modelgrid`, `*_filerecord`, ...); the shared `Legacy` table; the `flopy4 migrate` codemod; the corpus scoreboard over MF6 autotests and examples. Generated `ModflowXxx` class names stay in flopy 4.x's compat layer | classification, aliases and scoreboard; the codemod if time allows | `flopy3-migration-plan.md`; `flopy-integration-plan.md` "The compat layer" |
 | **F. 3.x prep** (flopy `develop`) | 3.x items 1 to 5: utilities out of `flopy/mf6`, the shared-code protocol, upstream patches, deprecations, forward-compatible keywords | nothing required; items 1 and 2 by the `4.x` cut | `flopy-integration-plan.md` "3.x work" |
 | **G. Packaging** | devtools release; drop the git dependency; xugrid range; Python 3.14 and the 3.11 question; numpy floor; lazy xugrid import | nothing required (GitHub installs); all by the first release candidate | `flopy-integration-plan.md` Phase 0 item 3; `xarray-package-plan.md` (lazy xugrid, grid composition) |
 
@@ -109,8 +110,8 @@ release candidates follow MMP.
 - Track A's harness finds engine bugs, and fixing them may touch Track C
   (period data, arrays). Keep Track C's changes small until the harness
   is running.
-- Track E's compat constructors wait for Track B's naming decisions, or
-  they get regenerated.
+- Track E's aliases and codemod rules wait for Track B's naming
+  decisions (and default file naming), or they get regenerated.
 - Track D's API reference waits for Track B, and the SDD update waits
   for export phase 1 (Track C).
 
@@ -142,6 +143,7 @@ From the plans this doc links to, ordered by when they're needed:
 | Pre-release version numbers (`4.0.0bN`?) | first alpha | here |
 | `output.head`: which side renames (integration 3) | MMP | `flopy-integration-plan.md` |
 | Remaining Track B API questions | MMP | Track B |
+| Default file names (`m.chd` vs `m.chd0.chd`) | the Part 1 aliases; decide early, it changes flopy4's own tests | `flopy3-migration-plan.md` |
 | FUNC-10 test matrix; FUNC-11 in or out of MMP | MMP | SRS |
 | Compat data access (integration 2) | `4.x` cut | `flopy-integration-plan.md` |
 | Legacy engine and its namespace (integration 1) | `4.x` cut | `flopy-integration-plan.md` |
