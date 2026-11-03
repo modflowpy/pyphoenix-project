@@ -31,8 +31,8 @@ round trips.
 5. **The complete export is writable to netCDF.** It is distinct from
    MF6's NetCDF input format (`flopy4/mf6/netcdf.py`, `NetCDFModel`), and
    the docs must say which is which. `docs/dev/xarray-representation.md`
-   does: this is the hierarchical (grouped) encoding, and MF6 NetCDF is a
-   flat projection of the same representation.
+   does: this is MF6 NetCDF (grouped), and `netcdf.py` writes MF6 NetCDF
+   (ungrouped), a flattening of the same representation.
 6. **Keep `protocols.py`; put the methods on `Package`/`Context` directly;
    delete `mixins.py`.** The protocols are cheap, the SDD describes them,
    and `isinstance(x, DataTreeConvertible)` is useful. The mixins are
@@ -185,7 +185,8 @@ How this fits `xarray-package-plan.md`:
 - `flatten()`/`unflatten()` are views, like `dense()`. They belong to the
   package side (grid and data semantics), use only what's in the
   dataset, and never change the representation. Writing a flat view to
-  netCDF is part of the CF encoding, not a new format.
+  netCDF is a CF matter (compression by gathering, below), not a new
+  format.
 - `.grid` is the current accessor name. The package plan (step 2)
   renames it to something distinctive before more users depend on it, so
   rename these with it.
@@ -259,9 +260,10 @@ Where we depart, and what to do about it:
    numbering. Keep it, and say so in the docstring. Also consider a
    horizontal-only flatten (`flatten(layers=False)` or similar):
    `(layer, row, col)` → `(layer, cell)`. That is xugrid's convention
-   exactly, and it puts DIS data in the same shape as DISV. The UGRID
-   encoder needs this step for layered DIS anyway, so write it once and
-   use it in both places.
+   exactly, and it puts DIS data in the same shape as DISV. Both writers
+   need this step for layered DIS anyway, so write it once and
+   use it in both places (the UGRID adapter and the ungrouped mesh
+   layout).
 2. **MultiIndex by default.** The libraries disagree. xugrid skips it,
    which keeps the result netCDF-writable; uxarray keeps it. This leans
    toward no MultiIndex by default (`index=False`), or at least making
@@ -275,8 +277,8 @@ Where we depart, and what to do about it:
    `(time, layer, nmesh_face)`, while the export uses `(layer, cell)`.
    That mismatch is within flopy4, independent of the libraries. The
    package plan settles it: readers produce the representation directly
-   and xugrid objects only come from the UGRID encoding (`to_ugrid()`).
-   So the readers move to `cell`, and `nmesh_face` is a UGRID encoding
+   and xugrid objects only come from the UGRID adapter (`to_ugrid()`).
+   So the readers move to `cell`, and `nmesh_face` is a UGRID adapter
    detail.
 
 **netCDF for the flat view: CF "compression by gathering"** (CF §8.2).
@@ -339,4 +341,4 @@ References:
 - netCDF for flat data: CF `compress` encoding via cf_xarray (new
   dependency) or our own small implementation.
 - Cell dim name across export and output readers: leaning `cell` for
-  both, with `nmesh_face` only in the UGRID encoding (departure 4).
+  both, with `nmesh_face` only in the UGRID adapter (departure 4).

@@ -13,14 +13,20 @@ package later is a packaging decision rather than a redesign.
    it never imports flopy4 or flopy.
 2. **Our own representation first, encodings second.** The in-memory form
    is plain `xr.Dataset`/`xr.DataTree` with custom indexes, close to MF6's
-   own concepts and lossless for every grid type. CF, UGRID (through
-   xugrid) and the [MODFLOW NetCDF format][mf6nc] are explicit conversions
-   to and from it, and none of them is the core. A fourth, **native**
-   encoding writes the whole tree as is (groups, full fidelity) for Python
-   round trips. MF6 NetCDF is a *projection* of the representation (one
-   model's grid arrays, flattened), not a serialization of it. See
-   `docs/dev/xarray-representation.md`, which explains how netCDF, CF,
-   UGRID, the MF6 NetCDF format and the representation relate.
+   own concepts and lossless for every grid type. Files and other
+   libraries' objects are explicit conversions to and from it, and none of
+   them is the core:
+   - **Files are [MF6 NetCDF][mf6nc] in two layouts of one spec.**
+     *Grouped* is the whole tree, lossless. *Ungrouped* is the same content
+     flattened. MF6 reads it, and it aims to be valid CF and UGRID, so GIS
+     tools open it directly. CF and UGRID are conventions MF6 NetCDF builds
+     on, not separate formats.
+   - **Adapters** (`to_ugrid`, `to_rioxarray`, `to_cf`, `to_modelgrid`)
+     hand the representation to xugrid, rioxarray, cf_xarray or flopy3 in
+     memory. Those libraries write their own files.
+
+   `docs/dev/xarray-representation.md` explains how netCDF, CF, UGRID, the
+   MF6 NetCDF format and the representation relate.
 3. **The boundary is a data contract, not an API.** The export schema from
    `xarray-export-plan.md` phase 1 is the interface. flopy4 produces it;
    the package (the accessor, `dense()`, the encoders) consumes it, using
@@ -124,43 +130,72 @@ docs, so the spec mainly collects it:
   child lists omitted.
 - **Fill values:** one convention per dtype (see the MF6 NetCDF notes below).
 
-## Encodings
+## Files and adapters
 
-Each is a pair of functions (representation ↔ encoded dataset) plus
-accessor methods. None changes the representation.
+None of these changes the representation. Each is a pair of functions
+(representation ↔ file or object) plus accessor methods.
 
-- **Native**: the representation as is, via `DataTree.to_netcdf`/`to_zarr`
-  with groups mirroring the tree, encoding only what netCDF needs (bools,
-  None, fill values). It covers everything (options, dims, list data,
-  arrays). MF6 never reads it; it's for Python round trips, caching and
-  sharing. The name is open (see "Open").
-- **MF6 NetCDF (structured and layered mesh)**: what `netcdf.py` writes
-  today, restated as an encoder from the representation. It's a
-  projection: keep one model's GRIDDATA/PERIOD arrays, flatten package paths
-  into names plus `modflow_input`, renumber to 1-based, split by layer where
-  the mesh form needs it, then CF encode. Readers reverse this and merge the
-  result into a tree whose other fields come from the text input, so an
-  MF6 NetCDF file opens as the representation.
-- **UGRID via xugrid**: `ds.<acc>.to_ugrid()` → `UgridDataset` for DISV and
-  layered DIS, and `from_ugrid` back. This is where `UgridDataset` appears,
-  not in `to_xarray`.
-- **CF**: bounds (`x_bnds`/`y_bnds`/`z_bnds`, `rotated-grid-index-plan.md`
-  Next 3), `grid_mapping`, standard names. Mostly a subset of the structured
-  MF6 NetCDF encoding.
-- **Binary output** (GRB/HDS/CBC): readers that produce the representation
-  directly.
+**Files: MF6 NetCDF, two layouts of one spec.** CF, UGRID and MF6 NetCDF
+stack: CF is the base, UGRID extends it, and MF6 NetCDF adds attributes
+that other tools ignore. So the ungrouped layout can be valid CF, UGRID and
+MF6 NetCDF at once, and there's no separate "CF" or "UGRID" file format.
+
+- **Grouped**: the representation as is, via `DataTree.to_netcdf`/`to_zarr`,
+  with groups mirroring the tree and only the encoding netCDF needs (bools,
+  None, fill values, 1-based). It covers everything (options, dims, list
+  data, arrays). It's valid CF 1.8+ with groups. MF6 doesn't read it yet.
+  Today it's for Python round trips, caching, archiving and sharing.
+- **Ungrouped (structured and layered mesh)**: what `netcdf.py` writes
+  today, restated as a flattening of the grouped layout. Package paths
+  become names plus `modflow_input`, indices go to 1-based, layers become a
+  `layer` dim (split variables only as a writer option, if MF6 or a tool
+  needs them), and then CF is written. Readers reverse this. While
+  coverage is partial (one model's GRIDDATA/PERIOD arrays), they merge the
+  result into a tree whose other fields come from text input. It's meant to
+  cover the whole simulation eventually (to confirm). CF/UGRID validity is
+  a goal: bounds (`x_bnds`/`y_bnds`/`z_bnds`, `rotated-grid-index-plan.md`
+  Next 3), `grid_mapping`, standard names, and UGRID mesh topology on the
+  mesh form.
+
+**Adapters: other libraries' objects, in memory.** Each library then writes
+its own files (UGRID netCDF through xugrid, GeoTIFF through
+`rio.to_raster`). Writing an adapter's output with plain `to_netcdf` should
+give something close to the ungrouped layout, not a third format.
+
+- **`to_ugrid()` / `from_ugrid()`** → `UgridDataset` for DISV and layered
+  DIS. This is where `UgridDataset` appears, not in `to_xarray`.
+- **`to_rioxarray()`** → a DataArray with CRS and transform written, for
+  structured grids. Rotation needs checking: rioxarray takes a rotated
+  affine transform, but its 1-D x/y coordinates assume no rotation.
+- **`to_cf()`** → a Dataset with CF attributes, bounds and `grid_mapping`,
+  for cf_xarray and other CF-aware tools. It's mostly the same metadata
+  the ungrouped writer uses.
+- **`to_modelgrid()`** → a flopy3 grid, while flopy3 still needs one
+  (replaces the inheritance in `utils/grid.py`, step 4).
+
+The names are placeholders.
+
+**Binary output** (GRB/HDS/CBC): readers that produce the representation
+directly.
 
 ### Notes on the MODFLOW NetCDF format
 
 The format is ours to change too, so the representation work is a chance to
-feed fixes back to MF6. The goal isn't to make the format a serialization of
-the representation. It's a flat, per-model sidecar to the text input, and
-that's reasonable for a file MF6 reads: the input data model loads one model
-at a time, UGRID defines one mesh per dataset, and GIS tools handle groups
-poorly. So don't push for groups, and treat list data as nice to have. The
-goal is a well-defined projection whose inverse is reliable. That mainly
-needs structured identity, consistent fill values, a documented layer
-convention and a time mapping.
+feed fixes back to MF6. The ungrouped layout has been developed in steps and
+is meant to cover the whole simulation eventually (to confirm with the MF6
+developers). So the goal is one spec: the grouped layout is the
+representation encoded, and the ungrouped layout is a fixed flattening of
+it that stays valid CF and UGRID. Flat is right for the layout MF6 reads
+today: MF6 loads one model at a time, UGRID defines one mesh per dataset,
+and GIS tools handle groups poorly. Groups only matter if MF6 is to read
+the grouped layout.
+
+The hard part of flattening a whole simulation is dimension names, not
+variable names. Two GWF models each have their own `nlay`/`ncpl`; a GWT
+model shares its GWF model's grid; exchanges span models; list data needs
+per-package entry dims. Without groups every dim needs a prefix or a rule
+for sharing. Settle that rule first. A shared-grid rule keeps the file
+usable in GIS tools.
 
 Candidates, from reading the wiki (2026-11-03). They need checking against
 the MF6 source before anything is proposed upstream:
@@ -168,8 +203,8 @@ the MF6 source before anything is proposed upstream:
 - **Per-layer variable splitting** in the layered mesh (`npf_k_l1`,
   `npf_k_l2`, `z_l<n>`, each with a `layer` attr): a variable's identity is
   spread over names and attrs. xugrid and most CF tools would rather see a
-  `layer` dim. If that's needed for QGIS/GDAL, keep it as an encoding detail,
-  but say so in the spec.
+  `layer` dim. If that's needed for QGIS/GDAL, make it a writer option and
+  say so in the spec.
 - **No DISU**, and no DIS2D/DISV2D/DISV1D. The representation has to cover
   them regardless, so it shouldn't wait on the format.
 - **Inconsistent fill values**: `9.97e36` (GRIDDATA), `3e30` (PERIOD input
@@ -182,8 +217,9 @@ the MF6 source before anything is proposed upstream:
   stated way to relate the two. The representation needs both (`per` and step
   time), so the format could carry the mapping.
 - **List (stress period) data isn't covered**; only GRIDDATA/PERIOD arrays
-  in READASARRAYS/READARRAYGRID packages. Low priority: the native encoding
-  covers list data, and the text input carries it for MF6.
+  in READASARRAYS/READARRAYGRID packages. Nor are options, scalars or the
+  simulation-level components. All in scope if the layout is to cover the
+  whole simulation.
 - **Rotation is only encoded through a wrapped WKT2 `PROJCRS`**; without a
   CRS, rotated structured grids lose `axis`/`standard_name`. The
   representation's `projection` coordinate carries xorigin/yorigin/angrot
@@ -194,7 +230,7 @@ the MF6 source before anything is proposed upstream:
 
 ## xugrid
 
-- **Optional, behind the UGRID encoding and DISV selection**, not in the core
+- **Optional, behind the UGRID adapter and DISV selection**, not in the core
   representation. A `UgridDataset` is a wrapper type, not an `xr.Dataset`:
   it doesn't nest in a `DataTree`, and our registered accessors don't reach
   it. That conflicts with the export plan's "packages give a Dataset,
@@ -202,7 +238,7 @@ the MF6 source before anything is proposed upstream:
 - **The `xugrid` branch** (May 2026, `b00d7a05`, merge-base `52daeeb0`)
   returns xugrid objects from `to_xarray`. Don't merge it as is. Its useful
   parts (dropping hand-written UGRID attrs, keeping CF bounds) go into the
-  UGRID encoder instead.
+  UGRID adapter and the ungrouped mesh writer instead.
 - **DISV selection** (`rotated-grid-index-plan.md` Next 1): output readers
   return `UgridDataArray` today. For the representation, prefer a plain
   dataset with an index (an `NDPointIndex` for nearest, or our own
@@ -308,10 +344,10 @@ new repo.
 6. **Lazy xugrid** everywhere in the subpackage, then decide whether it's
    an optional dependency.
 7. **Update `docs/dev/sdd.md`** ("Xarray conversion", "NetCDF") to describe
-   the representation, the encodings, and the boundary. The current "NetCDF"
-   section ("adopt xugrid ... `.to_netcdf()` through the appropriate
-   accessor") is close to right, except that xugrid is one encoding, not the
-   writer.
+   the representation, the two MF6 NetCDF layouts, the adapters, and the
+   boundary. The current "NetCDF" section ("adopt xugrid ... `.to_netcdf()`
+   through the appropriate accessor") is close to right, except that xugrid
+   is one adapter, not the writer.
 8. **Make `attrs_xarray.py` generic** as part of export plan phase 1, which
    already says to "make the generic layer complete". Add an import-linter
    contract so `flopy4.attrs_xarray`, `flopy4.protocols` and the generic
@@ -347,7 +383,9 @@ timing.
   agree on the representation so datasets move between the tools. Don't
   contact anyone without asking.
 - **MF6 NetCDF format**: the notes above, as an issue or discussion on
-  modflow6, once checked against the source. Don't post without asking.
+  modflow6, once checked against the source. First confirm the intent:
+  is the ungrouped layout meant to cover the whole simulation, and would
+  MF6 ever read a grouped one? Don't post without asking.
 - **xugrid**: follow #35 / #373. Report DISV edge-tie behaviour if it
   differs from DIS (`rotated-grid-index-plan.md` Next 1).
 - **xattree**: ours, so no outside coordination, apart from where it lives
@@ -357,17 +395,21 @@ timing.
 
 ## Open
 
-- Name for the native encoding. Candidates: "MF6" (parallels "MF6
-  NetCDF", "UGRID", "CF", but collides with MF6's own text input format,
-  which flopy also writes, and MF6 can't read it), "native", or the
-  package's name.
+- The flattening rule for a whole simulation in the ungrouped layout:
+  how dims are prefixed or shared across models (see the format notes).
+- Default layout per writer: ungrouped for model input and tool-facing
+  output, grouped when saving a whole simulation from flopy? Users should
+  only ever have to pick the layout.
+- Adapter names and which ones to have (`to_ugrid`, `to_rioxarray`,
+  `to_cf`, `to_modelgrid`). The format names are settled: MF6 NetCDF
+  (grouped) and MF6 NetCDF (ungrouped).
 - Package name, and whether the subpackage is `flopy4/xr/` or `flopy4/mf6/xr/`.
 - Accessor name.
 - Whether the time code (TDIS → time coordinate, TAS evaluation) is part of
   the package or stays in flopy. Leaning package, since output readers need
   it too.
 - Does the package know DFNs (for variable metadata, long names, units)?
-  Prefer not: the encoder takes the metadata from attrs that flopy puts on
+  Prefer not: the writers take the metadata from attrs that flopy puts on
   the representation, and devtools stays a flopy dependency only.
 - Representation for DIS2D/DISV2D/DISV1D (OLF/CHF).
 - Merge `xarray-export-plan.md` onto develop (or into the working tree) so
