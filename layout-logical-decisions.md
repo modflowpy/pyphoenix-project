@@ -9,8 +9,9 @@ work, and applies it to each issue. It feeds Track B and Track C of
 
 The research behind the rule is in the working notes for discussion #287
 (`option-classification-results.md`, `constraint-audit-results.md`,
-`discussion-287-directions.md`; not on this branch yet). The parts this
-doc needs are summarized below.
+`discussion-287-directions.md`, with the scripts and data in
+`option-classification/` and `constraint-audit/`). The parts this doc
+needs are summarized below.
 
 ## The rule
 
