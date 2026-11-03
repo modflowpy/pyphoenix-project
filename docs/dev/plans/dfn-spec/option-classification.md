@@ -287,7 +287,7 @@ The catalog gaps these turned up are in [dfn-gaps.md](dfn-gaps.md#memory-catalog
 
 ## Data
 
-In [data/option-classification/](data/option-classification/):
+In [data/option-classification/](data/option-classification):
 
 | File | What |
 |---|---|

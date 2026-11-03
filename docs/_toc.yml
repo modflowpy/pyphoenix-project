@@ -30,6 +30,5 @@ parts:
       - file: dev/sdd
       - file: dev/map
       - file: dev/mmp-plan
-      - file: dev/protocols-plan
-      - file: dev/array-converter-design
       - file: dev/test
+      - file: dev/load-benchmarks

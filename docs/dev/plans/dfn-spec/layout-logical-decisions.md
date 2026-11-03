@@ -6,7 +6,7 @@ Several open MMP issues are about the same thing: how far flopy4's object
 model should mirror MF6's file format, and where it should present the
 underlying data instead. This doc states one rule for that, from the spec
 research, and applies it to each issue. It feeds Tracks A, B and C of the
-[MMP plan](../mmp-plan.md).
+[MMP plan](../../mmp-plan.md).
 
 The research behind the rule is in this folder: concepts and hypotheses in
 [overview.md](overview.md), and the evidence in

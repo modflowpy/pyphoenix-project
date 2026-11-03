@@ -321,7 +321,7 @@ These are folded into the plan in [overview.md](overview.md#step-3-the-ddl-slice
 
 ## Data
 
-In [data/constraint-audit/](data/constraint-audit/):
+In [data/constraint-audit/](data/constraint-audit):
 
 | Script → output | What |
 |---|---|

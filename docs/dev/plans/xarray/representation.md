@@ -15,7 +15,7 @@ Files are written from it, and no file format is the representation itself.
 **"Layout" in this doc** means one of two things, always qualified: the
 two MF6 NetCDF *layouts* (grouped and ungrouped), and the two *cell
 layouts* (flat `node` and layered). Neither is the MF6 *file* layout of
-[`layout-logical-decisions.md`](../spec/layout-logical-decisions.md) (blocks, `CONSTANT`, `READASARRAYS`), which
+[`layout-logical-decisions.md`](../dfn-spec/layout-logical-decisions.md) (blocks, `CONSTANT`, `READASARRAYS`), which
 here is the encoding of options and arrays.
 
 ## How it relates to netCDF, CF, UGRID and the MF6 NetCDF format

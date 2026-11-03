@@ -75,5 +75,5 @@ exchange connecting them, and references inside records need their own
 design.
 
 Don't generalize `reference()` before then. Binding-graph navigation
-([../spec/overview.md](../spec/overview.md#step-5-binding-graph-navigation))
+([../dfn-spec/overview.md](../dfn-spec/overview.md#step-5-binding-graph-navigation))
 is the likely shared mechanism for both.

@@ -3,7 +3,7 @@
 Written 2026-11-03 against pyphoenix `develop` (`8d25e4b7`). Prompted by
 mjreno's flopy4 round-trip PRs on MF6 (MODFLOW-ORG/modflow6#3048, #3057,
 #3067). Counts of flopy3 keywords and of MF6 autotest usage are from
-[`flopy-integration.md`](flopy-integration.md), not recounted here.
+[`replacing-flopy-mf6.md`](replacing-flopy-mf6.md), not recounted here.
 
 ## Summary
 
@@ -47,7 +47,7 @@ Each flopy3 → flopy4 difference falls into one of three groups:
 | flopy3 | flopy4 today | proposal | why |
 |---|---|---|---|
 | parent positional: `ModflowGwfdis(gwf, ...)` | `parent=` keyword only | **accept** | `kw_only=True` exists so attrs allows optional base fields before required subclass fields (`component.py:235`), not to stop positional use. `LegacyKwargs.__call__` can move one positional argument to `parent=` before attrs sees it. `Dis(gwf, nlay=3)` reads fine. |
-| bare list `stress_period_data=[...]` | raises `'list' object has no attribute 'items'` | **accept (bug fix)** | [`migrating.md`](../../migrating.md) already says a list means period 0. |
+| bare list `stress_period_data=[...]` | raises `'list' object has no attribute 'items'` | **accept (bug fix)** | [`migrating.md`](../../../migrating.md) already says a list means period 0. |
 | `*_filerecord` / `*printrecord` (106 keywords), e.g. `head_filerecord="m.hds"` or `[("m.hds",)]` | `head_file=` | **deprecate** | `head_file` is better. Convert each flopy3 value shape (a string, a 1-tuple, a list of 1-tuples) to a path. These are generated `Legacy` entries like the period-data ones. |
 | `perioddata`, `steady_state`/`transient`, `saverecord`/`printrecord`, ... | `stress_period_data` | **deprecate** (done) | Already `LegacyKwargs` (`legacy.py`, from `_LEGACY_PERIOD_KWARGS` in `utils/codegen/make.py`). |
 | `timeseries=`, `timearrayseries=`, `observations=` (66 keywords) | `ts` / `tas` / `obs` children | **deprecate** | flopy3 accepts a dict (`{"filename": ..., "timeseries": ..., ...}`) or a file name. The common shapes convert. Raise on any other shape. |
@@ -75,7 +75,7 @@ Each flopy3 → flopy4 difference falls into one of three groups:
 These are the "break" group. Aliases here would hide a real change in
 meaning.
 
-- **`npf.k.array` / `.get_data()` / `.set_data()`.** [`flopy-integration.md`](flopy-integration.md)
+- **`npf.k.array` / `.get_data()` / `.set_data()`.** [`replacing-flopy-mf6.md`](replacing-flopy-mf6.md)
   Decision 2 leans toward (a): `npf.k` is the value itself, and
   `.array` raises with a hint. That group keeps the rule "same result or
   a clear error". One cheap middle ground: `get_data()` with no
@@ -84,7 +84,7 @@ meaning.
 - **`gwf.output.head()`.** flopy4's `output.head` is a `DataArray`
   property (`gwf_methods.py:31`); flopy3's is a method returning
   `HeadFile`. Same name, different thing. Pick one before release
-  ([`flopy-integration.md`](flopy-integration.md) suggests options). If `head` stays a
+  ([`replacing-flopy-mf6.md`](replacing-flopy-mf6.md) suggests options). If `head` stays a
   property, calling it fails with `'DataArray' object is not callable`,
   which is confusing. A wrapper that raises with a migration hint when
   called would make that error clearer.
@@ -95,7 +95,7 @@ After Part 1, a typical MF6 autotest `build_models` (constructors,
 `register_ims_package`, `write_simulation`) should run against flopy4
 with only `ModflowXxx` → `xxx.Xxx` class names changed. The class names
 are the one difference that stays. Generated `ModflowXxx` aliases belong
-to the flopy 4.x compat layer ([`flopy-integration.md`](flopy-integration.md)), not to
+to the flopy 4.x compat layer ([`replacing-flopy-mf6.md`](replacing-flopy-mf6.md)), not to
 flopy4 itself, because they'd double the namespace.
 
 ## Part 2: the codemod
@@ -143,7 +143,7 @@ Each rule is one transformation. Order matters only where noted.
 7. **Flags with no rewrite**, for the "break" group: `.array`,
    `.get_data`, `.set_data`, `output.head()` / `.budget()`,
    `simulation_data`, `dev_*` keywords, `model_splitter`. These get a
-   `# TODO(flopy4): ...` comment linking to [`migrating.md`](../../migrating.md), or only
+   `# TODO(flopy4): ...` comment linking to [`migrating.md`](../../../migrating.md), or only
    a diagnostic with `--no-comments`.
 
 ### Knowing what a name refers to
@@ -179,7 +179,7 @@ runtime-only on purpose.
   runs fully unchanged before 4.x), run after the full codemod, and
   remain flagged. Use it as a scoreboard (xfail
   manifest), not a gate, as with the compat tier in
-  [`flopy-integration.md`](flopy-integration.md).
+  [`replacing-flopy-mf6.md`](replacing-flopy-mf6.md).
 - **Examples:** the 76 modflow6-examples scripts as a second corpus. They
   use more `.array` / `.get_data()`, so expect more flags.
 
@@ -189,8 +189,8 @@ runtime-only on purpose.
    1101 keywords across the 100 shared classes) and the method diff, and
    label each accept / deprecate / break. Resolve the 33 "other"
    keywords. Include the data-shape changes from
-   [`layout-logical-decisions.md`](../spec/layout-logical-decisions.md) (STO `sc=`: accept; UZF placeholder
-   columns: deprecate). Write the result into [`migrating.md`](../../migrating.md) as the reference
+   [`layout-logical-decisions.md`](../dfn-spec/layout-logical-decisions.md) (STO `sc=`: accept; UZF placeholder
+   columns: deprecate). Write the result into [`migrating.md`](../../../migrating.md) as the reference
    table. *No code changes.*
 2. **Decisions that block Part 1:** default file naming, `output.head`
    (property or method), data access (Decision 2). Step 3 can start

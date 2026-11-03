@@ -2,26 +2,6 @@ title: flopy4 / pyphoenix
 author: MODFLOW Development Team
 logo: ""
 
-# plans and design notes are read in the source tree (see dev/plans.md)
+# plans and design notes are read in the source tree (see dev/plans/README.md)
 exclude_patterns:
-  - dev/plans.md
-  - dev/integration/*
-  - dev/xarray/*
-  - dev/components/*
-  - dev/spec/*
-  - dev/spec/**/*
-
-execute:
-  execute_notebooks: "off"
-
-html:
-  use_issues_button: true
-  use_repository_button: true
-
-repository:
-  url: https://github.com/modflowpy/pyphoenix-project
-  branch: develop
-  path_to_book: docs
-
-sphinx:
-  extra_extensions: []
+  - dev/plans/**

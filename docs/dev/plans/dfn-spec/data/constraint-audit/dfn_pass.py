@@ -1,4 +1,4 @@
-"""Constraint-bearing keys in the dev3 DFN snapshots (see docs/dev/spec/constraint-audit.md).
+"""Constraint-bearing keys in the dev3 DFN snapshots (see docs/dev/plans/dfn-spec/constraint-audit.md).
 
 Usage: python dfn_pass.py <snapshot dir> <options-labelled.csv> <out dir>
 Writes dfn-constraints.csv (one row per constraint-bearing key) and prints tallies.

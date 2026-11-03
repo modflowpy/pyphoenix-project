@@ -129,7 +129,7 @@ them directly.
   it. Keep DFN dims when the grid doesn't resolve. Record the grid sizes
   (`nlay`, `nrow`, `ncol`, ...) and `nper` in attrs so the accessor and
   the decoder have them.
-- **Options and constants as given** ([`layout-logical-decisions.md`](../spec/layout-logical-decisions.md),
+- **Options and constants as given** ([`layout-logical-decisions.md`](../dfn-spec/layout-logical-decisions.md),
   "Track C"). Logical options are data or attrs on the node, layout
   options an encoding record (`encoding` or prefixed attrs, decide here),
   output options off the package's data. Write the Options section of
@@ -181,7 +181,7 @@ them directly.
 - Delete `Component._collect_child_griddata_datasets` and the merge in
   `Component.to_xarray`.
 - **Update callers**: `docs/examples/period-data.py` (+ the `.ipynb`), the
-  `to_xarray` example in [`sdd.md`](../sdd.md), and the tests in
+  `to_xarray` example in [`sdd.md`](../../sdd.md), and the tests in
   `test/mf6/test_mf6_period_lists.py` and `test/mf6/test_mf6_component.py`
   that use `to_xarray` options or expect the view's shape. Check
   `flopy4/mf6/adapters.py` (it calls `attrs_to_dataset` directly) still
@@ -330,7 +330,7 @@ References:
   `from_dataset`/`from_datatree`). Add `isinstance` checks to the tests.
 - Delete `flopy4/mixins.py`, and move the `Leaf`/`Node` tests in
   `test/test_attrs_xarray.py` off the mixins onto the plain functions.
-- Update [`sdd.md`](../sdd.md) ("Xarray conversion") to describe the complete
+- Update [`sdd.md`](../../sdd.md) ("Xarray conversion") to describe the complete
   export, the accessor view, and how both differ from MF6 NetCDF input.
 - Close the dead-code audit question (above): the layer was kept and finished.
 
