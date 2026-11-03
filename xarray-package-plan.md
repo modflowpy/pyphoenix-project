@@ -112,7 +112,9 @@ docs, so the spec mainly collects it:
   (export plan phase 1).
 - **Period data as given:** period arrays along `<name>_period`, list data
   as a sparse table (entry dim, `per` and cellid coordinates, a variable per
-  column, `<name>_ts`/`<name>_tas` coordinates). Dense is a view (`dense()`).
+  column, `<name>_ts`/`<name>_tas` coordinates). Dense is a view (`dense()`),
+  and so is the flat `node` layout (`flatten()`/`unflatten()`, export plan
+  phase 2b). Neither is stored.
 - **Time:** how `per` maps to a time coordinate (from TDIS, with a start date
   where given); ties in with `datetime-periods-plan.md`.
 - **Tree:** nodes named by component name, with a type tag (export plan open

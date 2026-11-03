@@ -30,13 +30,21 @@ round trips.
    does now. Filling forward is the accessor's job.
 5. **The complete export is writable to netCDF.** It is distinct from
    MF6's NetCDF input format (`flopy4/mf6/netcdf.py`, `NetCDFModel`), and
-   the docs must say which is which.
+   the docs must say which is which. `docs/dev/xarray-representation.md`
+   does: this is the hierarchical (grouped) encoding, and MF6 NetCDF is a
+   flat projection of the same representation.
 6. **Keep `protocols.py`; put the methods on `Package`/`Context` directly;
    delete `mixins.py`.** The protocols are cheap, the SDD describes them,
    and `isinstance(x, DataTreeConvertible)` is useful. The mixins are
    two-line forwarders that sit awkwardly in the hierarchy (`Context`
    subclasses `Component`). The reverse functions in `attrs_xarray.py`
    stay and get finished.
+7. **Both cell layouts, flat and layered, through the accessor.** The
+   export is layered (decision 3): `layer,row,col` on DIS, `layer,cell`
+   on DISV. `grid.flatten()` gives the flat `node` view, as on DISU, and
+   `grid.unflatten()` goes back. This is plain `stack`/`unstack`, not a
+   custom index. The old "index mapping nodes to layer/row/col" (#207, see
+   `rotated-grid-index-plan.md`) was dropped in #469 and stays dropped.
 
 ## Where things stand
 
@@ -166,6 +174,137 @@ them directly.
   `flopy4/mf6/adapters.py` (it calls `attrs_to_dataset` directly) still
   gets what it needs.
 
+### Phase 2b: flat and layered cell layouts on the `grid` accessor
+
+Decision 7. Both methods go on the `grid` accessor next to `dense()`,
+work on Dataset and DataArray, and compose with it
+(`ds.grid.dense().grid.flatten()`).
+
+How this fits `xarray-package-plan.md`:
+
+- `flatten()`/`unflatten()` are views, like `dense()`. They belong to the
+  package side (grid and data semantics), use only what's in the
+  dataset, and never change the representation. Writing a flat view to
+  netCDF is part of the CF encoding, not a new format.
+- `.grid` is the current accessor name. The package plan (step 2)
+  renames it to something distinctive before more users depend on it, so
+  rename these with it.
+- A cf_xarray dependency (for `compress`, below) would be the package's,
+  and optional.
+
+- **`grid.flatten(dim="node")`**: `stack(node=("layer", "row", "col"))` on
+  DIS, `stack(node=("layer", "cell"))` on DISV. Layer is slowest, so
+  position `i` along `node` is MF6 user node `i + 1`, as in the flat DFN
+  shape packages store internally (`Package.to_dataarray` reshapes from
+  it). Variables without all the cell dims (DIS `delr`/`delc`, RCHA's
+  one-layer arrays, list tables) are left as they are. A no-op on DISU
+  and on arrays already flat.
+- **`grid.unflatten(dim="node")`**: `unstack` when `node` carries the
+  MultiIndex from `flatten()`. Without one (a flat array from somewhere
+  else, or the export's DFN-dim fallback on `nodes`), reshape using the
+  grid sizes phase 1 records in attrs (`nlay`, `nrow`, `ncol`/`ncpl`),
+  and raise if they're missing or don't multiply out to the length.
+- **Coordinates through the round trip**: per-cell coords (`z`,
+  `z_top`, `z_bot`; `x`/`y` on DISV) stack along with the data. `x`/`y`
+  on DIS are 1-D on `col`/`row` and carry a `CellIndex`. Find out what
+  `stack` does with them. If they're dropped or lose the index, the flat
+  view broadcasts them to `node` as plain coords, and `unflatten()`
+  restores the 1-D form and re-runs `index_xy`. Containment `sel(x=, y=)`
+  is a layered-view feature; on the flat view, use `.grid.sel` (see open
+  questions).
+- **netCDF**: xarray can't write a MultiIndex. The flat view is for
+  analysis; the complete export (decision 5) stays layered. If a flat
+  dataset needs writing, `flatten()` could take `index=False` to keep
+  `layer`/`row`/`col` as plain coords on `node`, which `unflatten()` can
+  still read. CF compression by gathering is the standard way to write
+  it (see prior art below).
+- **Not reduced nodes.** `node` here means user nodes (every cell).
+  Budget output on reduced nodes (active cells only) is a different
+  layout; leave it out of these methods, and don't name it `node`.
+- **Tests**: `flatten().unflatten()` is the identity on a DIS and a DISV
+  package export, on a period array (with `per`), and on a dense list
+  variable. Flat values match the package's internal flat arrays.
+  `unflatten()` from attrs alone. `CellIndex` comes back after the round
+  trip. DISU is a no-op.
+
+#### Prior art: xugrid, uxarray, CF
+
+We checked what the established libraries do, so that where we differ
+we do it on purpose. Sources: xugrid 0.15.3 (installed in the pixi env,
+read from source), uxarray `main` (read from source on GitHub), and the
+CF conventions.
+
+| | xugrid | uxarray | Phase 2b |
+|---|---|---|---|
+| Entry point | `UgridDataArray.from_structured2d(da)` | `UxDataset.from_structured(ds)` | `.grid.flatten()` |
+| Dims flattened | `(y, x)` only | `(lat, lon)` only | `(layer, row, col)` / `(layer, cell)` |
+| Layer / vertical | kept as its own dim | kept as its own dim | folded into `node` |
+| How | `da.stack({face_dim: (y, x)}, create_index=False)`, no MultiIndex | `ds.stack(n_face=[lat, lon])`, MultiIndex | `stack`, MultiIndex by default (open) |
+| Order | row-major (y slowest) | row-major (lat slowest) | layer slowest, then row-major (MF6 order) |
+| Way back | none by index; `rasterize`/`rasterize_like` regrid geometrically (lossy) | none | `unflatten()`, exact |
+| Flat dim name | mesh-prefixed, e.g. `mesh2d_nFaces` | `n_face` | `node` |
+
+Where we match:
+
+- **Cell order.** Row-major within a layer, as in both libraries.
+- **DISV layered view.** `(layer, cell)` is the UGRID layered-mesh shape:
+  a 2-D mesh with a separate layer dim. Both libraries use it, and so
+  does MF6's own netCDF mesh export (`head_l1`, `head_l2`, … on
+  `nmesh_face`).
+
+Where we depart, and what to do about it:
+
+1. **Folding layer into `node`.** Neither library does this. It's still
+   right for MF6, which numbers nodes in 3-D, and DISU uses that
+   numbering. Keep it, and say so in the docstring. Also consider a
+   horizontal-only flatten (`flatten(layers=False)` or similar):
+   `(layer, row, col)` → `(layer, cell)`. That is xugrid's convention
+   exactly, and it puts DIS data in the same shape as DISV. The UGRID
+   encoder needs this step for layered DIS anyway, so write it once and
+   use it in both places.
+2. **MultiIndex by default.** The libraries disagree. xugrid skips it,
+   which keeps the result netCDF-writable; uxarray keeps it. This leans
+   toward no MultiIndex by default (`index=False`), or at least making
+   the no-index form fully supported, including by `unflatten()`.
+3. **Inverse.** Neither library has an exact index-based inverse.
+   `unflatten()` is our addition. That's fine, but don't confuse it with
+   xugrid's `rasterize`, which resamples.
+4. **Dim naming inside flopy4.** The output readers
+   (`flopy4/mf6/utils/heads_reader.py`, `cbc_reader.py`) already return
+   DISV heads and budgets as xugrid objects on
+   `(time, layer, nmesh_face)`, while the export uses `(layer, cell)`.
+   That mismatch is within flopy4, independent of the libraries. The
+   package plan settles it: readers produce the representation directly
+   and xugrid objects only come from the UGRID encoding (`to_ugrid()`).
+   So the readers move to `cell`, and `nmesh_face` is a UGRID encoding
+   detail.
+
+**netCDF for the flat view: CF "compression by gathering"** (CF §8.2).
+This is the established encoding for a stacked dim. The flat dim is
+written as an integer coordinate holding each cell's flattened index,
+with a `compress = "layer row col"` attribute naming the dims it was
+gathered from. cf_xarray implements both directions
+(`cf_xarray.encode_multi_index_as_compress` and
+`decode_compress_to_multi_index`), and its docs show a netCDF round
+trip. That answers the netCDF bullet above: a flat dataset can be
+written in a standard form, not only as plain coords. It also fits
+reduced (active-only) budget nodes, since dropping always-missing cells
+is what the convention was designed for. If reduced nodes are handled
+later, use this encoding there too. cf_xarray isn't in the env.
+Depend on it, or write the encoding ourselves (it's small: compute
+`np.ravel_multi_index` on the way out, `np.unravel_index` on the way
+back).
+
+References:
+
+- xugrid: `xugrid/core/wrap.py` (`from_structured2d`),
+  `xugrid/core/dataarray_accessor.py` (`rasterize`, `rasterize_like`)
+- uxarray: [`_map_dims_to_ugrid`](https://github.com/UXARRAY/uxarray/blob/main/uxarray/io/utils.py),
+  [`Grid` API](https://uxarray.readthedocs.io/en/stable/generated/uxarray.Grid.html)
+- CF: [§8.2 Compression by gathering](https://cfconventions.org/Data/cf-conventions/cf-conventions-1.2/build/ch08s02.html)
+- cf_xarray: [`encode_multi_index_as_compress`](https://cf-xarray.readthedocs.io/en/latest/generated/cf_xarray.encode_multi_index_as_compress.html),
+  [`decode_compress_to_multi_index`](https://cf-xarray.readthedocs.io/en/latest/generated/cf_xarray.decode_compress_to_multi_index.html)
+
 ### Phase 3: wiring and cleanup
 
 - `Context.from_xarray(tree)` classmethod (`datatree_to_attrs`), with
@@ -186,3 +325,18 @@ them directly.
 - Type tag values: the DFN component name (`gwf-npf`) or the class path.
 - Whether the old instance `from_xarray` survives in any form (phase 2).
 - Whether `dense()` lives on DataArray too, or only on Dataset.
+- Names: `flatten()`/`unflatten()`, or something else. Also whether the
+  flat dim is `node` (DISU's, so a flat DIS looks like DISU) or `nodes`
+  (the DFN fallback). Pick one and make the fallback use it too.
+- Whether `.grid.sel(layer=, row=, col=)` and `.grid.sel(x=, y=)` should
+  work on the flat view (map to `node` positions), or require
+  `unflatten()` first.
+- Whether `flatten()` keeps the MultiIndex by default (`sel(layer=0)`
+  works on the flat view) or leaves plain coords (netCDF-safe). Prior
+  art leans toward plain coords (xugrid's choice).
+- Whether to add a horizontal-only flatten (`(layer, row, col)` →
+  `(layer, cell)`), matching xugrid/UGRID layered meshes.
+- netCDF for flat data: CF `compress` encoding via cf_xarray (new
+  dependency) or our own small implementation.
+- Cell dim name across export and output readers: leaning `cell` for
+  both, with `nmesh_face` only in the UGRID encoding (departure 4).
