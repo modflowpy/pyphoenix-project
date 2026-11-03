@@ -94,8 +94,8 @@ after MMP is under "After MMP".
 | track | items | by MMP | detail |
 |---|---|---|---|
 | **A. Engine correctness** | bare-list bug; equivalence harness (tier E) over the registry; round-trip tests; fix what they find | everything | `flopy-integration-plan.md` "Tests", `docs/dev/test.md`. **Longest and least predictable. Start first.** |
-| **B. API decisions** | `output.head` (integration decision 3); `get_package`/`modelgrid` on Model; `name` vs `sim_name`; accessor naming and `flatten()`/`node`; component naming (#258); parent/child init (#259); unified output loading (#342) | decided and implemented | `flopy-integration-plan.md` "Open decisions"; `xarray-package-plan.md` "Open" |
-| **C. Data and xarray** | `to-xarray-constants` fix; datetime period keys (#518, #226); lossless `to_xarray`/`from_xarray` and `dense()` (export phase 1); deferred external arrays (#516) | the fix, #518 and export phase 1; #516 for FUNC-8 | `xarray-export-plan.md`, `datetime-periods-plan.md`, `docs/dev/xarray-representation.md` |
+| **B. API decisions** | `output.head` (integration decision 3); `get_package`/`modelgrid` on Model; `name` vs `sim_name`; accessor naming and `flatten()`/`node`; component naming (#258); parent/child init (#259); unified output loading (#342); the data-shape questions, decided together by one rule: STO types (#229), UZF placeholders (#523), SFR `connectiondata` (#345), packages without a grid (#226) | decided and implemented | `flopy-integration-plan.md` "Open decisions"; `xarray-package-plan.md` "Open"; `layout-logical-decisions.md` for #226, #229, #259, #345, #523 |
+| **C. Data and xarray** | `to-xarray-constants` fix; datetime period keys (#518, #226); lossless `to_xarray`/`from_xarray` and `dense()` (export phase 1), including an Options section in the representation spec (logical options as data, layout options as encoding, output options off the data) and opt-in views for dynamic derivations (`AUXMULTNAME`, TAS); deferred external arrays (#516) | the fix, #518 and export phase 1; #516 for FUNC-8 | `xarray-export-plan.md`, `datetime-periods-plan.md`, `docs/dev/xarray-representation.md`, `layout-logical-decisions.md` "Track C" |
 | **D. Docs** | API reference; concepts (#217); 3.x examples adapted; `migrating.md` for compat; SDD update once export phase 1 lands | all | `map.md`, `srs.md`, `sdd.md` |
 | **E. Migration** | classify every flopy3 difference (accept, deprecate, break); runtime aliases in flopy4 itself (positional parent, `register_ims_package`, `write_simulation`, `get_package`, `modelgrid`, `*_filerecord`, ...); the shared `Legacy` table; the `flopy4 migrate` codemod; the corpus scoreboard over MF6 autotests and examples. Generated `ModflowXxx` class names stay in flopy 4.x's compat layer | classification, aliases and scoreboard; the codemod if time allows | `flopy3-migration-plan.md`; `flopy-integration-plan.md` "The compat layer" |
 | **F. 3.x prep** (flopy `develop`) | 3.x items 1 to 5: utilities out of `flopy/mf6`, the shared-code protocol, upstream patches, deprecations, forward-compatible keywords | nothing required; items 1 and 2 by the `4.x` cut | `flopy-integration-plan.md` "3.x work" |
@@ -110,6 +110,14 @@ release candidates follow MMP.
 - Track A's harness finds engine bugs, and fixing them may touch Track C
   (period data, arrays). Keep Track C's changes small until the harness
   is running.
+- #226 (packages without a grid), #259 (parent/child init) and #287's
+  binding-graph navigation (`Spc.target`, `Model.flow_model`, ...) need
+  the same attach operation. Design them together, or the relation ends
+  up held in two places.
+- Track A's two comparisons check different things: round-trip
+  (FUNC-7) preserves layout as given, while the flopy3/flopy4 file
+  comparison is logical, normalized by the option labels
+  (`layout-logical-decisions.md` "Track A").
 - Track E's aliases and codemod rules wait for Track B's naming
   decisions (and default file naming), or they get regenerated.
 - Track D's API reference waits for Track B, and the SDD update waits
@@ -143,6 +151,7 @@ From the plans this doc links to, ordered by when they're needed:
 | Pre-release version numbers (`4.0.0bN`?) | first alpha | here |
 | `output.head`: which side renames (integration 3) | MMP | `flopy-integration-plan.md` |
 | Remaining Track B API questions | MMP | Track B |
+| The layout/logical rule, and with it #226, #229, #259, #345, #523 | MMP; early, since Track B's other data questions follow from it | `layout-logical-decisions.md` |
 | Default file names (`m.chd` vs `m.chd0.chd`) | the Part 1 aliases; decide early, it changes flopy4's own tests | `flopy3-migration-plan.md` |
 | FUNC-10 test matrix; FUNC-11 in or out of MMP | MMP | SRS |
 | Compat data access (integration 2) | `4.x` cut | `flopy-integration-plan.md` |
