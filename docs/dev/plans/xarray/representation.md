@@ -1,10 +1,8 @@
 # The MF6 xarray representation
 
-Status: **draft.** This is the spec the export work builds to. Each
-section says what exists today and what is planned. Where a point is still
-open, it says so; the open questions are collected in
-[`overview.md`](overview.md) ("Open"). The design behind it is in
-[`overview.md`](overview.md), the implementation steps in
+The spec the export work builds to. Sections say what exists today and
+what is planned. The design behind it, and the open questions, are in
+[`overview.md`](overview.md); the implementation steps in
 [`export.md`](export.md).
 
 The representation is the in-memory form of an MF6 simulation as xarray
@@ -143,7 +141,7 @@ CF from scratch.
 | Read by | Python (flopy4, the accessor); MF6 not yet | MF6, GIS and CF/UGRID tools, xarray/xugrid |
 | Hierarchy | groups mirroring the tree | flat; identity in name prefixes and `modflow_input` |
 | Coverage today | everything | one model's GRIDDATA/PERIOD arrays; the rest in text input |
-| Coverage goal | everything | everything (to confirm with the MF6 developers) |
+| Coverage goal | everything | everything, to confirm with the MF6 developers |
 | Conventions | CF 1.8+ with groups, MF6 | CF, UGRID (mesh form), MF6 |
 | Indexing | 1-based on disk, 0-based in memory | 1-based (UGRID `start_index = 1`) |
 
@@ -224,21 +222,20 @@ grouped one:
   time.
 - **Groups**, eventually, if MF6 is to read the grouped layout.
 
-These come from reading the wiki (2026-11-03) and need checking against
-the MF6 source,
-and the coverage goal needs confirming with the MF6 developers, before
-anything is proposed upstream.
+These come from the wiki, not the MF6 source, and need checking (and the
+coverage goal confirming with the MF6 developers) before anything goes
+upstream.
 
 ## Grid dims and coordinates
 
 ### Dims
 
-| Grid | Cell dims | Flat view | Status |
-|---|---|---|---|
-| DIS | `(layer, row, col)` | `node` | done (#469) |
-| DISV | `(layer, cell)` | `node` | done |
-| DISU | `(node,)` | (already flat) | done |
-| DIS2D, DISV2D, DISV1D (OLF, CHF) | TBD | TBD | open |
+| Grid | Cell dims | Flat view |
+|---|---|---|
+| DIS | `(layer, row, col)` | `node` |
+| DISV | `(layer, cell)` | `node` |
+| DISU | `(node,)` | (already flat) |
+| DIS2D, DISV2D, DISV1D (OLF, CHF) | not yet defined | |
 
 - **Dims are named for the grid's axes**, not the DFN sizes (`nlay`,
   `nrow`, `ncol`, `ncpl`, `nodes`), since they're typed in selections all
@@ -259,8 +256,7 @@ anything is proposed upstream.
 
 ### Coordinates on a DIS array
 
-From [`rotated-grid-index.md`](rotated-grid-index.md), where the design and its alternatives
-are recorded.
+Design and alternatives in [`rotated-grid-index.md`](rotated-grid-index.md).
 
 | Coord | Dims | Index | Rotated grid | Unrotated grid |
 |---|---|---|---|---|
@@ -323,9 +319,9 @@ field and position (`models0`, `chd0`) and can't recover concrete types.
 - **Nodes are named by the component's name** (`gwf_1/npf`), not by field
   and position.
 - **Every node has a type tag**, `attrs["type"]`, so a reader can pick the
-  concrete class for `list[Model]` and union fields. Leaning toward the DFN
-  component name (`gwf-npf`), since it doesn't depend on Python; the class
-  path is the alternative (open).
+  concrete class for `list[Model]` and union fields. Probably the DFN
+  component name (`gwf-npf`), since it doesn't depend on Python, rather
+  than the class path.
 - **Grid metadata in attrs:** the grid type and sizes (`nlay`, `nrow`,
   `ncol`, `ncpl`, `nodes`) and `nper`, so `dense()`, `unflatten()` and the
   writers never need the DIS object.
@@ -388,8 +384,6 @@ places each period's rows by their key and fills forward:
 
 ## Time
 
-Partly open.
-
 - **`per`** is the 0-based stress period index, in list tables and in
   `<name>_period` labels.
 - **Datetime period keys** ([`datetime-periods.md`](datetime-periods.md), #518): packages
@@ -403,9 +397,6 @@ Partly open.
 - **Time-array series** stay NaN plus a name in the representation.
   Evaluating them (MF6 averages over each step, STEPWISE or LINEAR only) is
   a view; see [`tas-interpolation.md`](tas-interpolation.md).
-- Whether the time code (TDIS to time coordinates, TAS evaluation) belongs
-  to the package or to flopy is open, leaning package, since output readers
-  need it too.
 
 ## Attributes and fill values
 

@@ -1,24 +1,20 @@
 # xarray export plan
 
-Status: design **decided** (2026-11-02), implementation not started. The
-spec it builds to is [`representation.md`](representation.md); the direction
-and the higher-level open questions are in
-[`overview.md`](overview.md).
+A complete, lossless `to_xarray`/`from_xarray`, with the analysis view
+moved to the accessor. The spec it builds to is
+[`representation.md`](representation.md); direction and higher-level open
+questions are in [`overview.md`](overview.md).
 
-This started from a dead-code audit question: is the test-only half of
-the attrs/xarray layer (`mixins.py`, `protocols.py`, `dataset_to_attrs`,
-`datatree_to_attrs`) the planned generic conversion layer, or leftover
-from before xattree was dropped (#356)? The answer is to keep it and
-finish it. Nothing in `mixins.py`, `protocols.py` or the reverse half of
-`attrs_xarray.py` gets deleted, and no tests get dropped, except as the
-phases below say.
+The test-only half of the attrs/xarray layer (`mixins.py`,
+`protocols.py`, `dataset_to_attrs`, `datatree_to_attrs`) is the generic
+conversion layer, not leftover from before xattree was dropped (#356).
+Keep it and finish it; nothing there is deleted except as the phases say.
 
-The comparison behind "Where things stand" used a 1x4x5 DIS GWF model
-(NPF, IC, CHD, WEL, RCHA, OC, IMS, TDIS), printing `pkg.to_xarray()` next
-to `attrs_to_dataset(pkg)`, plus both round trips. Phase 1's tests
-replace it.
+"Where things stand" comes from a 1x4x5 DIS GWF model (NPF, IC, CHD, WEL,
+RCHA, OC, IMS, TDIS), comparing `pkg.to_xarray()` with
+`attrs_to_dataset(pkg)` and both round trips.
 
-## Decisions
+## Design
 
 1. **`to_xarray()` is the complete, lossless export** on every component.
    Packages give an `xr.Dataset` and contexts (models, the simulation) an
@@ -45,7 +41,7 @@ replace it.
    subclasses `Component`). The reverse functions in `attrs_xarray.py`
    stay and get finished.
 7. **Both cell layouts, flat and layered, through the accessor.** The
-   export is layered (decision 3): `layer,row,col` on DIS, `layer,cell`
+   export is layered (3): `layer,row,col` on DIS, `layer,cell`
    on DISV. `grid.flatten()` gives the flat `node` view, as on DISU, and
    `grid.unflatten()` goes back. This is plain `stack`/`unstack`, not a
    custom index. The old "index mapping nodes to layer/row/col" (#207, see
@@ -95,13 +91,12 @@ shape (a 0-d array if the shape is unknown). Arrays not on the cells get
 one dim per shape name, via `_AXIS_DIMS` (`ncol` → `col`, `nrow` → `row`).
 Tests: `test_to_xarray_constants_attached_later` and
 `test_dis_to_xarray_axis_arrays` in `test/mf6/test_mf6_component.py`.
-Committed on local branch `to-xarray-constants` (`07679ca0`, off
-develop `000f63c3`). Should go in as its own small PR before phase 1.
+On local branch `to-xarray-constants` (`07679ca0`, off develop
+`000f63c3`), to go in as its own PR before phase 1.
 
 ## Phases
 
-Each phase is roughly one PR. Verify with
-`pixi run -e dev smoke` plus the test files touched; CI runs the rest.
+Each phase is roughly one PR.
 
 ### Phase 1: make the generic layer complete (`flopy4/attrs_xarray.py`)
 
@@ -120,8 +115,7 @@ them directly.
   whether `period_lists` already has a helper for non-period lists before
   writing one.
 - **NetCDF-safe attrs**: paths as str, bools as int8 with a flag in the
-  variable/attr metadata (or a documented convention, decide during
-  implementation), references as names (already the case), None
+  variable/attr metadata (or a documented convention), references as names (already the case), None
   omitted, empty child lists omitted. The decoder reverses each.
 - **Coordinates and grid dims**: reshape cell arrays to the grid dims and
   add the cell-center/elevation coordinates. Share the code with
@@ -131,7 +125,7 @@ them directly.
   the decoder have them.
 - **Options and constants as given** ([`layout-logical-decisions.md`](../dfn-spec/layout-logical-decisions.md),
   "Track C"). Logical options are data or attrs on the node, layout
-  options an encoding record (`encoding` or prefixed attrs, decide here),
+  options an encoding record (`encoding` or prefixed attrs),
   output options off the package's data. Write the Options section of
   the spec. A griddata constant stays a constant in the complete export
   (0-d, marked), so `from_xarray` gives the constant back; only `dense()`
@@ -172,8 +166,8 @@ them directly.
   `Package.from_xarray` becomes a classmethod rebuilding the package
   (`dataset_to_attrs`). The old instance method's "set spd from a
   dataset" use moves to `Pkg.from_xarray(ds)` plus attaching, or to a
-  small helper. Decide during implementation, and check the editing
-  workflow in `docs/examples/period-data.py`.
+  small helper; check the editing workflow in
+  `docs/examples/period-data.py`.
 - `Tdis.to_xarray`'s derived `kper` dataset (`perlen`/`nstp`/`tsmult`,
   Timestamp `start_date_time`): it goes, unless the accessor or the time
   API (`Simulation.time`) needs it. Then `Simulation.to_xarray`'s Tdis
@@ -189,7 +183,7 @@ them directly.
 
 ### Phase 2b: flat and layered cell layouts on the `grid` accessor
 
-Decision 7. Both methods go on the `grid` accessor next to `dense()`,
+Design point 7. Both methods go on the `grid` accessor next to `dense()`,
 work on Dataset and DataArray, and compose with it
 (`ds.grid.dense().grid.flatten()`).
 
@@ -200,9 +194,8 @@ How this fits [`overview.md`](overview.md):
   dataset, and never change the representation. Writing a flat view to
   netCDF is a CF matter (compression by gathering, below), not a new
   format.
-- `.grid` is the current accessor name. The package plan (step 2)
-  renames it to something distinctive before more users depend on it, so
-  rename these with it.
+- `.grid` is to be renamed ([`overview.md`](overview.md) step 2); rename
+  these with it.
 - A cf_xarray dependency (for `compress`, below) would be the package's,
   and optional.
 
@@ -227,7 +220,7 @@ How this fits [`overview.md`](overview.md):
   is a layered-view feature; on the flat view, use `.grid.sel` (see open
   questions).
 - **netCDF**: xarray can't write a MultiIndex. The flat view is for
-  analysis; the complete export (decision 5) stays layered. If a flat
+  analysis; the complete export (5) stays layered. If a flat
   dataset needs writing, `flatten()` could take `index=False` to keep
   `layer`/`row`/`col` as plain coords on `node`, which `unflatten()` can
   still read. CF compression by gathering is the standard way to write
@@ -243,17 +236,15 @@ How this fits [`overview.md`](overview.md):
 
 #### Prior art: xugrid, uxarray, CF
 
-We checked what the established libraries do, so that where we differ
-we do it on purpose. Sources: xugrid 0.15.3 (installed in the pixi env,
-read from source), uxarray `main` (read from source on GitHub), and the
-CF conventions.
+From the source of xugrid 0.15.3 and uxarray `main`, and the CF
+conventions.
 
 | | xugrid | uxarray | Phase 2b |
 |---|---|---|---|
 | Entry point | `UgridDataArray.from_structured2d(da)` | `UxDataset.from_structured(ds)` | `.grid.flatten()` |
 | Dims flattened | `(y, x)` only | `(lat, lon)` only | `(layer, row, col)` / `(layer, cell)` |
 | Layer / vertical | kept as its own dim | kept as its own dim | folded into `node` |
-| How | `da.stack({face_dim: (y, x)}, create_index=False)`, no MultiIndex | `ds.stack(n_face=[lat, lon])`, MultiIndex | `stack`, MultiIndex by default (open) |
+| How | `da.stack({face_dim: (y, x)}, create_index=False)`, no MultiIndex | `ds.stack(n_face=[lat, lon])`, MultiIndex | `stack`; MultiIndex or not is open |
 | Order | row-major (y slowest) | row-major (lat slowest) | layer slowest, then row-major (MF6 order) |
 | Way back | none by index; `rasterize`/`rasterize_like` regrid geometrically (lossy) | none | `unflatten()`, exact |
 | Flat dim name | mesh-prefixed, e.g. `mesh2d_nFaces` | `n_face` | `node` |
@@ -266,7 +257,7 @@ Where we match:
   does MF6's own netCDF mesh export (`head_l1`, `head_l2`, … on
   `nmesh_face`).
 
-Where we depart, and what to do about it:
+Where we depart:
 
 1. **Folding layer into `node`.** Neither library does this. It's still
    right for MF6, which numbers nodes in 3-D, and DISU uses that
@@ -288,11 +279,9 @@ Where we depart, and what to do about it:
    (`flopy4/mf6/utils/heads_reader.py`, `cbc_reader.py`) already return
    DISV heads and budgets as xugrid objects on
    `(time, layer, nmesh_face)`, while the export uses `(layer, cell)`.
-   That mismatch is within flopy4, independent of the libraries. The
-   package plan settles it: readers produce the representation directly
-   and xugrid objects only come from the UGRID adapter (`to_ugrid()`).
-   So the readers move to `cell`, and `nmesh_face` is a UGRID adapter
-   detail.
+   Per [`overview.md`](overview.md), readers produce the representation
+   directly and xugrid objects come only from `to_ugrid()`, so the readers
+   move to `cell` and `nmesh_face` is a UGRID adapter detail.
 
 **netCDF for the flat view: CF "compression by gathering"** (CF §8.2).
 This is the established encoding for a stacked dim. The flat dim is
@@ -332,9 +321,8 @@ References:
   `test/test_attrs_xarray.py` off the mixins onto the plain functions.
 - Update [`sdd.md`](../../sdd.md) ("Xarray conversion") to describe the complete
   export, the accessor view, and how both differ from MF6 NetCDF input.
-- Close the dead-code audit question (above): the layer was kept and finished.
 
-## Still open (decide during implementation)
+## Open questions
 
 - Bool encoding in netCDF attrs: int8 + a flag, or a convention.
 - Type tag values: the DFN component name (`gwf-npf`) or the class path.
@@ -352,5 +340,3 @@ References:
   `(layer, cell)`), matching xugrid/UGRID layered meshes.
 - netCDF for flat data: CF `compress` encoding via cf_xarray (new
   dependency) or our own small implementation.
-- Cell dim name across export and output readers: leaning `cell` for
-  both, with `nmesh_face` only in the UGRID adapter (departure 4).

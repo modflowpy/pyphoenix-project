@@ -1,13 +1,7 @@
 # Evaluate time-array series in the period view
 
-Status: **ready, not started.** Checked 2026-11-03 against develop
-`8d25e4b7`: there's no `Tas.average`, `step_array` or `dense_steps` yet,
-and `period_array`, `period_arrays.dense` and `_check_tas_refs` are as the
-plan expects. MF6 semantics are from `src/Utilities/TimeSeries/`
-(`TimeArraySeries.f90`, `TimeArraySeriesManager.f90`). Decisions are under
-"Decisions".
-
-In the xarray view, series values are `NaN`, with the series name in a
+MF6 semantics are from `src/Utilities/TimeSeries/`
+(`TimeArraySeries.f90`, `TimeArraySeriesManager.f90`). In the xarray view, series values are `NaN`, with the series name in a
 `<name>_tas` coordinate (#489). A step view could fill those.
 
 ## Problem
@@ -29,7 +23,7 @@ in effect can't use a model that has them: plots, adapters, and analysis.
   step's end time as `totim`; a step starts at the previous one's end, or
   at 0. `Simulation.time` builds it from TDIS.
 
-## MF6 semantics (checked)
+## MF6 semantics
 
 - **Only STEPWISE and LINEAR.** `tas_init` rejects anything else
   ("Unknown interpolation method"). The DFN (`utl-tas.dfn`) lists
@@ -67,20 +61,24 @@ in effect can't use a model that has them: plots, adapters, and analysis.
      their own.
    - It raises if the series ends before `t1`, as MF6 does.
    - It returns zeros with a warning if `t0` is before the first time.
-     MF6 does this silently; the warning flags what's likely an input
-     mistake.
+     MF6 is silent; a warning, since it's likely an input mistake.
    - It raises on a method other than STEPWISE or LINEAR, naming the
      method.
 3. **A step view, as its own method.** `Package.step_array(name,
    time=None)` returns `(nstp_total, ...)`: one array per time step, the
-   values MF6 applies.
+   values MF6 applies. A separate method, not a `by=` keyword on
+   `period_array`, so that method's shape doesn't depend on an argument.
    - Plain period arrays repeat their period's value across its steps,
      with carry-forward as today.
    - A period given by a reference is evaluated per step with
      `Tas.average`. A reference carried forward keeps being evaluated at
      each later step.
    - Aux arrays work the same way, per name: `{name: (nstp_total, ...)}`,
-     as `period_array` gives `{name: (nper, ...)}`.
+     as `period_array` gives `{name: (nper, ...)}`. MF6 accepts a series
+     for RCHA `recharge`/`aux`, EVTA `rate`/`aux` and SPCA
+     `concentration`/`temperature` (aux through `aux_tasnames` in
+     `Mf6FileLayerArray.f90`); flopy4 already types all of them
+     `... | TimeArraySeriesRef`, and `split_tas` handles aux.
    - Values stay in input units, as in `period_array`. MF6 also converts
      RCH/EVT fluxes to flows (cell area) and applies `auxmultname` after
      substitution. The view does neither.
@@ -130,34 +128,16 @@ in effect can't use a model that has them: plots, adapters, and analysis.
 6. **Upstream:** report that `utl-tas.dfn` lists `linearend`, which MF6
    rejects for array series. Either the DFN or the Fortran should change.
 
-## Decisions
-
-- **Time source:** the package's TDIS if it's attached to a simulation,
-  or an explicit `time`. Both present raises.
-- **No period average.** The step view gives MF6's values. The period
-  view gives exact values or raises; it never returns a derived summary.
-- **Aux and SPCA are in scope.** MF6 accepts a series for RCHA
-  `recharge`/`aux`, EVTA `rate`/`aux` and SPCA
-  `concentration`/`temperature` (the DFNs' `time_series true`; aux
-  through `aux_tasnames` in `Mf6FileLayerArray.f90`). flopy4 already
-  types all of them `... | TimeArraySeriesRef`, and `split_tas` already
-  handles aux. EVTA `surface`/`depth` can't come from a series.
-- **A separate `step_array`, not a `by=` keyword.** A keyword would make
-  `period_array`'s shape depend on an argument, and `time=` would apply
-  to only one of its modes.
-- **Warn on zeros before the series starts.** MF6 is silent; the warning
-  is flopy4's addition, since it most likely marks an input mistake.
-
 ## Follow-on: time series in period lists
 
-Not started (added 2026-10-18). The same gap exists for TS6 in list-based
+The same gap exists for TS6 in list-based
 packages. A row value can come from a series, `TimeSeriesRef("headseries")`,
 and `to_xarray` holds it as NaN, with the series name in the `<name>_ts`
 coordinate. So the values in effect aren't available for these either. This
 follows the TAS work and reuses its time lookup (design 5) and step
 bounds.
 
-MF6 semantics (checked in `TimeSeries.f90` and `TimeSeriesManager.f90`):
+MF6 semantics (`TimeSeries.f90`, `TimeSeriesManager.f90`):
 
 - **STEPWISE, LINEAR and LINEAREND.** Unlike TAS, LINEAREND is accepted.
   STEPWISE and LINEAR give the step average, as with TAS. LINEAREND gives

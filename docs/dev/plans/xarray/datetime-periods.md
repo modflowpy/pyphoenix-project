@@ -1,7 +1,5 @@
 # Datetime period keys (#518), then `create_tdis` (#226)
 
-Status: **in progress** (#518, #226).
-
 ## Goal
 
 Let period-keyed package data (fill-forward fields: CHD/WEL/... lists,
@@ -64,7 +62,7 @@ hand-built TDIS with `start_date_time` set.
 - Errors when: `start_date_time` is unset; `time_units` is None/"unknown";
   `t` isn't exactly a period start (say which periods it falls between);
   `t` is at or after the end of the last period. "years" is 365.25 days
-  (check against MF6 docs before committing to that).
+  (check against MF6).
 - `Package._period_index(key) -> int`: ints pass through; datetimes go
   through the TDIS found via the package's parent chain (the simulation).
   No TDIS reachable -> error naming the package and key.
@@ -139,5 +137,5 @@ Separate PR; the write path doesn't depend on it.
 - Should `create_tdis` also be callable on a model-free basis
   (`Tdis.from_packages(*pkgs, end=...)`), with the simulation method as a
   wrapper? Useful for tests and for building one TDIS for several sims.
-- Round-trip: a loaded simulation always has int keys. Do we ever want to
-  offer "re-key by date" (`pkg.with_datetime_keys()`)? Not needed now.
+- A loaded simulation always has int keys. Is a "re-key by date"
+  (`pkg.with_datetime_keys()`) ever wanted?

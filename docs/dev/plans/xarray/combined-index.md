@@ -1,13 +1,10 @@
 # Combined grid index: rebuilding on `CellIndex`
 
-Status: **deferred.** Revisit if DISV needs its own index anyway (see
-[`overview.md`](overview.md), "xugrid").
-
 `flopy4/mf6/indexes.py`, an early xarray index prototype, was deleted in
 #510. This covers what it would take to bring back a combined index on top
 of `CellIndex`, and how that compares to what we do now. It
-builds on [`rotated-grid-index.md`](rotated-grid-index.md) ("Why not an index (yet)"), which
-already prototyped a z index.
+builds on [`rotated-grid-index.md`](rotated-grid-index.md) ("Why not an
+index"), which prototyped a z index.
 
 ## What `indexes.py` did
 
@@ -150,7 +147,7 @@ and their combinations are free functions in `utils/grid.py` and
 | netCDF round trip | `index_xy` re-attaches the indexes | Same |
 | Capability | Everything | Nothing new; a nicer spelling of the same selections |
 
-**Recommendation:** keep the current approach. A combined index only adds
+Keep the current approach. A combined index only adds
 the `da.sel(z=...)` spelling, and in exchange takes on the hardest part of
 custom xarray indexes: keeping state right across several dims through
 partial `isel`. Revisit it if:
@@ -172,9 +169,3 @@ MF6's own netCDF export, which defines a `layer` int variable of `1..nlay`
 with the same attrs (`DisNCStructured.f90`, `DisNCMesh.f90`, `DisvNCMesh.f90`,
 modflow6 @ 48f34498f3). Keep it.
 
-Bug found along the way: `vertical.sel_z` replaces `layer` with the chosen
-**positions** (`vertical.py:99`). On a dataset with 1-based `layer` labels
-(e.g. MF6 netCDF output opened with `xr.open_dataset`), the result's
-`layer` is off by one: selecting z in the second layer returns its value
-with `layer=1`. It should keep the labels when `layer` has them
-(`obj[dim].values[idx]`), and positions only when it has none.

@@ -44,6 +44,14 @@ There are two options:
 
 Small; decide which first.
 
+## `sel_z` and layer labels
+
+`vertical.sel_z` replaces `layer` with the chosen positions
+(`flopy4/mf6/utils/vertical.py:99`). On a dataset with 1-based `layer`
+labels (MF6 netCDF output opened with `xr.open_dataset`), the result's
+`layer` is off by one. It should keep the labels when `layer` has them
+(`obj[dim].values[idx]`), and positions only when it has none. Small.
+
 ## mypy and field converters
 
 From [`mypy-converter-plan.md`](../archive/mypy-converter-plan.md). This
