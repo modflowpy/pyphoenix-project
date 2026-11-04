@@ -1,7 +1,9 @@
 # Generating classes into a user directory
 
-Status: **idea, not planned.** Written 2026-10-08. Revisit once
-`mf6 --spec` lands.
+An idea: have sync write generated classes to a per-user directory instead
+of the installed package. Worth revisiting once `mf6 --spec` lands, since
+syncing from whatever binary is on PATH makes several versions side by
+side more likely.
 
 ## Today
 
@@ -105,14 +107,15 @@ first component import. `use()` after that raises.
 - Rework: the contract and atomic writes carry over, one per directory;
   the orphan and stale-module handling mostly goes.
 
-## Hybrid (preferred, if we do it)
+## Hybrid
 
 - The bundled classes in the package are never modified.
 - `sync` only writes to the user directory.
 - Without a selection, flopy4 uses the bundled classes, exactly as typed.
 
 Users who never sync keep exact types and pay nothing. Only those who
-opt into another version pay the typing cost.
+opt into another version pay the typing cost. This, with a custom
+importer, is the form to take if it's done at all.
 
 ## Open questions
 
@@ -121,16 +124,8 @@ opt into another version pay the typing cost.
   pickles / saved files?
 - Should a version directory be keyed by version string, commit, or both?
   (develop moves; commit is the real identity.)
-- Do the stored DFNs (one TOML spec, once devtools round-trips losslessly)
-  live in the same directory? Yes, presumably, for the same pairing reason
-  as today.
+- The stored DFNs (one TOML spec, once devtools round-trips losslessly)
+  presumably live in the same directory, paired as today.
 - How does `mf6 --spec` fit: `sync --exe path/to/mf6` → directory keyed by
   the binary's reported version and commit, selected automatically when
   that binary runs?
-
-## Recommendation
-
-Not now. The current in-package design is simpler and keeps typing exact.
-Revisit once `mf6 --spec` lands, because syncing from whatever binary is
-on PATH makes several versions side by side more likely to come up. If
-we do it, use the hybrid with a custom importer.

@@ -8,7 +8,7 @@ against the committed baseline and checked for unchanged results.
 
 Written 2026-09-29. It applies to the **basic** loader, which users run
 today. None of it waits on the typed-loader wiring
-([`typed-loader-wiring.md`](../io/typed-loader-wiring.md)); the typed grammar gets the same bulk-token
+([`typed-loader-wiring.md`](typed-loader-wiring.md)); the typed grammar gets the same bulk-token
 idea when it's wired in. Index of related work: [`loader-roadmap.md`](loader-roadmap.md).
 
 ## Background (read first)
@@ -98,7 +98,7 @@ way to show that loaded values are unchanged:
   string and is now numeric).
 - The round-trip test from #369 (`test/mf6/test_mf6_io_roundtrip.py`) has
   since landed on `develop`, and there's the planned typed-vs-basic parity
-  test ([`typed-loader-wiring.md`](../io/typed-loader-wiring.md), step 5). Check whether the round-trip
+  test ([`typed-loader-wiring.md`](typed-loader-wiring.md), step 5). Check whether the round-trip
   test's comparison can be reused for the snapshot compare before writing a
   new one. Note that a round trip alone doesn't prove values are unchanged:
   a value misread the same way on both loads still round-trips.

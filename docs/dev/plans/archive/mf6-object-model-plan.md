@@ -1,6 +1,6 @@
 # MF6 object model plan
 
-**Archived 2026-10-19.** Done: see its 2026-09-16 status update. Its remaining items are resolved too: the reader is off the legacy DFNs (#455), OC `ocsetting` is typed ([`nested-keystring-union-plan.md`](nested-keystring-union-plan.md)), and namefile grammars are generated; wiring them in is [`typed-loader-wiring.md`](../io/typed-loader-wiring.md).
+**Archived 2026-10-19.** Done: see its 2026-09-16 status update. Its remaining items are resolved too: the reader is off the legacy DFNs (#455), OC `ocsetting` is typed ([`nested-keystring-union-plan.md`](nested-keystring-union-plan.md)), and namefile grammars are generated; wiring them in is [`typed-loader-wiring.md`](typed-loader-wiring.md).
 
 ## Background
 

@@ -1381,7 +1381,7 @@ What remains, cheapest first:
    export, the writer).
 4. **Typed reader: mixed/ragged list rows** (Peterson `v6.sfr`, basic
    0.70 s vs typed 2.07 s). Only matters if the typed reader becomes the
-   default (see [`typed-loader-wiring.md`](../io/typed-loader-wiring.md)). Either a run terminal that allows words, or splitting such
+   default (see [`typed-loader-wiring.md`](typed-loader-wiring.md)). Either a run terminal that allows words, or splitting such
    rows as text in the transformer, as `NumberRows` does.
 5. **Smaller or speculative:**
    - Peterson SFR per-row Items (~0.47 s profiled, 52k rows); check

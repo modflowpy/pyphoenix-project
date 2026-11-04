@@ -64,6 +64,7 @@ notes used to live. Live plans are in the [index](../README.md).
 | [load-branch-todo.md](load-branch-todo.md) | TODO list from the `load` branch | historical |
 | [typed-grammar-issues.md](typed-grammar-issues.md) | generated typed grammars falling back to the basic parser (`load` branch) | historical |
 | [typed-grammar-remarks.md](typed-grammar-remarks.md), [typed-grammar-trailing-remarks.md](typed-grammar-trailing-remarks.md) | whether the typed grammar keeps trailing remarks, and its speed | answered: keep remarks |
+| [typed-loader-wiring.md](typed-loader-wiring.md) | making the typed loader a selectable alternative | superseded by [converter-simplification.md](../io/converter-simplification.md) (unmerged `simplify-converter`) |
 | [typed-loader-perf.md](typed-loader-perf.md) | load performance work | done (#474-#484); paused |
 | [optimization-plan.md](optimization-plan.md) | input-load optimizations, basic loader first | superseded by [typed-loader-perf.md](typed-loader-perf.md) |
 | [load-baseline-plan.md](load-baseline-plan.md) | baseline load benchmarks, flopy3 vs. flopy4 | folded into #482 |

@@ -1,11 +1,10 @@
 # flopy4's two loaders, compared
 
-Phase C of the [converter simplification plan](converter-simplification.md):
-the basic loader (Track A: one generic grammar, block structure read from
-the stored DFNs at runtime) against the typed loader (Track B: a grammar
-generated per component, values read by the classes' fields alone). Both
-stay, with `loader="basic" | "typed"` (the tests' `--loader`) choosing
-between them; deleting one is a separate decision.
+The basic loader (one generic grammar, block structure from the stored
+DFNs at runtime) against the typed loader (a grammar generated per
+component, values read by the classes' fields alone), both on the
+[`simplify-converter`](converter-simplification.md) branch and chosen with
+`loader="basic" | "typed"` (the tests' `--loader`).
 
 Measured 2026-10-21 at `721503fe`, on an Apple M2 Max (macOS, CPython
 3.11.16), standard benchmark tier (9 models, 15.1 MB of input).
@@ -21,8 +20,7 @@ Measured 2026-10-21 at `721503fe`, on an Apple M2 Max (macOS, CPython
 | malformed files | lenient: loads most, warning or silently | strict: a missing `END` or wrong value type raises, with line and column |
 | code only it needs | ~450 lines (~570 with the DFN accessor egress shares), plus 129 stored DFNs (1.4 MB) | ~1,300 lines with the grammar templates, plus 129 generated grammars (6,581 lines) |
 
-**Recommendation:** keep basic as the default and typed as the opt-in.
-The basic loader is faster, smaller and lighter on memory; the typed
+So basic is the default and typed the opt-in. The basic loader is faster, smaller and lighter on memory; the typed
 loader's advantages are stricter errors and no DFN at runtime, and the
 first can be had in the basic loader for less (see "Errors"). Before
 deciding to delete either, look into the typed loader's memory on
@@ -155,4 +153,4 @@ imports from it, directly or through what it calls.
 Egress (S2) reads block structure through the DFN accessor too, so the
 stored DFNs and the accessor stay while either egress or the basic
 loader needs them. Deleting the basic loader would mean egress reading
-the classes' fields instead (plan, Phase C).
+the classes' fields instead.

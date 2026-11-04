@@ -1,6 +1,6 @@
 # flopy4 development plan — Track A (input file loading)
 
-**Archived 2026-10-19.** Done: Track A and Track B are both complete. The two open rows are resolved: the codec reader is off the legacy DFNs (#455), and namefile grammars are generated (`sim-nam.lark`, `*-nam.lark`). Using them is part of [`typed-loader-wiring.md`](../io/typed-loader-wiring.md).
+**Archived 2026-10-19.** Done: Track A and Track B are both complete. The two open rows are resolved: the codec reader is off the legacy DFNs (#455), and namefile grammars are generated (`sim-nam.lark`, `*-nam.lark`). Using them is part of [`typed-loader-wiring.md`](typed-loader-wiring.md).
 
 Track B (remove `xattree`, issue #167) is done — see "Track B: closed
 out" near the bottom. This file now tracks Track A only.

@@ -1,6 +1,6 @@
 # Input loader roadmap
 
-**Archived 2026-10-19.** Superseded: stage 0 merged as #482 (benchmarks), stage 4 as #474-#484 (see [`typed-loader-perf.md`](typed-loader-perf.md)). Stages 2-3 (typed wiring) are in [`typed-loader-wiring.md`](../io/typed-loader-wiring.md), not started.
+**Archived 2026-10-19.** Superseded: stage 0 merged as #482 (benchmarks), stage 4 as #474-#484 (see [`typed-loader-perf.md`](typed-loader-perf.md)). Stages 2-3 (typed wiring) are in [`typed-loader-wiring.md`](typed-loader-wiring.md), not started.
 
 Status as of 2026-09-24: what's done, what we learned, and how the remaining
 loader work is staged. This is the index. Details live in the docs and plans
@@ -21,7 +21,7 @@ linked below.
 
 **Plans (untracked, project root):**
 - [`load-baseline-plan.md`](load-baseline-plan.md): done.
-- [`typed-loader-wiring.md`](../io/typed-loader-wiring.md): not started. Stages 2-3 below.
+- [`typed-loader-wiring.md`](typed-loader-wiring.md): not started. Stages 2-3 below.
 - [`typed-grammar-trailing-remarks.md`](typed-grammar-trailing-remarks.md): the original open question, since
   answered.
 - [`optimization-plan.md`](optimization-plan.md): basic-loader performance steps. Not started;

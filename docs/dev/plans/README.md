@@ -60,7 +60,6 @@ with a table of how the others relate.
 |---|---|---|
 | [io/converter-simplification.md](io/converter-simplification.md) | one DFN-driven structure/unstructure path, two loaders side by side | done on the unmerged `simplify-converter` branch |
 | [io/loader-comparison.md](io/loader-comparison.md) | the basic and typed loaders measured against each other | report (2026-10-21) |
-| [io/typed-loader-wiring.md](io/typed-loader-wiring.md) | making the typed loader a selectable alternative on develop | not started, not decided |
 
 ## Maintenance
 
