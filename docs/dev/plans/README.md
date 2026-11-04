@@ -17,6 +17,9 @@ decision), **exploratory** (research, nothing decided), **deferred** or
 |---|---|---|
 | [integration/replacing-flopy-mf6.md](integration/replacing-flopy-mf6.md) | replacing flopy's mf6 engine with flopy4: 3.x prep, the 4.x layout, the compat layer, test tiers, release order | proposal; release shape decided |
 | [integration/aliases-and-codemod.md](integration/aliases-and-codemod.md) | runtime aliases for flopy3 idioms in flopy4, then a `flopy4 migrate` codemod | proposal |
+| [integration/modflowapi.md](integration/modflowapi.md) | folding modflowapi into flopy4 as an XMI plugin built from mixins (`plan-api` branch, Feb 2026) | proposal, not started |
+| [integration/xmi-api.md](integration/xmi-api.md) | the XMI API that plan would expose, following modflowapi | design, not started |
+| [integration/python-codes.md](integration/python-codes.md) | extending flopy4 to Python-based modeling codes | proposal, not started |
 
 ## xarray
 
@@ -33,13 +36,46 @@ with a table of how the others relate.
 | [xarray/rch-evt-layer.md](xarray/rch-evt-layer.md) | z coordinates for RCHA/EVTA arrays | not started |
 | [xarray/tas-interpolation.md](xarray/tas-interpolation.md) | evaluating time-array series in the period view | ready, not started |
 | [xarray/combined-index.md](xarray/combined-index.md) | a combined grid index on `CellIndex` | deferred |
+| [xarray/period-lists.md](xarray/period-lists.md) | an xarray form for list packages' period data | done (#476) |
 
 ## Components and code generation
 
 | Doc | What | Status |
 |---|---|---|
 | [components/reference-fields.md](components/reference-fields.md) | fields that refer to components without owning them (solution models, exchange models) | done |
+| [components/solution-binding.md](components/solution-binding.md) | how solutions and exchanges are tied to their models (#285) | done (#496, #497) |
+| [components/binding-rows.md](components/binding-rows.md) | generating name-file binding rows from the DFNs | done (#526) |
+| [components/package-naming.md](components/package-naming.md) | default package names and filenames, and the one-file-per-component check | done (#495) |
+| [components/mixin-fields.md](components/mixin-fields.md) | what mixins rely on in the DFNs, and how the tests guard it | reference; to become a dev doc |
 | [components/user-dir-classes.md](components/user-dir-classes.md) | generating component classes into a per-user directory instead of the installed package | idea |
+
+## Lists
+
+| Doc | What | Status |
+|---|---|---|
+| [lists/design.md](lists/design.md) | list fields: `list_()`, item classes, `ItemTable` storage | reference; to become a dev doc |
+| [lists/record-unify.md](lists/record-unify.md) | list shape key, line records on field functions, the `Item`/`Record` merge | steps 1-3 done (#463); the merge is open |
+| [lists/binary-list-shapes.md](lists/binary-list-shapes.md) | which blocks MF6 can read binary list input into | reference |
+
+## Loading and writing
+
+| Doc | What | Status |
+|---|---|---|
+| [loading/converter-simplification.md](loading/converter-simplification.md) | one DFN-driven structure/unstructure path, two loaders side by side | done on the unmerged `simplify-converter` branch |
+| [loading/loader-comparison.md](loading/loader-comparison.md) | the basic and typed loaders measured against each other | report (2026-10-21) |
+| [loading/typed-loader-wiring.md](loading/typed-loader-wiring.md) | making the typed loader a selectable alternative on develop | not started, not decided |
+| [loading/typed-loader-perf.md](loading/typed-loader-perf.md) | load performance work | done (#474-#484); paused |
+
+## Cleanup and follow-ups
+
+| Doc | What | Status |
+|---|---|---|
+| [followups.md](followups.md) | follow-ups after row layout, boundnames and conditional fields | partly done |
+| [open-followups.md](open-followups.md) | leftover items from the archived plans | open |
+| [dev-docs.md](dev-docs.md) | turning reference notes here into published developer docs | not started |
+| [cleanup/dead-code-audit.md](cleanup/dead-code-audit.md) | unused code in hand-written `flopy4/` | sections 1-4 done; 5 open |
+| [cleanup/writer-dead-code.md](cleanup/writer-dead-code.md) | the writer's dead xarray-Dataset list path | done (#505) |
+| [cleanup/simplification-survey.md](cleanup/simplification-survey.md) | where hand-written `flopy4/mf6` could be simpler | survey; nothing started |
 
 ## The DFN spec
 
@@ -55,3 +91,10 @@ the others use.
 | [dfn-spec/constraint-audit.md](dfn-spec/constraint-audit.md) | kinds of input constraint, where each is enforced, and what could express it | done |
 | [dfn-spec/dfn-gaps.md](dfn-spec/dfn-gaps.md) | rules MF6 enforces that the DFNs don't state, and memory catalog gaps; for MF6 and devtools developers | report |
 | [dfn-spec/layout-logical-decisions.md](dfn-spec/layout-logical-decisions.md) | the layout/logical rule applied to MMP issues #226, #229, #259, #345, #523 | proposal |
+| [dfn-spec/schema-polymorphism.md](dfn-spec/schema-polymorphism.md) | schema polymorphism (#287) vs. component key roles (devtools #405) | notes |
+| [dfn-spec/287-directions.md](dfn-spec/287-directions.md) | three hypotheses the #287 findings point to | working notes |
+
+## Archive
+
+Finished, superseded and abandoned plans are in [archive/](archive/README.md),
+as they were last written.

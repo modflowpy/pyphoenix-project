@@ -67,7 +67,7 @@ scope:
 | [`tas-interpolation.md`](tas-interpolation.md) | time-array series in the dense view | package (time) | Ready, not started. Its step view is a dynamic-derivation view: opt-in, never read back by `from_xarray`. |
 | [`layout-logical-decisions.md`](../dfn-spec/layout-logical-decisions.md) | how options appear (logical as data, layout as encoding, output off the data); constants and dynamic derivations held as given | flopy (export) | Proposal. Feeds export phase 1. |
 | period lists (#476) | period lists in xarray, dense/sparse | flopy (encode) + package (densify) | Done. The spec's "Period data" records the result; the dense view becomes `dense()`. |
-| `docs/dev/spatial-index-design.md` on `origin/xarray-index` (#278) | original spatial index design | — | Superseded by [`rotated-grid-index.md`](rotated-grid-index.md), whose Next 9 covers the housekeeping. |
+| [`spatial-index-design.md`](../archive/spatial-index-design.md) on `origin/xarray-index` (#278) | original spatial index design | — | Superseded by [`rotated-grid-index.md`](rotated-grid-index.md), whose Next 9 covers the housekeeping. |
 | [`sdd.md`](../../sdd.md) "Xarray conversion", "NetCDF" | SDD description | both | Update after export phase 1 (representation) and once the writers and adapters exist (NetCDF); see step 7. |
 | [xattree #36][x36] | functional rewrite of xattree | generic (A1) | Open. flopy4's `attrs_xarray.py` is the working prototype; see "xattree". |
 | #367 | attrs vs pydantic dataclasses | flopy (object model) | Stale. Its outcome decides whether xattree v2 is attrs-only. |

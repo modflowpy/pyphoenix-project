@@ -201,7 +201,8 @@ warn_unreachable = true
 
 [tool.codespell]
 # docs/dev/plans/dfn-spec/data: research scripts (regex word stems) and MF6 messages quoted as found
-skip = "pixi.*,./docs/examples/quickstart/*,**/temp/*,./docs/examples/*.ipynb,./docs/_build/*,./docs/dev/plans/dfn-spec/data/*"
+# docs/dev/plans/archive: plans kept as last written
+skip = "pixi.*,./docs/examples/quickstart/*,**/temp/*,./docs/examples/*.ipynb,./docs/_build/*,./docs/dev/plans/dfn-spec/data/*,./docs/dev/plans/archive/*"
 ignore-words-list = [
     "wel",
     "nam",

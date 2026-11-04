@@ -2,7 +2,7 @@
 
 Status: **mostly done** (#469–#490). The "Next" list at the end is still live.
 
-This plan supersedes the earlier spatial index design (`docs/dev/spatial-index-design.md` on the `origin/xarray-index` branch, Nov 2025–Feb 2026, with upstream #207 (structured grid index), #208 (`.grid` accessor) and #120 (closed background)). That design proposed spatial dims for DIS, a `.grid` accessor, a custom `GeospatialIndex` (from flopy PR 2654), containment-vs-nearest point queries, and z and ball queries. "Where the old design stands" below records what was kept, changed or dropped.
+This plan supersedes the earlier spatial index design ([`spatial-index-design.md`](../archive/spatial-index-design.md) on the `origin/xarray-index` branch, Nov 2025–Feb 2026, with upstream #207 (structured grid index), #208 (`.grid` accessor) and #120 (closed background)). That design proposed spatial dims for DIS, a `.grid` accessor, a custom `GeospatialIndex` (from flopy PR 2654), containment-vs-nearest point queries, and z and ball queries. "Where the old design stands" below records what was kept, changed or dropped.
 
 ## Framing
 
@@ -247,7 +247,7 @@ In suggested order:
    - Rescope or close #207: layer/row/col and z are done; DISV is what's left.
    - Close draft #278 (`xarray-index`, the old spatial index design), which this plan replaces.
    - Point #208 at this plan.
-   - Supersede or delete `docs/dev/spatial-index-design.md` on `xarray-index`, or replace it with a version of this plan under `docs/dev/`.
+   - ~~Supersede or delete `spatial-index-design.md` on `xarray-index`~~: done, it's archived as [`spatial-index-design.md`](../archive/spatial-index-design.md) and this plan is in `docs/dev/plans/`.
 
 ### Parallel work
 

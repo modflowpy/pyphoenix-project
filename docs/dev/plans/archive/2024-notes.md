@@ -1,0 +1,172 @@
+# General goals
+
+- easy to read and debug from developer standpoint
+- maintain the existing flopy.mf6 functionality
+- fast read/write routines
+- minimize codebase size
+    - avoid manually generating python source as we did previously
+- interact with flopy with standard python data types
+    - minimize knowledge needed of MF6 input files
+    - distinguish conceptual model from configuration language
+
+# Design principles
+
+- references should only point downwards (sim -> model -> pkg ...)
+    - not upwards, as in current flopy (e.g. packages knowing which model is their parent)
+- maintain inversion of control
+    - interfaces don't need to know ..
+        - data representation: could be numpy, pandas, xarray, etc
+        - configuration language: could be standard input files, netcdf, toml, etc
+
+# Implementation ideas
+
+- use mixins for cross-cutting concerns (e.g. plotting, exporting)
+- can mf6 components emulate iterable/mapping?
+    - in the spirit of pre-existing `SimulationDict`
+    - simulation as iterable of models/exchanges/packages
+        - also expose `.models`, `.exchanges`, `.packages` properties separately
+    - model as iterable of packages
+    - package as iterable of blocks
+    - block as iterable of scalars/arrays/lists
+    - resources:
+        - https://docs.python.org/3/reference/datamodel.html?emulating-container-types=#emulating-container-types
+        - https://stackoverflow.com/questions/3387691/how-to-perfectly-override-a-dict
+- can input types (mfarray, mflist) emulate numpy arrays and pandas dataframes?
+    - arrays: numpy mixin implementing ufuncs etc
+        - https://numpy.org/doc/stable/user/basics.dispatch.html#basics-dispatch
+        - https://numpy.org/doc/stable/user/basics.interoperability.html#basics-interoperability
+        - https://stackoverflow.com/questions/55386602/how-to-overide-numpy-ufunc-with-array-ufunc
+    - lists: inherit from DataFrame like GeoPandas does?
+        - https://github.com/geopandas/geopandas/blob/main/geopandas/geodataframe.py#L78
+- string representations
+    - https://stackoverflow.com/questions/1436703/what-is-the-difference-between-str-and-repr
+    - `__str__()` of model/package/block/input **classes** as human-readable DFN specification
+    - `__repr__()` of model/package/block/input **classes** as exact specification as in DFN file
+    - `__str__()` of model/package/block/input **instances** as abbreviated summary of what/how input will be written
+        - mfarray: control line
+        - mflist: block name? what to do if inline? headers?
+    - `__repr__()` of model/package/block/input **instances** as exactly what would be written to input file
+        - `write()` to text buffer and return as `str`
+- metaclass magic?
+    - motivation
+        - convenient hooks to mf6 input/output file data
+            - hide details/complexity of the configuration backend
+            - user doesn't need to know details of MF6 input file format
+                - just sim/model/package/etc conceptual model and standard python data structures
+        - create classes dynamically without manually generating Python source
+    - case study: Django dynamic API generation
+        - define Model in terms of IntegerField, CharField, etc
+        - access model instance properties as builtin types (int, str)
+        - https://code.djangoproject.com/wiki/DevModelCreation
+        - https://code.djangoproject.com/wiki/DynamicModels
+        - https://github.com/django/django/blob/86e13843c2ab510fba1de84588efe7fd03555531/django/db/models/base.py#L95
+    - our case: dynamically define components based on DFNs
+        - define MFBlock in terms of MFScalar (MFKeyword, MFInteger, etc), MFArray, MFList
+        - define MFPackage in terms of MFBlock
+        - define MFModel in terms of MFPackage
+        - access package/model instance data as bool, int, ndarray, recarray/dataframe
+        - unnecessary for user to interact with MFScalar, MFArray, MFList directly?
+    - misc notes:
+        - set `__doc__` dynamically in `__new__()`
+        - override `__setattr__()` so `__init__()` on model/package/block classes
+            - waterfall down to parameter level
+            - proper initialization of parameter instances instead of native types
+    - discussions:
+        - https://stackoverflow.com/a/6581949/6514033
+        - https://stackoverflow.com/questions/2005878/what-are-python-metaclasses-useful-for
+        - https://stackoverflow.com/questions/15247075/how-can-i-dynamically-create-derived-classes-from-a-base-class
+        - https://stackoverflow.com/questions/17929543/how-can-i-dynamically-create-class-methods-for-a-class-in-python
+- defer MF6 component generation until install time?
+    - no need to version DFNs and generated files or decide when to sync them from MF6
+    - include latest MF6's DFNs with each corresponding release of flopy
+        - https://setuptools.pypa.io/en/latest/userguide/datafiles.html#subdirectory-for-data-files
+    - at first install time, flopy uses the DFNs packaged with it to generate components
+        - https://setuptools.pypa.io/en/latest/userguide/datafiles.html#accessing-data-files-at-runtime
+    - split out a new command from generate_classes just to retrieve latest DFNs: get_dfns?
+        - update components with get_dfns then generate_classes or just reinstall
+        - maybe worth bundling get_dfns + generate_classes into command: update_classes?
+    - questions:
+        - preserve intellisense in VSCode and similar in PyCharm?
+        - does this make debugging harder?
+            - autogenerated file could still be stepped into
+            - just not quite as accessible (in site-packages not local source dir)
+    - links:
+        -  https://setuptools.pypa.io/en/latest/userguide/extension.html#setuptools.command.build.SubCommand.build_lib
+        - https://github.com/modflowpy/flopy/pull/1970#issuecomment-1743794710
+        - https://github.com/modflowpy/flopy/pull/1970#issuecomment-1745730335
+        - https://code.visualstudio.com/docs/editor/intellisense
+- use https://docs.python.org/3/reference/datamodel.html#slots for memory savings?
+- implement signal architecture: https://code.djangoproject.com/wiki/Signals
+    - motivation: package/model can signal another package/model when something happens
+        - e.g. dis can signal when it loads grid info, so other components can update themselves or use it
+- use similar file access API as django? https://code.djangoproject.com/wiki/FileStorageRefactor
+- if a block has just one parameter and the parameter and the block share the same name, shortcut attribute?
+
+questions
+
+- how does flopy deal with list (table) columns conditional on an options block setting?
+    - mf6.coordinates.modelcoordinates has an input shape resolver
+        - computes the shape of an mflist based on available package options
+    - mf6.data.mfdatastorage.resolve_typelist() determines column types for list based input
+    - core of the issue: tabular data shape varies depending on options
+    - also: how to deal with jagged list data? will mf6 ever drop these?
+
+misc
+
+- MF6 input file format as a DSL (mini-language) for configuring hydrologic simulations
+    - framework-specific modeling language(s)
+        - https://en.wikipedia.org/wiki/Modeling_language
+        - https://gsd.uwaterloo.ca/sites/default/files/models06.pdf
+    - modeler "completes" simulation framework by specifying:
+        - components (models and packages) via input files
+        - settings (blocks/options) within input files
+    - input file (1 per component instance) as metamodel: specifies a model (simulation)
+        - bespoke format
+    - DFN (1 per component class) as meta-metamodel: specifies a metamodel (input file)
+        - formal grammar: defines the language subset each component supports
+        - different bespoke format
+    - programs implement some combination of parser/generator/interpreter for input files and/or DFNs
+        - roles
+            - parser: read
+            - generator: write
+            - interpreter: run
+                - for input files, this means running the simulation
+                - for DFNs, this means generating source code
+                    - data access layer as well as user-facing interface layer
+                    - in mf6: `dfn2f90.py`
+                    - in flopy: `createpackages.py`, `flopy.mf6.utils.generate_classes`
+        - current capabilities
+            - `dfn2f90.py`
+                - DFNs: read and run but not write
+                - input files: none
+            - flopy
+                - DFNs: read and run but not write
+                - input files: read and write and run (indirectly, by invoking MF6)
+            - MF6
+                - DFNs: none
+                - input files: read and run but not write
+            - modflowapi
+                - DFNs: none
+                - input files: run (directly, by binding to MF6) but not read or write
+        - flopy has the broadest scope!
+            - needs to understand DFNs and input files, and use the former to speak the latter
+    - future MF6 may support other configuration languages (e.g. YAML, TOML, NetCDF) for input
+        - what do we want people to [be able to / have to] write?
+        - currently, developers write DFNs and modelers write either Python or input files by hand
+        - in future, developers write TOML, modelers write Python or TOML or NetCDF or etc?
+            - makes sense to use same configuration language for model input and input spec?
+            - removes the need for flopy and dfn2f90 to parse a custom language
+    - writing/reading input files and/or DFNs as a form of serialization/deserialization
+- IDM as analogous to object-relational mapping (ORM)... object-input mapping (OIM)?
+    - map between input files and Python objects
+    - any impedance mismatch?
+        - https://en.wikipedia.org/wiki/Object%E2%80%93relational_impedance_mismatch
+        - https://en.wikipedia.org/wiki/Object%E2%80%93relational_impedance_mismatch#Mismatches
+            - maybe not? most of these seem irrelevant for input files
+    - active record pattern: https://en.wikipedia.org/wiki/Active_record_pattern
+    - alternative to full-fledged OIM: data access object pattern
+        - https://en.wikipedia.org/wiki/Data_access_object
+        - encapsulate input data without exposing input format details
+- how to implement multiple backends (input file formats)
+    - define blocks in terms of native python types?
+    - dynamically bind
