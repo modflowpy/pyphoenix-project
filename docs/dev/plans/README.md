@@ -52,6 +52,7 @@ testing) sit one level up. For what's scheduled, and in what order, see
 | Doc | What |
 |---|---|
 | [io/converter-simplification.md](io/converter-simplification.md) | one DFN-driven structure/unstructure path, two loaders side by side (unmerged `simplify-converter` branch) |
+| [io/converter-rebase.md](io/converter-rebase.md) | rebasing `simplify-converter` onto develop, with the typed loader kept current on a stacked `typed-loader` branch |
 | [io/loader-comparison.md](io/loader-comparison.md) | the basic and typed loaders measured against each other |
 
 ## Maintenance
