@@ -1,9 +1,9 @@
 # flopy3 → flopy4 migration: aliases first, then a codemod
 
-Written 2026-11-03 against pyphoenix `develop` (`8d25e4b7`). Prompted by
-mjreno's flopy4 round-trip PRs on MF6 (MODFLOW-ORG/modflow6#3048, #3057,
-#3067). Counts of flopy3 keywords and of MF6 autotest usage are from
-[`replacing-flopy-mf6.md`](replacing-flopy-mf6.md), not recounted here.
+Against pyphoenix `develop` (`8d25e4b7`), prompted by the flopy4
+round-trip PRs on MF6 (MODFLOW-ORG/modflow6#3048, #3057, #3067). Counts of
+flopy3 keywords and of MF6 autotest usage are from
+[`replacing-flopy-mf6.md`](replacing-flopy-mf6.md).
 
 ## Summary
 
@@ -44,7 +44,7 @@ Each flopy3 → flopy4 difference falls into one of three groups:
 
 ### Constructors
 
-| flopy3 | flopy4 today | proposal | why |
+| flopy3 | flopy4 today | treatment | why |
 |---|---|---|---|
 | parent positional: `ModflowGwfdis(gwf, ...)` | `parent=` keyword only | **accept** | `kw_only=True` exists so attrs allows optional base fields before required subclass fields (`component.py:235`), not to stop positional use. `LegacyKwargs.__call__` can move one positional argument to `parent=` before attrs sees it. `Dis(gwf, nlay=3)` reads fine. |
 | bare list `stress_period_data=[...]` | raises `'list' object has no attribute 'items'` | **accept (bug fix)** | [`migrating.md`](../../../migrating.md) already says a list means period 0. |
@@ -59,7 +59,7 @@ Each flopy3 → flopy4 difference falls into one of three groups:
 
 ### Simulation and Model
 
-| flopy3 | flopy4 today | proposal | why |
+| flopy3 | flopy4 today | treatment | why |
 |---|---|---|---|
 | `MFSimulation(sim_name=, sim_ws=, exe_name=)` | `Simulation(name=, workspace=)` | **deprecate** `sim_name`/`sim_ws`; **accept** `exe_name` | `exe_name` is useful: store it as the default executable for `run()`, instead of only accepting `run(exe=)`. |
 | `ModflowGwf(sim, modelname=, model_nam_file=)` | `Gwf(parent=sim, name=)` | **deprecate** `modelname` | |
@@ -70,21 +70,20 @@ Each flopy3 → flopy4 difference falls into one of three groups:
 | `sim.register_ims_package(ims, [names])` | `ims.models = [...]` | **deprecate** | 340 MF6 test files use it. The method is one line. |
 | default file names: `m.chd`, then `m_0.chd`, ... | `m.chd0.chd`, `m.chd1.chd`; `s.ims0.ims` | **reconsider** | Leaving the first instance unsuffixed (`m.chd`, then `m.chd1.chd`) matches flopy3 in the common one-instance case, and it's tidier. Tests and scripts that reference files by name (observation and budget checks) then keep working. This changes file names in flopy4's own tests, so decide early. |
 
-### Data access and output: decide, don't alias
+### Data access and output: no aliases
 
 These are the "break" group. Aliases here would hide a real change in
 meaning.
 
-- **`npf.k.array` / `.get_data()` / `.set_data()`.** [`replacing-flopy-mf6.md`](replacing-flopy-mf6.md)
-  Decision 2 leans toward (a): `npf.k` is the value itself, and
-  `.array` raises with a hint. That group keeps the rule "same result or
-  a clear error". One cheap middle ground: `get_data()` with no
-  arguments on an array value could return the array, but numpy arrays
-  can't take new methods, so it would need a wrapper. Don't do this.
+- **`npf.k.array` / `.get_data()` / `.set_data()`.** Probably option (a)
+  of [`replacing-flopy-mf6.md`](replacing-flopy-mf6.md) question 2:
+  `npf.k` is the value itself, and `.array` raises with a hint, keeping
+  the rule "same result or a clear error". A `get_data()` on an array
+  value would need a wrapper, since numpy arrays can't take new methods.
 - **`gwf.output.head()`.** flopy4's `output.head` is a `DataArray`
   property (`gwf_methods.py:31`); flopy3's is a method returning
-  `HeadFile`. Same name, different thing. Pick one before release
-  ([`replacing-flopy-mf6.md`](replacing-flopy-mf6.md) suggests options). If `head` stays a
+  `HeadFile`. Same name, different thing; one has to change before
+  release ([`replacing-flopy-mf6.md`](replacing-flopy-mf6.md) has options). If `head` stays a
   property, calling it fails with `'DataArray' object is not callable`,
   which is confusing. A wrapper that raises with a migration hint when
   called would make that error clearer.
@@ -192,8 +191,8 @@ runtime-only on purpose.
    [`layout-logical-decisions.md`](../dfn-spec/layout-logical-decisions.md) (STO `sc=`: accept; UZF placeholder
    columns: deprecate). Write the result into [`migrating.md`](../../../migrating.md) as the reference
    table. *No code changes.*
-2. **Decisions that block Part 1:** default file naming, `output.head`
-   (property or method), data access (Decision 2). Step 3 can start
+2. **Questions that block Part 1:** default file naming, `output.head`
+   (property or method), data access. Step 3 can start
    without them, but its scoreboard numbers inform them.
 3. **Bug fix:** bare-list `stress_period_data` (independent, do first).
 4. **Part 1 runtime aliases**, in order of MF6 autotest usage:
@@ -229,19 +228,15 @@ becomes a convenience for users, not a prerequisite.
 
 ## Open questions
 
-- Should "accept" aliases stay permanently, or warn eventually? This
-  plan says permanently for positional parent, `get_package` /
-  `get_model`, `modelgrid`, `exe_name` and loading from a directory;
-  they're good API, not leftovers.
-- Should the codemod live in flopy4 or in flopy 4.x next to the compat
-  layer? In flopy4 for now; it moves with everything else at the merge.
+- Whether "accept" aliases stay for good or warn eventually. For
+  positional parent, `get_package`/`get_model`, `modelgrid`, `exe_name`
+  and loading from a directory, for good: they're good API.
+- The codemod lives in flopy4 for now, and moves with everything else at
+  the merge.
 - When a flopy4 change breaks MF6's optional `fp4` jobs, who fixes it,
-  and how fast? Still open. It matters more once MF6's build code moves
-  to flopy4.
+  and how fast. It matters more once MF6's build code moves to flopy4.
 
 ## MF6's test suite
-
-Settled 2026-11-03:
 
 - The round-trip PRs (#3048, #3057, #3067) are worth having for both
   sides: flopy4 gets IO coverage across MF6's corpus, MF6 gets its NetCDF

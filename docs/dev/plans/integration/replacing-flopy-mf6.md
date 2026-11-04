@@ -4,11 +4,9 @@ How hard it will be to replace flopy's mf6 engine with this project's, and
 how to go about it. Covers discussions #68 (rollout), #35 (MF6 versions)
 and #37 (refactoring 3.x), and issue #113 (flopy3 interfaces).
 
-**Status: direction proposed; the release shape is decided** (see
-[`mmp-plan.md`](../../mmp-plan.md)). Facts are as of 2026-11-03, against
-pyphoenix `develop` (`8d25e4b7`) and flopy `develop` (`aca52382`,
-3.13.0.dev0, after the 3.12.0 release). Benchmark numbers are from
-2026-10-28 and weren't re-run.
+Facts are against pyphoenix `develop` (`8d25e4b7`) and flopy `develop`
+(`aca52382`, 3.13.0.dev0, after 3.12.0); benchmark numbers are from
+2026-10-28.
 
 ## Summary
 
@@ -44,8 +42,7 @@ pyphoenix `develop` (`8d25e4b7`) and flopy `develop` (`aca52382`,
   change that isn't the swap itself to `develop`, and only then cut the
   branch, once MMP feedback has settled the API. Merge `develop` into it
   weekly.
-- **Release shape** (decided 2026-11-03; see [`mmp-plan.md`](../../mmp-plan.md)).
-  Alphas and betas, up to and including MMP, ship from this repo as
+- **Release shape** (see [`mmp-plan.md`](../../mmp-plan.md)). Alphas and betas, up to and including MMP, ship from this repo as
   `flopy4`, installed from GitHub, so testers can run both engines side by
   side. The 4.x branch ships release candidates `flopy==4.0.0rcN` (pip
   skips pre-releases unless asked), and GA is the last of them.
@@ -208,7 +205,7 @@ early, with none of that.
 ### 3.x work
 
 This is what makes the 4.x swap mechanical. All of it lands on flopy
-`develop`, and none of it needs the new engine. None of it has started yet. It takes up #37's
+`develop`, and none of it needs the new engine. It takes up #37's
 refactoring list where it helps the swap.
 
 1. **Move engine-agnostic utilities out of `flopy/mf6`.** Move
@@ -278,7 +275,6 @@ runtime aliases before MMP. What's left for the 4.x compat layer is the
 generated `ModflowXxx` names, and whatever the migration plan classifies
 as compat-only.
 
-
 - **Constructors.** A `ModflowXxx` subclass or factory per component:
   the parent positional, the keyword renames in the table above, flopy3
   value shapes (`head_filerecord="m.hds"`, `saverecord=`, a bare list for
@@ -288,20 +284,19 @@ as compat-only.
   (returning `(success, buff)`), `MFSimulation.load(sim_ws=...)`,
   `get_model`, `get_package`, `register_ims_package`, `modelgrid`,
   `model_ws`, `set_sim_path`, `name_file`. These are mostly aliases.
-- **Data access is the decision.** flopy3's `npf.k` is an object with
+- **Data access is the hard part.** flopy3's `npf.k` is an object with
   `.array`/`.get_data()`; flopy4's is the value. Either:
   (a) don't support it: `.array` on a value raises with a hint (`npf.k`
   is the array now); or (b) compat classes return a small read-only view
   with `.array`/`.get_data(kper)`. The new classes stay clean, but then
   the same package behaves differently depending on which class built
-  it. Recommendation: (a) plus the legacy path. Decide with the scoreboard
-  numbers, not ahead of them.
+  it. Probably (a) plus the legacy path, but the scoreboard numbers
+  should decide.
 - **`gwf.output.head()`**: `head` is a `DataArray` property in flopy4 and
-  a method returning `HeadFile` in flopy3. Pick one before 4.0. Something
-  callable that also acts as a DataArray is possible but too clever. Recommendation:
-  rename one side (e.g. flopy4's `output.head` → `output.heads`, or
-  `output.head()` returning the DataArray) so compat can keep the old
-  name.
+  a method returning `HeadFile` in flopy3. Something callable that also
+  acts as a DataArray is possible but too clever. Rename one side (e.g.
+  flopy4's `output.head` → `output.heads`, or `output.head()` returning
+  the DataArray) so compat can keep the old name.
 - **Rule**: same result or a clear error. Every compat class or method
   warns (`FutureWarning`, once per call site) and links to
   [`migrating.md`](../../../migrating.md). The migration plan refines this for the aliases
@@ -356,9 +351,7 @@ developer step.
 
 **Phase 0 (here, through MMP):**
 
-1. Fix the bare-list `stress_period_data` bug found by running a flopy3 quickstart
-   against flopy4 (still
-   open on `8d25e4b7`).
+1. Fix the bare-list `stress_period_data` bug (open on `8d25e4b7`).
 2. Equivalence harness (tier E) over the registry, starting with the
    models that both load.
 3. Release modflow-devtools (3.x item 6); drop the git dependency; unpin
@@ -417,62 +410,55 @@ has the MMP-only tracks (B to E):
 
 | track | where | items | needed by |
 |---|---|---|---|
-| **A. Engine correctness** | here | bare-list bug, equivalence harness (tier E), then fixing what it finds | MMP. **Longest and least predictable; start first** |
+| **A. Engine correctness** | here | bare-list bug, equivalence harness (tier E), then fixing what it finds | MMP. Longest and least predictable, so first |
 | **G. Packaging** | devtools, here | devtools release, drop the git dependency, xugrid range, Python 3.14, numpy floor | the first release candidate (GitHub installs don't need it) |
 | **F. 3.x prep** | flopy `develop` | 3.x items 1 to 5 | items 1 and 2 by the branch cut; items 3 to 5 can land later and merge into `4.x` weekly |
-| **Decisions and survey** | team | open decisions, downstream survey | decision 3 by MMP; 1, 2 and 6 by the branch cut; the rest as below |
+| **Questions and survey** | team | open questions, downstream survey | question 3 by MMP; 1, 2 and 6 by the branch cut; the rest as below |
 
 ### Before MMP
 
 Tracked in [`mmp-plan.md`](../../mmp-plan.md). From this plan: tier E passes on the
-registry corpus, decision 3 (`output.head`) is made and implemented,
+registry corpus, question 3 (`output.head`) is settled and implemented,
 since testers write code against it, and the migration scoreboard
 ([`aliases-and-codemod.md`](aliases-and-codemod.md) step 8) runs from here.
 
 ### Before cutting `4.x`
 
-- [ ] MMP released, and its feedback worked through.
-- [ ] Decision 2 (compat data access) made and implemented.
-- [ ] 3.x item 1 merged: engine-agnostic utilities out of `flopy/mf6`
-  (the legacy move depends on it).
-- [ ] 3.x item 2 merged: the shared-code protocol, implemented by
-  flopy3's mf6 classes (Phase 2 step 3 depends on it).
-- [ ] Decision 1: legacy engine yes or no, and its namespace (Phase 2
-  step 1 is the move).
-- [ ] Decision 6: where flopy4's top-level modules go (Phase 2 step 2
-  is the move-in).
-- [ ] Equivalence harness running in CI here, so its results carry over.
-  It doesn't have to pass yet.
+- MMP released, and its feedback worked through.
+- Question 2 (compat data access) settled and implemented.
+- 3.x item 1 merged: engine-agnostic utilities out of `flopy/mf6` (the
+  legacy move depends on it).
+- 3.x item 2 merged: the shared-code protocol, implemented by flopy3's
+  mf6 classes (Phase 2 step 3 depends on it).
+- Question 1: legacy engine or not, and its namespace (Phase 2 step 1).
+- Question 6: where flopy4's top-level modules go (Phase 2 step 2).
+- Equivalence harness running in CI here, so its results carry over. It
+  doesn't have to pass yet.
 
 ### Before the first release candidate (`4.0.0rc1`)
 
-- [ ] modflow-devtools released, and flopy4 depends on it from PyPI.
-  PyPI rejects packages with direct-URL (git) dependencies, so this is a
-  hard blocker, not just tidying.
-- [ ] xugrid pinned to a range; Python range matches flopy's (`>=3.12`,
-  3.14 included).
-- [ ] Tiers A and D green on `4.x`, and tier E still passing there.
-- [ ] Tier C scoreboard running on `4.x` with flopy's tests added, so
-  the release notes can say how much of the flopy3 API the compat layer
-  covers.
-- [ ] Downstream survey done, and its results sorted into compat vs
-  legacy-only.
-- [ ] MF6's CI running against `4.x` with `flopy mf6 sync --developmode`,
-  at least as a non-blocking job.
+- modflow-devtools released, and flopy4 depending on it from PyPI. PyPI
+  rejects direct-URL (git) dependencies, so this is a hard blocker.
+- xugrid pinned to a range; Python range matching flopy's (`>=3.12`, 3.14
+  included).
+- Tiers A and D green on `4.x`, and tier E still passing there.
+- Tier C scoreboard running on `4.x` with flopy's tests added, so the
+  release notes can say how much of the flopy3 API compat covers.
+- Downstream survey done, sorted into compat vs. legacy-only.
+- MF6's CI running against `4.x` with `flopy mf6 sync --developmode`, at
+  least as a non-blocking job.
 
 ### Before GA
 
-- [ ] 3.x item 4 (deprecations) shipped in a 3.x release, ideally two
+- 3.x item 4 (deprecations) shipped in a 3.x release, ideally two
   releases before 4.0, so users see the warnings first.
-- [ ] Decision 7 (3.x support window) made and announced with 4.0.
+- Question 7 (3.x support window) settled and announced with 4.0.
 
 ### The longest chain
 
 Equivalence harness → engine fixes → tier E passes → MMP → API settled →
-`4.x` cut → release candidates → GA. The
-other tracks are shorter and should finish inside it. If one of them
-starts to hold up a checkpoint above, that's the time to add people to
-it.
+`4.x` cut → release candidates → GA. The other tracks are shorter and
+should finish inside it.
 
 ## Sizing
 
@@ -499,10 +485,10 @@ The risks are in the engine itself: whether flopy4 writes models that
 run and give the same answers across the whole corpus (tier E). The code
 move isn't a risk.
 
-## Open decisions
+## Open questions
 
-1. Legacy engine in 4.x: yes or no, its namespace, and how long it stays.
-   (Recommendation: yes, `flopy.mf6.legacy`, until 5.0.)
+1. Legacy engine in 4.x: whether, its namespace, and how long it stays.
+   Probably `flopy.mf6.legacy`, until 5.0.
 2. Compat data access: (a) raise with a hint, or (b) views.
 3. `output.head`: which side renames.
 4. Whether to accept 4.x keywords in 3.x (3.x item 5).
