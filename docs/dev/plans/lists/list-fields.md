@@ -9,7 +9,7 @@ tabular list's rows can be stored as columns (`ItemTable`,
 view onto numpy columns, and loads read numbers-only blocks by column
 (`read_rows`). The xarray view of period lists landed in #476
 (`Package.to_xarray`), not as the `period_as_dataset` sketched below.
-Reference doc; to be rewritten for `docs/dev/` (see [`dev-docs.md`](../dev-docs.md)).
+Reference doc; to be rewritten for `docs/dev/` (see [`dev-docs.md`](../maintenance/dev-docs.md)).
 
 ## Overview
 

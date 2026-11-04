@@ -4,7 +4,7 @@
 
 Status: ready (2026-10-07), against develop `a6c52c8`. Replaces the
 "thread-local load context" note in [`links-from-dfns-plan.md`](links-from-dfns-plan.md)
-("Later") and the "Load context" item in [`open-followups.md`](../open-followups.md).
+("Later") and the "Load context" item in [`open-followups.md`](open-followups.md).
 
 ## Problem
 
@@ -170,7 +170,7 @@ Replace with the context:
    `test_mf6_typed_grammar_corpus` failures ("Model 'mf6/large/...' not
    in registry") are about the environment and fail without these changes
    too.
-7. Update [`open-followups.md`](../open-followups.md): remove "Load context", and note the
+7. Update [`open-followups.md`](open-followups.md): remove "Load context", and note the
    mixed-grid exchange fix as done.
 
 ## Non-goals

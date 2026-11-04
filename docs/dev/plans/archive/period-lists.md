@@ -156,7 +156,7 @@ and fill forward, as period arrays do, or build lazily (dask).
   - Lazy/periods-only storage (the dense form is eager).
   - `auxiliary` as an int count when rows give aux values without names.
   - Filling evaluated series values instead of NaN, once TS/TAS
-    evaluation exists ([`tas-interpolation.md`](tas-interpolation.md)).
+    evaluation exists ([`tas-interpolation.md`](../xarray/tas-interpolation.md)).
 - Local cleanup (ask first): branches/worktrees `period-lists`,
   `list-to-xarray`, `disv-j` are merged or closed.
 

@@ -498,7 +498,7 @@ a parallel construct.
 Add explicit navigation (`Spc.target`, `Mvr.models`, `Obs.target`,
 `Model.flow_model`), implemented once over the binding graph, and have
 `keys.py` and reference fields
-([../components/reference-fields.md](../components/reference-fields.md))
+([../components/reference-fields-notes.md](../archive/reference-fields-notes.md))
 both use it. This is worth doing whatever happens in the spec, because both
 already need it. #226 and #259 need the same attach operation; see
 [layout-logical-decisions.md](layout-logical-decisions.md).

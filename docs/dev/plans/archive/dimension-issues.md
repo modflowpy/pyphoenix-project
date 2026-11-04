@@ -15,7 +15,7 @@ develop `407102d` on 2026-10-08.
   (checked on develop `e0d94b86`: `t.nper = 7` and `a.maxats = 1` with two
   rows both raise `ValueError`). Still open: after an in-place append,
   `t.nper` stays stale until `get_dims()`, and the docs don't say so.
-  That item moved to [`followups.md`](../followups.md), item 5.
+  That item moved to [`followups-after-row-layout.md`](followups-after-row-layout.md), item 5.
 
 ---
 

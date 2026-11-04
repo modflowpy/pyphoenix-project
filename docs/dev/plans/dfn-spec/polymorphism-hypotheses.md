@@ -2,7 +2,7 @@
 
 Working notes, 2026-11-02. Not for posting as is. Builds on
 `discussion-287-comment.md` (draft), `discussion-relational-spec-draft.md`,
-[`schema-polymorphism.md`](schema-polymorphism.md), [`reference-fields.md`](../components/reference-fields.md) and devtools
+[`schema-polymorphism.md`](schema-polymorphism.md), [`reference-fields-notes.md`](../archive/reference-fields-notes.md) and devtools
 `relational-model-plan.md`.
 
 The draft sorts what we've found into three kinds of polymorphism: sum types
@@ -318,7 +318,7 @@ In order. Each step answers a question and is cheap to abandon.
    - check that the K8a co-occurrence rules (MVR ⇒ MVT, LKT ⇒ LAK) can be
      written in the same form.
 4. **Binding-graph navigation (flopy4).** This is the "when package
-   references come" revisit in [`reference-fields.md`](../components/reference-fields.md). Add explicit
+   references come" revisit in [`reference-fields-notes.md`](../archive/reference-fields-notes.md). Add explicit
    navigation (`Spc.target`, `Mvr.models`, `Obs.target`, `Model.flow_model`),
    implemented once over the binding graph. Then have `keys.py` and
    reference fields both use it. It's worth doing whatever happens in the

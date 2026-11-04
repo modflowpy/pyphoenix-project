@@ -3,8 +3,8 @@
 Status: **draft.** This is the spec the export work builds to. Each
 section says what exists today and what is planned. Where a point is still
 open, it says so; the open questions are collected in
-[`package.md`](package.md) ("Open"). The design behind it is in
-[`package.md`](package.md), the implementation steps in
+[`overview.md`](overview.md) ("Open"). The design behind it is in
+[`overview.md`](overview.md), the implementation steps in
 [`export.md`](export.md).
 
 The representation is the in-memory form of an MF6 simulation as xarray

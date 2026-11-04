@@ -345,7 +345,7 @@ Their values don't change it.
   (`Riv._stress_period_data: dict[int, list[StressPeriodData]]`), just
   built faster. Going straight to columns would mean changing that
   representation, which is out of scope here. The xarray form in
-  [`period-lists.md`](../xarray/period-lists.md) is a view derived from the list (`to_xarray`),
+  [`period-lists.md`](period-lists.md) is a view derived from the list (`to_xarray`),
   not storage, so it doesn't change this.
 - **Fast path:** lay out the first row with `_layout` as now and check
   that the block is a tabular list. Every row must have the same token
@@ -469,7 +469,7 @@ of that one schema (flopy3's recarrays were the column layout).
 - Value columns: float64. `aux`: `(n, naux)`.
 - `boundname`: a str array, or None if no row has one.
 - Time-series columns: floats with NaN where a series applies, plus a
-  parallel array of series names, as [`period-lists.md`](../xarray/period-lists.md) lays out for
+  parallel array of series names, as [`period-lists.md`](period-lists.md) lays out for
   xarray.
 
 That's close to period lists' `sparse=True` form, so `to_xarray` becomes
@@ -1047,7 +1047,7 @@ Work is on branch `load-memory`, worktree
 `.claude/worktrees/load-memory`, cut from `load-snapshots` at
 `86da2ba3`. Nothing is pushed.
 
-[`io-benchmark-results.md`](../archive/io-benchmark-results.md) reports peak RSS. On biscqtg that's 1161 MB
+[`io-benchmark-results.md`](io-benchmark-results.md) reports peak RSS. On biscqtg that's 1161 MB
 for flopy4 vs 596 MB for flopy3. **On macOS, RSS overstates the gap.**
 Pages that malloc has freed but the OS hasn't reclaimed still count
 toward RSS (and `ru_maxrss`). fp4 frees several big transient buffers
@@ -1381,7 +1381,7 @@ What remains, cheapest first:
    export, the writer).
 4. **Typed reader: mixed/ragged list rows** (Peterson `v6.sfr`, basic
    0.70 s vs typed 2.07 s). Only matters if the typed reader becomes the
-   default (see [`typed-loader-wiring.md`](typed-loader-wiring.md)). Either a run terminal that allows words, or splitting such
+   default (see [`typed-loader-wiring.md`](../io/typed-loader-wiring.md)). Either a run terminal that allows words, or splitting such
    rows as text in the transformer, as `NumberRows` does.
 5. **Smaller or speculative:**
    - Peterson SFR per-row Items (~0.47 s profiled, 52k rows); check
@@ -1393,7 +1393,7 @@ What remains, cheapest first:
      trim ("Test-side" above) is still worth it.
    - Number-like text (an obsname `1.50` reloading as `1.5`): the basic
      transformer still converts tokens before the schema is known. Tracked
-     as item 2 of [`followups.md`](../followups.md); a fix touches the same conversion
+     as item 2 of [`followups-after-row-layout.md`](followups-after-row-layout.md); a fix touches the same conversion
      point #484 consolidated.
    - Still deferred: `adapters.py` recarrays, codegen types, optional
      `WORD_LINES` quotes and comments.

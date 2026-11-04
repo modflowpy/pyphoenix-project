@@ -1,7 +1,7 @@
 # Combined grid index: rebuilding on `CellIndex`
 
 Status: **deferred.** Revisit if DISV needs its own index anyway (see
-[`package.md`](package.md), "xugrid").
+[`overview.md`](overview.md), "xugrid").
 
 `flopy4/mf6/indexes.py`, an early xarray index prototype, was deleted in
 #510. This covers what it would take to bring back a combined index on top

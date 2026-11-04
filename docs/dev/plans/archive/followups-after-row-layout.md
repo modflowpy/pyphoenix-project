@@ -116,7 +116,7 @@ last field, which takes the rest of the row).
 row codec. Since #479 list rows can also live as columns in `ItemTable`
 (`item_table.py`), so the merge has to cover that path too.
 
-Step 4 of [`record-unify.md`](lists/record-unify.md), now unblocked (cellid and row layout are
+Step 4 of [`record-unify.md`](../lists/record-unify.md), now unblocked (cellid and row layout are
 in). One codec for row and line records: `Item`'s count-sized arrays,
 1-based index/cellid, union columns, time series, trailing boundname,
 `_columns` order; `Record`'s `convert` plain forms, nested records, tagged
@@ -126,7 +126,7 @@ branch, full CI.
 
 ## 5. Dimensions after an in-place append
 
-From [`dimension-issues.md`](archive/dimension-issues.md) (issue 2). Assigning a dimension that
+From [`dimension-issues.md`](dimension-issues.md) (issue 2). Assigning a dimension that
 disagrees with its list's rows raises, but appending to the list in place
 doesn't update the dimension until something reads dims:
 

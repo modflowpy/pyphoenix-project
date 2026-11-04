@@ -1,7 +1,7 @@
 # Reference fields: generic resolve and check
 
 Status: done on `reference-fields` (`57056f57`..`7b230198`), to be merged
-as is. Copy semantics changed after this plan: see [`reference-fields.md`](../components/reference-fields.md)
+as is. Copy semantics changed after this plan: see [`reference-fields-notes.md`](reference-fields-notes.md)
 ("retarget on join"); the "deepcopy like pickle" section below is superseded.
 Next: "References from DFN keys", at the end.
 

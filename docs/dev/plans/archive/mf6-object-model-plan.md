@@ -1,6 +1,6 @@
 # MF6 object model plan
 
-**Archived 2026-10-19.** Done: see its 2026-09-16 status update. Its remaining items are resolved too: the reader is off the legacy DFNs (#455), OC `ocsetting` is typed ([`nested-keystring-union-plan.md`](nested-keystring-union-plan.md)), and namefile grammars are generated; wiring them in is [`typed-loader-wiring.md`](../loading/typed-loader-wiring.md).
+**Archived 2026-10-19.** Done: see its 2026-09-16 status update. Its remaining items are resolved too: the reader is off the legacy DFNs (#455), OC `ocsetting` is typed ([`nested-keystring-union-plan.md`](nested-keystring-union-plan.md)), and namefile grammars are generated; wiring them in is [`typed-loader-wiring.md`](../io/typed-loader-wiring.md).
 
 ## Background
 
@@ -579,12 +579,12 @@ design exactly this mechanism for LAK/STO; designing it once now and
 applying it to both OC and the keystring packages is more principled than
 building a one-off OC flattener and a proper union type later. Standard
 stress-package period blocks (CHD/WEL/DRN/...) have no such complication
-— [`design.md`](../lists/design.md)'s `list[ItemType]` target already covers them exactly
+— [`list-fields.md`](../lists/list-fields.md)'s `list[ItemType]` target already covers them exactly
 as a plain `List[Record]`, so there's nothing "old-shaped" to carry
 forward there either.
 
 **Union field Python shape (unblocks OC + keystring together):**
-following [`design.md`](../lists/design.md)'s per-arm-class pattern, each union arm
+following [`list-fields.md`](../lists/list-fields.md)'s per-arm-class pattern, each union arm
 becomes its own generated `attrs` item class; the field type is a Python
 `Union` of those classes (e.g. `Optional[list[OcSaverecordItem |
 OcPrintrecordItem]]` for OC's `output`, `Optional[dict[int,
@@ -613,7 +613,7 @@ mechanism has no way to represent "one of N distinct typed classes, chosen
 by keyword" (what the union-item-class design produces); it can only
 represent flat columns. Wiring the union-item-class shape into real
 packages therefore needs new ingress/egress dispatch code, which hasn't
-been scoped. Separately confirmed [`design.md`](../lists/design.md)'s `list[ItemType]`
+been scoped. Separately confirmed [`list-fields.md`](../lists/list-fields.md)'s `list[ItemType]`
 target (bare attrs objects, no `Schema`/`Column` at all) **is not yet the
 runtime representation for anything** — Phase 0.6 (which owns that
 migration) is "steps 1-2 done, step 3+ next", still in progress, so

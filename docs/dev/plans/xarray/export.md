@@ -3,7 +3,7 @@
 Status: design **decided** (2026-11-02), implementation not started. The
 spec it builds to is [`representation.md`](representation.md); the direction
 and the higher-level open questions are in
-[`package.md`](package.md).
+[`overview.md`](overview.md).
 
 This started from a dead-code audit question: is the test-only half of
 the attrs/xarray layer (`mixins.py`, `protocols.py`, `dataset_to_attrs`,
@@ -193,7 +193,7 @@ Decision 7. Both methods go on the `grid` accessor next to `dense()`,
 work on Dataset and DataArray, and compose with it
 (`ds.grid.dense().grid.flatten()`).
 
-How this fits [`package.md`](package.md):
+How this fits [`overview.md`](overview.md):
 
 - `flatten()`/`unflatten()` are views, like `dense()`. They belong to the
   package side (grid and data semantics), use only what's in the
@@ -341,7 +341,7 @@ References:
 - Whether the old instance `from_xarray` survives in any form (phase 2).
 - Whether `dense()` lives on DataArray too, or only on Dataset.
 - Names (`flatten()`/`unflatten()`, `node` vs `nodes`) are decided with
-  the accessor name; see [`package.md`](package.md) "Open".
+  the accessor name; see [`overview.md`](overview.md) "Open".
 - Whether `.grid.sel(layer=, row=, col=)` and `.grid.sel(x=, y=)` should
   work on the flat view (map to `node` positions), or require
   `unflatten()` first.

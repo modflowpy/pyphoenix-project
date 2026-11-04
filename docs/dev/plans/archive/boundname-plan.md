@@ -1,6 +1,6 @@
 # Boundnames and token text, end to end
 
-**Archived 2026-10-19.** Done: #470 (boundname fixes) and #478 (boundnames on the `when` mechanism). Step 3 (keep number-like text) is open as item 2 of [`followups.md`](../followups.md); step 4's `begin`/`end` check was dropped.
+**Archived 2026-10-19.** Done: #470 (boundname fixes) and #478 (boundnames on the `when` mechanism). Step 3 (keep number-like text) is open as item 2 of [`followups-after-row-layout.md`](followups-after-row-layout.md); step 4's `begin`/`end` check was dropped.
 
 Plan for one piece of work covering how flopy4 builds, writes and reads
 boundnames (and other free-text values like obsnames), so that a value

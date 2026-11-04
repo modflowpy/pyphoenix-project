@@ -12,8 +12,8 @@ of it is fine; it's docs only.
 
 ### 1. List fields: `docs/dev/list-fields.md`
 
-Source: [`design.md`](lists/design.md), plus the "Row layout" section of
-[`record-unify.md`](lists/record-unify.md).
+Source: [`list-fields.md`](../lists/list-fields.md), plus the "Row layout" section of
+[`record-unify.md`](../lists/record-unify.md).
 
 - Rewrite for the current state, not the August design:
   - fields declared with `list_()` (#463), period lists as
@@ -30,12 +30,12 @@ Source: [`design.md`](lists/design.md), plus the "Row layout" section of
 - Drop the "fan-out problem" history to a short paragraph, and drop the
   `period_as_dataset` sketch, which didn't land.
 - Keep "Rationale for list over DataFrame"; it's still the argument.
-- If the `Item`/`Record` merge ([`followups.md`](followups.md) item 4) lands first,
+- If the `Item`/`Record` merge ([`followups-after-row-layout.md`](../archive/followups-after-row-layout.md) item 4) lands first,
   describe the merged codec instead.
 
 ### 2. Mixins and generated classes: `docs/dev/mixins.md`
 
-Source: [`mixin-fields.md`](components/mixin-fields.md).
+Source: [`mixin-fields.md`](../components/mixin-fields.md).
 
 - Mostly current (#447, #449). Trim the history ("as first merged ...")
   to what the check does now: sync reads each mixin's field paths, checks
@@ -49,7 +49,7 @@ Source: [`mixin-fields.md`](components/mixin-fields.md).
 
 ### 3. Grid coordinates and selection: `docs/dev/grid-coordinates.md`
 
-Source: [`rotated-grid-index.md`](xarray/rotated-grid-index.md), sections "Framing",
+Source: [`rotated-grid-index.md`](../xarray/rotated-grid-index.md), sections "Framing",
 "Coordinates on a DIS array", "Selection", "Known limitations" and
 "Alternatives considered".
 
@@ -60,7 +60,7 @@ Source: [`rotated-grid-index.md`](xarray/rotated-grid-index.md), sections "Frami
   `CellIndex`, edge ties, what isn't indexed).
 - The plan's "Next" list stays in the plan, not the page.
 - Then do the plan's housekeeping item: replace
-  [`spatial-index-design.md`](archive/spatial-index-design.md) on `xarray-index` (#278) with a link
+  [`spatial-index-design.md`](../archive/spatial-index-design.md) on `xarray-index` (#278) with a link
   to this page.
 
 ### 4. Refresh `docs/dev/load-benchmarks.md`
@@ -68,7 +68,7 @@ Source: [`rotated-grid-index.md`](xarray/rotated-grid-index.md), sections "Frami
 It still opens with the 2026-09-24 `load-baseline` numbers. #482 updated
 the usage, but the results predate #474-#484. Rerun
 `pixi run -e dev bench` and `bench-report`, and replace the numbers (the
-archived [`io-benchmark-results.md`](archive/io-benchmark-results.md) is the same kind of table, also stale).
+archived [`io-benchmark-results.md`](../archive/io-benchmark-results.md) is the same kind of table, also stale).
 Keep the methodology (fair flopy3 options, materialize, the file check).
 
 ## Also fix while there
@@ -82,12 +82,12 @@ Keep the methodology (fair flopy3 options, materialize, the file check).
 
 ## Not moving
 
-- [`open-followups.md`](open-followups.md) and the `*-plan.md` files stay local: they track
+- [`open-followups.md`](../archive/open-followups.md) and the `*-plan.md` files stay local: they track
   work, not how the code works.
 - Archived docs stay in `archive/`.
 
 ## Done when
 
 - The pages above build in the docs (`docs/_toc.yml`), and
-  [`design.md`](lists/design.md) and [`mixin-fields.md`](components/mixin-fields.md) move to `archive/`
+  [`list-fields.md`](../lists/list-fields.md) and [`mixin-fields.md`](../components/mixin-fields.md) move to `archive/`
   with a pointer to their page.

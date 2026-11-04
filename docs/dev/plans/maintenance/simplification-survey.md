@@ -8,8 +8,8 @@ out). Line counts below are estimates.
 
 Already planned elsewhere, so not repeated here:
 - converter simplification (`structure.py` / `unstructure.py`, D5/D6 field-kind
-  dispatch): [`converter-simplification.md`](../loading/converter-simplification.md) on `simplify-converter`;
-- the writer's dead xarray-Dataset list path: [`writer-dead-code.md`](writer-dead-code.md);
+  dispatch): [`converter-simplification.md`](../io/converter-simplification.md) on `simplify-converter`;
+- the writer's dead xarray-Dataset list path: [`writer-dead-code.md`](../archive/writer-dead-code.md);
 - the `Item`/`Record` merge: [`record-unify.md`](../lists/record-unify.md) step 4;
 - deleting a loader: "Later" in the converter plan;
 - the dead-code audit, including adapters and the test-only `attrs_xarray`
@@ -82,7 +82,7 @@ A list's rows are either a `list[Item]` or an `ItemTable`, and there are 15
   `simplify-converter`, where egress already knows each field's DFN type.
 - **Fix:** have egress pass that type along with each value, then delete
   `field_type`.
-- Pairs naturally with [`writer-dead-code.md`](writer-dead-code.md).
+- Pairs naturally with [`writer-dead-code.md`](../archive/writer-dead-code.md).
 
 ## Medium
 

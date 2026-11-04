@@ -118,7 +118,7 @@ item-codec part into this step. Own branch / review / full CI.
 below landed as #467 (one positional layout, no value sniffing, boundname
 presence from the option; boundnames moved onto `when` in #478). The
 lookup-width validation in "API" is done too. What's left is the merge
-itself, tracked as item 4 of [`followups.md`](../followups.md). Since #479 rows can be
+itself, tracked as item 4 of [`followups-after-row-layout.md`](../archive/followups-after-row-layout.md). Since #479 rows can be
 stored as columns (`ItemTable`), which the merged codec has to cover.
 
 `Item` overrides `to_tokens`/`from_tokens` with: count-sized arrays

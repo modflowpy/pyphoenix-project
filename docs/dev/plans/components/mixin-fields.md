@@ -2,7 +2,7 @@
 
 **Status (2026-10-19):** reference doc. `mixin-field-paths` merged as #449
 ("better mixin field checking"), after #447. To be rewritten for
-`docs/dev/` (see [`dev-docs.md`](../dev-docs.md)).
+`docs/dev/` (see [`dev-docs.md`](../maintenance/dev-docs.md)).
 
 Written 2026-10-09, updated after #442 (dims from schema), and again
 2026-10-10 for `mixin-field-paths`, which replaces the declarations with

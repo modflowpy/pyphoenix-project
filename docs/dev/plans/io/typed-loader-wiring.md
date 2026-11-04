@@ -31,7 +31,7 @@ flopy4 full-load benchmark this plan extends in step 6.
 component, so only the basic reader runs; `loads_typed` is used by the
 corpus tests (`_check_typed_grammar` in `test_mf6_load_all_models.py`)
 and the parse benchmarks. After #474-#484 the basic reader is 2-5x faster
-than flopy3 and typed parse is slower than basic ([`typed-loader-perf.md`](typed-loader-perf.md)),
+than flopy3 and typed parse is slower than basic ([`typed-loader-perf.md`](../archive/typed-loader-perf.md)),
 so the case for wiring typed in is validation and error messages, not
 speed. Decide whether to do it before starting.
 

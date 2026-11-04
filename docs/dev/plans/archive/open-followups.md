@@ -1,13 +1,13 @@
 # Open follow-ups
 
-Leftover items from finished plans, now in [`archive/`](archive/). Checked against
+Leftover items from finished plans, now in [`archive/`](.). Checked against
 develop `a6c52c8` (#415) on 2026-10-07, and again against `e0d94b86`
 (#489) on 2026-10-19. Each item names the plan it came from. Newer
-follow-ups are in [`followups.md`](followups.md).
+follow-ups are in [`followups-after-row-layout.md`](followups-after-row-layout.md).
 
 ## Open
 
-- **mypy and field converters** ([`mypy-converter-plan.md`](archive/mypy-converter-plan.md)).
+- **mypy and field converters** ([`mypy-converter-plan.md`](mypy-converter-plan.md)).
   Listed as done here before, but it never merged: it's draft PR #433
   (`mypy-converters`), and develop has no `flopy4.mypy_plugin`. The PR
   itself asks whether it's worth it. It predates the field functions
@@ -26,7 +26,7 @@ None open.
 - **Datetime DFN type.** Not adding one: MF6 treats `start_date_time` as an
   opaque label (list file, NetCDF time units) and never parses it. Typing
   it is flopy4's job; the field takes `str`, `from_time()` converts.
-- **Load context** ([`load-context-plan.md`](archive/load-context-plan.md), branch `load-context`).
+- **Load context** ([`load-context-plan.md`](load-context-plan.md), branch `load-context`).
   `LoadContext` carries the workspace, dims, parent and exchange models
   down the load. Paths resolve against the simulation directory, so
   models in subdirectories load, and the load no longer depends on the
@@ -61,7 +61,7 @@ None open.
   kept the list, so the writer dropped `ATTRIBUTES` and the name checks
   raised. Single-value records now convert (`Record.from_value`). The TS
   and TAS checks share their name lookup. (branch `followups`)
-- **Record fields from plain values** ([`record-values-plan.md`](archive/record-values-plan.md)). Every
+- **Record fields from plain values** ([`record-values-plan.md`](record-values-plan.md)). Every
   record field converts through `Record.convert` (a bool, the file's
   text, a tuple, a mapping, or a lone value), replacing `from_flag` and
   `from_value`; anything else raises at construction or assignment, and
