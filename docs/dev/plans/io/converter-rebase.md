@@ -14,6 +14,31 @@ Working plan for the rebase. Written 2026-11-04. The plan it carries out is
   [converter-simplification.md](converter-simplification.md) (here). Same
   text apart from links.
 
+## Picking this up
+
+- Start at the first unchecked step under "Status". Tick it here (this
+  copy, on `dev-plans`) and commit when a step finishes; the work itself
+  happens in the `simplify-converter` worktree, later `typed-loader`.
+- The D/S/B/C labels (D1-D7, S1-S2, B1-B4, C) are the phases and decisions
+  in [converter-simplification.md](converter-simplification.md); read its "On the branch"
+  and "Later" sections before starting. Current state:
+  D1-D4 and D7 done, D5/D6 skipped, B1-B4 and C done (all on the backup).
+- Commands (develop's pixi tasks, in `pyproject.toml`):
+  - smoke tests: `pixi run -e dev smoke`, plus the touched test files
+    (`pixi run -e dev pytest test/mf6/<file>`); not the full suite.
+  - regenerate classes, grammars and stored DFNs:
+    `pixi run -e dev generate-classes` (syncs from
+    `MODFLOW-ORG/modflow6@develop`); check `sync-status` first.
+  - update snapshots: `pytest ... --snapshot-update` (syrupy), then review
+    `git diff` of every `__snapshots__` file.
+- Don't fetch, pull or push. Before step 3, confirm `origin/develop` is
+  still `8d25e4b7`; if it moved, rebase onto whatever it is now and check
+  the new PRs against the port table.
+- Never bare `git stash` (shared across worktrees); use WIP commits.
+- Check in with the user after step 3 (rebase resolved, before the ports),
+  after step 7 (`simplify-converter` done, before the typed branch), and
+  whenever a snapshot diff shows more than field order and STO's value.
+
 ## Decisions (agreed 2026-11-04)
 
 1. **Typed loader on its own branch, kept current** (revised 2026-11-04).
@@ -63,8 +88,10 @@ Squash, rebase once, then build history forward. Avoids re-resolving
      `codec/reader/transformer/typed.py`
    - `utils/codegen/make.py`, `utils/codegen/templates/package.py.jinja`
    - `test/mf6/test_mf6_codec.py`, `test/mf6/test_mf6_reader.py`
-   Resolution rule: typed/grammar/parser/benchmark files → take develop's
-   (`--theirs` side = develop during rebase is `--ours`; check). Generated
+   Resolution rule: typed/grammar/parser/benchmark files → take develop's.
+   During a rebase the sides are swapped from a merge: `--ours` is the base
+   being rebased onto (develop), `--theirs` is the squashed branch commit. So
+   `git checkout --ours <file>` takes develop's. Generated
    classes, grammars, `dfns/`, snapshots → take develop's for now, regenerate
    in step 6. Converter/spec/codegen → the branch's structure, with develop's
    behavior ported (next section). Getting it importable and the smoke tests
@@ -121,7 +148,7 @@ the branch removed.
 | #511, #512, #514 binary OPEN/CLOSE list input (`read_binary_list_file`, `_binary_list_row_spec`, IDM-following loader) | into `_Load` list reading (`untagged` / `parse_list` path) |
 | #513 MF6-style array reading (repeat counts, `/`, error on too few, D exponents); external reading moved to `external.py` | `_read_array` uses `external.py`'s readers; delete the branch's `read_array_file` / `_read_binary_array_values` in `structure.py` |
 | #520 external list writing (`ListIO`, `_list_io`, `list_hash`) | ingress records `ListIO`; `_Unstructure` writes from it |
-| #526 binding rows: `ftype` ClassVar, `metadata["row"]`, `read_row` / `write_row` in `converter/binding.py` | `binding_fields` carries `columns`; `_binding_target` compares `cls.ftype`; `_disambiguate_ga_variant` uses develop's variant test; drop `_apply_binding_terms`, `_exchange_models`; `child_context.models` instead of `exchange=`; egress `bindings` uses `write_row` |
+| #526 binding rows: `ftype` ClassVar, `metadata["row"]`, `read_row` / `write_row` in `converter/binding.py` | `binding_fields` (`spec.py`) carries `columns` from `metadata["row"]`; `_binding_target` compares `cls.ftype`; `_disambiguate_ga_variant` uses develop's variant test, `c.dfn_name.partition("-")[2] != c.ftype.lower().removesuffix("6")`; drop `_apply_binding_terms`, `_exchange_models`; pass `attrs.evolve(context, models=tuple(referenced_models) or None)` instead of `exchange=`; egress `bindings` uses `write_row` |
 | #534 tokens stay text until structuring | `_tagged_value`, `_numeric_prefix`, list/record parsing convert by field type (develop's `utils` helpers); partly realizes D5 |
 | #522 `developmode` on sync | small; keep develop's |
 | #525 trailing period blocks | check `_occurrences` tolerates them |
