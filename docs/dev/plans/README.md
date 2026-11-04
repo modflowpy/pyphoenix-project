@@ -20,7 +20,6 @@ decision), **exploratory** (research, nothing decided), **deferred** or
 | [integration/replacing-flopy-mf6.md](integration/replacing-flopy-mf6.md) | replacing flopy's mf6 engine with flopy4: 3.x prep, the 4.x layout, the compat layer, test tiers, release order | proposal; release shape decided |
 | [integration/aliases-and-codemod.md](integration/aliases-and-codemod.md) | runtime aliases for flopy3 idioms in flopy4, then a `flopy4 migrate` codemod | proposal |
 | [integration/modflowapi.md](integration/modflowapi.md) | folding modflowapi into flopy4 as an XMI plugin built from mixins (`plan-api` branch, Feb 2026) | proposal, not started |
-| [integration/xmi-api.md](integration/xmi-api.md) | the XMI API that plan would expose, following modflowapi | design, not started |
 | [integration/python-models.md](integration/python-models.md) | extending flopy4 to Python-based modeling codes | proposal, not started |
 
 ## xarray
