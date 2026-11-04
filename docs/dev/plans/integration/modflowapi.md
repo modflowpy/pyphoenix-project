@@ -101,5 +101,3 @@ modflowapi's own examples, ported.
   `ApiPackage` implementations, and how errors are reported.
 - How long the modflowapi compatibility layer lasts, and agreement with
   modflowapi's maintainers (USGS, Deltares) before any of it.
-- Explicit classes vs. an `executor=` argument to `Simulation.run`, as in
-  [`python-models.md`](python-models.md).

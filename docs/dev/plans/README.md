@@ -15,7 +15,6 @@ testing) sit one level up. For what's scheduled, and in what order, see
 | [integration/replacing-flopy-mf6.md](integration/replacing-flopy-mf6.md) | replacing flopy's mf6 engine with flopy4: 3.x prep, the 4.x layout, the compat layer, test tiers, release order |
 | [integration/aliases-and-codemod.md](integration/aliases-and-codemod.md) | runtime aliases for flopy3 idioms in flopy4, then a `flopy4 migrate` codemod |
 | [integration/modflowapi.md](integration/modflowapi.md) | speculative, not for 4.x: folding modflowapi into flopy4 as an XMI plugin, with modflowapi's API |
-| [integration/python-models.md](integration/python-models.md) | speculative, not for 4.x: extending flopy4 to in-process MF6 and Python-based modelling codes |
 
 ## xarray
 

@@ -81,6 +81,7 @@ notes used to live. Live plans are in the [index](../README.md).
 | [spatial-index-design.md](spatial-index-design.md) | the first spatial index design (`xarray-index`, #278) | superseded by [rotated-grid-index.md](../xarray/rotated-grid-index.md) |
 | [netcdf-spec-plan.md](netcdf-spec-plan.md) | what of a NetCDF spec belongs in devtools vs. flopy4 | superseded by [representation.md](../xarray/representation.md) |
 | [ecosystem-sync-plan.md](ecosystem-sync-plan.md) | syncing DFNs and tooling across the MF6 ecosystem | done |
+| [python-models.md](python-models.md) | a shared generic layer and executors for MF6 over XMI, pywatershed and timflow | abandoned: the generic layer is small (`spec.py`, `attrs_xarray.py`, `dimensions.py`, the last tied to the DFNs) and everything else is MF6-specific, and the codes run too differently for one executor interface. Interoperate through xarray datasets instead; MF6 over XMI is [modflowapi.md](../integration/modflowapi.md) |
 
 ## DFN spec research
 

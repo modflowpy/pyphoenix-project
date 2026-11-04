@@ -17,7 +17,7 @@ generic layer with overlays of their own:
   in process with runtime access. No new components, the same engine (so
   results are easy to check), and immediately useful for monitoring,
   optimisation and coupling. The obvious first case; see
-  [`modflowapi.md`](modflowapi.md).
+  [`modflowapi.md`](../integration/modflowapi.md).
 - **pywatershed (PRMS):** its own components (parameters, processes), its
   own metadata (`prms_name`, units) and dimensions (`nhru`, `nsegment`),
   run by Python calls, with file IO optional.
@@ -54,7 +54,7 @@ Alternatives:
    interface with it.
 2. A guide to adding a code.
 
-MF6 through XMI is a separate possibility; see [`modflowapi.md`](modflowapi.md).
+MF6 through XMI is a separate possibility; see [`modflowapi.md`](../integration/modflowapi.md).
 
 ## Open questions
 
@@ -63,4 +63,4 @@ MF6 through XMI is a separate possibility; see [`modflowapi.md`](modflowapi.md).
 - Testing without the external packages: mocks in CI, optional integration
   tests.
 - Pinning the underlying packages' versions through the extras.
-- Executors vs. the explicit XMI classes in [`modflowapi.md`](modflowapi.md).
+- Executors vs. the explicit XMI classes in [`modflowapi.md`](../integration/modflowapi.md).
