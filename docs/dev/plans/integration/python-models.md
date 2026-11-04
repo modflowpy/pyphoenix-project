@@ -1,9 +1,10 @@
 # Python-based models
 
-Extending flopy4 beyond MF6 run as a subprocess: to MF6 in process (through
-modflowapi or XMI), and to modelling codes written in Python, such as
-pywatershed and timflow. From Feb 2026, when flopy4 still used xattree; the
-full draft, with sketch code, is on the `dev-plans-full` branch.
+A speculative possibility, not a goal for 4.x: extending flopy4 beyond MF6
+run as a subprocess, to MF6 in process (through modflowapi or XMI) and to
+modelling codes written in Python, such as pywatershed and timflow. From
+Feb 2026, when flopy4 still used xattree; the full draft, with sketch code,
+is on the `dev-plans-full` branch.
 
 ## The idea
 
@@ -26,8 +27,9 @@ generic layer with overlays of their own:
 
 - **Executors.** A small `Executor` interface (subprocess, modflowapi, a
   Python callable), registered per component type, with
-  `Simulation.run(executor=...)` defaulting to the subprocess, so existing
-  code doesn't change.
+  `Simulation.run(executor=...)` defaulting to the subprocess. Only worth
+  adding with a second executor; as a keyword argument with a default, it
+  can be added then without breaking anything.
 - **Overlays.** Each code adds its own field metadata and base classes on
   top of the generic layer, as MF6 adds `block`. Each owns its dimension
   names; converters map between them.
@@ -45,14 +47,14 @@ Alternatives:
 - **Entry-point plugins:** lets others add codes, but is harder to keep
   consistent. Possible later.
 
-## Order
+## If pursued
 
-1. The executor interface, with the subprocess executor as today's
-   behaviour.
-2. modflowapi / XMI, validated against subprocess runs.
-3. pywatershed: package, metadata, a first set of components, converters to
-   and from pywatershed objects, a Python executor.
-4. A guide to adding a code.
+1. pywatershed: package, metadata, a first set of components, converters to
+   and from pywatershed objects, a Python executor, and the executor
+   interface with it.
+2. A guide to adding a code.
+
+MF6 through XMI is a separate possibility; see [`modflowapi.md`](modflowapi.md).
 
 ## Open questions
 

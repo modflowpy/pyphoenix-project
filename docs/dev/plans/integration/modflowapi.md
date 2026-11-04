@@ -1,9 +1,26 @@
 # Folding modflowapi into flopy4
 
-Run MF6 in process through XMI from flopy4's own components, with
-modflowapi's API, so one tool covers building a simulation and stepping
-through it. From the `plan-api` branch (Feb 2026). The full drafts are on
-the `dev-plans-full` branch (`modflowapi.md`, `xmi-api.md`).
+A speculative possibility, not a goal for 4.x: run MF6 in process through
+XMI from flopy4's own components, with modflowapi's API, so one tool covers
+building a simulation and stepping through it. From the `plan-api` branch
+(Feb 2026). The full drafts are on the `dev-plans-full` branch
+(`modflowapi.md`, `xmi-api.md`).
+
+## Why not now
+
+- Nothing forces it. modflowapi depends on numpy, pandas and xmipy, not
+  flopy, so replacing flopy's mf6 engine doesn't affect it.
+- The capability exists. A simulation built and written by flopy4 can be
+  stepped with modflowapi from its workspace; the merge would add
+  convenience, not capability.
+- It can be added in any 4.x minor release, as an optional subpackage and
+  extra. Shipping it early would fix API choices that aren't settled (see
+  open questions), and changing them later would break users.
+- Retiring modflowapi needs its maintainers (USGS, Deltares) to agree.
+
+Until then, a docs example (build and write with flopy4, step with
+modflowapi) covers the one-tool story, and the DFN spec's memory catalog and
+derivation metadata are the shared ground worth working on.
 
 ## The gap
 
@@ -57,7 +74,7 @@ mf6.finalize()
   for production and through XMI for debugging or coupling, from the same
   input files and the same engine, so results can be compared directly.
 
-## Phases
+## If pursued
 
 - **A. Wrap modflowapi.** Implement the flopy4 API by delegating to
   `ModflowApi`/`ApiSimulation`/`ApiModel`. Ships quickly and pins the API.
@@ -84,6 +101,5 @@ modflowapi's own examples, ported.
   `ApiPackage` implementations, and how errors are reported.
 - How long the modflowapi compatibility layer lasts, and agreement with
   modflowapi's maintainers (USGS, Deltares) before any of it.
-- How this fits the executor abstraction in
-  [`python-models.md`](python-models.md), which runs MF6 through
-  `sim.run(executor=...)` rather than separate classes.
+- Explicit classes vs. an `executor=` argument to `Simulation.run`, as in
+  [`python-models.md`](python-models.md).
