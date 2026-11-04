@@ -71,6 +71,7 @@ notes used to live. Live plans are in the [index](../README.md).
 | [benchmark-infra-plan.md](benchmark-infra-plan.md) | benchmark infrastructure | done (#482) |
 | [io-benchmark-results.md](io-benchmark-results.md) | flopy4 vs. flopy3 IO benchmark, 2026-10-16 | stale |
 | [write-options-plan.md](write-options-plan.md) | write options | implemented locally; see #454 |
+| [dead-code-audit.md](dead-code-audit.md) | unused code in hand-written `flopy4/` | done (#509, #510, #528, #530, #531); one item in the [backlog](../maintenance/backlog.md) |
 | [writer-dead-code.md](writer-dead-code.md) | the writer's dead xarray-Dataset list path | done (#505) |
 
 ## xarray and ecosystem

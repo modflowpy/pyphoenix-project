@@ -1,11 +1,10 @@
 # Backlog
 
-Small open items that don't belong to a live plan. They're gathered from
-two archived lists,
-[`followups-after-row-layout.md`](../archive/followups-after-row-layout.md)
-and [`open-followups.md`](../archive/open-followups.md), which have the
-history and the items already done. Rechecked against develop `8d25e4b7`
-(#536) on 2026-11-04.
+Small open items that don't belong to a live plan, checked against
+develop `8d25e4b7`. Earlier lists, with the items since done, are in the
+archive: [`followups-after-row-layout.md`](../archive/followups-after-row-layout.md),
+[`open-followups.md`](../archive/open-followups.md) and
+[`dead-code-audit.md`](../archive/dead-code-audit.md).
 
 ## Merge `Item` into `Record`
 
@@ -51,6 +50,14 @@ Small; decide which first.
 labels (MF6 netCDF output opened with `xr.open_dataset`), the result's
 `layer` is off by one. It should keep the labels when `layer` has them
 (`obj[dim].values[idx]`), and positions only when it has none. Small.
+
+## flopy3 adapter: lists besides stress period data
+
+From [`dead-code-audit.md`](../archive/dead-code-audit.md). #531 wrapped
+stress period data for flopy3's `DataListInterface`, but not `packagedata`
+or `connectiondata`, which flopy3's SFR/LAK/MAW/UZF `plot_bc` reads. Do it
+here, or through the neutral protocol in flopy3 (3.x item 2 of
+[`replacing-flopy-mf6.md`](../integration/replacing-flopy-mf6.md)).
 
 ## mypy and field converters
 

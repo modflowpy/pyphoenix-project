@@ -66,7 +66,6 @@ with a table of how the others relate.
 | Doc | What | Status |
 |---|---|---|
 | [maintenance/backlog.md](maintenance/backlog.md) | small open items that don't belong to a live plan | open |
-| [maintenance/dead-code-audit.md](maintenance/dead-code-audit.md) | unused code in hand-written `flopy4/` | sections 1-4 done; 5 open |
 | [maintenance/simplification-survey.md](maintenance/simplification-survey.md) | where hand-written `flopy4/mf6` could be simpler | survey; nothing started |
 | [maintenance/dev-docs.md](maintenance/dev-docs.md) | turning the reference notes here into published developer docs | not started |
 
