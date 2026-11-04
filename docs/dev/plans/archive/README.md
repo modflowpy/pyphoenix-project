@@ -82,6 +82,12 @@ notes used to live. Live plans are in the [index](../README.md).
 | [netcdf-spec-plan.md](netcdf-spec-plan.md) | what of a NetCDF spec belongs in devtools vs. flopy4 | superseded by [representation.md](../xarray/representation.md) |
 | [ecosystem-sync-plan.md](ecosystem-sync-plan.md) | syncing DFNs and tooling across the MF6 ecosystem | done |
 
+## DFN spec research
+
+| Doc | What | Outcome |
+|---|---|---|
+| [polymorphism-hypotheses.md](polymorphism-hypotheses.md) | working notes on three hypotheses from the #287 findings | superseded by [dfn-spec/overview.md](../dfn-spec/overview.md) |
+
 ## Follow-up lists
 
 | Doc | What | Outcome |

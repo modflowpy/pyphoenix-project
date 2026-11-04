@@ -1,20 +1,17 @@
 # The MF6 input spec: layers, polymorphism and bindings
 
-**Status: exploratory.** These are hypotheses and the evidence gathered for
-them so far. Nothing here is decided, except where
-[layout-logical-decisions.md](layout-logical-decisions.md) applies the rule
-to specific flopy4 issues. A summary hasn't been posted to
-[discussion #287][d287] yet.
-
-This doc is the entry point for the spec research. It defines the
-vocabulary the other docs in this folder use, states the hypotheses, and
-tracks the plan for testing them.
+Research on whether the DFN spec should describe MF6 input at two levels,
+logical and layout, and what that means for flopy4 ([discussion
+#287][d287]). This is the entry point: it defines the vocabulary the other
+docs in this folder use, states the hypotheses and the evidence so far,
+and lists the next steps. [layout-logical-decisions.md](layout-logical-decisions.md)
+applies the rule to specific flopy4 issues.
 
 | Doc | What it is |
 |---|---|
 | this one | concepts, hypotheses, plan |
-| [option-classification.md](option-classification.md) | every DFN option labelled layout, logical or output: done |
-| [constraint-audit.md](constraint-audit.md) | the kinds of constraint a valid simulation must satisfy, and where each is enforced: done |
+| [option-classification.md](option-classification.md) | every DFN option labelled layout, logical or output |
+| [constraint-audit.md](constraint-audit.md) | the kinds of constraint a valid simulation must satisfy, and where each is enforced |
 | [dfn-gaps.md](dfn-gaps.md) | what those two studies found missing from the DFNs and the memory catalog, for MF6 and devtools developers |
 | [layout-logical-decisions.md](layout-logical-decisions.md) | the rule applied to open MMP issues (#226, #229, #259, #345, #523) |
 | `data/` | scripts and CSVs behind the two studies |
@@ -280,7 +277,7 @@ relation, and conversion goes through the relation where both lenses are
 defined. flopy4 can implement that once, not once per variant pair, and
 its error messages fall out of the partiality conditions.
 
-**Status:** supported so far. The option classification found almost no
+**Evidence:** supported so far. The option classification found almost no
 option that is both layout and logical, and the constraint audit found no
 logical constraint triggered by a layout option. The DDL slice tests it
 directly.
@@ -306,7 +303,7 @@ types" stops being a gap. This needs checking per case. OC's
 `connstatus` and the LAK/UZF period settings look like SFR. A
 counterexample would be an arm whose fields don't belong to one table.
 
-**Status:** untested. The DDL slice tests it.
+**Evidence:** untested. The DDL slice tests it.
 
 ### H3: a component is parameterized by its binding
 
@@ -366,7 +363,7 @@ file can state its binding context, and MF6 rejects it whenever it
 disagrees with the binding (`gwf-mvr.f90:785-798`). With a `models`
 parameter, the option goes away.
 
-**Status:** supported by the constraint audit. The parameter syntax sketch
+**Evidence:** supported by the constraint audit. The parameter syntax sketch
 tests whether the construct is smaller than what it replaces.
 
 ### H4: SPC/SPCA pairing is a key-kind match
@@ -386,7 +383,7 @@ The same concept appears in devtools' proposed `Dim.kind` (`grid` vs.
 `count`), the memory-level version of key kinds. One definition should
 serve both.
 
-**Status:** supported. The constraint audit confirmed that MF6 enforces the
+**Evidence:** supported. The constraint audit confirmed that MF6 enforces the
 SPC↔SPCA pairing in Fortran (`TspSpc.f90:360-380`), and the DFN only
 implies it by naming.
 
@@ -397,7 +394,7 @@ From the derivation axis above: the logical level needs derived attributes
 `AUXMULTNAME` is a logical generated column. A static one can be
 materialised by the lens.
 
-**Status:** untested. The DDL slice models one boundary package with
+**Evidence:** untested. The DDL slice models one boundary package with
 `AUXMULTNAME` to check.
 
 ## Grid as parameter: re-encoding vs. regridding
@@ -419,7 +416,7 @@ mostly the first kind, so it's cheap.
 
 Where the hypotheses lead, for the spec and flopy4:
 
-| Question | Current answer |
+| Question | Answer |
 |---|---|
 | Are component variants (RCH/RCHA) sum types in flopy4? | No. Keep separate classes (users write `Rcha`), discriminate at load by ftype and `READASARRAYS`, and convert between them through the logical relation. Discriminated unions are for typed slots and the loader. |
 | Does the spec need `variant_of` to check SPCA → RCHA? | No. Key kinds on roles check it (H4). `variant_of` is optional, for docs. |
@@ -433,15 +430,20 @@ Where the hypotheses lead, for the spec and flopy4:
 
 In order. Each step answers a question and is cheap to abandon.
 
-| # | Step | Where | Status |
-|---|---|---|---|
-| 1 | **Option classification.** Label every DFN option, with a failure threshold fixed beforehand. | desk | **done**: the split holds. [option-classification.md](option-classification.md) |
-| 2 | **Constraint audit.** Classify the constraints a valid simulation must satisfy by kind, level, DFN coverage and the database construct each would need. | desk | **done**: the layering holds for constraints; `when` and binding fit one form. [constraint-audit.md](constraint-audit.md) |
-| 3 | **DDL slice.** Hand-write SQL DDL for a slice of components covering every hard case. | devtools | next |
-| 4 | **Parameter syntax sketch.** Write `[params]` for SPC, MVR, GNC, OBS and TS, and rewrite the rules in it. | devtools, paper only | not started |
-| 5 | **Binding-graph navigation.** `Spc.target`, `Mvr.models`, `Obs.target`, `Model.flow_model`, implemented once. | flopy4 | not started |
-| 6 | **One conversion end to end.** RCHA ↔ RCH through an explicit logical intermediate. | flopy4 | not started |
-| 7 | **Post** a summary to #287. | GitHub | after steps 3–4 |
+| # | Step | Where |
+|---|---|---|
+| 1 | **Option classification.** Label every DFN option, with a failure threshold fixed beforehand. | desk |
+| 2 | **Constraint audit.** Classify the constraints a valid simulation must satisfy by kind, level, DFN coverage and the database construct each would need. | desk |
+| 3 | **DDL slice.** Hand-write SQL DDL for a slice of components covering every hard case. | devtools |
+| 4 | **Parameter syntax sketch.** Write `[params]` for SPC, MVR, GNC, OBS and TS, and rewrite the rules in it. | devtools, paper only |
+| 5 | **Binding-graph navigation.** `Spc.target`, `Mvr.models`, `Obs.target`, `Model.flow_model`, implemented once. | flopy4 |
+| 6 | **One conversion end to end.** RCHA ↔ RCH through an explicit logical intermediate. | flopy4 |
+| 7 | **Post** a summary to #287, after steps 3-4. | GitHub |
+
+Steps 1 and 2 are done: the split holds for options
+([option-classification.md](option-classification.md)), and the layering
+holds for constraints, with `when` and binding fitting one form
+([constraint-audit.md](constraint-audit.md)).
 
 ### Step 3: the DDL slice
 
@@ -529,6 +531,7 @@ so on) are exactly what the conversion should report.
 
 - Whether list RCH/EVT allow several entries in one cell (assumed yes, as
   for WEL).
+- Whether EVTA lacks segments.
 - What SSM `pname` refers to when FMI reads flow from a `GWFBUDGET` file.
 - Whether OBS `id`'s `boundname` arm depends only on the target's
   `BOUNDNAMES`.

@@ -1,12 +1,9 @@
 # Schema polymorphism (#287) vs. component key roles (devtools PR #405)
 
-Notes from 2026-11-02. Discussion: https://github.com/modflowpy/pyphoenix-project/discussions/287
-(no comments yet when written). Key-role design: `~/dev/modflow-devtools/context-refs-plan.md`,
-"Slimmed scope" section.
-
-## Short answer
-
-These are related ideas but different kinds of polymorphism. Both involve a supertype with
+How [discussion #287](https://github.com/modflowpy/pyphoenix-project/discussions/287)
+relates to the component key roles of devtools PR #405 (designed in
+devtools' `context-refs-plan.md`, "Slimmed scope"). They're related, but
+different kinds of polymorphism. Both involve a supertype with
 subtypes. They differ in what the subtypes are and what picks one of them.
 
 ## Two kinds of polymorphism

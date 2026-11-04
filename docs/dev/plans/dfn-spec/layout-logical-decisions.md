@@ -1,6 +1,6 @@
 # Layout vs. logical: a rule for the MMP data questions
 
-**Status: proposal.** Written 2026-11-03 against `develop` (`8d25e4b7`).
+Against `develop` (`8d25e4b7`).
 
 Several open MMP issues are about the same thing: how far flopy4's object
 model should mirror MF6's file format, and where it should present the
@@ -235,7 +235,7 @@ testers write:
 - `source`/derivation metadata for modflowapi's memory catalog;
 - the MF6 NetCDF format conversation.
 
-## Open
+## Open questions
 
 - #523: whether MF6 needs the trailing ETAE columns when `UNSAT_ETAE` is
   off.

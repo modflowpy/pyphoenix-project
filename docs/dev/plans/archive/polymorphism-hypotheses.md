@@ -2,7 +2,7 @@
 
 Working notes, 2026-11-02. Not for posting as is. Builds on
 `discussion-287-comment.md` (draft), `discussion-relational-spec-draft.md`,
-[`schema-polymorphism.md`](schema-polymorphism.md), [`reference-fields-notes.md`](../archive/reference-fields-notes.md) and devtools
+[`schema-polymorphism.md`](../dfn-spec/schema-polymorphism.md), [`reference-fields-notes.md`](../archive/reference-fields-notes.md) and devtools
 `relational-model-plan.md`.
 
 The draft sorts what we've found into three kinds of polymorphism: sum types
@@ -231,7 +231,7 @@ A side question this raises: options themselves split into **layout
 flags** (`READASARRAYS`, the `LAYERED` and `NETCDF` tags) and **logical
 settings** (`MOVER`, `SURF_RATE_SPECIFIED`, `FIXED_CELL`). This is too
 coarse. `PRINT_INPUT` is an output directive, and `BOUNDNAMES` declares
-identity (schema). See [`option-classification.md`](option-classification.md) for the full
+identity (schema). See [`option-classification.md`](../dfn-spec/option-classification.md) for the full
 categories. `when` can test either kind, but the spec should say which
 kind each option is. Field `when` on a layout flag means a column that's
 always there logically but only written sometimes. On a logical setting, it
@@ -246,11 +246,11 @@ In order. Each step answers a question and is cheap to abandon.
 
 1. **Classify options (desk exercise, devtools).** Script out every option
    in the DFNs, then label each as layout, logical or both by hand.
-   Detailed in [`option-classification.md`](option-classification.md) (categories, decision test,
+   Detailed in [`option-classification.md`](../dfn-spec/option-classification.md) (categories, decision test,
    failure threshold, memory catalog coordination).
    *Answers:* whether the layout/logical split is clean at the option level.
    Wherever "both" shows up often, the two-layer idea is in trouble.
-   **Done (2026-11-03), see [`option-classification.md`](option-classification.md): the split
+   **Done (2026-11-03), see [`option-classification.md`](../dfn-spec/option-classification.md): the split
    holds.** Of 224 names, 20 are layout, 121 logical, 82 output, and 1 mixed
    (CSUB `HEAD_BASED`). Layout lenses come in four kinds: syntactic,
    cross-component, computed and partial. The RCHA partial lens above is one
@@ -269,7 +269,7 @@ In order. Each step answers a question and is cheap to abandon.
    Consequence: the logical layer needs **derived attributes** (generated
    columns), and flopy4 should keep dynamic derivations unmaterialised.
 1b. **Constraint audit (desk exercise).** **Done (2026-11-03), see
-   [`constraint-audit.md`](constraint-audit.md).**
+   [`constraint-audit.md`](../dfn-spec/constraint-audit.md).**
    - The layering holds for constraints. The only layout-to-logical crossings
      are lens-domain conditions (new kind L), which MF6 enforces and which
      are step 5's partiality conditions.
@@ -286,7 +286,7 @@ In order. Each step answers a question and is cheap to abandon.
    structural/physical). For each kind, record its level, its DFN coverage
    and the DDL construct it would need. Sources: DFN keys, MF6
    `store_error` sites (sampled) and mf6io prose. Detailed in
-   [`constraint-audit.md`](constraint-audit.md).
+   [`constraint-audit.md`](../dfn-spec/constraint-audit.md).
    *Answers:* whether constraints respect the layering the way options do;
    whether `when` and binding parameters are one construct (feeds step 3);
    and what step 2's DDL has to express.

@@ -1,7 +1,7 @@
 # Option classification
 
-**Status: done** (2026-11-03). DFNs from the modflow-devtools
-`v2.0.0.dev3` snapshots, MF6 source at `8aad7bc4a5`. Part of the spec
+DFNs from the modflow-devtools `v2.0.0.dev3` snapshots, MF6 source at
+`8aad7bc4a5`. Part of the spec
 research; terms (layout, logical, lens, binding, derivation) are defined in
 [overview.md](overview.md#concepts).
 

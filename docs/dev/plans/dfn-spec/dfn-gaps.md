@@ -6,8 +6,8 @@ Found by the [constraint audit](constraint-audit.md) and the
 [option classification](option-classification.md), against the dev3
 snapshots (schema `v2.0.0.dev3`) and MF6 `8aad7bc4a5`.
 
-This is a report, not a set of changes. The audit sampled MF6's checks rather than reading all of them,
-so the lists are examples of each gap, not complete inventories.
+The audit sampled MF6's checks rather than reading all of them, so the
+lists are examples of each gap, not complete inventories.
 
 ## Rules in Fortran that the DFN could state today
 
