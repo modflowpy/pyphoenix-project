@@ -1,175 +1,133 @@
-# List field design
+# List fields
 
-**Status (2026-10-19): implemented, with storage changed since.** The
-`list[ItemType]` / `dict[int, list[ItemType]]` API is what develop has
-(fields declared with `list_()`, #463; period lists as
-`_stress_period_data` with a `stress_period_data` alias). Since #479 a
-tabular list's rows can be stored as columns (`ItemTable`,
-`flopy4/mf6/item_table.py`): it's still a list of Items, but each Item is a
-view onto numpy columns, and loads read numbers-only blocks by column
-(`read_rows`). The xarray view of period lists landed in #476
-(`Package.to_xarray`), not as the `period_as_dataset` sketched below.
-Reference doc; to be rewritten for `docs/dev/` (see [`dev-docs.md`](../maintenance/dev-docs.md)).
+How DFN `list` fields (packagedata, connectiondata, period blocks and other
+tabular input) are represented. A reference note, to become a developer doc
+(see [`dev-docs.md`](../maintenance/dev-docs.md)).
 
-## Overview
+## Representation
 
-MODFLOW 6 DFN `list` fields — used for packagedata blocks, connectiondata blocks, period blocks, and other tabular or semi-tabular inputs — are represented in the object model as `list[ItemType]`, where `ItemType` is a typed record class generated from the DFN.
-
-This document describes the design, the rationale, and the implementation conventions that follow from it.
-
-## Background: the fan-out problem
-
-The previous approach exploded each `list` field into N separate `NDArray` attrs, one per column, all sharing the same dimension (e.g., `nlakes`). This required:
-
-- A `_<block>` buffer attr, `__attrs_post_init__`, `_get_block`, and `_set_block` to service the scatter/gather round-trip
-- A `__block_col_maps__` ClassVar duplicating the column schema
-- Fill-value logic to mark absent cells in dense grid arrays
-- Complex special-casing in the converter (`structure_array`, `_hack_period_non_numeric`, `_LIST_BLOCK_NAMES`) to reassemble rows at write time and scatter them at read time
-
-The fundamental problem: the fan-out is an internal representation choice that buys nothing. The DFN describes rows; the Python object model should describe rows; the xarray view describes columns. The fan-out conflated storage with view.
-
-## Design
-
-### Primary representation: `list[ItemType]`
-
-Every DFN `list` field maps to a Python `list` of typed item objects. `ItemType` is a generated `attrs` class (slots, frozen or mutable as appropriate) corresponding to the DFN's `item` field — either a `Record` or a `Union`.
+A list field is a list of typed rows. Each row is an `Item` (`item.py`), an
+attrs class generated from the DFN's record, nested in the package class.
+A union (keystring) list has one arm class per keyword.
 
 ```python
-# Static tabular list (item type: Record)
-packagedata: Optional[list[LakPackagedataItem]] = field(block="packagedata", default=None)
+class Chd(Package):
+    @attrs.define
+    class StressPeriodData(Item):
+        cellid: tuple[int, ...] = cellid_()
+        head: Union[float, TimeSeriesRef] = double(time_series=True)
+        aux: tuple[Union[float, TimeSeriesRef], ...] = array(
+            default=(), shape=("auxiliary",), time_series=True, optional=True
+        )
+        boundname: Optional[str] = string(
+            default=None, empty_is_none=True, optional=True, when="boundnames"
+        )
 
-# Repeating period block (item type: Record)
-period: Optional[dict[int, list[ChdPeriodItem]]] = field(block="period", default=None)
-
-# Repeating period block with keystring (item type: Union)
-period: Optional[dict[int, list[OcPeriodItem]]] = field(block="period", default=None)
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
+        alias="stress_period_data", block="period", fill_forward=True, ...
+    )
 ```
 
-Repeating blocks (i.e., DFN blocks with `repeats: true`, canonically the period block) use `dict[int, list[ItemType]]`, where the key is the block label (stress period number). This preserves the fill-forward semantics: a period that is not explicitly specified inherits the most recent prior specification.
-
-### Item classes
-
-Item classes are generated `attrs` classes with `slots=True`. One class is generated per DFN record definition; unions produce one class per arm.
-
-```python
-@attrs.define(slots=True)
-class LakPackagedataItem:
-    ifno: int
-    strt: float
-    nlakeconn: int
-    aux: list[float] | None = attrs.field(default=None)
-    boundname: str | None = attrs.field(default=None)
-
-@attrs.define(slots=True)
-class OcSavePeriodItem:
-    rtype: str       # HEAD | BUDGET | ...
-    ocsetting: str   # ALL | FIRST | LAST | STEPS n1 n2 ...
-
-@attrs.define(slots=True)
-class OcPrintPeriodItem:
-    rtype: str
-    ocsetting: str
-
-OcPeriodItem = OcSavePeriodItem | OcPrintPeriodItem
-```
-
-`slots=True` reduces per-instance memory overhead, which matters when lists contain many rows. If the project migrates from `attrs` to pydantic, item classes migrate to `@pydantic.dataclasses.dataclass(config=ConfigDict(slots=True))`, which is a supported configuration in pydantic v2.
-
-### Derived dimensions
-
-Dimensions that were formerly stored attrs (e.g., `nlakes`, `nconnectiondata`) become computed properties:
-
-```python
-@property
-def nlakes(self) -> int | None:
-    return len(self.packagedata) if self.packagedata else None
-```
-
-They are not stored, not passed to the constructor, and not part of the dimension resolution graph (`flopy4/dimensions.py`). The DFN `dimensions` block values are written at serialization time by reading `len()` of the corresponding list field.
-
-### Views
-
-#### DataFrame (tabular lists)
-
-For list fields with a uniform `Record` item type (i.e., not a union), a DataFrame view is available:
-
-```python
-@property
-def packagedata_df(self) -> pd.DataFrame | None:
-    if self.packagedata is None:
-        return None
-    return pd.DataFrame([attrs.asdict(r) for r in self.packagedata])
-```
-
-DataFrames are also accepted on construction and attribute assignment; the setter converts them to `list[ItemType]` internally.
-
-#### xr.Dataset (spatial period data)
-
-For period blocks with spatial content (CHD, WEL, DRN, etc.), an xarray Dataset view can be provided on demand. This is the "fan-out to columns" representation that was previously the primary storage:
-
-```python
-def period_as_dataset(self) -> xr.Dataset | None:
-    """Materialize period data as an (nper, nodes) Dataset."""
-    ...
-```
-
-This view is computed lazily and not cached. It is appropriate for spatial operations and for packages that are variants of the list-based form (grid-array variants like CHDG, RCHA).
-
-The key reversal: the fan-out is a **view**, derived from the list, not the ground truth from which the list is reconstructed.
-
-## Field categories
-
-Three categories of list field exist. The design handles all three uniformly via `list[ItemType]`, but the item types and outer containers differ:
-
-| Category | DFN example | Python type | Item type |
+| Category | Example | Python type | Item type |
 |---|---|---|---|
-| Static list block | `gwf-lak` packagedata | `Optional[list[ItemType]]` | `Record` dataclass |
-| Repeating period block, spatial | `gwf-chd` period | `Optional[dict[int, list[ItemType]]]` | `Record` dataclass |
-| Repeating period block, keystring | `gwf-oc` period | `Optional[dict[int, list[ItemType]]]` | `Union` of arm dataclasses |
-| Repeating period block, flag | `gwf-sto` period | `Optional[dict[int, str]]` | `str` (or small literal union) |
+| Static list block | LAK packagedata | `Optional[list[Item]]` | record |
+| Repeating block, tabular | CHD period | `Optional[dict[int, list[Item]]]` | record |
+| Repeating block, keystring | OC period | `Optional[dict[int, list[Item]]]` | union of arm classes |
+| Repeating block, flag | STO period | `Optional[dict[int, str]]` | `str` |
 
-## Converter impact
+Repeating blocks are keyed by the 0-based period. A period not given
+inherits the last one given (fill-forward).
 
-The `structure_array` converter is not needed for list fields. The ingress converter for a list block:
+**Storage.** Since #479, a tabular list's rows can be held as columns in an
+`ItemTable` (`item_table.py`), a numpy array per field like flopy3's
+recarrays. It's still a list of Items: each row is a view onto the columns.
+A list block loads by the fastest reader its rows allow, each falling back
+to the next: `read_rows` (numbers only, by column with numpy),
+`Item.from_rows` (a layout planned once per row length), `Item.from_tokens`
+(a row at a time).
 
-1. Parses rows from the token stream (already done by the reader)
-2. Constructs `[ItemType(**row) for row in rows]`
+**Dimensions** that count rows (`nlakes`, `maxbound`, `nper`) follow the
+lists. A dimension is either computed live (CHD's `maxbound` property) or a
+field kept in step by `Package._sync_dims` wherever dims are read or
+written. An exact dimension takes the row count; a bounded one
+(`"<=maxats"`) is the user's, and is only checked. Assigning a dimension
+that disagrees with its list raises. An in-place append isn't seen until
+the next sync (see the [backlog](../maintenance/backlog.md)).
 
-The egress converter for a list block:
+**Input.** `Package._coerce_item_list` accepts Items, tuples or lists
+(positional, `Item.from_values`), dicts (named columns) and a dict of lists
+(columns). Union rows are dispatched to their arm by keyword token, or by a
+`"keyword"` key in a dict. A row with a field an option turns on (a
+boundname) sets that option.
 
-1. Iterates `[attrs.asdict(item) for item in field_value]`
-2. Writes each row
+**Views.** `Package.to_dataframe()`/`from_dataframe()` give and take stress
+period data as a tidy DataFrame. `to_xarray` gives period lists as a dense
+or sparse dataset (#476; see
+[`representation.md`](../xarray/representation.md)).
 
-No fill-value logic, no sparse COO construction, no shape resolution, no dimension inference. The `_hack_period_non_numeric` special case for OC disappears; OC period data is just a list of `OcPeriodItem` records that serialize naturally.
+## Row layout
 
-## Codegen impact
+A row's layout is fixed by the component's dimensions, except for its last
+field (the DFN spec's rule for inline arrays). An inline array sized only by
+dims may be anywhere; one whose width varies by row (self-sizing, sized by a
+sibling, or by a lookup) must be last.
 
-The code generator no longer emits, per list block:
+Reading a file row and building an item from a Python tuple are the same
+problem, splitting a sequence of values into fields; only the per-field
+conversion differs (file tokens are strings and 1-based, Python values typed
+and 0-based). So there's one layout, shared by both, and no value sniffing:
+as in MF6, every width comes from package context. The exception is a
+union's arm, which its own tokens choose: a keyword arm by its keyword;
+OBS's `id` (cellid, index or string, followed by `id2`) by whether its first
+token is a number.
 
-- Per-column array attrs (e.g., `packagedata_ifno`, `strt`, `nlakeconn`, ...)
-- `__block_col_maps__` ClassVar
-- `_<block>` buffer attr
-- `__attrs_post_init__` scatter logic
-- `_get_block` / `_set_block` methods and property boilerplate
+Given a row's values and the package context, fields are walked in order:
 
-Instead it emits, per list block:
+1. **Each field takes its width.** A scalar 1, a cellid its grid's
+   `ncelldim`, a dim-sized array its dims' value (aux by `auxiliary`, GNC
+   `cellidsj` by `numalphaj`, EVT `pxdp` by `nseg-1`).
+2. **Flat or tupled** (Python input only). If the next value is a sequence
+   (not a str) or `None`, it's the whole field (`None` is an unset optional
+   field, or an `allow_zero` cellid referring to no cell). Otherwise the
+   field takes its width in scalars, so `((0, 2, 3), 1.0)` and
+   `(0, 2, 3, 1.0)` are both a CHD row.
+3. **The last field**, if its width varies by row, takes the rest, minus a
+   boundname if there is one.
+4. **A boundname is present iff `boundnames` is set** (the field's
+   `when`). Reading a file this is strict. For Python input, a row with
+   exactly one value more than the layout allows has a boundname, and the
+   package sets the option. Any other surplus is an error. It's decided by
+   count, never by the value's type.
+5. **An optional untagged group** (EVT's `petm0`) is present iff its gating
+   option is set (`SURF_RATE_SPECIFIED`) where that's recorded; otherwise
+   by the value count.
 
-- One item class definition (or imports it from a shared module)
-- One field declaration: `packagedata: Optional[list[LakPackagedataItem]] = field(...)`
-- One derived-dimension property if the block has a declared dimension
+The context is a `RowContext` (`item.py`): `ncelldim` per grid, dim sizes,
+and the enabled options. A package built standalone, before it's in a
+model, doesn't know `ncelldim`; the width is then inferred from the value
+count when it's the only unknown, and an ambiguous row raises, asking for
+the cellid as a tuple or for the package to be attached first. Without a
+package there's no context, and an item takes one value per field.
+Widths, including lookup-sized arrays (`len(ic) == packagedata.ncon(ifno)`),
+are checked by the package after construction.
 
-A package like `gwf-lak`, which was 561 lines under the fan-out pattern, is expected to be approximately 80–100 lines.
+## Why rows, not columns
 
-## Rationale for `list[ItemType]` over `pd.DataFrame`
+The earlier design exploded each list field into one `NDArray` attr per
+column, with buffer attrs, scatter/gather in `__attrs_post_init__`, a
+`__block_col_maps__` schema, fill values for absent cells, and converter
+special cases (`structure_array`, `_hack_period_non_numeric`) to reassemble
+rows on write. That mixed up storage and view: the DFN describes rows, the
+object model should too, and columns are a view. `ItemTable` brings back
+columnar storage for speed, behind the row interface.
 
-`pd.DataFrame` is the canonical representation for tabular data operations (selection, groupby, merge). It is not the right primary storage for this use case because:
+Rows rather than a DataFrame as the primary form:
 
-1. **Union item types.** DFN `union` item fields (keystrings) cannot be cleanly represented in a DataFrame without collapsing type information into `None`/`NaN` columns. `list[UnionType]` covers both tabular (record) and non-tabular (union) cases uniformly.
+1. Unions (keystrings) don't fit a DataFrame without collapsing types into
+   `None`/`NaN` columns.
+2. `list.append`, `item.field = value` and comprehensions are idiomatic for
+   editing a few rows; `pd.concat` and `.loc` aren't.
+3. A typed list is statically checkable; a DataFrame isn't.
+4. One pattern in codegen and the converter for every item type.
 
-2. **API for construction and mutation.** `list.append`, `item.field = value`, and list comprehensions are idiomatic Python for building and modifying a sequence of records. DataFrame row mutation (`pd.concat`, `.loc`) is more awkward for the "modeler editing a few parameters" use case.
-
-3. **Type safety.** A typed list is statically checkable; a DataFrame is opaque to type checkers.
-
-4. **Consistency.** One representation pattern in codegen and the converter, regardless of item type.
-
-DataFrame is valuable as a **view** and as an **accepted input format**. It is not the primary storage.
+DataFrames are a view and an accepted input.

@@ -1,7 +1,8 @@
 # Binary list input: which blocks MF6 can read
 
-Notes from adding external list files (`list_format`, `ListIO`) on the
-`external-list-files` branch.
+Which list blocks MF6 can read from a binary OPEN/CLOSE file, and what
+flopy4's external list writing (`list_format`, `ListIO`, #520) does about
+it.
 
 ## The constraint
 
@@ -35,7 +36,7 @@ count it knows before reading.
   with `list_format="binary"`.
 - flopy4's generated `flopy4/mf6/tdis.py` nonetheless has
   `shape=("nper",)`. That comes from flopy4's codegen or the devtools
-  schema, not from MF6's DFN (exact source not yet tracked down).
+  schema, not from MF6's DFN (source not yet found).
 - The mismatch runs the other way too. MF6 sizes LAK CONNECTIONDATA by
   `sum(nlakeconn)`, but flopy4's `Lak.connectiondata` has no shape.
 
