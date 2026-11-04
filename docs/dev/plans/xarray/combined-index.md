@@ -168,4 +168,3 @@ datasets are what `NetCDFModel` writes as MF6 netCDF input. They match
 MF6's own netCDF export, which defines a `layer` int variable of `1..nlay`
 with the same attrs (`DisNCStructured.f90`, `DisNCMesh.f90`, `DisvNCMesh.f90`,
 modflow6 @ 48f34498f3). Keep it.
-
