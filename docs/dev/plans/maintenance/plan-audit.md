@@ -7,10 +7,11 @@ how they could be organized. Each finding says how I'd address it.
 [Part 7](#7-order-of-work) puts the fixes in order, and
 [Part 8](#8-decisions-for-you) lists what needs your decision.
 
-Baseline: `dev-plans` at `3ff8980c`, and MF6 at `0dd9ed1784` (the local
-checkout, 2026-11-03). MF6 paths are relative to the modflow6 repo. The
-constraint audit and option classification used MF6 `8aad7bc4a5`, so an MF6
-line number there and one here may differ.
+Baseline: `dev-plans` at `3ff8980c`. Part 1 was rechecked against MF6
+`7f69b525`, the local checkout. The `0dd9ed1784` first recorded here doesn't
+resolve in that checkout, and the other parts weren't rechecked. MF6 paths are
+relative to the modflow6 repo. The constraint audit and option classification
+used MF6 `8aad7bc4a5`, so an MF6 line number there and one here may differ.
 
 **What was read.** All live docs in `docs/dev/` and `docs/dev/plans/`, but
 only the archive's index. The drafts `discussion-287-comment.md` and
@@ -52,6 +53,12 @@ search for the errors in Part 1, which found one (see F2).
 These come first because the hypotheses, the #287 post and the proposed
 concepts doc would otherwise inherit them.
 
+**Status (2026-11-04):** F1-F6 are applied to the live docs, so the line numbers
+below predate those edits. The #287 drafts were deleted before this audit's
+baseline, so they weren't corrected ([Part 9](#9-checks-still-open)). Code
+follow-ups are in
+[`backlog.md`](backlog.md) or listed in [Part 7](#7-order-of-work).
+
 ### F1. Bound numbers and boundnames aren't identity
 
 **The plans say:** "Each bound has identity (its number, optionally a
@@ -79,9 +86,14 @@ classification says `BOUNDNAMES` gives entities identity, and that `MAXBOUND`
 - A reference to a bound is really `(package, period, position)`, not
   `(package, number)`. The DDL slice's keys and the proposed
   `<=maxbound as a key domain` change accordingly.
-- A boundname can't be a primary key, and observing one is an aggregation.
-- An edit that reorders a period's rows silently retargets MVR and SPC rows.
-  That's a real hazard for an editing tool.
+- A boundname can't be a primary key, and observing one is an aggregation. An OBS
+  `id` can be a boundname. Each period, `bnd_rp_obs` finds every entry with that
+  name, and flow observations report their sum. A cell `id` works the same way. So
+  OBS on a simple package selects by value and never uses a bound number, unlike
+  MVR and SPC. The advanced packages' overrides weren't read.
+- An edit that inserts, deletes or reorders a period's rows silently retargets
+  MVR and SPC rows, as does changing a grid package's active cells. That's a
+  real hazard for an editing tool.
 - `dense()`'s row key table and the logical relation for WEL both need the
   period in the key. "Editing a row" isn't well defined across periods unless
   the row has a stable identity, which list entries lack.
@@ -89,17 +101,22 @@ classification says `BOUNDNAMES` gives entities identity, and that `MAXBOUND`
 **How I'd address it.** Replace "Entities vs. fields" with this distinction,
 using MF6's words:
 
-| Entity | Identified by | Stable across periods? | Examples |
+| Input | Addressed by | Stable across periods? | Examples |
 |---|---|---|---|
 | **feature** | a number declared in PACKAGEDATA (`ifno`) | yes | SFR reach, LAK lake, MAW well, UZF cell |
-| **list entry** | position in its period's block | no | WEL, DRN, RIV, GHB, CHD, RCH, EVT |
-| **grid entry** | position among the block's non-DNODATA cells ([F2](#f2-the-listarray-split-is-three-way-not-two-way)) | no | WELG, DRNG, RIVG, GHBG, CHDG |
-| **column** | the grid (`ncpl`) | yes | RCHA, EVTA |
+| **entry, list-based** | position in its period's block | no | WEL, DRN, RIV, GHB, CHD, RCH, EVT |
+| **entry, grid array-based** | position among the block's non-DNODATA cells, in node order ([F2](#f2-the-listarray-split-is-three-way-not-two-way)) | no | WELG, DRNG, RIVG, GHBG, CHDG |
+| **layer array** | no per-element address; whole arrays aligned on `ncpl` | n/a | RCHA, EVTA |
+
+The entity/field split is dropped, since a WEL row and a WELG cell can state the
+same stress. The question is how a thing gets addressed, so list and grid entries
+are one kind in two encodings. Nothing refers to one element of RCHA by number, so
+a layer array isn't an entity at all.
 
 Then:
 
-1. Rewrite `dfn-spec/overview.md` "Entities vs. fields" and restate H4's key
-   table with these four.
+1. Rewrite `dfn-spec/overview.md` "Entities vs. fields" as "What can be referred
+   to", and restate H4's key table to match.
 2. Correct `option-classification.md` line 279, and `constraint-audit.md` and
    `dfn-spec/overview.md` where they say bound identity comes from the row
    key. Keep the row key idea, but say the key includes the period.
@@ -107,9 +124,9 @@ Then:
    and boundname is a non-unique indexed column.
 4. Check `flopy4/mf6/keys.py`: does a bound reference get checked against the
    right period's rows? (Part 9.)
-5. Consider a warning in flopy4 when an edit changes row order in a period
-   that MVR or SPC refer to. This is a code question, so it goes in the
-   backlog rather than here.
+5. Consider a warning in flopy4 when an edit shifts positions in a period that
+   MVR or SPC refer to. This is a code question, so it goes in the backlog
+   rather than here.
 
 ### F2. The list/array split is three-way, not two-way
 
@@ -147,7 +164,8 @@ are array input with bound numbers.
    [T1](#t1-departures-from-mf6)), and treat the grid-array form as a list in
    a different encoding, with DNODATA as "no entry".
 2. Restate H4's table: SPC `bndno` targets list and grid entries and features,
-   and SPCA targets columns. Fix `dfn-gaps.md` line 48 to name RCHA and EVTA.
+   and SPCA aligns with layer arrays on `ncpl`. Fix `dfn-gaps.md` line 48 to name
+   RCHA and EVTA.
 3. Add a note to `dfn-spec/overview.md` step 6: CHD ↔ CHDG is not the same
    kind of conversion as RCH ↔ RCHA, because both sides have bounds. Grid
    entries lose the boundname and allow at most one entry per cell, which
@@ -189,8 +207,29 @@ block replaces the last one, but a keystring setting holds"
 |---|---|---|---|
 | list (CHD, WEL, ...; also MVR) | replaces all entries | removed | clears all |
 | layer array (RCHA, EVTA) | replaces the arrays it names | retained | not a way to turn off; give a zero rate |
-| grid array (CHDG, WELG, ...) | replaces the arrays it names | retained | clears all |
+| grid array (CHDG, WELG, ...) | replaces the arrays it names | retained, by position | clears all |
 | advanced (SFR, LAK, MAW, UZF) | changes only what it names | retained | no effect implied; deactivate through settings |
+
+**Flagged:** MF6 could make layer and grid arrays replace as list blocks do, leaving
+advanced packages as the only ones with update semantics. wpb is raising this with
+the MF6 team, so nothing here changes until that's settled, including the
+`persistence` key's values (step 4 below). The docs state today's regimes, and note
+this as proposed, not decided. The history matters for the proposal:
+
+- mf6io described RCHA and EVTA with the list wording until a docs-only commit
+  (`b1f402719`, 2023), which added the retain wording. It gives no reason.
+- Retaining aux is deliberate. 6.4.3 reset aux to zero each period, which zeroed
+  the `AUXMULTNAME` multiplier when it wasn't given again. 6.8.0 reverted that
+  for layer arrays to match grid arrays, citing that consistency (`ffc48e9ea`,
+  #2855), and its notes list aux persistence as a feature of grid arrays.
+- So the proposal should be scoped to stress arrays. Replacing aux too would
+  bring the 6.4.3 problem back.
+- `IRCH` and `IEVT` need their own answer. An omitted `IRCH` keeps its layers
+  today only because `layarr_to_nlist` skips the rebuild, and it otherwise means
+  layer 1.
+- Grid arrays are the easier case: the DFNs already require stress arrays in each
+  block. Omitted arrays are retained by position, not by cell, which is a hazard
+  for aux whichever way stress arrays go.
 
 So:
 
@@ -223,8 +262,8 @@ doesn't hold as stated.
    `dfn-gaps.md` and for flopy4's field metadata. Values: `replace`,
    `per-array`, `per-setting`. The grid/layer difference could be a separate
    flag.
-5. Raise the grid array DFN/loader disagreement with MF6, using the note in
-   `period_arrays.py`.
+5. Settle the grid array DFN/loader disagreement as part of the proposal above,
+   using the note in `period_arrays.py`.
 
 ### F5. Two open "To check against MF6" items are answered
 
@@ -246,7 +285,7 @@ package "contains time-varying input variables".
 **MF6 says:** "simple stress packages (CHD, WEL, DRN, RIV, GHB, RCH and EVT)"
 and "advanced packages (MAW, SFR, LAK, and UZF)" (`bcoptions.tex:49`), both
 time-varying. The difference is F4's, plus whether features are defined once
-(F1). MF6 also has "hydrologic package" (`gwf/gwf.tex:31`), "internal flow
+(F1). MF6 also has "hydrologic package" (`gwf/gwf.tex:46`), "internal flow
 packages" (`gwf/info_existing_users.tex:22`), and "utility" for OBS, TVK, TVS,
 ATS, NCF and HPC.
 
@@ -886,22 +925,35 @@ return types (C8). Each goes to the plan it belongs to.
 
 ## 9. Checks still open
 
-- **`keys.py` and periods.** Does a `bound` reference check against the referring
-  row's period? Not read for this audit.
+- **`keys.py` and periods.** Answered: no. `_role_keys` checks a `<=dim` key
+  against the dimension, or the longest list in any period. See
+  [`backlog.md`](backlog.md#bound-references-and-periods).
 - **SPC `bndno` on LAK.** `dfn-spec/overview.md` line 202 says connection *n*, with
   key `<=nlakeconn`. SPC's DFN says "the boundary package feature number". MF6's
   `check_flow_package` compares `MAXBOUND` to the flow package's `NBOUND`, and for
   MAW `maxbound = sum(ngwfnodes)`. Whether advanced packages can be SPC targets at
   all needs checking against `tsp-ssm.f90`.
-- **What OBS means on a layer array.** RCHA and EVTA have `obs_filerecord`, though
-  they have no bounds or boundnames. This tests F1's table.
+- **What OBS means on a layer array.** RCHA and EVTA have `obs_filerecord`, and no
+  boundnames. From reading `bnd_rp_obs`, an `id` is a cell, matched against the
+  package's `nodelist`, so it would have to be in the `IRCH` layer to match.
+  Not yet confirmed by a run.
 - **Empty list blocks in flopy4.** `period_arrays.py` handles grid arrays. Whether
   list `None` or `[]` round-trips as an empty block wasn't checked.
 - **The fidelity table's "kept today" column.** A starting estimate from the docs,
   not tested.
 - **Grid entry numbering.** Established from the block's first array, in node order,
-  per `Mf6FileGridArray.f90`. Confirm with an MF6 developer that it's a stable
-  behaviour to rely on. I found the count documented in mf6io, but not the
-  numbering.
-- **The #287 drafts.** Searched for the errors in Part 1 only, which found line
-  125 of the comment draft. Not reviewed otherwise, so read them again after step 1.
+  per `Mf6FileGridArray.f90`. wpb confirms it should be stable, and that mf6io should
+  state it. That work is handed off in `grid-entry-numbering-doc.md` at the modflow6
+  repo root (untracked). Still open there: from reading `nodeu_to_nlist`, a defined
+  cell that's inactive may leave entries misaligned, which isn't yet confirmed by a
+  run and would change the rule.
+- **Array period semantics (F4).** With wpb, to raise with the MF6 team: should layer
+  and grid stress arrays replace across blocks? Aux persistence is deliberate, and
+  `IRCH`/`IEVT` need their own answer.
+- **The #287 drafts.** They aren't drafts in progress: `17b1a1ac` deleted
+  `discussion-287-comment.md` and `discussion-relational-spec-draft.md` when it
+  rewrote the #287 docs, and they're only in history (`17b1a1ac~1`). Line 125 of
+  the comment still has F2's error, and the relational draft only calls `<=maxbound`
+  an implicit row id, which F1 qualifies. So write the #287 post from the corrected
+  `dfn-spec/overview.md`, not from them. `schema-polymorphism.md` still cites the
+  comment as a draft (S5).

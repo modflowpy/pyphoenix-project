@@ -22,6 +22,22 @@ Merging gives one codec for row and line records. It has to carry over:
 `Item` then becomes an alias or goes away. Large; its own branch, with full
 CI.
 
+## Bound references and periods
+
+A list or grid entry's bound number is a position within one period (see
+[`overview.md`](../dfn-spec/overview.md#what-can-be-referred-to)), and flopy4
+doesn't treat it that way yet:
+
+- **Checks:** `_role_keys` (`flopy4/mf6/keys.py`) checks a `<=dim` key against
+  the dimension, or the longest list in any period. An MVR or SPC row that
+  names a position with no entry in its own period passes. It should check
+  against the referring row's period, once the period's rows can be found.
+- **Editing:** warn when an edit shifts positions that MVR or SPC rows refer to
+  in that period: inserting, deleting or reordering rows, or changing a grid
+  package's active cells.
+
+Small to medium.
+
 ## Dimensions after an in-place append
 
 From [`dimension-issues.md`](../archive/dimension-issues.md) (issue 2).

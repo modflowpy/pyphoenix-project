@@ -290,9 +290,9 @@ time-series coverage, which fails only during integration at `ad`
 These are folded into the plan in [overview.md](overview.md#step-3-the-ddl-slice):
 
 1. **Dimensions as first-class values.** K3 is mostly `count(rows) = dim`
-   or `≤ dim`. `MAXBOUND` is a CHECK bound on a table's row count; bound
-   identity comes from the row key (`<=maxbound` as a key domain), not from
-   the dimension.
+   or `≤ dim`. `MAXBOUND` is a CHECK bound on a table's row count; a
+   bound's key comes from the row, and includes the period (`<=maxbound` as
+   the domain of the position), not from the dimension.
 2. **The grid as a table everyone joins against** (cell → top, bot, area,
    idomain), supplied as a parameter rather than per package.
 3. **A scope chain for `when`** (own options → model → binding

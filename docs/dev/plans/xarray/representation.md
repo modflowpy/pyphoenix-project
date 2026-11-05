@@ -334,6 +334,36 @@ field and position (`models0`, `chd0`) and can't recover concrete types.
 Data given per stress period is stored **as given**: only the periods the
 user set, never filled forward. Filling forward is a view (`dense()`).
 
+### How periods persist
+
+What a new block means depends on the input form
+(`doc/mf6io/gwf/bcoptions.tex`, `mvr.tex`):
+
+| Input form | A new block | Not given in the block | Empty block |
+|---|---|---|---|
+| list (CHD, WEL, ...; also MVR) | replaces all entries | removed | clears all |
+| layer array (RCHA, EVTA) | replaces the arrays it names | retained | no effect; turn off with a zero rate |
+| grid array (CHDG, WELG, ...) | replaces the arrays it names | retained, by position | clears all |
+| advanced (SFR, LAK, MAW, UZF) | changes only what it names | retained | no effect implied; deactivate through settings |
+
+- A list block is a snapshot, a layer or grid array is a per-array snapshot,
+  and only an advanced block is a true delta.
+- MVR is grouped with the advanced packages by name, but behaves like a list.
+- A grid array is stored by position among the active cells of the block that
+  gave it, and each block's first array sets those cells again. So a retained
+  array needs the same active cells (`check_grid_periods`). The DFNs make
+  stress arrays required in each block and only aux optional, but flopy4
+  follows MF6's loader, which retains both.
+- Retaining aux is deliberate. 6.4.3 reset it to zero each period, which zeroed
+  the `AUXMULTNAME` multiplier when it wasn't given again, and 6.8.0 reverted
+  that for layer arrays, to match grid arrays.
+
+**Proposed, not decided:** make layer and grid stress arrays replace as list
+blocks do in MF6, leaving advanced packages as the only update regime. This
+table describes MF6 as it is until that changes. The change would have to
+decide what happens to aux and to `IRCH`/`IEVT`: an omitted `IRCH` means layer
+1, so input that gives it once could move its recharge.
+
 ### Period arrays
 
 RCHA's `recharge`, WELG's `q` and the like (built, in `attrs_xarray`):
@@ -375,12 +405,16 @@ places each period's rows by their key and fills forward:
 | the package's own index | a dim named for it (`bndno`) | SPC |
 | anything else (two cellids, no key) | no dense form; the table as is | HFB, MVR, OC |
 
-- Periods fill forward as in MF6: a block replaces the last one, but a
-  keystring setting holds until it's set again.
+- Periods fill forward by their [regime](#how-periods-persist).
+- A row key holds within its period. A list entry has no identity across
+  periods, and SPC's `bndno` is a position in the flow package's block for
+  that period.
 - Two rows in one cell raise, unless `duplicates="sum" | "first" | "last"`
   merges them (lossy).
 - All of this is decided from field metadata (`cellid`, `fk`, `pk`,
-  `union`, `shape`), with no per-package code.
+  `union`, `shape`), with no per-package code, once the regime is there too.
+  `fill_forward` is only a boolean today (see
+  [`dfn-gaps.md`](../dfn-spec/dfn-gaps.md#rules-in-fortran-that-need-new-dfn-syntax)).
 
 ## Time
 

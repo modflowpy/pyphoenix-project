@@ -124,7 +124,7 @@ Derivation (rows: category, columns: derivation):
 | wc_filerecord | 1 | output |  | none | desc+inv |  |  | gwf-uzf |
 | zdisplacement_filerecord | 1 | output |  | none | desc+inv |  |  | gwf-csub |
 | auxiliary | 51 | logical | schema | none | desc | ADD COLUMN. |  | (51) |
-| boundnames | 48 | logical | schema | none | desc | Identity column; target of obs/mvr keys. |  | (48) |
+| boundnames | 48 | logical | schema | none | desc | Non-unique group label; OBS can select by it. |  | (48) |
 | ts_filerecord | 42 | logical | binding | dynamic | desc | Not layout: TS/TAS interpolate within a period, which period data cannot express without changing TDIS. | values interpolated from series each time step | (42) |
 | auxmultname | 31 | logical | schema | dynamic | src:gwf-wel.f90:766,gwf-rch.f90:271,gwf-chd.f90:427 | Was the closest call (layout). Relabelled by the derivation axis: bound = value × aux is evaluated at every use against the current aux value, which may be a TS, so the rule itself is model content (dynamic derivation). Same structure as AUXDEPTHNAME. Snapshot re-encoding (multiply in) is still possible but loses the rule. | value × aux at every use (wel:766, rch:271, chd:427); aux may be a TS | (31) |
 | angrot | 18 | logical |  | none | desc | Descriptive metadata: no runtime effect, kept by any conversion. |  | (18) |

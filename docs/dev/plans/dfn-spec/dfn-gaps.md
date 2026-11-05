@@ -45,11 +45,20 @@ These need no new DFN syntax.
   GWF, DFW in OLF. Nothing expresses MVR ⇒ MVT or LKT ⇒ LAK.
 - **Dimensions across components.** SPC `MAXBOUND` must cover the flow
   package's bounds (`TspSpc.f90:347`).
-- **Key kinds on roles.** MF6 enforces that SPC pairs with list packages
-  and SPCA with array packages (`TspSpc.f90:360-380`). The DFN only
-  implies it by naming. If a role stated the kind of key it uses (a bound
-  number or a grid column), the ordinary foreign key check would catch a
-  mismatch. See [overview.md](overview.md#h4-spcspca-pairing-is-a-key-kind-match).
+- **Key kinds on roles.** MF6 requires SPCA for RCHA and EVTA, and SPC for
+  every other package, grid array-based ones included
+  (`TspSpc.f90:360-380`). The DFN only implies it by naming. If a role stated
+  the kind of key it uses (a bound number, or alignment on `ncpl`), the
+  ordinary foreign key check would catch a mismatch. See
+  [overview.md](overview.md#h4-spcspca-pairing-is-a-key-kind-match).
+- **Period persistence.** `fill_forward` is a boolean, so which
+  [regime](../xarray/representation.md#how-periods-persist) applies is held
+  in per-package code. A `persistence` key could replace it, with the values
+  `replace`, `per-array` and `per-setting`, and a separate flag for the
+  grid/layer difference on empty blocks. Moving array stress data to `replace`
+  in MF6 (proposed, not decided) would shrink this. The DFNs also disagree with
+  the loader today: they require grid stress arrays in each block, and the
+  loader retains them.
 
 ## Rules only in the mf6io docs
 
@@ -77,9 +86,9 @@ check it up front.
 
 - **Probable error:** `iprpak.source = "save_flows"` in `gwe-ctp` and
   `gwt-cnc`. It should probably be `ipakcb`.
-- **`bound` has no `source` in any stress package**, list variants
+- **`bound` has no `source` in any stress package**, list-based ones
   included: there's no syntax for the multi-column mapping (value columns →
-  `bound` rows). Array variants (`*A`, `*G`) also lack `source` on
+  `bound` rows). Layer and grid array-based packages also lack `source` on
   `nodelist`. A `source` expression language would need column lists, a
   cell mapping (cellid → reduced node), and an array → list projection with
   a layer index (`IRCH`/`IEVT`) or a NODATA mask.

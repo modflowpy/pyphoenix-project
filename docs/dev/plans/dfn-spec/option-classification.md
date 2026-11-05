@@ -276,8 +276,8 @@ The catalog gaps these turned up are in [dfn-gaps.md](dfn-gaps.md#memory-catalog
 ### For later steps
 
 - **DDL slice:** the four lens kinds; `MAXBOUND`, which looks like a
-  preallocation hint (layout) but defines bound-number identity through
-  `<=maxbound`; the three `RELEASETIMES` encodings (block, options record,
+  preallocation hint (layout) but also limits bound numbers (`<=maxbound`),
+  each a position within a period; the three `RELEASETIMES` encodings (block, options record,
   file); `AUXMULTNAME` as a generated column.
 - **Parameter syntax sketch:** the `binding` and `schema` lists are in the
   CSV's `tags` column.

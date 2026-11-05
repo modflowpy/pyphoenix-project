@@ -135,7 +135,7 @@ lab("release_timesfilerecord", "layout", "", "mem+desc",
 
 # ---------------- logical: schema ----------------
 lab("auxiliary", "logical", "schema", "desc", "ADD COLUMN.")
-lab("boundnames", "logical", "schema", "desc", "Identity column; target of obs/mvr keys.")
+lab("boundnames", "logical", "schema", "desc", "Non-unique group label; OBS can select by it.")
 lab("surf_rate_specified", "logical", "schema", "mem+desc", "Adds PETM0 column.")
 lab("auxdepthname", "logical", "schema", "desc",
     "Unlike AUXMULTNAME, gives an aux column a new physical role (drain scaling depth).")

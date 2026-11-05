@@ -89,11 +89,13 @@ to read the logical content out of a file, and how to write it back. The
 term comes from bidirectional programming.
 
 A lens is **partial** if some logical content has no image in that layout.
-RCHA → RCH always works: each column's rate becomes a bound in the `irch`
-layer. RCH → RCHA works only when each column has at most one entry, all
-in one layer, with no boundnames, no per-bound aux the array can't hold,
-and nothing referring to bound numbers. EVT → EVTA also needs `NSEG = 1`
-and no `SURF_RATE_SPECIFIED`, which MF6 enforces (`gwf-evt.f90:202, 291`).
+RCHA → RCH always works: each vertical column's rate becomes an entry in
+the `irch` layer. RCH → RCHA works only when each vertical column has at
+most one entry, all in one layer, with no boundnames, no per-entry aux the
+array can't hold, and nothing referring to bound numbers. An empty RCH block
+maps to an explicit zero array, since an empty RCHA block would retain the
+previous rates. EVT → EVTA also needs `NSEG = 1` and no
+`SURF_RATE_SPECIFIED`, which MF6 enforces (`gwf-evt.f90:202, 291`).
 
 The option classification found four kinds of lens:
 
@@ -199,8 +201,8 @@ fk = { scope = "pname2", key = "mover_receiver" }
 
 SPC's `bndno` shows why the role matters. It means "boundary *n* of the
 flow package this SPC file applies to", and what a boundary is depends
-entirely on the target: the *n*th entry for WEL, reach *n* for SFR,
-connection *n* for LAK.
+entirely on the target: the *n*th entry in that period for WEL, reach *n*
+for SFR, connection *n* for LAK.
 
 **Parameters.** A reference can also be fixed in type but vary in *where
 to look*. Exchange MVR's `mname1` must be one of the exchange's two models;
@@ -219,25 +221,47 @@ by consumers:
 Hypothesis 3 below says most rules are really parameters of the component,
 filled in by its binding.
 
-### Entities vs. fields
+### What can be referred to
 
-The list/array split is really about identity:
+MF6 has three input forms: list-based, layer array-based (`READASARRAYS`)
+and grid array-based (`READARRAYGRID`). The split isn't about what the data
+means, since a WEL row and a WELG cell can state the same stress. It's about
+how other input can address it:
 
-- **List variant: a collection of entities.** Each bound has identity (its
-  number, optionally a boundname), so it can be named, observed, moved or
-  given concentrations by SPC.
-- **Array variant: a field over the grid.** A value per column or cell. Its
-  only identity is the cell.
+| Input | Addressed by | Stable across periods? | Examples |
+|---|---|---|---|
+| **feature** | a number declared in PACKAGEDATA (`ifno`) | yes | SFR reach, LAK lake, MAW well, UZF cell |
+| **entry, list-based** | position in the period's block | no | WEL, DRN, RIV, GHB, CHD, RCH, EVT |
+| **entry, grid array-based** | position among the block's non-DNODATA cells, in node order | no | WELG, DRNG, RIVG, GHBG, CHDG |
+| **layer array** | no per-element address; whole arrays aligned on `ncpl` | n/a | RCHA, EVTA |
 
-Roles attach to identity, so RCH plays `bound` and RCHA doesn't. SPCA
-still refers to RCHA, through the grid: an SPCA array is keyed by column,
-like RCHA's. Both SPC and SPCA are keyed by their target's key. They
-differ only in what kind of key that is:
+Features "are defined once at the beginning of the simulation", but "the
+order of boundaries may change between stress periods" for other packages
+(`doc/mf6io/utl_spc.tex`). So a reference to an entry is really `(package,
+period, position)`, and only a feature's is `(package, number)`. Inserting,
+deleting or reordering a period's rows silently retargets the MVR and SPC
+rows that refer to them. So does changing a grid package's active cells.
+
+A grid array is a list in a different encoding, with DNODATA as "no entry".
+Going from list to grid can fail, because grid entries have no boundname
+and allow at most one entry per cell, and it renumbers the entries.
+
+A **boundname isn't a key**. It can repeat on purpose, to "sum recharge
+rates for entries with the same boundname" (`doc/mf6io/gwf/rch.tex`), so it's
+a group label. OBS addresses simple packages by selection, not position: its
+`id` is a boundname or a cell, and each period MF6 finds every entry that
+matches. Flow observations report their sum (`bnd_rp_obs` in
+`BoundaryPackage.f90`).
+
+Roles attach to what can be addressed, so RCH and WELG can play `bound`, and
+RCHA doesn't. SPCA reaches RCHA by alignment instead: it supplies whole
+arrays of the same shape. Both SPC and SPCA are keyed by their target's key.
+They differ only in what kind of key that is:
 
 | Referrer | Target | Shared key |
 |---|---|---|
-| SPC `bndno` | RCH, WEL, SFR, LAK, ... | the target's bound number (`<=maxbound`, `ifno`, `<=nlakeconn`, ...) |
-| SPCA arrays | RCHA, EVTA | the target's column (`ncpl`) |
+| SPC `bndno` | entries (RCH, WEL, WELG, ...) and features (SFR, LAK, ...) | the target's bound number (`<=maxbound` within the period, `ifno`, `<=nlakeconn`, ...) |
+| SPCA arrays | RCHA, EVTA | alignment on the grid's `ncpl` |
 
 ## Hypotheses
 
@@ -250,14 +274,17 @@ Every variant we've found is chosen by a tag. Where the tag sits:
 
 | Level | Tag | Chooses | Level of the choice |
 |---|---|---|---|
-| binding row | ftype (`CHD6` vs. `CHDG6`) | component variant | layout |
-| file options | `READASARRAYS` | component variant (RCH vs. RCHA) | layout |
+| file options | `READASARRAYS`, `READARRAYGRID` | input form (RCH vs. RCHA, CHD vs. CHDG) | layout |
 | field | `CONSTANT`/`INTERNAL`/`OPEN/CLOSE`/`NETCDF`, `LAYERED` | array encoding, or where the values are | layout |
 | row | union keyword (`STATUS`, `RATE`, `DIVERSION`, ...) | which attribute a row sets | layout (H2) |
 | model | discretization type (DIS/DISV/DISU) | the grid's domain | **logical** |
 
 `NETCDF` belongs with the array control records. It answers "where are
 this array's values?", not "which parts of the schema exist?".
+
+An input form is never selected at the binding row. CHDG and RCHA use the
+ftypes `CHD6` and `RCH6`, and only an option in the file tells them apart,
+so the loader has to read the file's options to pick the class.
 
 What's left at the logical level is enums (`status`, connection type, ...),
 which are plain column domains, and the grid type, which changes the domain
@@ -270,9 +297,9 @@ viable, though none has sum types.
 
 **What "functionally equivalent" means.** #287 calls RCH and RCHA
 functionally equivalent. They give the same source term per cell per
-period, so the hydrologic effect is the same. They don't have the same
-*identity*: bound numbers, boundnames, observations, movers and SPC all
-refer to bounds, and RCHA has none. Each layout is a lens onto one logical
+period, so the hydrologic effect is the same. They aren't addressed the
+same way: boundnames and list-based SPC need entries, and RCHA has
+none. Each layout is a lens onto one logical
 relation, and conversion goes through the relation where both lenses are
 defined. flopy4 can implement that once, not once per variant pair, and
 its error messages fall out of the partiality conditions.
@@ -282,19 +309,15 @@ option that is both layout and logical, and the constraint audit found no
 logical constraint triggered by a layout option. The DDL slice tests it
 directly.
 
-### H2: union records and period blocks are sparse tables written as deltas
+### H2: union records are sparse tables, and period blocks encode step functions
 
-SFR's period block is a log of updates to reach attributes. `1 STATUS
+**H2a: union records are sparse tables written as deltas.** SFR's period
+block is a log of updates to reach attributes. `1 STATUS
 INACTIVE` and `1 RATE 0.1` set two columns of one logical row,
 `(reach, period) → status, rate, stage, ...`. The keyword names the column.
 That's entity-attribute-value (EAV) encoding of a sparse wide table. Arms
 with their own key (`DIVERSION idv divflow`) set columns of a child table
 keyed by `(reach, idv)`.
-
-Period blocks follow the same pattern. MF6 carries a period's data forward
-until the next block, which is a delta encoding of a step function over
-periods. Union records and period blocks are both **deltas in the layout
-over state in the logical level**, and one convention can cover both.
 
 So union records aren't a logical sum type, and "databases don't have sum
 types" stops being a gap. This needs checking per case. OC's
@@ -302,6 +325,15 @@ types" stops being a gap. This needs checking per case. OC's
 `(action, rtype) → step selection`, which still fits a table. MAW
 `connstatus` and the LAK/UZF period settings look like SFR. A
 counterexample would be an arm whose fields don't belong to one table.
+
+**H2b: each period regime is a different encoding of a step function.** MF6
+carries a period's data forward until the next block, but what a new block
+means depends on the input form
+([the four regimes](../xarray/representation.md#how-periods-persist)). List
+blocks are snapshots: a step function written at its change points, where an
+omitted row is removed, which a delta can't say. Advanced blocks are true
+deltas. Layer and grid arrays are per-array snapshots. So one convention
+doesn't cover them all, and a logical relation has to be stated per regime.
 
 **Evidence:** untested. The DDL slice tests it.
 
@@ -368,9 +400,9 @@ tests whether the construct is smaller than what it replaces.
 
 ### H4: SPC/SPCA pairing is a key-kind match
 
-If a role states what *kind* of key it uses (a bound number or a grid
-column), then "SPCA binds only to array variants" is a key-kind mismatch,
-caught by the ordinary foreign key check. No `variant_of` declaration is
+If a role states what *kind* of key it uses (a bound number, or alignment
+on `ncpl`), then "SPCA binds only to layer array packages" is a key-kind
+mismatch, caught by the ordinary foreign key check. No `variant_of` declaration is
 needed for validation. One could still help docs group the alternatives.
 
 In programming-language terms, a role is a trait, and its key is an
@@ -385,7 +417,9 @@ serve both.
 
 **Evidence:** supported. The constraint audit confirmed that MF6 enforces the
 SPC↔SPCA pairing in Fortran (`TspSpc.f90:360-380`), and the DFN only
-implies it by naming.
+implies it by naming. MF6 requires array-based SPC only for RCHA and EVTA.
+Grid array-based packages have bound numbers, so they pair with list-based
+SPC, as other packages do.
 
 ### H5: dynamic derivations are generated columns
 
@@ -418,7 +452,7 @@ Where the hypotheses lead, for the spec and flopy4:
 
 | Question | Answer |
 |---|---|
-| Are component variants (RCH/RCHA) sum types in flopy4? | No. Keep separate classes (users write `Rcha`), discriminate at load by ftype and `READASARRAYS`, and convert between them through the logical relation. Discriminated unions are for typed slots and the loader. |
+| Are component variants (RCH/RCHA) sum types in flopy4? | No. Keep separate classes (users write `Rcha`), discriminate at load by ftype and `READASARRAYS` or `READARRAYGRID`, and convert between them through the logical relation. Discriminated unions are for typed slots and the loader. |
 | Does the spec need `variant_of` to check SPCA → RCHA? | No. Key kinds on roles check it (H4). `variant_of` is optional, for docs. |
 | Do `when`, MOVER, `READASARRAYS` and `NETCDF` share one construct? | `when` and MOVER do (H3). `READASARRAYS` and `NETCDF` are layout tags, in the same family as `CONSTANT`/`INTERNAL`. |
 | What's the relational form of union records? | Sparse columns, written as EAV (H2). |
@@ -454,7 +488,8 @@ to put in the spec, and which language fits. It tests the hypotheses
 directly:
 
 - H1: no logical sum types except enums and the grid;
-- H2: union records and period blocks are sparse tables plus deltas;
+- H2: union records are sparse tables plus deltas, and each period regime
+  has its own logical relation;
 - H3: every rule except `flow_model` is a parent key column;
 - H4: SPC/SPCA pairing is a key-kind match;
 - H5: model one boundary package with `AUXMULTNAME` as a generated column.
@@ -463,8 +498,10 @@ From the earlier steps, also:
 
 - put **dimensions in as first-class values**. Most shape constraints are
   `count(rows) = dim` or `≤ dim`, so `MAXBOUND` is a CHECK bound on a
-  table's row count. Bound identity comes from the row key, not from the
+  table's row count. A bound's key comes from the row, not from the
   dimension.
+- key **a list entry by `(package, period, position)`** and a feature by
+  `(package, number)`. A boundname is a non-unique indexed column.
 - include **the grid as a relation** (cell → top, bot, area, idomain),
   supplied as a parameter. Most structural constraints (`TOP > BOT`, lake
   bed above cell bottom, UZF area ≤ cell area) are joins against it.
@@ -514,6 +551,12 @@ logical relation" breaks. The partial-lens constraints the constraint audit
 found (`READASARRAYS` excludes `SURF_RATE_SPECIFIED`, no TAS on DISU, and
 so on) are exactly what the conversion should report.
 
+CHD ↔ CHDG is a different kind of conversion from RCH ↔ RCHA, because both
+sides have entries. Going to CHDG loses the boundname, requires at most one
+entry per cell, and renumbers entries into node order, so MVR and SPC rows
+that refer to them must be renumbered too or the conversion refused. It may
+be the easier first conversion.
+
 ## What would change our minds
 
 - An option that's irreducibly both layout and logical, used widely
@@ -529,9 +572,6 @@ so on) are exactly what the conversion should report.
 
 ## To check against MF6
 
-- Whether list RCH/EVT allow several entries in one cell (assumed yes, as
-  for WEL).
-- Whether EVTA lacks segments.
 - What SSM `pname` refers to when FMI reads flow from a `GWFBUDGET` file.
 - Whether OBS `id`'s `boundname` arm depends only on the target's
   `BOUNDNAMES`.

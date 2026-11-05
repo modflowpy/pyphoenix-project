@@ -43,10 +43,11 @@ Most components have only one possible parent (e.g., models are children of the 
 
 There are several special kinds of package, not necessarily mutually exclusive.
 
-- A **stress package** represents a forcing
-- A **basic package** contains only input variables applying statically to the entire simulation
-- An **advanced package** contains time-varying input variables
-- A **subpackage** is a package whose parent is another package
+- A **stress package** represents a forcing, and may vary by stress period. MF6 divides these into:
+  - **simple stress packages** (CHD, WEL, DRN, RIV, GHB, RCH and EVT), whose boundaries can change between periods
+  - **advanced packages** (MAW, SFR, LAK and UZF), whose features are defined once, with period blocks that change only what they name
+- A **utility** provides a capability rather than a hydrologic process, like OBS, TVK, TVS, ATS, NCF and HPC
+- A **subpackage** is a package whose parent is another package. This is flopy4's word, not MF6's. MF6's nearest is utility, but not every subpackage is a utility
 
 ```mermaid
 classDiagram
