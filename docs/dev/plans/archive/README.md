@@ -19,7 +19,7 @@ notes used to live. Live plans are in the [index](../README.md).
 | [pydantic-object-model-plan.md](pydantic-object-model-plan.md) | attrs vs. pydantic, revised (draft #367) | stale |
 | [field-functions-plan.md](field-functions-plan.md) | one field function per DFN field type | done (#463) |
 | [record-values-plan.md](record-values-plan.md) | plain values for every record field | done |
-| [mypy-converter-plan.md](mypy-converter-plan.md) | letting mypy see field converters | never merged (draft #433); in the [backlog](../maintenance/backlog.md) |
+| [mypy-converter-plan.md](mypy-converter-plan.md) | letting mypy see field converters | abandoned (#433 closed); replaced by [constructor-stubs.md](../components/constructor-stubs.md) |
 | [nested-keystring-union-plan.md](nested-keystring-union-plan.md) | typing OC's nested `ocsetting` unions | done |
 | [array-equality-spec.md](array-equality-spec.md) | array-aware component equality | done (#394) |
 | [codegen-base-class-removal-plan.md](codegen-base-class-removal-plan.md) | generating TDIS and NCF instead of hand-written bases | done (#385) |
@@ -94,4 +94,4 @@ notes used to live. Live plans are in the [index](../README.md).
 | Doc | What | Outcome |
 |---|---|---|
 | [followups-after-row-layout.md](followups-after-row-layout.md) | follow-ups after row layout, boundnames and conditional fields | items 1-3 done; 4 and 5 moved to the [backlog](../maintenance/backlog.md) |
-| [open-followups.md](open-followups.md) | leftovers from the plans archived by 2026-10-19 | the one open item moved to the [backlog](../maintenance/backlog.md) |
+| [open-followups.md](open-followups.md) | leftovers from the plans archived by 2026-10-19 | nothing left open |

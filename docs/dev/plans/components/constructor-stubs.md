@@ -70,7 +70,7 @@ generated class.
 | Alternative | Why not |
 |---|---|
 | `__init__` under `if TYPE_CHECKING:` in the `.py`, as `mypy-converter-plan.md` suggested | mypy's attrs plugin ignores it and uses the generated `__init__`. Only Pyright honors it |
-| mypy plugin (draft #433) | mypy only, relies on a mypy internal, and its lambda converters accept any value. It also hooks the removed `field()`/`path()` |
+| mypy plugin (#433, closed) | mypy only, relies on a mypy internal, and its lambda converters accept any value. It also hooks the removed `field()`/`path()` |
 | Stub with a plain class | Handles constructors, but the class stops being an attrs class to checkers, for no gain |
 
 ## What each argument accepts
@@ -116,7 +116,8 @@ follow `Record.convert`:
    `if not TYPE_CHECKING:`. Also check `_LegacyInputs` in `disv_methods.py`,
    which the prototype didn't cover. This restores Pyright's types and
    brings back false errors on plain values, until stubs land. It ships
-   alone, ahead of the other steps.
+   alone, ahead of the other steps, and is tracked in the
+   [backlog](../maintenance/backlog.md).
 2. **Survey accepted values.** Fill in the table above, with a parametrized
    runtime test per kind. These tests keep the stubs from promising a form
    the runtime rejects.
@@ -154,9 +155,7 @@ follow `Record.convert`:
      exposes the hand-written API to users too.
    - Test against a built wheel in a clean environment: a source checkout
      doesn't show the missing-marker behavior.
-8. **Clean up the docs.** Add a type-checking section to the user docs,
-   correct the "Alternative" section in `mypy-converter-plan.md`, and remove
-   the backlog's mypy item.
+8. **Document it.** Add a type-checking section to the user docs.
 
 Pyright reads stubs without `py.typed`, so Pylance users benefit from step 3
 on. mypy users of an installed package only benefit from step 7.
@@ -187,7 +186,7 @@ which turns on the Newton formulation, and `Npf(xt3doptions="garbage")` turns
 on XT3D, with no error. `Npf(rewet="garbage")` does raise, because the token
 fills a float field. Stubs would catch these calls statically only where
 `str` is left out, so this needs a runtime fix either way, independent of
-this plan.
+this plan. It's tracked in the [backlog](../maintenance/backlog.md).
 
 ## Costs
 

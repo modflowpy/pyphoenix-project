@@ -75,11 +75,31 @@ or `connectiondata`, which flopy3's SFR/LAK/MAW/UZF `plot_bc` reads. Do it
 here, or through the neutral protocol in flopy3 (3.x item 2 of
 [`replacing-flopy-mf6.md`](../integration/replacing-flopy-mf6.md)).
 
-## mypy and field converters
+## Record strings drop unknown tokens
 
-From [`mypy-converter-plan.md`](../archive/mypy-converter-plan.md). This
-never merged: it's draft PR #433 (`mypy-converters`), which is still open,
-and develop has no `flopy4.mypy_plugin`. The PR itself asks whether it's
-worth doing. It predates the field functions (#463), which changed how
-converters are declared, so it would need rework. Decide whether to rework
-it or close it.
+A record given as a string keeps the tokens it recognizes and drops the rest,
+with no error, so a bad string can switch on a solver option:
+
+```python
+Gwf(newtonoptions="garbage").newtonoptions  # Newtonoptions(under_relaxation=None): Newton on
+Npf(xt3doptions="garbage").xt3doptions      # Xt3doptions(rhs=None): XT3D on
+Npf(rewet="garbage")                        # raises: the token has to fill a float
+```
+
+`Record.convert` passes strings to `Record.from_tokens`
+(`flopy4/mf6/record.py`). It should raise on tokens it can't place. The file
+loader may also use `from_tokens`, so check what it relies on first. Tuples
+have a similar gap: `Ts.Sfac.convert(("a", "b"))` keeps strings in a float
+array. Small. Do this soon, because it can silently change a model's results.
+
+## Pyright sees constructors as `Any`
+
+`LegacyKwargs.__call__` (`flopy4/mf6/legacy.py`, #503) is typed `-> Any`, and
+Pyright uses a metaclass `__call__` in place of `__init__`. So it doesn't check
+`Component` constructor calls, and `Npf()` is `Any`. Put `__call__` behind
+`if not TYPE_CHECKING:`, and check `_LegacyInputs` in `disv_methods.py` too.
+
+This brings back Pyright's false errors on plain values like
+`Npf(rewet=(1.0, 1, 0))`, until the stubs in
+[`constructor-stubs.md`](../components/constructor-stubs.md) land. It's step 1
+of that plan, and ships ahead of the rest. Small. Do this soon.

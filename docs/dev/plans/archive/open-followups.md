@@ -7,12 +7,7 @@ follow-ups are in [`followups-after-row-layout.md`](followups-after-row-layout.m
 
 ## Open
 
-- **mypy and field converters** ([`mypy-converter-plan.md`](mypy-converter-plan.md)).
-  Listed as done here before, but it never merged: it's draft PR #433
-  (`mypy-converters`), and develop has no `flopy4.mypy_plugin`. The PR
-  itself asks whether it's worth it. It predates the field functions
-  (#463), which changed how converters are declared, so it would need
-  rework. Decide: rework or close.
+None.
 
 ## DFN questions
 
@@ -20,6 +15,10 @@ None open.
 
 ## Done
 
+- **mypy and field converters** ([`mypy-converter-plan.md`](mypy-converter-plan.md)).
+  Not doing it: #433 never merged, and is closed. Typed constructors are
+  planned through generated stubs instead
+  ([`constructor-stubs.md`](../components/constructor-stubs.md)).
 - **One-row list defaults.** The devtools spec now says a list's default
   holds a single row, repeated to fill the list's shape (branch
   `list-default` on the fork, unmerged). flopy4 already does this.

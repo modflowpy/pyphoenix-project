@@ -1,8 +1,13 @@
 # Let mypy see field converters
 
-Status: done (2026-10-08), branch `mypy-converters`. Record fields use a
-lambda converter (`attrs.Converter` isn't readable by mypy), so they
-accept any value statically.
+Status: abandoned. The work was done on branch `mypy-converters` (2026-10-08)
+but never merged, and #433 is closed. Record fields used a lambda converter
+(`attrs.Converter` isn't readable by mypy), so they accepted any value
+statically. By 2026-11-04 the plugin was a no-op on develop, because the field
+functions (#463) replaced the `field()` and `path()` it hooks. Installed
+packages also got nothing from it, because flopy4 has no `py.typed`. See
+[`constructor-stubs.md`](../components/constructor-stubs.md) for the plan that
+replaces it.
 
 ## Problem
 
@@ -85,7 +90,10 @@ Tried on mypy 2.3.1 in a scratch config:
 ## Alternative, not planned
 
 Codegen could emit a typed `__init__` under `if TYPE_CHECKING:` in every
-class. That works for mypy and Pyright with no plugin, but it has to list
-every constructor argument, including the hand-written bases' (`name`,
-`workspace`, `parent`, `dims`, …), and keep them in sync. Revisit only if
-editor feedback in Pylance matters.
+class. It has to list every constructor argument, including the hand-written
+bases' (`name`, `workspace`, `parent`, `dims`, …), and keep them in sync.
+
+Correction (2026-11-04): this said the approach works for mypy and Pyright,
+but it only works for Pyright. mypy's attrs plugin ignores that `__init__` and
+uses the generated one. Generated `.pyi` stubs work for both: see
+[`constructor-stubs.md`](../components/constructor-stubs.md).
