@@ -533,3 +533,18 @@ def test_succeeds():
     tree = DataTree(data)
     tree["delr"] = DataArray([2.0], dims="ncol")
     tree["delc"] = DataArray([2.0, 2.0, 2.0], dims="nrow")
+
+
+def test_flopy3_package_constant_outside_a_model():
+    """A discretization outside a model fills a constant from its own dims."""
+    dis = Dis(nlay=1, nrow=2, ncol=3, top=1.0, botm=0.0)
+    dis.top = 7.0
+    grid = StructuredGrid(
+        nlay=1,
+        delr=np.ones(3),
+        delc=np.ones(2),
+        top=np.ones((2, 3)),
+        botm=np.zeros((1, 2, 3)),
+    )
+    top = Flopy3Package(dis, modelgrid=grid).top
+    assert np.asarray(top.array).tolist() == [7.0] * 6

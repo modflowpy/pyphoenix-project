@@ -3687,3 +3687,27 @@ def test_to_xarray_period_arrays_share_periods_without_nper():
     np.testing.assert_array_equal(ds["irch"].isel(per=0), ds["irch"].isel(per=1))
     assert rch.period_array("irch").shape[0] == 2
     assert rch.period_array("irch", nper=4).shape[0] == 4
+
+
+def test_dis_to_dataarray_constant_set_outside_a_model():
+    """A constant set after construction is filled from the package's own dims."""
+    dis = Dis(nlay=2, nrow=3, ncol=4, top=5.0, botm=[0.0, -1.0])
+    dis.top = 7.0
+    assert np.ndim(dis.top) == 0
+    da = dis.to_dataarray("top")
+    assert da.shape == (1, 3, 4)
+    assert (da == 7.0).all()
+
+
+def test_to_dataarray_period_constants_need_a_shape():
+    """One value each period has no shape without an array, a model or dims."""
+    from flopy4.mf6.gwf import Rcha
+
+    with pytest.raises(ValueError, match="pass its dims"):
+        Rcha(recharge={0: 0.1, 1: 0.2}).to_dataarray("recharge")
+
+    rch = Rcha(recharge={0: 0.1, 1: 0.2}, irch={0: 1}, dims={"ncpl": 4})
+    ds = rch.to_xarray()
+    assert ds["recharge"].dims == ("per", "layer", "cell")
+    assert ds["recharge"].shape == (2, 1, 4)
+    assert (ds["recharge"].isel(per=1) == 0.2).all()

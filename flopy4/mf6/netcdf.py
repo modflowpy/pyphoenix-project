@@ -317,7 +317,7 @@ class NetCDFModel(BaseModel, NetCDFInput):
                                     named_periods,
                                     _nper,
                                     fill_forward=False,
-                                    shape=period_shape(package, f),
+                                    shape=period_shape(package, f),  # type: ignore[arg-type]
                                 ),
                             }
                         )
@@ -342,9 +342,8 @@ class NetCDFModel(BaseModel, NetCDFInput):
                         periods = {
                             k: None if a is None else np.asarray(a) + 1 for k, a in periods.items()
                         }
-                    arr = dense(
-                        periods, _nper, fill_forward=False, shape=period_shape(package, f)
-                    ).astype(np.float64)
+                    shape = period_shape(package, f)  # type: ignore[arg-type]
+                    arr = dense(periods, _nper, fill_forward=False, shape=shape).astype(np.float64)
                     p["params"].append({"name": f.name, "data": arr})
 
             if len(p["params"]) > 0:

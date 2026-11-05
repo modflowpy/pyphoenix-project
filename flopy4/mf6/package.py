@@ -1190,14 +1190,14 @@ class Package(Component, ABC):
         setattr(self, spd.name, period_lists.from_dataset(self, ds))
 
 
-def period_shape(component: Any, f: attrs.Attribute) -> tuple[int, ...] | None:
+def period_shape(package: Package, f: attrs.Attribute) -> tuple[int, ...] | None:
     """A period array field's shape in one period, from its DFN shape and
-    the grid's dims (``component``'s), or None if they aren't known."""
+    the grid's dims (``package``'s), or None if they aren't known."""
     names = f.metadata.get("shape") or ()
     if not names:
         return None
     try:
-        dims = component._array_dims(*names)
+        dims = package._array_dims(*names)
     except ValueError:
         return None
     if any(dims.get(n) is None for n in names):

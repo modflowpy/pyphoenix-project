@@ -242,7 +242,10 @@ def dense(
     if full is not None:
         shape = _as_array(full).shape
     elif shape is None:
-        raise ValueError("every period is one value, so no array gives the shape")
+        raise ValueError(
+            "every period is one value, so no array gives the shape: give an array, "
+            "attach the package to a model, or pass its dims"
+        )
     fill = _fill_value(first)
     out = np.full((nper, *shape), fill, dtype=first.dtype)
     starts = sorted(periods)
