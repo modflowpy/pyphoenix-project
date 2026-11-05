@@ -98,11 +98,10 @@ green when it landed.
 Phases B (typed load, B1-B4) and C (comparing the loaders) were built here
 and moved off in the 2026-11-05 rebase. They're on `typed-loader-parked`,
 to be rebuilt on a `typed-loader` branch stacked on this one, with the
-develop changes this rebase ported into `_Load` ported there too. That
-branch doesn't exist yet. `typed.lark`, the generated grammars, `loads_typed`
-and `_check_typed_grammar` here are `develop`'s, unchanged. C's results,
-from before the rebase, are in
-[`loader-comparison.md`](loader-comparison.md).
+develop changes this rebase ported into `_Load` ported there too.
+`typed.lark`, the generated grammars, `loads_typed` and
+`_check_typed_grammar` here are `develop`'s, unchanged. C's results, from
+before the rebase, are in `loader-comparison.md` on `typed-loader`.
 
 ### D: cleanups from the post-C audit
 
@@ -214,7 +213,8 @@ rest on. They were re-scanned 2026-10-19 over the modflow6 DFNs at
   - cold start: the first load took 0.26 s against 0.21 s. That's the
     stored DFNs the model needs plus building codegen's spec for
     `attr_names` (see "Later").
-- **Phase C:** the typed loader's numbers are in `loader-comparison.md`.
+- **Phase C:** the typed loader's numbers are in `loader-comparison.md` on
+  `typed-loader`.
 
 ## devtools follow-ups
 
@@ -227,8 +227,8 @@ rest on. They were re-scanned 2026-10-19 over the modflow6 DFNs at
 
 Each is its own change.
 
-- **Deleting a loader**, if decided (see `loader-comparison.md`). Deleting the basic loader
-  takes the stored DFNs with it, once egress reads the classes' fields.
+- **Deleting a loader**, if decided (see `loader-comparison.md` on
+  `typed-loader`). Deleting the basic loader takes the stored DFNs with it, once egress reads the classes' fields.
   The size at stake:
   - typed: ~360 code lines, ~1,300 with grammar generation and templates,
     plus 6,581 lines of generated grammars;
