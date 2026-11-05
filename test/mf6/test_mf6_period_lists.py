@@ -24,7 +24,7 @@ def round_trips(pkg, **kwargs):
 def test_chd_on_grid_carries_periods_forward():
     chd = Chd(period_data={0: [((0, 0, 0), 1.0), ((0, 1, 2), 2.0)], 2: []}, dims=DIMS)
     head = chd.to_xarray()["head"]
-    assert head.dims == ("per", "layer", "row", "col")
+    assert head.dims == ("kper", "layer", "row", "col")
     expected = np.full((2, 3), NODATA)
     expected[0, 0], expected[1, 2] = 1.0, 2.0
     np.testing.assert_array_equal(head.values[0, 0], expected)
@@ -62,7 +62,7 @@ def test_array_column_has_a_dim_named_for_its_size():
         dims=DIMS,
     )
     ds = evt.to_xarray()
-    assert ds["pxdp"].dims == ("per", "nseg-1", "layer", "row", "col")
+    assert ds["pxdp"].dims == ("kper", "nseg-1", "layer", "row", "col")
     np.testing.assert_array_equal(ds["pxdp"].values[0, :, 0, 0, 0], [0.3, 0.6])
     assert "petm0" not in ds  # optional, and no row gives it
     round_trips(evt)
@@ -84,7 +84,7 @@ def test_conditional_column():
 def test_disv_grid():
     chd = Chd(period_data={0: [((1, 2), 1.0)]}, dims={"nlay": 2, "ncpl": 4, "nper": 1})
     head = chd.to_xarray()["head"]
-    assert head.dims == ("per", "layer", "cell")
+    assert head.dims == ("kper", "layer", "cell")
     assert head.values[0, 1, 2] == 1.0
     round_trips(chd)
 
@@ -96,7 +96,7 @@ def test_boundnames_are_a_coordinate():
         dims=DIMS,
     )
     ds = chd.to_xarray()
-    assert ds.coords["boundname"].dims == ("per", "layer", "row", "col")
+    assert ds.coords["boundname"].dims == ("kper", "layer", "row", "col")
     assert ds.coords["boundname"].values[2, 0, 0, 0] == "a"
     assert pd.isnull(ds.coords["boundname"].values[0, 0, 1, 1])
     round_trips(chd)
@@ -274,14 +274,14 @@ def uzf():
 
 def test_uzf_rows_are_on_the_feature_dim():
     ds = uzf().to_xarray()
-    assert ds["finf"].dims == ("per", "nuzfcells")
+    assert ds["finf"].dims == ("kper", "nuzfcells")
     np.testing.assert_array_equal(ds["finf"].values[0], [NODATA, 0.01])
     round_trips(uzf())
 
 
 def test_uzf_rows_on_the_grid_through_packagedata():
     ds = uzf().to_xarray(grid=True)
-    assert ds["finf"].dims == ("per", "layer", "row", "col")
+    assert ds["finf"].dims == ("kper", "layer", "row", "col")
     assert ds["finf"].values[0, 0, 1, 0] == 0.01
     round_trips(uzf(), grid=True)
 
@@ -299,7 +299,7 @@ def test_sfr_settings_are_variables_per_setting():
     )
     ds = pkg.to_xarray()
     assert set(ds.data_vars) == {"status", "inflow"}
-    assert ds["inflow"].dims == ("per", "nreaches")
+    assert ds["inflow"].dims == ("kper", "nreaches")
     np.testing.assert_array_equal(ds["inflow"].values[0], [1.0, NODATA, 3.0])
     # settings hold until set again: reach 0's inflow carries past period 2
     np.testing.assert_array_equal(ds["inflow"].values[2], [1.0, NODATA, 4.0])
@@ -311,7 +311,7 @@ def test_sfr_settings_are_variables_per_setting():
 def test_sfr_setting_index_is_a_dim():
     pkg = sfr({0: [(0, "diversion", 1, 0.5)]})
     ds = pkg.to_xarray()
-    assert ds["divflow"].dims == ("per", "idv", "nreaches")
+    assert ds["divflow"].dims == ("kper", "idv", "nreaches")
     assert ds["divflow"].values[0, 1, 0] == 0.5
     assert ds["divflow"].values[0, 0, 0] == NODATA
     round_trips(pkg)
@@ -340,8 +340,8 @@ def test_lak_settings_are_on_their_keys_dims():
         dims=DIMS,
     )
     ds = lak.to_xarray()
-    assert ds["stage"].dims == ("per", "nlakes")
-    assert ds["rate"].dims == ("per", "noutlets")
+    assert ds["stage"].dims == ("kper", "nlakes")
+    assert ds["rate"].dims == ("kper", "noutlets")
     round_trips(lak)
 
 
@@ -417,6 +417,7 @@ def test_sparse_round_trips(pkg):
     p = pkg()
     ds = p.to_xarray(sparse=True)
     assert "entry" in ds.dims
+    assert ds.coords["kper"].dims == ("entry",)
     round_trips(p, sparse=True)
 
 

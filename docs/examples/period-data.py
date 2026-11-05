@@ -90,7 +90,7 @@ assert list(wel.period_data) == [0, 2]
 
 # ### The array view
 #
-# `to_xarray()` gives a variable per value column on `(per, layer, row, col)`,
+# `to_xarray()` gives a variable per value column on `(kper, layer, row, col)`,
 # with every period filled forward. Empty cells hold `FILL_DNODATA` (3e30).
 #
 # * Each auxiliary variable is its own variable (`conc`).
@@ -104,7 +104,7 @@ ds
 
 # +
 q = ds["q"]
-assert q.dims == ("per", "layer", "row", "col")
+assert q.dims == ("kper", "layer", "row", "col")
 assert q[1, 0, 0, 0] == -1.0  # period 1 filled forward from period 0
 assert q[0, 0, 1, 1] == FILL_DNODATA  # no well here until period 2
 assert q[2, 0, 1, 1] == -2.5  # two wells, summed
@@ -157,9 +157,9 @@ assert len(wel.period_data[0]) == 3
 # * `duplicates="sum"`, `"first"` or `"last"` merges them. `"sum"` can't sum
 #   a time series. The boundname kept is the first row's for `"first"`, the
 #   last row's otherwise.
-# * `sparse=True` keeps every row, on an `entry` dim with the period and cell
-#   as coordinates. This also suits packages without a single cell per row
-#   (HFB, MVR, OC).
+# * `sparse=True` keeps every row, on an `entry` dim, with `kper` and
+#   the cell as coordinates. This also suits packages without a single cell
+#   per row (HFB, MVR, OC).
 
 wel = Wel(
     parent=gwf,
@@ -207,8 +207,8 @@ assert evt.period_data[0][0].pxdp == (0.3, 0.6)
 
 ds = evt.to_xarray()
 pxdp = ds["pxdp"]
-assert pxdp.dims == ("per", "nseg-1", "layer", "row", "col")
-pxdp.isel(per=0, layer=0)
+assert pxdp.dims == ("kper", "nseg-1", "layer", "row", "col")
+pxdp.isel(kper=0, layer=0)
 
 # +
 np.testing.assert_array_equal(pxdp[0, :, 0, 0, 0], [0.3, 0.6])
