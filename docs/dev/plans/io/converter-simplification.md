@@ -1,9 +1,9 @@
 # Converter simplification (structure / unstructure)
 
 One schema-driven model of an MF6 block, used the same way to read and to
-write. On the unmerged `simplify-converter` branch, squashed and rebased
+write. On the `simplify-converter` branch (draft #544), squashed and rebased
 2026-11-05 onto `be07090a` (#539), which also took the typed loader off the
-branch (see "The typed loader"), then rebased onto `379b761d` (#540). It's a
+branch (see "The typed loader"), then rebased onto `db63d4da` (#542). It's a
 refactor on the attrs object model. The safety net is
 the round-trip suite (`test/mf6/test_mf6_io_roundtrip.py`) and the load and
 written-file snapshots. The one API change is STO's period value.
@@ -84,6 +84,40 @@ moved off in the 2026-11-05 rebase. They were never on develop. They're on
 ported there too. `typed.lark`, the generated grammars, `loads_typed` and
 `_check_typed_grammar` on `simplify-converter` are develop's, unchanged.
 
+Decided 2026-11-05: keep it, just in case. Nothing typed is deleted from
+develop, `typed-loader` and `typed-loader-parked` stay, and rebuilding it
+(steps 9-12 of [converter-rebase.md](converter-rebase.md)) isn't scheduled.
+It wouldn't make conversion simpler overall: egress still needs the DFNs or an
+equivalent, the grammars are generated from the same DFNs, and binary lists,
+binding rows, `ListIO` and fill-forward still need code after the parse. Its
+runtime ingress is ~720 code lines to basic's ~450, before generation
+([loader-comparison.md](loader-comparison.md), October numbers).
+
+## Checks to do next
+
+The first two came out of that discussion; the third follows from the first.
+Each is its own change, after `simplify-converter` and not part of #544.
+
+1. **Give the basic loader the typed loader's two stricter errors.** A missing
+   `END` currently warns ("no field takes OPTIONS entry BEGIN",
+   `converter/ingress/structure.py`), and `MAXBOUND two` is ignored because
+   MAXBOUND is computed. MF6 stops on both, so these should raise, naming the
+   block or field and the value. Misspelled keywords and unknown blocks stay
+   warnings for now, as they are in both loaders. Line numbers are separate:
+   basic has none (see "Load errors don't name the file" below). Done when both
+   faults raise and the corpus still loads, by the load and round-trip tests.
+2. **Find out what `_check_typed_grammar` catches.** It's a helper in
+   `test/mf6/test_mf6_load_all_models.py` that parses each corpus package file
+   under its typed grammar. Does it find DFN problems nothing else would, or
+   only bugs in the grammars themselves? Go through the history of fixes it led
+   to and record the answer here. The check stays either way while the typed
+   loader does; this is so a later decision doesn't lose coverage by accident.
+3. **Rerun the comparison's error table on the basic loader**, after 1, and
+   update [loader-comparison.md](loader-comparison.md). The script isn't checked
+   in, but each fault is a one-line edit of `test001a_Tharmonic`. Rerunning the
+   full comparison needs the typed loader on the current base (steps 9 and 10),
+   so it waits for that, and the typed figures stay marked as October's.
+
 ## The block model
 
 The rules both directions follow, from a scan of the modflow6 DFNs at
@@ -147,8 +181,8 @@ memory, and stricter on errors.
 
 Each its own change.
 
-- **Deleting a loader.** Deleting basic takes the stored DFNs with it, once
-  egress reads the classes' fields. At stake: typed is ~360 code lines,
+- **Deleting a loader.** Not now (see "The typed loader"). Deleting basic
+  takes the stored DFNs with it, once egress reads the classes' fields. At stake: typed is ~360 code lines,
   ~1,300 with grammar generation and templates, plus 6,581 lines of
   generated grammars; basic is ~450.
 - **Attribute names at sync time**, next, once the devtools loader is in.
@@ -164,9 +198,6 @@ Each its own change.
 - **`test060_gms_ets`** loads under neither loader.
 - **Load errors don't name the file.** Typed gives a line and column;
   basic neither.
-- **The basic loader is lenient where MF6 isn't:** a missing `END` reads
-  the next `BEGIN` as an unknown option, and a wrong-typed computed field
-  (`MAXBOUND two`) is ignored.
 - **The typed loader's memory:** 1.8× basic's peak on
   `test016_Keating_dev` and 1.7× on `test045_lake4ss_dev`. Worth looking
   into before deleting the basic loader.

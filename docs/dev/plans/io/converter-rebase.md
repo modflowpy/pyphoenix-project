@@ -178,8 +178,9 @@ When resolving, read each develop PR's diff
 
 - [x] 1 backup ref
 - [x] 2 squash
-- [x] 3 rebase + conflicts (onto `be07090a`, #539, then `379b761d`, #540; tip
-  `83ca691b`, pushed)
+- [x] 3 rebase + conflicts (onto `be07090a`, #539, then `379b761d`, #540, then
+  `db63d4da`, #542; tip `6ad69be1`, pushed, draft #544). Tests and sync weren't
+  rerun for the #541/#542 rebase; CI on #544 is the first full run against them.
 - [x] 4 typed loader dropped
 - [x] 5 ports (in the rebased commit, not one commit per feature)
 - [x] 6 regenerate + snapshots (reviewed by diff; after #540 the whole load
@@ -192,3 +193,6 @@ When resolving, read each develop PR's diff
 - [ ] 10 ports into the typed loader
 - [ ] 11 one parser cache
 - [ ] 12 regenerate, parity under both loaders
+
+Steps 9-12 aren't scheduled: the typed loader is being kept, not rebuilt for now
+(see "The typed loader" in [converter-simplification.md](converter-simplification.md)).
