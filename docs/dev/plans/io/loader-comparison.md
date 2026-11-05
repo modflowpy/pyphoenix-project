@@ -8,7 +8,8 @@ and chosen with `loader="basic" | "typed"` (the tests' `--loader`). To be
 rerun on `typed-loader`.
 
 Measured 2026-10-21 at `721503fe`, on an Apple M2 Max (macOS, CPython
-3.11.16), standard benchmark tier (9 models, 15.1 MB of input).
+3.11.16), standard benchmark tier (9 models, 15.1 MB of input). Only the
+basic column of "Errors" is newer (2026-11-05).
 
 ## Summary
 
@@ -18,12 +19,12 @@ Measured 2026-10-21 at `721503fe`, on an Apple M2 Max (macOS, CPython
 | load + materialize, all models | 0.254 s | 0.318 s (1.25×) |
 | peak memory, load | — | 0.97–1.81× basic's; most models within 3%, two 1.7–1.8× |
 | cold start, first load | 0.265 s | 0.32–0.33 s with the grammar cache warm, 0.62 s without |
-| malformed files | lenient: loads most, warning or silently | strict: a missing `END` or wrong value type raises, with line and column |
+| malformed files (rerun for basic, see "Errors") | a missing `END`, bad `MAXBOUND` or short array raises; a misspelled keyword or unknown block warns | a missing `END` or wrong value type raises, with line and column; October's short array loaded |
 | code only it needs | ~450 lines (~570 with the DFN accessor egress shares), plus 129 stored DFNs (1.4 MB) | ~1,300 lines with the grammar templates, plus 129 generated grammars (6,581 lines) |
 
 So basic is the default and typed the opt-in. The basic loader is faster, smaller and lighter on memory; the typed
-loader's advantages are stricter errors and no DFN at runtime, and the
-first can be had in the basic loader for less (see "Errors"). Before
+loader's advantages were stricter errors and no DFN at runtime, and the
+basic loader has since gained those errors (see "Errors"). Before
 deciding to delete either, look into the typed loader's memory on
 `test016_Keating_dev` and `test045_lake4ss_dev`, which wasn't investigated
 here, and fix the error-reporting gaps both share.
@@ -95,32 +96,31 @@ happens once per machine and lark/Python version. In the benchmark run's
 
 ## Errors
 
-Seven malformed copies of `test001a_Tharmonic`, one fault each, loaded
-with both loaders:
+Seven malformed copies of `test001a_Tharmonic`, one fault each. The basic
+column is from 2026-11-05 on `simplify-converter`, with the block and MAXBOUND
+checks; the typed column is October's, from `typed-loader-parked`, since the
+typed loader isn't on the current base:
 
 | fault | basic | typed |
 |---|---|---|
-| missing `END OPTIONS` (CHD) | loads; warns "no field takes OPTIONS entry BEGIN" | `UnexpectedToken` at the `MAXBOUND` line, line and column, the tokens expected |
+| missing `END OPTIONS` (CHD) | `ValueError: OPTIONS block, opened on line 3, has no END: found BEGIN DIMENSIONS` | `UnexpectedToken` at the `MAXBOUND` line, line and column, the tokens expected |
 | misspelled keyword (`PRINT_FLOWZ`) | loads; warns "no field takes OPTIONS entry PRINT_FLOWZ" | the same |
-| wrong value type (`MAXBOUND two`) | loads silently | `UnexpectedToken` at `two`, line and column, expecting an integer |
-| short list row (CHD, no head) | `ValueError: PeriodData: can't read a row from [1, 1, 10]` | the same |
+| wrong value type (`MAXBOUND two`) | `ValueError: Chd: DIMENSIONS entry MAXBOUND TWO needs an integer` | `UnexpectedToken` at `two`, line and column, expecting an integer |
+| short list row (CHD, no head) | `ValueError: PeriodData: can't read a row from ['1', '1', '10']` | the same, with numbers |
 | bad OPEN/CLOSE path (NPF `K`) | `FileNotFoundError` naming the path | the same |
-| short array (IC `STRT`, 9 values for 10 cells) | loads silently | the same |
-| unknown block (`DIMENSIONZ`) | loads; warns "ignoring unknown block" | the same |
+| short array (IC `STRT`, 9 values for 10 cells) | `ValueError: strt: expected 10 values, got 9` | loaded silently |
+| unknown block (`DIMENSIONZ`, on both `BEGIN` and `END`) | loads; warns "ignoring unknown block" | the same |
 
-- The typed loader catches two faults the basic one doesn't, and says
-  where. The basic loader's missing `END` happens to load the right
-  values here; MF6 would stop.
-- Neither loader's errors name the file. The typed loader's give a line
-  and column in a file the message doesn't name; the basic loader's give
-  neither.
-- Both accept a short array. A `LAYERED` field with fewer values than a
-  layer has is filled by repeating them (`np.resize`, there to repeat a
-  record across layers when there are fewer records than layers); a
-  non-layered one keeps its 9 values for the 10 cells.
-- The basic loader ignores a `MAXBOUND` it can't read because MAXBOUND is
-  computed; a wrong-typed value in a field it keeps would fail where the
-  converter casts it.
+- The basic loader now raises on every fault MF6 would stop on but the
+  misspelled keyword and unknown block, which both loaders warn about.
+- Neither loader's errors name the file. The typed loader's give a line and
+  column in a file the message doesn't name; the basic loader's give a line
+  only for a block with no `END`.
+- The short array raises because #513's array reading was ported into the
+  basic loader in the rebase; the typed loader's October result predates that.
+- `BEGIN DIMENSIONZ` with `END DIMENSIONS` left alone now raises on the basic
+  loader as a block with no `END`. A wrong-typed value in a field it keeps
+  fails where the converter casts it, as before.
 
 The script that made these isn't checked in; each fault is a one-line
 edit of the file named. The follow-ups are in the plan's "Later".

@@ -93,30 +93,53 @@ binding rows, `ListIO` and fill-forward still need code after the parse. Its
 runtime ingress is ~720 code lines to basic's ~450, before generation
 ([loader-comparison.md](loader-comparison.md), October numbers).
 
-## Checks to do next
+## Checks
 
-The first two came out of that discussion; the third follows from the first.
-Each is its own change, after `simplify-converter` and not part of #544.
+All three done 2026-11-05. The code is on `simplify-converter`, so #544's scope
+grew by it (`5b812620`).
 
-1. **Give the basic loader the typed loader's two stricter errors.** A missing
-   `END` currently warns ("no field takes OPTIONS entry BEGIN",
-   `converter/ingress/structure.py`), and `MAXBOUND two` is ignored because
-   MAXBOUND is computed. MF6 stops on both, so these should raise, naming the
-   block or field and the value. Misspelled keywords and unknown blocks stay
-   warnings for now, as they are in both loaders. Line numbers are separate:
-   basic has none (see "Load errors don't name the file" below). Done when both
-   faults raise and the corpus still loads, by the load and round-trip tests.
-2. **Find out what `_check_typed_grammar` catches.** It's a helper in
-   `test/mf6/test_mf6_load_all_models.py` that parses each corpus package file
-   under its typed grammar. Does it find DFN problems nothing else would, or
-   only bugs in the grammars themselves? Go through the history of fixes it led
-   to and record the answer here. The check stays either way while the typed
-   loader does; this is so a later decision doesn't lose coverage by accident.
-3. **Rerun the comparison's error table on the basic loader**, after 1, and
-   update [loader-comparison.md](loader-comparison.md). The script isn't checked
-   in, but each fault is a one-line edit of `test001a_Tharmonic`. Rerunning the
-   full comparison needs the typed loader on the current base (steps 9 and 10),
-   so it waits for that, and the typed figures stay marked as October's.
+1. **The basic loader has the typed loader's two stricter errors.** A `BEGIN`
+   inside a block, or an `END` naming another block, raises `ValueError` with
+   the block and the line it opened on, in `BasicTransformer.block`. `MAXBOUND
+   two` raises with the entry, in `_Load.check_computed`; MAXBOUND is the only
+   computed DFN field. Misspelled keywords and unknown blocks still warn. The
+   corpus still loads: the load and round-trip tests pass (765 passed, 1
+   xfail).
+2. **`_check_typed_grammar` tests the grammars; it isn't a DFN check.** I found
+   no DFN defect traced to it, though that's limited evidence: its catalog,
+   `typed-grammar-corpus-gaps.md`, was never committed, and no commit message
+   credits a fix to it. `KNOWN_TYPED_GAPS` is byte-for-byte what #362 wrote, and
+   only `KNOWN_TYPED_MODEL_GAPS` was added since (#391).
+
+   Running it with both lists emptied (2,868 files in the known-passing models),
+   55 files fail:
+
+   | files | cause | basic loader |
+   |---|---|---|
+   | 44 IMS | legacy `XMD` block, not in the DFN | warns |
+   | 4 NPF | `DEV_MODFLOWUSG_UPSTREAM_WEIGHTED_SATURATION`, not in the DFN | warns |
+   | 2 NPF | remark containing `constant` (`test006_gwf3_tr`, `_nr`): grammar limit | loads it |
+   | 2 IMS | extra values on an option line (`test017_Crinkle`, `test044_lakebotfill_dev`) | takes what the field holds, silently |
+   | 2 LAK | `INFLOW <time series name>` (`test045_lake2tr_xsfra_dev`, `xsfrb`): **grammar bug**, `inflow` takes only a double | loads it |
+   | 1 DISU | empty `CELLDATA` block, not in the DFN (`test030_hani_col_disu`) | silent, being empty |
+
+   None is a wrong DFN: they're old or dev fixtures, or typed grammar faults.
+   What it does uniquely is fail the build when a corpus file in a package off
+   the lists uses a keyword or block its DFN lacks; the basic loader only warns
+   there and no test asserts on the warning. (A field dropped from a DFN also
+   changes the load snapshots, so that case is covered anyway; that's from
+   reading the tests, not from trying it.) So deleting the check would lose only
+   that, and a test failing on those warnings would replace it.
+
+   Two faults in the lists themselves: `gwf-lak`'s reason is stale
+   (`DEV_NO_FINAL_CHECK` is in the DFN and grammar now, and the failures are the
+   time series names above), and each entry skips every file of its package, so
+   all IMS, NPF and LAK files go unchecked. The check stays while the typed loader
+   does.
+3. **The comparison's error table is rerun for basic**
+   ([loader-comparison.md](loader-comparison.md)). Short arrays now raise too,
+   from the #513 port. The script still isn't checked in. The typed column stays
+   October's until steps 9 and 10 of [converter-rebase.md](converter-rebase.md).
 
 ## The block model
 
@@ -197,7 +220,11 @@ Each its own change.
   aren't kept on write.
 - **`test060_gms_ets`** loads under neither loader.
 - **Load errors don't name the file.** Typed gives a line and column;
-  basic neither.
+  basic gives a line only for a block with no `END`.
+- **The typed grammar rejects a time series name in LAK's `INFLOW`** (see
+  "Checks"), and in its other settings, which also take only a double. Fix when
+  the typed loader is rebuilt, and correct `gwf-lak`'s entry in
+  `KNOWN_TYPED_GAPS`.
 - **The typed loader's memory:** 1.8× basic's peak on
   `test016_Keating_dev` and 1.7× on `test045_lake4ss_dev`. Worth looking
   into before deleting the basic loader.
