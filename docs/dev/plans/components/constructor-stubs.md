@@ -105,7 +105,8 @@ follow `Record.convert`:
 - **First value alone:** the first field's type, if the rest are optional.
 - **One nested record:** that record, plus its forms.
 - **One array field:** one element, or an iterable of them.
-- **`str`:** see the open questions. Every record accepts one at runtime.
+- **`str`:** only if the record has a string field (see the decisions),
+  though every record accepts one at runtime.
 
 `lists/record-unify.md` would change `Record`, so check it first.
 
@@ -170,17 +171,13 @@ on. mypy users of an installed package only benefit from step 7.
   name.
 - **Assume attrs for now.** #282/#367 are still open, and moving to pydantic
   would change the stub design.
-
-## Open questions
-
-- **Which record arguments take `str`?** A string is the record as written
-  in the file: `Record.convert` splits it into tokens and parses them with
-  `from_tokens`. It isn't a shorthand for a tuple or list of strings, though
-  a record of one string array behaves like one (`"a b"` gives TS6's names
-  `("a", "b")`). Recommend allowing `str` only on records with a string
-  field, such as OC's print formats and TS6's names. That needs no
-  per-field list, and it keeps `str` off keyword-only and numeric records,
-  which have `bool` and `tuple` forms.
+- **Only records with a string field take `str`,** such as OC's print
+  formats and TS6's names. A string is the record as written in the file:
+  `Record.convert` splits it into tokens and parses them with `from_tokens`.
+  It isn't a shorthand for a tuple or list of strings, though a record of
+  one string array behaves like one (`"a b"` gives TS6's names
+  `("a", "b")`). The rule needs no per-field list, and it keeps `str` off
+  keyword-only and numeric records, which have `bool` and `tuple` forms.
 
 ## Related bug
 
