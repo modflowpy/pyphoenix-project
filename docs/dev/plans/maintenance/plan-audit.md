@@ -937,8 +937,9 @@ Sizes as in `replacing-flopy-mf6.md`: small is days, medium is weeks. These are
 docs changes, except where marked. Steps 1 and 2, Part 1's corrections and the
 contradictions and stale references in S4 and S5, are done. Their follow-ups are in
 [Part 9](#9-checks-still-open), [`backlog.md`](backlog.md), the code list below and
-S4's status note. Step 3 is done too, apart from D7's tolerance. Terminology goes
-next: steps 5 and 6, then step 4.
+S4's status note. Step 3 is done too, apart from D7's tolerance. Step 5 is drafted
+in [`concepts.md`](../../concepts.md). Its theory column is in the developer half
+only, per D8. Step 6 is next, then step 4.
 
 | # | Work | Findings | Size | Needs |
 |---|---|---|---|---|
