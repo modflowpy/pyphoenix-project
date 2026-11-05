@@ -2,9 +2,10 @@
 
 The basic loader (one generic grammar, block structure from the stored
 DFNs at runtime) against the typed loader (a grammar generated per
-component, values read by the classes' fields alone), both on the
-[`simplify-converter`](converter-simplification.md) branch and chosen with
-`loader="basic" | "typed"` (the tests' `--loader`).
+component, values read by the classes' fields alone), both on
+`typed-loader-parked` (`f46cfeca`, `simplify-converter` before its rebase)
+and chosen with `loader="basic" | "typed"` (the tests' `--loader`). To be
+rerun on `typed-loader`.
 
 Measured 2026-10-21 at `721503fe`, on an Apple M2 Max (macOS, CPython
 3.11.16), standard benchmark tier (9 models, 15.1 MB of input).

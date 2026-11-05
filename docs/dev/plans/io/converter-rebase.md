@@ -176,14 +176,17 @@ When resolving, read each develop PR's diff
 
 ## Status
 
-- [ ] 1 backup ref
-- [ ] 2 squash
-- [ ] 3 rebase + conflicts
-- [ ] 4 typed loader dropped
-- [ ] 5 ports
-- [ ] 6 regenerate + snapshots
-- [ ] 7 docs
-- [ ] 8 typed-loader branch + worktree
+- [x] 1 backup ref
+- [x] 2 squash
+- [x] 3 rebase + conflicts (onto `be07090a`, #539; #540 has landed since, not
+  rebased over)
+- [x] 4 typed loader dropped
+- [x] 5 ports (in the rebased commit, not one commit per feature)
+- [x] 6 regenerate + snapshots (reviewed by diff, only a corpus slice run)
+- [ ] 7 docs (the plan lives here now, dropped from the branch; the
+  `datetime-periods.md` note not done)
+- [x] 8 typed-loader branch + worktree (local; holds only
+  `loader-comparison.md` so far)
 - [ ] 9 typed work restored
 - [ ] 10 ports into the typed loader
 - [ ] 11 one parser cache
