@@ -1,0 +1,6 @@
+type = "package"
+schema_version = "2.0.0.dev3"
+name = "exg-gwfgwt"
+parent = "sim-nam"
+ftype = "GWF6-GWT6"
+subtype = "exchange"

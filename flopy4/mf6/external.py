@@ -66,6 +66,10 @@ class _Target:
     binary: bool
     hash: str | None = None  # the values' hash when loaded
     records: np.ndarray | None = None  # a list's rows, for a binary file
+    # written to a file because `WriteContext.array_format` says to, and
+    # where to if it can't be `path`, absolute, normalized
+    forced: bool = False
+    own: Path | None = None
 
     def unchanged(self) -> bool:
         """Whether the values are as loaded from the file."""
@@ -116,7 +120,9 @@ def write_external_arrays(
       the writer can't tell which is the edited one, and writes every
       array of the file inline. An array disagreeing with a file another
       component already wrote is written inline. Either way, with a
-      warning.
+      warning. An array written to a file because the context's
+      `array_format` says to isn't written inline, but to a file of its
+      own, named as if it had no path.
 
     With `context.strict`, either rule raises `ExternalFileError` instead,
     before any file of the component is written.
@@ -208,25 +214,45 @@ def _write_targets(
 
     inline: list[_Target] = []
     writes: list[_Target] = []
-    for path, group in groups.items():
+    queue = list(groups.items())
+
+    def apart(group: list[_Target]) -> str:
+        """Write `group`'s arrays inline, or those `array_format` sends to
+        files to files of their own, and say which, for a warning."""
+        alone = [t for t in group if t.forced and t.own is not None]
+        kept = [t for t in group if not any(t is a for a in alone)]
+        inline.extend(kept)
+        for t in alone:
+            assert t.own is not None
+            t.path = _unique(t.own, claimed)
+            claimed.add(t.path)
+            queue.append((t.path, [t]))
+        if not alone:
+            return "writing them inline"
+        where = ", ".join(f"{t.label} to {t.path.name}" for t in alone)
+        if not kept:
+            return f"writing {where}"
+        return f"writing {where}, and {', '.join(t.label for t in kept)} inline"
+
+    while queue:
+        path, group = queue.pop(0)
         if (differ := _disagree(group)) is not None:
             unchanged = [t for t in group if t.unchanged()]
             changed = [t for t in group if not any(t is u for u in unchanged)]
             if unchanged and changed and _disagree(unchanged) is None:
                 warn(
                     f"{path}: {', '.join(t.label for t in changed)} changed since "
-                    "loaded from this file; writing them inline. "
+                    f"loaded from this file; {apart(changed)}. "
                     f"{', '.join(t.label for t in unchanged)} still use it."
                 )
-                inline.extend(changed)
                 group = unchanged
             else:
+                labels = ", ".join(t.label for t in group)
                 warn(
-                    f"{path}: {', '.join(t.label for t in group)} use this file but "
-                    f"{differ}; writing them inline. To write one of them to the "
-                    "file, give the others another path."
+                    f"{path}: {labels} use this file but {differ}; {apart(group)}. "
+                    "To write one of them to the file, give the others another "
+                    "ArrayIO path."
                 )
-                inline.extend(group)
                 continue
         first = group[0]
         if (written := files.get(path)) is not None:
@@ -238,9 +264,8 @@ def _write_targets(
             if differ:
                 warn(
                     f"{path}: {', '.join(t.label for t in group)} use this file, "
-                    f"which {written.label} wrote {differ}; writing them inline."
+                    f"which {written.label} wrote {differ}; {apart(group)}."
                 )
-                inline.extend(group)
             continue
         writes.append(first)
 
@@ -307,19 +332,29 @@ def _targets(
     def target(layer: int | None) -> _Target | None:
         values = value if layer is None else value.isel(nlay=layer)
         if layer is None:
-            own, path, loaded = (value.attrs.get(a) for a in ("format", "path", "hash"))
+            own_format, path, loaded = (value.attrs.get(a) for a in ("format", "path", "hash"))
         else:
-            own = layer_format.get(layer, value.attrs.get("format"))
+            own_format = layer_format.get(layer, value.attrs.get("format"))
             path, loaded = layer_path.get(layer), layer_hash.get(layer)
-        fmt = _file_format(values, own, path is not None, context)
+        fmt = _file_format(values, own_format, path is not None, context)
         if fmt is None:
             return None
         binary = fmt == "binary"
-        if path is None:
-            name = stem + ("" if layer is None else f"_l{layer + 1}")
-            path = filename.parent / f"{name}.{'bin' if binary else 'txt'}"
+        name = stem + ("" if layer is None else f"_l{layer + 1}")
+        own = _absolute(filename.parent / f"{name}.{'bin' if binary else 'txt'}", root)
         what = where if layer is None else f"{where} layer {layer + 1}"
-        return _Target(block_name, key, layer, what, _absolute(path, root), values, binary, loaded)
+        return _Target(
+            block_name,
+            key,
+            layer,
+            what,
+            own if path is None else _absolute(path, root),
+            values,
+            binary,
+            loaded,
+            forced=own_format is None and fmt == context.array_format,
+            own=own,
+        )
 
     by_layer = "nlay" in value.dims and (
         bool(layer_path)

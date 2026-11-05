@@ -486,7 +486,7 @@ def test_gwf_disv_uzf(function_tmpdir):
         storagecoefficient=False,
         ss=1.00000000e-05,
         sy=0.2,
-        stress_period_data={0: [["TRANSIENT"]]},
+        stress_period_data={0: "transient"},
         iconvert=1,
     )
 
@@ -2138,7 +2138,7 @@ def test_gwf_lak_status(function_tmpdir):
         ss=0.0,
         sy=0.1,
         iconvert=1,
-        stress_period_data={0: [["STEADY-STATE"]], 1: [["TRANSIENT"]]},
+        stress_period_data={0: "steady-state", 1: "transient"},
     )
     oc = Oc(
         parent=gwf,

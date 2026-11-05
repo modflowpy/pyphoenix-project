@@ -8835,7 +8835,7 @@
     "END GRIDDATA",
     "",
     "BEGIN PERIOD 1",
-    " TRANSIENT",
+    "  TRANSIENT",
     "END PERIOD 1"
   ],
   "gwf_henry.wel": [

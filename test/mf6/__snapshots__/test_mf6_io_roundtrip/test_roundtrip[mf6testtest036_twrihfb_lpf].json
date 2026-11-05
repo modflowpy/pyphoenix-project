@@ -15,8 +15,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 test036_twrihfb.ims test036_twrihfb",
     " MXITER 1",
+    " IMS6 test036_twrihfb.ims test036_twrihfb",
     "END SOLUTIONGROUP 1"
   ],
   "test036_twrihfb.dis": [

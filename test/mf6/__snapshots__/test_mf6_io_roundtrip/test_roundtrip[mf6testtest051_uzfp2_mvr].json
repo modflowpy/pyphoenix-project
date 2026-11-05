@@ -15,8 +15,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 uzfp2_mvr.ims uzfp2_mvr",
     " MXITER 1",
+    " IMS6 uzfp2_mvr.ims uzfp2_mvr",
     "END SOLUTIONGROUP 1"
   ],
   "uzfp2_mvr.dis": [
@@ -336,11 +336,11 @@
     "END GRIDDATA",
     "",
     "BEGIN PERIOD 1",
-    " STEADY-STATE",
+    "  STEADY-STATE",
     "END PERIOD 1",
     "",
     "BEGIN PERIOD 2",
-    " TRANSIENT",
+    "  TRANSIENT",
     "END PERIOD 2"
   ],
   "uzfp2_mvr.tdis": [

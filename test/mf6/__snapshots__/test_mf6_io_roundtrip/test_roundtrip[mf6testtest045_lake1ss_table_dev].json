@@ -229,8 +229,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 lakeex1b.ims lakeex1b",
     " MXITER 1",
+    " IMS6 lakeex1b.ims lakeex1b",
     "END SOLUTIONGROUP 1"
   ]
 }

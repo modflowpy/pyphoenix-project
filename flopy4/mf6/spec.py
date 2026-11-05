@@ -5,9 +5,21 @@ These include field decorators and introspection functions.
 
 import builtins
 import types
+from collections.abc import Mapping
 from datetime import datetime
+from functools import cache, cached_property
 from pathlib import Path
-from typing import Any, Literal, TypedDict, Union, Unpack, get_args, get_origin
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Literal,
+    NamedTuple,
+    TypedDict,
+    Union,
+    Unpack,
+    get_args,
+    get_origin,
+)
 
 import attrs
 import numpy as np
@@ -24,6 +36,9 @@ from flopy4.mf6._types import (
 )
 from flopy4.mf6.item import to_union_arm
 from flopy4.spec import fields_dict as flopy_fields_dict
+
+if TYPE_CHECKING:
+    from modflow_devtools.dfns.schema import Component, InputField
 
 FieldType = Literal["keyword", "integer", "double", "string", "list", "record"]
 
@@ -166,6 +181,21 @@ def _ts_converter(kwargs: FieldKwargs, converter) -> None:
         kwargs.setdefault("converter", converter)
 
 
+def _to_valid(valid: tuple[str, ...]):
+    """A converter spelling a string as the one of ``valid`` it matches
+    ignoring case (MF6 reads words so), and each of a per-period dict's."""
+    spelled = {v.lower(): v for v in valid}
+
+    def convert(value):
+        if isinstance(value, str):
+            return spelled.get(value.lower(), value)
+        if isinstance(value, dict):
+            return {k: convert(v) for k, v in value.items()}
+        return value
+
+    return convert
+
+
 def keyword(**kwargs: Unpack[FieldKwargs]) -> Any:
     """A keyword: a flag, present or not."""
     kwargs["tagged"] = True
@@ -180,6 +210,8 @@ def string(
     scope: str | None = None,
     rule: str | None = None,
     empty_is_none: bool = False,
+    fill_forward: bool = False,
+    valid: tuple[str, ...] = (),
     **kwargs: Unpack[FieldKwargs],
 ) -> Any:
     """A string. A time series one may name a time series instead. It can't
@@ -188,13 +220,28 @@ def string(
     only within the value of another column, its ``scope`` (MVR's
     ``pname`` within ``mname``). An fk may have a ``rule``, which picks the
     component it names in, or with a scope narrows its keys (MVR's
-    ``pname``, packages with ``mover`` on); see `flopy4.mf6.keys`."""
+    ``pname``, packages with ``mover`` on); see `flopy4.mf6.keys`.
+    A ``fill_forward`` one is given per period (STO's steady-state or
+    transient), a period without one keeping the last's. One of ``valid``
+    is kept as ``valid`` spells it, whatever its case."""
+    if valid:
+        _convert_first(kwargs, _to_valid(valid))
     if time_series:
         _ts_converter(kwargs, to_ts_value)
     if empty_is_none:
         _convert_first(kwargs, _empty_to_none)
     _validate(kwargs, _not_empty)
-    return _field("string", kwargs, time_series=time_series, pk=pk, fk=fk, scope=scope, rule=rule)
+    return _field(
+        "string",
+        kwargs,
+        time_series=time_series,
+        pk=pk,
+        fk=fk,
+        scope=scope,
+        rule=rule,
+        fill_forward=fill_forward,
+        valid=valid,
+    )
 
 
 def integer(
@@ -549,24 +596,22 @@ def fields_dict(cls) -> dict[str, Attribute]:
     return {k: v for k, v in fields.items() if "block" in v.metadata}
 
 
-def repeating_array_key_type(field_type) -> type | None:
-    """For ``Optional[dict[K, IntArrayLike | FloatArrayLike]]``, return
-    ``K`` -- the header type of a block that repeats (e.g. utl-tas's "time"
-    block), whose own array field is keyed by header value. Returns
-    ``None`` for anything else, including a plain array and an
-    ``Optional[dict[int, list[ItemClass]]]`` period Item-list (see
-    ``item.item_list_type``) -- structurally distinct shapes, detected from
-    the annotation itself rather than a metadata flag, the same way
-    ``item_list_type`` reads its own dict-wrapped shape. Period array
-    fields (RCHA's recharge) have this shape too, keyed by period; callers
-    tell them apart by their ``fill_forward`` metadata.
-    """
-    args = get_args(field_type)
-    inner = next((a for a in args if a is not type(None)), None)
-    if inner is None or get_origin(inner) is not dict:
-        return None
-    key, val = get_args(inner)
-    return key if val in (IntArrayLike, FloatArrayLike) else None
+@cache
+def binding_fields(cls) -> dict[str, list[tuple[Attribute, str, tuple[type, ...]]]]:
+    """The child fields named by a block's rows (a model's packages, the
+    simulation's models, exchanges and solutions), by block, in field
+    order, each with its kind and candidate classes (see
+    `child_field_candidates`). A file record's child (``NCF6 FILEIN
+    <file>``) loads with its record, so isn't one."""
+    from flopy4.attrs_xarray import child_field_candidates
+
+    out: dict[str, list] = {}
+    for f in attrs.fields(cls):
+        if not f.metadata.get("child") or "block" not in f.metadata or f.metadata.get("_keyword"):
+            continue
+        if (spec := child_field_candidates(f)) is not None:
+            out.setdefault(f.metadata["block"], []).append((f, *spec))
+    return out
 
 
 def to_field_type(t: type) -> FieldType:
@@ -633,3 +678,228 @@ def block_sort_key(item) -> int:
         return 4
     else:
         return 3
+
+
+# The DFNs the classes were generated from, which sync stores beside them
+# (flopy4/mf6/dfns), one TOML file each. The converter reads block structure
+# from these rather than from the classes. Each is loaded when first asked
+# for, not the whole set: devtools' `Dfns.load` parses every file and checks
+# the relations between them, which costs a fresh process ~0.15 s on its
+# first load. The relations were checked when the set was synced (and are
+# again in the tests), so they aren't checked here.
+
+
+def _stored_dfns() -> Path:
+    from flopy4.mf6._sync import _DFNS
+
+    stored = Path(__file__).parent / _DFNS
+    if not stored.is_dir():
+        raise FileNotFoundError(
+            f"flopy4.mf6 has no stored DFNs ({stored}). Run `flopy4 mf6 sync` to re-sync."
+        )
+    return stored
+
+
+@cache
+def _component_adapter():
+    import warnings
+
+    from pydantic import TypeAdapter
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message=".*modflow_devtools.dfns.*experimental.*")
+        from modflow_devtools.dfns.schema import Component
+
+    return TypeAdapter(Component)
+
+
+@cache
+def _load_dfn(name: str) -> "Component":
+    import tomli
+    from modflow_devtools.dfns.schema import _inject_names
+
+    from flopy4.mf6._sync import _DFN_SCHEMA_VERSION
+
+    with (_stored_dfns() / f"{name}.toml").open("rb") as f:
+        data = tomli.load(f)
+    _inject_names(data)  # as `Dfns.load` does
+    component = _component_adapter().validate_python(data)
+    if component.schema_version not in (None, _DFN_SCHEMA_VERSION):
+        raise ValueError(
+            f"stored DFN {name!r} has schema version {component.schema_version}, "
+            f"expected {_DFN_SCHEMA_VERSION}. Run `flopy4 mf6 sync` to re-sync."
+        )
+    return component
+
+
+class Header(NamedTuple):
+    """A repeating block's header kind, as codegen records it in a
+    component class's ``headers``: ``integer`` (a period's IPER,
+    SOLUTIONGROUP's number), ``double`` (a TAS time) or ``record`` (OBS's
+    ``FILEOUT <name>``), and whether an integer is an index, 1-based in the
+    file and 0-based in memory (IPER is, the DFN's ``index``)."""
+
+    kind: str
+    index: bool = False  # type: ignore[assignment]
+
+
+class DfnHeader(NamedTuple):
+    """A stored DFN's top-level keys: all codegen reads of the components
+    a link may target (see ``make._headers``), without loading them."""
+
+    name: str
+    type: str
+    subtype: str | None
+    parent: str | list[str] | None
+    ftype: str | None
+    multi: bool
+
+
+def _read_header(path: Path) -> DfnHeader:
+    import tomli
+
+    # sync writes a DFN's top-level keys before its first table
+    lines = []
+    with path.open() as f:
+        for line in f:
+            if line.startswith("["):
+                break
+            lines.append(line)
+    data = tomli.loads("".join(lines))
+    return DfnHeader(
+        data["name"],
+        data["type"],
+        data.get("subtype"),
+        data.get("parent"),
+        data.get("ftype"),
+        data.get("multi", False),
+    )
+
+
+class _StoredDfns(Mapping[str, "Component"]):
+    """The stored DFNs by name, each loaded on first access. `headers`
+    has every DFN's top-level keys, for scans that only need those."""
+
+    def __init__(self) -> None:
+        # as `Dfns.load` skips them
+        exclude = {"common", "flopy"}
+        self._names = sorted(p.stem for p in _stored_dfns().glob("*.toml") if p.stem not in exclude)
+
+    @cached_property
+    def headers(self) -> dict[str, DfnHeader]:
+        stored = _stored_dfns()
+        return {n: _read_header(stored / f"{n}.toml") for n in self._names}
+
+    def __getitem__(self, name: str) -> "Component":
+        if name not in self._names:
+            raise KeyError(name)
+        return _load_dfn(name)
+
+    def __contains__(self, name: object) -> bool:
+        return name in self._names
+
+    def __iter__(self):
+        return iter(self._names)
+
+    def __len__(self) -> int:
+        return len(self._names)
+
+
+@cache
+def _dfns() -> "Mapping[str, Component]":
+    return _StoredDfns()
+
+
+def dfn(cls) -> "Component":
+    """The DFN component ``cls`` was generated from, by its ``dfn_name``."""
+    return _dfns()[cls.dfn_name]
+
+
+@cache
+def attr_names(cls) -> dict[tuple[str, str], str]:
+    """The attribute of ``cls`` holding each of its DFN's fields, by
+    (block, field name), as codegen named it (see
+    ``flopy4.mf6.utils.codegen.make.attr_names``)."""
+    from flopy4.mf6.utils.codegen.make import attr_names as _attr_names
+
+    return _attr_names(dfn(cls), _dfns())
+
+
+@attrs.frozen
+class BlockKeys:
+    """How the rows of one of a DFN's blocks find their fields.
+
+    Attributes
+    ----------
+    tagged :
+        Fields by the keyword their rows begin with, in DFN order. Where a
+        keyword begins more than one field's rows (OC's ``HEAD``), the next
+        keyword tells them apart (see ``following_tags``).
+    dynamic :
+        Fields whose rows begin with a value of another field instead, by
+        that field's path: RCHA's ``aux``, by ``options.auxiliary``.
+    untagged :
+        The field the block's other rows belong to, if any.
+    """
+
+    tagged: dict[str, tuple["InputField", ...]]
+    dynamic: dict[str, "InputField"]
+    untagged: "InputField | None"
+
+
+def _dynamic_key(f: "InputField") -> str | None:
+    """The path of the field whose values begin ``f``'s rows, if they do."""
+    from modflow_devtools.dfns.schema import List, Record, _is_dynamic_key
+
+    record = f.item if isinstance(f, List) else f
+    if not isinstance(record, Record):
+        return None
+    first = next(iter(record.fields.values()), None)
+    return first.fk.path if first is not None and _is_dynamic_key(first) else None
+
+
+def leading_tags(f: "InputField") -> list[str]:
+    """The keywords ``f``'s rows can begin with."""
+    from modflow_devtools.dfns.schema import _leading_tags
+
+    return [t.lower() for t in _leading_tags(f)]
+
+
+def following_tags(f: "InputField") -> list[str]:
+    """The keywords that can follow the one ``f``'s rows begin with, if
+    ``f`` is a record whose second member is a keyword, or a file with its
+    direction's (OC's ``HEAD FILEOUT`` and ``HEAD PRINT_FORMAT``)."""
+    from modflow_devtools.dfns.schema import File, Keyword, Record
+
+    if not isinstance(f, Record):
+        return []
+    members = list(f.fields.values())
+    if len(members) < 2:
+        return []
+    second = members[1]
+    if isinstance(second, Keyword):
+        return [t.lower() for t in [second.name, *second.aliases]]
+    if isinstance(second, File) and second.mode_keyword and second.direction:
+        return [f"file{second.direction}"]
+    return []
+
+
+@cache
+def block_keys(cls, block: str) -> BlockKeys:
+    """How the rows of ``block`` in ``cls``'s DFN find their fields. Fields
+    codegen leaves out (developmode, removed) aren't keyed."""
+    from flopy4.mf6.utils.codegen.filters import flat_fields
+
+    tagged: dict[str, tuple] = {}
+    dynamic: dict[str, Any] = {}
+    untagged = None
+    for name, f in flat_fields(dfn(cls)):
+        if name != block:
+            continue
+        if not getattr(f, "tagged", True):
+            untagged = f
+        elif key := _dynamic_key(f):
+            dynamic[key] = f
+        for tag in leading_tags(f):
+            tagged[tag] = (*tagged.get(tag, ()), f)
+    return BlockKeys(tagged=tagged, dynamic=dynamic, untagged=untagged)

@@ -15,8 +15,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 model.ims GWF",
     " MXITER 1",
+    " IMS6 model.ims GWF",
     "END SOLUTIONGROUP 1"
   ],
   "model.chd": [

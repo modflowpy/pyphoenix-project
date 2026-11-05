@@ -15,8 +15,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 test034_nwtp2.ims test034_nwtp2",
     " MXITER 1",
+    " IMS6 test034_nwtp2.ims test034_nwtp2",
     "END SOLUTIONGROUP 1"
   ],
   "test034_nwtp2.dis": [
@@ -199,7 +199,7 @@
     "END GRIDDATA",
     "",
     "BEGIN PERIOD 4",
-    " steady-state",
+    "  STEADY-STATE",
     "END PERIOD 4"
   ],
   "test034_nwtp2.tdis": [

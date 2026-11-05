@@ -7,7 +7,7 @@ from flopy4.mf6._types import TimeSeriesRef
 from flopy4.mf6.item import Item
 from flopy4.mf6.legacy import Legacy
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import child, double, integer, keyword, list_, union
+from flopy4.mf6.spec import Header, child, double, integer, keyword, list_, union
 from flopy4.mf6.utl.ts import Ts
 
 
@@ -17,6 +17,10 @@ class Spc(Package):
     ftype: ClassVar[str] = "SPC6"
 
     multi_package: ClassVar[bool] = True
+
+    headers: ClassVar[dict[str, Header]] = {
+        "period": Header("integer", index=True),
+    }
 
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
         "perioddata": Legacy("stress_period_data"),

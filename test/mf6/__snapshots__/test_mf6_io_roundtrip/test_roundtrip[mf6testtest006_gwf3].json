@@ -183,8 +183,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 flow.ims GWF_1",
     " MXITER 1",
+    " IMS6 flow.ims GWF_1",
     "END SOLUTIONGROUP 1"
   ]
 }

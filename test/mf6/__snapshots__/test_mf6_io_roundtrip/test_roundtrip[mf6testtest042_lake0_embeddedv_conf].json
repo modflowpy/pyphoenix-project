@@ -284,8 +284,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 lake0_embedded.ims lake0_e",
     " MXITER 1",
+    " IMS6 lake0_embedded.ims lake0_e",
     "END SOLUTIONGROUP 1"
   ]
 }

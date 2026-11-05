@@ -25,8 +25,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 t4.ims t4_disv",
     " MXITER 1",
+    " IMS6 t4.ims t4_disv",
     "END SOLUTIONGROUP 1"
   ],
   "t4.disv": [

@@ -208,8 +208,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 fhb2015.ims fhb2015",
     " MXITER 1",
+    " IMS6 fhb2015.ims fhb2015",
     "END SOLUTIONGROUP 1"
   ]
 }

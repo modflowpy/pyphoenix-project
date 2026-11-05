@@ -237,8 +237,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 ghbmvr.ims ghbmvr",
     " MXITER 1",
+    " IMS6 ghbmvr.ims ghbmvr",
     "END SOLUTIONGROUP 1"
   ]
 }

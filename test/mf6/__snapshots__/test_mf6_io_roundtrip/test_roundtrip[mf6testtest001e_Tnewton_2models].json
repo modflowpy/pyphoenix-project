@@ -17,8 +17,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 model.ims Model_01 Model_02",
     " MXITER 1",
+    " IMS6 model.ims Model_01 Model_02",
     "END SOLUTIONGROUP 1"
   ],
   "model.exg": [

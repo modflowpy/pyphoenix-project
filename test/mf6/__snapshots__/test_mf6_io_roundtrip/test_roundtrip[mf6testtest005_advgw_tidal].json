@@ -31,8 +31,8 @@
     "END OPTIONS",
     "",
     "BEGIN DIMENSIONS",
-    " NSEG 3",
     " MAXBOUND 150",
+    " NSEG 3",
     "END DIMENSIONS",
     "",
     "BEGIN PERIOD 1",
@@ -222,11 +222,11 @@
     "END GRIDDATA",
     "",
     "BEGIN PERIOD 1",
-    " STEADY-STATE",
+    "  STEADY-STATE",
     "END PERIOD 1",
     "",
     "BEGIN PERIOD 2",
-    " TRANSIENT",
+    "  TRANSIENT",
     "END PERIOD 2"
   ],
   "AdvGW_tidal.wel": [
@@ -337,8 +337,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 model.ims GWF_1",
     " MXITER 1",
+    " IMS6 model.ims GWF_1",
     "END SOLUTIONGROUP 1"
   ],
   "model.ims": [

@@ -226,8 +226,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 drnmvr.ims drnmvr",
     " MXITER 1",
+    " IMS6 drnmvr.ims drnmvr",
     "END SOLUTIONGROUP 1"
   ]
 }

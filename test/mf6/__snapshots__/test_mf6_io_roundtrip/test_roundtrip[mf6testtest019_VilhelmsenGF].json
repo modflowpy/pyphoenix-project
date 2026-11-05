@@ -182,8 +182,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 TM9_global_gv.ims PARENT",
     " MXITER 1",
+    " IMS6 TM9_global_gv.ims PARENT",
     "END SOLUTIONGROUP 1"
   ]
 }

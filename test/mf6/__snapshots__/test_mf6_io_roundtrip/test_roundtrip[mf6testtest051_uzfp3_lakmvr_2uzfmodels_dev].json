@@ -15,8 +15,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 uzfp3_lakmvr.ims uzfp3_lakmvr",
     " MXITER 1",
+    " IMS6 uzfp3_lakmvr.ims uzfp3_lakmvr",
     "END SOLUTIONGROUP 1"
   ],
   "uzfp3_lakmvr.dis": [
@@ -368,11 +368,11 @@
     "END GRIDDATA",
     "",
     "BEGIN PERIOD 1",
-    " STEADY-STATE",
+    "  STEADY-STATE",
     "END PERIOD 1",
     "",
     "BEGIN PERIOD 2",
-    " TRANSIENT",
+    "  TRANSIENT",
     "END PERIOD 2"
   ],
   "uzfp3_lakmvr.tdis": [

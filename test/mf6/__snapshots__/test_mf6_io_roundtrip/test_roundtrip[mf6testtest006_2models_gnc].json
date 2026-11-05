@@ -17,8 +17,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 simulation.ims GWF_Model_1 GWF_Model_2",
     " MXITER 1",
+    " IMS6 simulation.ims GWF_Model_1 GWF_Model_2",
     "END SOLUTIONGROUP 1"
   ],
   "model1.chd": [

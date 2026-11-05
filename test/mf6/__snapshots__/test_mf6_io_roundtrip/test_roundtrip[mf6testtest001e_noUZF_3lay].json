@@ -15,8 +15,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 test001e_noUZF.ims GWF_1",
     " MXITER 1",
+    " IMS6 test001e_noUZF.ims GWF_1",
     "END SOLUTIONGROUP 1"
   ],
   "simulation.tdis": [
@@ -182,11 +182,11 @@
     "END GRIDDATA",
     "",
     "BEGIN PERIOD 1",
-    " transient",
+    "  TRANSIENT",
     "END PERIOD 1",
     "",
     "BEGIN PERIOD 2",
-    " TRANSIENT",
+    "  TRANSIENT",
     "END PERIOD 2"
   ]
 }

@@ -1,0 +1,82 @@
+type = "package"
+schema_version = "2.0.0.dev3"
+name = "gwe-mve"
+ftype = "MVE6"
+parent = [
+    "exg-gwegwe",
+    "gwe-nam",
+]
+
+[blocks.options.fields.print_input]
+type = "keyword"
+longname = "print input to listing file"
+description = "keyword to indicate that the list of mover information will be written to the listing file immediately after it is read."
+optional = true
+
+[blocks.options.fields.print_flows]
+type = "keyword"
+longname = "print calculated flows to listing file"
+description = "keyword to indicate that the list of lake flow rates will be printed to the listing file for every stress period time step in which 'BUDGET PRINT' is specified in Output Control.  If there is no Output Control option and 'PRINT_FLOWS' is specified, then flow rates are printed for the last time step of each stress period."
+optional = true
+
+[blocks.options.fields.save_flows]
+type = "keyword"
+longname = "save MVE flows to budget file"
+description = "keyword to indicate that lake flow terms will be written to the file specified with 'BUDGET FILEOUT' in Output Control."
+optional = true
+
+[blocks.options.fields.budget_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.budget_filerecord.fields.budget]
+type = "keyword"
+longname = "budget keyword"
+description = "keyword to specify that record corresponds to the budget."
+
+[blocks.options.fields.budget_filerecord.fields.budgetfile]
+type = "file"
+longname = "file keyword"
+description = "name of the binary output file to write budget information."
+tagged = false
+direction = "out"
+
+[blocks.options.fields.budgetcsv_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.budgetcsv_filerecord.fields.budgetcsv]
+type = "keyword"
+longname = "budget keyword"
+description = "keyword to specify that record corresponds to the budget CSV."
+
+[blocks.options.fields.budgetcsv_filerecord.fields.budgetcsvfile]
+type = "file"
+longname = "file keyword"
+description = "name of the comma-separated value (CSV) output file to write budget summary information.  A budget summary record will be written to this file for each time step of the simulation."
+tagged = false
+direction = "out"
+
+[memory.iprpak]
+set_in = "ar"
+source = "print_input"
+description = "Flag controlling whether mover input is echoed to the listing file."
+type = "integer"
+
+[memory.iprflow]
+set_in = "ar"
+source = "print_flows"
+description = "Flag controlling whether mover flow rates are printed to the listing file."
+type = "integer"
+
+[memory.ipakcb]
+set_in = "ar"
+source = "save_flows"
+description = "Flag controlling whether mover flows are written to the budget file."
+type = "integer"
+
+[memory.maxpackages]
+readonly = true
+set_in = "ar"
+description = "Number of packages participating in the mover. Computed from the packages that supply or receive moved water."
+type = "integer"

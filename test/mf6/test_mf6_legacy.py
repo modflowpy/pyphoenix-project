@@ -92,15 +92,15 @@ def test_warning_points_at_caller():
 @pytest.mark.parametrize(
     ("kwargs", "expected"),
     [
-        ({"steady_state": {0: True}}, {0: [("STEADY-STATE",)]}),
-        ({"steady_state": True}, {0: [("STEADY-STATE",)]}),
-        ({"steady_state": [0, 2]}, {0: [("STEADY-STATE",)], 2: [("STEADY-STATE",)]}),
-        ({"transient": {1: True}}, {1: [("TRANSIENT",)]}),
+        ({"steady_state": {0: True}}, {0: "steady-state"}),
+        ({"steady_state": True}, {0: "steady-state"}),
+        ({"steady_state": [0, 2]}, {0: "steady-state", 2: "steady-state"}),
+        ({"transient": {1: True}}, {1: "transient"}),
         (
             {"steady_state": {0: True}, "transient": {1: True}},
-            {0: [("STEADY-STATE",)], 1: [("TRANSIENT",)]},
+            {0: "steady-state", 1: "transient"},
         ),
-        ({"steady_state": {0: True, 1: False}}, {0: [("STEADY-STATE",)]}),
+        ({"steady_state": {0: True, 1: False}}, {0: "steady-state"}),
     ],
 )
 def test_sto(kwargs, expected):

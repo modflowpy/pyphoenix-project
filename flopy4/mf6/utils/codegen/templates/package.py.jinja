@@ -37,6 +37,14 @@ class {{ spec.class_name }}({% for m in spec.mixins %}{{ m }}, {% endfor %}{{ sp
     shared_dims: ClassVar[tuple[str, ...]] = {{ spec.shared_dims | tuple_repr }}
 
 {% endif %}
+{% if spec.headers %}
+    headers: ClassVar[dict[str, Header]] = {
+{% for name, header in spec.headers.items() %}
+        "{{ name }}": {{ header }},
+{% endfor %}
+    }
+
+{% endif %}
 {% if spec.observations %}
     observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
 {% for name, forms in spec.observations.items() %}

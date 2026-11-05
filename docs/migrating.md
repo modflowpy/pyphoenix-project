@@ -31,14 +31,14 @@ you need to make anyway: flopy4's class names (`Sto`, not
 `flopy.mf6.ModflowGwfsto`), and its constructors taking the parent as a
 keyword (`parent=gwf`), not by position.
 
-STO takes one entry per period, `STEADY-STATE` or `TRANSIENT`:
+STO takes one word per period, `steady-state` or `transient`:
 
 ```python
 # flopy3
 sto = flopy.mf6.ModflowGwfsto(gwf, steady_state={0: True}, transient={1: True})
 
 # flopy4
-sto = Sto(parent=gwf, stress_period_data={0: [("STEADY-STATE",)], 1: [("TRANSIENT",)]})
+sto = Sto(parent=gwf, stress_period_data={0: "steady-state", 1: "transient"})
 ```
 
 OC takes each period's saves and prints in one list, each starting with

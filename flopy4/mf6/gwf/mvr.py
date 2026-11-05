@@ -7,13 +7,17 @@ import attrs
 from flopy4.mf6.item import Item
 from flopy4.mf6.legacy import Legacy
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import double, file, integer, keyword, list_, string
+from flopy4.mf6.spec import Header, double, file, integer, keyword, list_, string
 
 
 @attrs.define(kw_only=True, slots=False)
 class Mvr(Package):
     dfn_name: ClassVar[str] = "gwf-mvr"
     ftype: ClassVar[str] = "MVR6"
+
+    headers: ClassVar[dict[str, Header]] = {
+        "period": Header("integer", index=True),
+    }
 
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
         "perioddata": Legacy("stress_period_data"),

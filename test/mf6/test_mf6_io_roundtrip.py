@@ -309,33 +309,24 @@ def test_tvs_child_kept(tmp_path):
     assert not diffs, "\n".join(diffs)
 
 
-def test_readarray_non_layered_grid_arrays():
+def test_readarray_non_layered_grid_arrays(tmp_path):
     """A grid package array given without LAYERED covers all nodes."""
-    from flopy4.mf6.converter.ingress.structure import _parse_readarray_period_block
     from flopy4.mf6.gwf import Welg
-    from flopy4.mf6.load_context import LoadContext
 
-    fields = attrs.fields_dict(Welg)
-    lookup = {"q": fields["q"], "a1": fields["aux"], "a2": fields["aux"]}
-    rows = [
-        ["q", "LAYERED"],
-        ["INTERNAL"],
-        ["1.0", "2.0", "3.0"],
-        ["INTERNAL"],
-        ["4.0", "5.0", "6.0"],
-        ["a1"],
-        ["INTERNAL"],
-        ["1.0", "1.0", "1.0"],
-        ["1.0", "1.0", "1.0"],
-        ["a2"],
-        ["INTERNAL"],
-        ["0.5", "0.5", "0.5"],
-        ["0.5", "0.5", "0.5"],
-    ]
-    result = _parse_readarray_period_block(rows, lookup, {"nlay": 2, "nodes": 6}, LoadContext())
-    assert np.array_equal(result["q"], [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    assert np.array_equal(result["a1"], np.ones((2, 3)))
-    assert np.array_equal(result["a2"], np.full((2, 3), 0.5))
+    path = tmp_path / "model.welg"
+    path.write_text(
+        "BEGIN OPTIONS\n  READARRAYGRID\n  AUXILIARY a1 a2\nEND OPTIONS\n\n"
+        "BEGIN PERIOD 1\n"
+        "  q LAYERED\n    INTERNAL\n      1.0 2.0 3.0\n    INTERNAL\n      4.0 5.0 6.0\n"
+        "  a1\n    INTERNAL\n      1.0 1.0 1.0\n      1.0 1.0 1.0\n"
+        "  a2\n    INTERNAL\n      0.5 0.5 0.5\n      0.5 0.5 0.5\n"
+        "END PERIOD 1\n"
+    )
+    dims = {"nlay": 2, "nrow": 1, "ncol": 3, "ncpl": 3, "nodes": 6}
+    wel = Welg.load(path, name="wel", dims=dims)
+    assert np.array_equal(np.ravel(wel.q[0]), [1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+    assert np.array_equal(np.ravel(wel.aux[0]["a1"]), np.ones(6))
+    assert np.array_equal(np.ravel(wel.aux[0]["a2"]), np.full(6, 0.5))
 
 
 def test_grid_package_aux_keeps_package_name(tmp_path):
@@ -372,24 +363,25 @@ def test_open_close_reads_only_needed_values(tmp_path):
 
     (tmp_path / "values.txt").write_text("1.0 2.0 3.0 4.0 5.0\n")
     rows = [["OPEN/CLOSE", "values.txt"]]
-    values, i = _read_control_record(rows, 0, LoadContext(workspace=tmp_path), np.float64, 3)
+    values, _, i = _read_control_record(rows, 0, LoadContext(workspace=tmp_path), np.float64, 3)
     assert np.array_equal(values, [1.0, 2.0, 3.0]) and i == 1
 
 
 def test_layered_open_close_griddata(tmp_path):
     """A LAYERED array reads one OPEN/CLOSE file per layer, each only its
     layer's values."""
-    from flopy4.mf6.converter.ingress.structure import _parse_array_block
     from flopy4.mf6.gwf import Npf
-    from flopy4.mf6.load_context import LoadContext
 
     (tmp_path / "k1.txt").write_text("1.0 2.0 3.0\n")
     (tmp_path / "k2.txt").write_text("4.0 5.0 6.0 7.0 8.0\n")
-    rows = [["k", "LAYERED"], ["OPEN/CLOSE", "k1.txt"], ["OPEN/CLOSE", "k2.txt"]]
-    fields = {"k": attrs.fields_dict(Npf)["k"]}
-    context = LoadContext(workspace=tmp_path)
-    result = _parse_array_block(rows, fields, {"nlay": 2, "nodes": 6}, context)
-    assert np.array_equal(result["k"], [1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+    path = tmp_path / "model.npf"
+    path.write_text(
+        "BEGIN GRIDDATA\n  icelltype\n    CONSTANT 0\n"
+        "  k LAYERED\n    OPEN/CLOSE k1.txt\n    OPEN/CLOSE k2.txt\nEND GRIDDATA\n"
+    )
+    dims = {"nlay": 2, "nrow": 1, "ncol": 3, "ncpl": 3, "nodes": 6}
+    npf = Npf.load(path, dims=dims)
+    assert np.array_equal(np.ravel(npf.k), [1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
 
 
 @pytest.mark.parametrize("pkg_cls", [Sft, Mwt, Uzt])

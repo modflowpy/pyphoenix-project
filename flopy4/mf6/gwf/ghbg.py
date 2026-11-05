@@ -7,7 +7,7 @@ from numpy.typing import NDArray
 
 from flopy4.mf6._types import FloatArrayLike, to_array
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import array, child, integer, keyword, string
+from flopy4.mf6.spec import Header, array, child, integer, keyword, string
 from flopy4.mf6.utl.obs import Obs
 
 
@@ -17,6 +17,10 @@ class Ghbg(Package):
     ftype: ClassVar[str] = "GHB6"
 
     multi_package: ClassVar[bool] = True
+
+    headers: ClassVar[dict[str, Header]] = {
+        "period": Header("integer", index=True),
+    }
 
     observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
         "ghb": (("cellid",), ("string",)),

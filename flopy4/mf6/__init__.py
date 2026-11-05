@@ -176,7 +176,7 @@ def _write_mf6(component: Component, context=None, **kwargs) -> None:
 
     # settle the arrays' and lists' files before opening (and emptying)
     # the component's, which a strict write may refuse
-    data = annotate_arrays(unstructure(component), ctx)
+    data = annotate_arrays(unstructure(component), type(component), ctx)
     where = (component.root, component.filename, component._name_or_class())
     data = write_external_arrays(data, *where, ctx)
     data = write_external_lists(data, *where, ctx)

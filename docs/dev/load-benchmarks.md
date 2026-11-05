@@ -22,12 +22,14 @@ manifest.
 
 | level | flopy3 | flopy4 basic | flopy4 typed | suite |
 |---|---|---|---|---|
-| full simulation load | `MFSimulation.load` | `Simulation.load` | **not possible yet** | `test_load.py` |
+| full simulation load | `MFSimulation.load` | `Simulation.load` | `Simulation.load(..., loader="typed")` | `test_load.py` |
 | parse stage (parse + transform) | n/a | yes | yes | `test_parse.py` |
 
-Typed parser output isn't wired into `structure.py`, so there's no full typed
-load to time. The typed loader appears here at the parse stage only. It gets a
-column in the first row once it's wired in.
+When this baseline was taken, typed parser output wasn't wired into
+`structure.py`, so the typed loader appeared at the parse stage only. It
+now loads every component (`--loader typed`), and the load benchmarks run
+it as `flopy4-typed`; the two loaders are compared in
+[`loader-comparison.md`](loader-comparison.md).
 
 There are two benchmark modules, both opt-in pytest-benchmark modules under
 `benchmarks/` (`pixi run -e dev bench` runs both):
@@ -327,7 +329,6 @@ directly.
 
 ## Not measured yet
 
-- **A full typed load**, which doesn't exist yet (see above).
 - **The 74 excluded models.** flopy4 skips DISU, TS/OBS and other child
   files. Once it loads them, those models can join the corpus, but that
   changes the pinned set, so it needs a fresh baseline.

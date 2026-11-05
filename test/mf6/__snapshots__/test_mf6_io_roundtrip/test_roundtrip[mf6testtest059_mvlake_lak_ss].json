@@ -21,8 +21,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 mv.ims mv",
     " MXITER 1",
+    " IMS6 mv.ims mv",
     "END SOLUTIONGROUP 1"
   ],
   "mv.dis": [

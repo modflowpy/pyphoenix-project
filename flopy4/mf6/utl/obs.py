@@ -7,13 +7,17 @@ import attrs
 from flopy4.mf6.block import Block
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import file, integer, keyword, list_, string, union
+from flopy4.mf6.spec import Header, file, integer, keyword, list_, string, union
 
 
 @attrs.define(kw_only=True, slots=False)
 class Obs(Package):
     dfn_name: ClassVar[str] = "utl-obs"
     ftype: ClassVar[str] = "OBS6"
+
+    headers: ClassVar[dict[str, Header]] = {
+        "continuous": Header("record"),
+    }
 
     @attrs.define
     class Continuous(Item):

@@ -22,7 +22,7 @@ _MF6_ROOT = Path(__file__).parent
 _DFN_SCHEMA_VERSION = "2.0.0.dev3"
 _DEFAULT_REPO = "MODFLOW-ORG/modflow6"
 _CONTRACT = "_contract.py"
-# Where syncs before the typed reader stopped needing DFNs stored them.
+# The DFNs the classes were generated from, as TOML, for the converter.
 _DFNS = "dfns"
 # The typed reader's grammars, one per component, all generated.
 _GRAMMARS = "codec/reader/grammar/generated"
@@ -285,6 +285,24 @@ def _check_writable(path: Path) -> None:
         )
 
 
+def _store_dfns(dfn_dir: Path, dest: Path) -> set[str]:
+    """Write the DFNs in ``dfn_dir`` to ``dest`` as TOML at the schema
+    version the classes are generated against: migrated from legacy
+    ``.dfn`` files, or copied if they're TOML already. Returns their
+    names."""
+    dest.mkdir(parents=True)
+    if any(dfn_dir.glob("*.dfn")):
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message=".*modflow_devtools.dfns.*experimental.*")
+            from modflow_devtools.dfns.migrate import migrate
+
+        migrate(dfn_dir, dest, _DFN_SCHEMA_VERSION, fmt="toml")
+    else:
+        for f in sorted(dfn_dir.glob("*.toml")):
+            shutil.copy2(f, dest / f.name)
+    return {f.name for f in dest.iterdir() if f.is_file()}
+
+
 def _make_grammars(dfns: dict, stage: Path) -> set[str]:
     """Generate the typed reader's grammar for every component into
     ``stage``, checking each one builds. Returns their paths, relative to
@@ -454,7 +472,7 @@ def sync(
     """Regenerate the ``flopy4.mf6`` classes for an MF6 version.
 
     Fetches or reads the DFNs, regenerates the component classes and the
-    typed reader's grammars, and records the MF6 version in
+    typed reader's grammars, stores the DFNs as TOML, and records the MF6 version in
     ``_contract.py``. Generated modules and grammars the DFNs don't cover
     are removed. Nothing changes unless every generated module imports and
     every grammar builds. Warns of handwritten methods that read fields the
@@ -533,6 +551,7 @@ def sync(
             raise SyncError(f"No .dfn or .toml files in {path}")
         registry = LocalDfnRegistry(path=path)
         source = str(path)
+        dfn_dir = path
         version = mf6_version or _local_mf6_version(path)
         commit = _local_commit(path)
     else:
@@ -560,6 +579,7 @@ def sync(
         # pinned semver tag (first char is a digit).
         is_branch = not version[0].isdigit()
         _populate_remote_cache(registry, release_id, force=force or is_branch)
+        dfn_dir = registry.cache_path
         commit = _remote_commit(release_id)
 
     if version == "unknown":
@@ -605,6 +625,7 @@ def sync(
         )
         inits = make_package_inits(specs, outdir, stage=stage, verbose=verbose)
         generated = {p.relative_to(outdir).as_posix() for p in [s.outpath for s in specs] + inits}
+        dfn_files = {f"{_DFNS}/{f}" for f in _store_dfns(dfn_dir, stage / _DFNS)}
         old_dfn_files = (
             {f"{_DFNS}/{f.name}" for f in (outdir / _DFNS).iterdir() if f.is_file()}
             if (outdir / _DFNS).is_dir()
@@ -639,11 +660,9 @@ def sync(
         _swap(
             stage,
             outdir,
-            replace=[*sorted(generated), *sorted(grammars), _CONTRACT],
-            remove=sorted(removed | old_dfn_files | (old_grammars - grammars)),
+            replace=[*sorted(generated), *sorted(dfn_files), *sorted(grammars), _CONTRACT],
+            remove=sorted(removed | (old_dfn_files - dfn_files) | (old_grammars - grammars)),
         )
-        if (outdir / _DFNS).is_dir() and not any((outdir / _DFNS).iterdir()):
-            (outdir / _DFNS).rmdir()
     finally:
         shutil.rmtree(stage, ignore_errors=True)
 
