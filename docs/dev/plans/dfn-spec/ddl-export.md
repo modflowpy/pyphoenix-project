@@ -257,3 +257,40 @@ LAK models.** This answers the mover question with real data.
 
 **Afterwards:** update the slice README's results, this plan's predictions, and H1,
 H2b and H3 in the [overview](overview.md#hypotheses) if real data changes them.
+
+## Where this could lead
+
+Not part of this plan, and not to start before stage 3, which tests the schema's
+addressing model harder than anything so far.
+
+The harness already loads a simulation into a real, if temporary, SQL database. That
+could be a precursor to a connector that loads and writes simulations to and from
+SQL in flopy4, and perhaps one day in MF6. The appeal over files is checking a
+simulation before it runs, and querying across packages and periods.
+
+What a connector needs that the slice doesn't have:
+
+- **A lossless schema.** This one keeps only what the rules read. CHD, GHB and the
+  other list packages have no values, and auxiliary values in package rows, solver
+  settings, NPF and STO arrays and most options are missing.
+- **A generated schema.** Covering every component by hand is too much to maintain.
+  It should come from the DFNs, as `catalog.sql` does. Whether the DFNs say enough to
+  generate propagated keys and period regimes is an open question.
+- **A decision on layout.** The schema drops blocks, `JA`'s order within a cell,
+  external files, `OPEN/CLOSE` and comments. A connector can keep a model's meaning
+  without preserving its files, but users may expect otherwise.
+- **Array storage.** A row per value works for tests. Gridded arrays over many periods
+  need something else, such as blobs or Parquet alongside, and that choice shapes the
+  design.
+
+**First test: a round trip.** Export a package to SQL, rebuild it from the rows, write
+the input, run `mf6`, and compare heads and budgets with the original. Start with the
+packages the schema nearly covers. The corpus and harness already exist, and what
+fails shows what the schema loses.
+
+**MF6 reading SQL directly** is ambitious, but maybe less so than it sounds. SFR and
+MAW already read from an `input_mempath`, so a different loader could in principle
+fill that memory without touching package code. UZF still reads from the file parser,
+so that move isn't finished. It would add a SQLite dependency to the Fortran build,
+which is the MF6 developers' decision. Much of the benefit may be available without
+it, since flopy4 could write ordinary input files from the database.
