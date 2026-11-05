@@ -812,8 +812,9 @@ or the road doc stands alone.
 - **MMP milestone issues in no live plan:** #160, #199, #200, #220, #282, #343.
   #243 only appears in passing. The milestone's 24 also include PRs #367 and #433.
 - **#282/#367 (attrs vs. pydantic)** is the largest. It's open in the milestone,
-  "stale" in the archive, and a stated condition in `xarray/overview.md`. It
-  needs a decision: see D4.
+  and a stated condition in `xarray/overview.md`. wpb is keeping the option open,
+  so the plan is live ([`pydantic-object-model-plan.md`](../../pydantic-object-model-plan.md)).
+  See D4.
 - **From `map.md`, with no gate item:** maintenance and release plans, MF6
   version support plan, adapted examples, imod-python features, performance.
 - **Track items without a gate:** `xarray/overview.md` steps 3-8 aren't placed in
@@ -959,7 +960,7 @@ S4's status note.
 | D1 | A package's export: `Dataset` or `DataTree` (C8) | decided: always a `DataTree` | export phase 1 |
 | D2 | Rename the `output` label to `directive`, including CSVs | yes, before #287 is posted | classification, audit |
 | D3 | What to call our NetCDF forms | "flopy4 archive" for grouped until MF6 reads it; "MF6 NetCDF" only for ungrouped; "profile" for the pair | representation, `mf6xr` |
-| D4 | #282/#367: attrs or pydantic | close both as decided for attrs, if you agree: the archive calls the plan stale and develop has moved on, but I haven't read the #282 thread | xattree v2, Track B |
+| D4 | #282/#367: attrs or pydantic | decided for now: keep both open, with attrs assumed meanwhile. Settle by MMP, with the possibility of putting it off to GA | xattree v2, Track B |
 | D5 | `stress_period_data` on OC, STO and similar | keep it, documented as flopy4's uniform name; changing it now costs more than the inaccuracy | Track B, compat |
 | D6 | The `Context` class name | keep, and define it. Rename only with Track B's API changes | concepts |
 | D7 | Round-trip fidelity for `FACTOR`, `IPRN`, order, remarks; result tolerance | `FACTOR` and `IPRN` kept, the rest not; tolerance from the framework comparison | Track A, `simplify-converter` |

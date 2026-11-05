@@ -180,6 +180,7 @@ I7 are the integration plan's open questions:
 | What starts the betas | first beta | here |
 | `output.head`: which side renames (I3) | MMP | [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md) |
 | Remaining Track B API questions | MMP | Track B |
+| attrs or pydantic (#282, #367) | MMP, possibly put off to GA | [`pydantic-object-model-plan.md`](pydantic-object-model-plan.md) |
 | The layout/logical rule, and with it #226, #229, #259, #345, #523 | MMP; early, since Track B's other data questions follow from it | [`layout-logical-decisions.md`](plans/dfn-spec/layout-logical-decisions.md) |
 | Post #287 before the layout/logical decisions, so Deltares can weigh in on the rule? | before the layout/logical rule | [`layout-logical-decisions.md`](plans/dfn-spec/layout-logical-decisions.md) |
 | Default file names (`m.chd` vs `m.chd0.chd`) | the Part 1 aliases; decide early, it changes flopy4's own tests | [`aliases-and-codemod.md`](plans/integration/aliases-and-codemod.md) |

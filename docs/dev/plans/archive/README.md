@@ -16,7 +16,6 @@ notes used to live. Live plans are in the [index](../README.md).
 | [protocols-plan.md](protocols-plan.md) | dimension resolution protocols and mixin | done |
 | [on-representations.md](on-representations.md) | DFN-vs-class representation mismatches the parser handled (`load` branch) | historical |
 | [codegen-comparison.md](codegen-comparison.md), [codegen-recommendation.md](codegen-recommendation.md), [pydantic-prototype-summary.md](pydantic-prototype-summary.md), [model-rebuild-explained.md](model-rebuild-explained.md) | attrs vs. pydantic for generated classes (`plan-codegen` branch) | superseded by the plan below |
-| [pydantic-object-model-plan.md](pydantic-object-model-plan.md) | attrs vs. pydantic, revised (draft #367) | stale |
 | [field-functions-plan.md](field-functions-plan.md) | one field function per DFN field type | done (#463) |
 | [record-values-plan.md](record-values-plan.md) | plain values for every record field | done |
 | [mypy-converter-plan.md](mypy-converter-plan.md) | letting mypy see field converters | abandoned (#433 closed); replaced by [constructor-stubs.md](../components/constructor-stubs.md) |

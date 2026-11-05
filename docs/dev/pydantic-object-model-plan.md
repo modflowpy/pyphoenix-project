@@ -2,6 +2,15 @@
 
 ## Status
 
+**2026-11-04: open.** attrs vs. pydantic isn't decided, and this plan keeps the
+option open. Draft PR #367 (`pydantic-plan`) has been idle since 2026-09-24 and is
+158 commits behind develop. Since then develop replaced `spec.field()` with field
+functions (#463), reworked list rows (#467, `ItemTable` in #479), added slots to
+`Record`/`Item` (#481) and conditional fields (#473), so a rebase would be close to
+a redo. The attrs-side fixes this branch found are on develop (see
+[`develop-shared-fixes.md`](plans/archive/develop-shared-fixes.md)). The text below
+is as of 2026-09-24.
+
 **The full migration is complete, on this branch (`pydantic-plan`), as of
 2026-09-17.** Every class in the MF6 object model — `Component`, `Package`,
 `Record`/`Item` (including — a scope expansion over this doc's earlier

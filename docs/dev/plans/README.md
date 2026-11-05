@@ -39,6 +39,7 @@ testing) sit one level up. For what's scheduled, and in what order, see
 | [components/mixin-fields.md](components/mixin-fields.md) | what mixins rely on in the generated classes, and how sync checks it |
 | [components/user-dir-classes.md](components/user-dir-classes.md) | generating component classes into a per-user directory instead of the installed package |
 | [components/constructor-stubs.md](components/constructor-stubs.md) | generated `.pyi` stubs so type checkers accept what constructors accept, then `py.typed` |
+| [../pydantic-object-model-plan.md](../pydantic-object-model-plan.md) | attrs vs. pydantic for the object model; a complete migration on draft #367, undecided |
 
 ## Lists
 
