@@ -194,6 +194,20 @@ and it checks rules at write time.
 
 Record how each of these turned out.
 
+From stage 2:
+
+- `r_sfr_ustrf` fires: **wrong on the corpus, right that the rule was wrong.** It never
+  fired, but its reasoning was off as well. MF6 skips inactive *downstream* reaches, not
+  reaches inactive at the start, and it rereads the sum as statuses change.
+- `w_mvr_id_unaddressed` fires on a few models, on list packages: **held,** though on
+  one model of 24, not a few. The cause is a WEL list emptied by blank blocks. Only 14
+  of 1,374 mover ends are on list packages at all.
+- "Mostly exporter bugs at first" was wrong again. No exporter bug showed up, and the
+  only false alarm, `r_lak_belev`, was a bad rule.
+- `MAW` and `UZF` sizes in `v_capacity` held: `r_mvr_id_range` is clean on all 687 rows,
+  whose ends include 626 on UZF and 20 on MAW. Broken ids on real models were only tried
+  on SFR and LAK.
+
 So far, from stage 1:
 
 - `entry_cell_active` **was wrong.** It never fires, and MF6 rejects these entries
@@ -240,10 +254,15 @@ connections, vertices and plan rows, which DISV shares.
 **Stage 2: MVR and the advanced packages, on the 24 MVR models and then all SFR and
 LAK models.** This answers the mover question with real data.
 
-- [ ] SFR, LAK, MAW and UZF, with `_ts` columns and the union arms
-- [ ] MVR, for models and exchanges
-- [ ] Count how often `w_mvr_id_unaddressed` fires, and why
-- [ ] `r_sfr_*` and `r_lak_*` sorted
+- [x] SFR, LAK, MAW and UZF, with `_ts` columns and the union arms
+- [x] MVR, for models and exchanges
+- [x] Count how often `w_mvr_id_unaddressed` fires, and why. One model of 24, 160 ends:
+  wells named by a mover in periods after an empty WEL block
+- [x] `r_sfr_*` and `r_lak_*` sorted. No rejection of a valid model is left. On the way,
+  `r_lak_belev` and `r_sfr_ustrf` were stricter than MF6 and got fixed, `r_uzf_vert_area`
+  went, and `r_lak_telev`, `r_sfr_div_ustrf` and `r_uzf_cell_area` were added
+- [x] Rule by rule comparison with `key_errors`, on 54 broken or baseline copies, which
+  MF6 and the rules agree on. It reports 6 of them, and a rule fires on all 6
 
 **Stage 3: GNC, exchanges, OBS, SSM and SPC.**
 
