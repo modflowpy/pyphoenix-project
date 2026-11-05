@@ -80,6 +80,7 @@ terms the others use.
 | [dfn-spec/dfn-gaps.md](dfn-spec/dfn-gaps.md) | rules MF6 enforces that the DFNs don't state, and memory catalog gaps; for MF6 and devtools developers |
 | [dfn-spec/layout-logical-decisions.md](dfn-spec/layout-logical-decisions.md) | the layout/logical rule applied to MMP issues #226, #229, #259, #345, #523 |
 | [dfn-spec/schema-polymorphism.md](dfn-spec/schema-polymorphism.md) | schema polymorphism (#287) vs. component key roles (devtools #405) |
+| [dfn-spec/ddl-export.md](dfn-spec/ddl-export.md) | working plan, not started: run the DDL slice's rules on real models loaded with flopy4 |
 
 ## Archive
 

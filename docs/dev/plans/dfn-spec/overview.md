@@ -15,6 +15,7 @@ applies the rule to specific flopy4 issues.
 | [dfn-gaps.md](dfn-gaps.md) | what those two studies found missing from the DFNs and the memory catalog, for MF6 and devtools developers |
 | [layout-logical-decisions.md](layout-logical-decisions.md) | the rule applied to open MMP issues (#226, #229, #259, #345, #523) |
 | [schema-polymorphism.md](schema-polymorphism.md) | how #287's variants relate to devtools' component key roles |
+| [ddl-export.md](ddl-export.md) | working plan, not started: run the DDL slice's rules on real models |
 | `data/` | scripts and CSVs behind the two studies |
 
 [d287]: https://github.com/modflowpy/pyphoenix-project/discussions/287
@@ -514,8 +515,56 @@ From the earlier steps, also:
   row order, SFR acyclicity, point-in-cell geometry. Keep them as named
   checks.
 
+**How it's run.** SQLite 3 with `STRICT` tables and foreign keys on. A rule
+is a declared constraint where one fits. Otherwise it's a view returning the
+rows that break it. No rule counts as expressed until a test shows it
+rejecting bad data and accepting good data. Anything specific to SQLite gets
+flagged, so a result isn't only true of one dialect.
+
+**Failure criteria, fixed before writing the DDL:**
+
+| Test | Fails if |
+|---|---|
+| H1 | Two or more distinct constructs need a column whose type depends on another value and isn't an enum or the grid. Exactly one means it holds with a named exception. Constructs are counted, not fields. |
+| H2a | Any SFR or LAK period arm doesn't set columns of the parent table or of one child table keyed by the arm's own key. One counterexample is enough. |
+| H2b | A period regime's effective state can't be written as one view over its stored rows. |
+| H3 | A rule other than `flow_model` needs anything beyond a column on the binding row, or a join through its binding chain. |
+| H4 | Telling SPC targets from SPCA targets needs a discriminator other than the key kind, such as a variant declaration. |
+| H5 | `AUXMULTNAME` can't be written as a generated column in a schema that fits every aux configuration. A view or a per-configuration schema counts as a failure of the stated form, with the alternative recorded. |
+| Rule length | Fewer than 80% of rules take 10 or fewer lines, or a rule outside the named misfits takes more than 30. Comments and blank lines don't count. |
+| SQL as the spec language | Fewer than half the slice's rules are declared constraints, not views. Then SQL stays useful as a checking notation, but isn't a candidate for the spec. |
+
+**Predictions, written before looking:**
+
+- H1 holds with one exception: time series names, where a value is
+  `number | TS name`. Polymorphic references (MVR `id1`, SPC `bndno`) won't
+  be another, since they're a pair of target and key, but they can't be
+  plain foreign keys. They'll need one shared address table or a view.
+- H2a holds for SFR and LAK.
+- H2b holds. List snapshots and advanced deltas each take one view, the
+  deltas with a window function or a correlated subquery.
+- H3 holds. `exchange_models` is the most likely to be awkward, since the
+  parameter has to be supplied by either a model or an exchange.
+- H4 holds, as long as a key kind is stored per role and per package.
+- H5 fails as stated. Aux names are values, so a generic schema has to store
+  them in a child table, and a generated column can't read another table. It
+  takes a view, or a schema generated per configuration.
+- Rule length passes. SQL as the spec language is close, since the audit
+  labels about 40% of its logical rules as assertions or as `CHECK(count…)`,
+  and none of those can be declared in SQLite.
+
+**First pass,** in `research/ddl-slice/` on devtools' `ddl-slice` branch (not
+yet merged anywhere; its README has the details and what's left). H2a and H4
+hold, and H2b holds for the three regimes in the slice. H5 fails as predicted.
+H1 and H3 fail as worded, which wasn't predicted: H1 has four encoded sum types,
+all expressible as exclusive columns, and `ssm_package`'s exemption for advanced
+transport packages isn't on the binding chain. Rule length passes. SQL passes its
+threshold at 65% declared, or 56% of the audited rules. It hasn't been run on a
+real simulation.
+
 A flopy4 counterpart: export a simulation to SQLite or DuckDB, and write
 the key checks as SQL queries to compare with `keys.py`.
+[ddl-export.md](ddl-export.md) is the plan for this.
 
 ### Step 4: parameter syntax sketch
 
