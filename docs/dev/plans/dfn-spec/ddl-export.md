@@ -226,11 +226,16 @@ The most data for the least mapping, and it tests the active-cell assumption fir
 - [x] `mf6/large`, with timings. 17 checked, 2 deferred, no rule fired over 7.75
   million entries, and every model's views take under a second
 
-**DISU, brought forward from "deferred", before stage 2.** 19 models. `layer` and
-`cell2d` are null on DISU, together. The other decisions are still being discussed.
+**DISU, brought forward from "deferred", before stage 2.** 19 models. Decided: `layer`
+and `cell2d` are null together; `v_ncpl` has no row for DISU; RCHA or SPCA on DISU
+is a rule of its own (`r_array_input_disu`); `v_rch_rate` is unchanged; `idomain`
+above 1 is a rule, as MF6 has it, not as the DFN says; and the export is full, with
+connections, vertices and plan rows, which DISV shares.
 
-- [ ] Settle the decisions, then export DISU and rerun those models. The two DISU
-  `test1002_biscqtg` models have about 17.9 million list rows, so they test scale
+- [x] Export DISU and rerun. No rule fired on the 19 models, or on the rest of the
+  corpus, and MF6 agrees with the rules on 18 changed copies of a small model. The two
+  `test1002_biscqtg` models with 17.9 million list rows take 300 s and 7 GB. The DFN's
+  `IDOMAIN` text is wrong, and `JA`'s order within a cell can't be expressed
 
 **Stage 2: MVR and the advanced packages, on the 24 MVR models and then all SFR and
 LAK models.** This answers the mover question with real data.
