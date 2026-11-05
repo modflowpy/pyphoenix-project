@@ -81,18 +81,19 @@ sparse forms.
 - **No coordinates**, and arrays sit on flat DFN dims.
 - **Tdis appears twice** in `sim.to_xarray()`: as root vars, and as `/tdis`.
 
-### Already fixed (branch `to-xarray-constants`)
+### Already fixed ([#538](https://github.com/modflowpy/pyphoenix-project/pull/538))
 
 `Package.to_dataarray` (and so the view) raised on structured DIS
 (reshaping `delr`/`delc` onto the grid) and on any scalar griddata field
 given before the package knew its grid (NPF's default `icelltype`,
 `Ic(strt=10.0)` attached later). The fix fills constants to the field's
-shape (a 0-d array if the shape is unknown). Arrays not on the cells get
-one dim per shape name, via `_AXIS_DIMS` (`ncol` → `col`, `nrow` → `row`).
-Tests: `test_to_xarray_constants_attached_later` and
-`test_dis_to_xarray_axis_arrays` in `test/mf6/test_mf6_component.py`.
-On local branch `to-xarray-constants` (`07679ca0`, off develop
-`000f63c3`), to go in as its own PR before phase 1.
+shape and dtype (a 0-d array if the shape is unknown). Arrays not on the
+cells get one dim per shape name, via `_AXIS_DIMS` (`ncol` → `col`,
+`nrow` → `row`). Tests are in `test/mf6/test_mf6_component.py`. To merge
+before phase 1.
+
+It doesn't fix `to_xarray` on a multi-layer DIS or DISV, which the old
+error was hiding: see "Multi-layer grids" in phase 1.
 
 ## Phases
 
@@ -123,6 +124,19 @@ them directly.
   it. Keep DFN dims when the grid doesn't resolve. Record the grid sizes
   (`nlay`, `nrow`, `ncol`, ...) and `nper` in attrs so the accessor and
   the decoder have them.
+- **Multi-layer grids**: `to_xarray` on a DIS or DISV with more than one
+  layer raises `AlignmentError`. `top` keeps a size-1 `layer` dim
+  ([representation](representation.md)) and `botm` has the full one, and
+  with no index on `layer` they can't share a dataset. `to_dataarray`
+  works for each field. Proposal: in a dataset, one layer's worth of
+  values goes on the grid's other dims with no `layer`, so DIS `top` is
+  `(row, col)`, as `StructuredGrid`'s already is. `to_dataarray` can keep
+  the size-1 dim, or change too so the two agree. Decide that here and
+  update the representation doc. Test on `nlay=2` DIS and DISV, in
+  `to_xarray` and in `attrs_to_dataset`, since the coordinates work above
+  would hit the same conflict. Until then `Component.to_xarray` silently
+  leaves these packages out, as `_collect_child_griddata_datasets`
+  swallows the error.
 - **Options and constants as given** ([`layout-logical-decisions.md`](../dfn-spec/layout-logical-decisions.md),
   "Track C"). Logical options are data or attrs on the node, layout
   options an encoding record (`encoding` or prefixed attrs),
