@@ -14,6 +14,7 @@ testing) sit one level up. For what's scheduled, and in what order, see
 |---|---|
 | [integration/replacing-flopy-mf6.md](integration/replacing-flopy-mf6.md) | replacing flopy's mf6 engine with flopy4: 3.x prep, the 4.x layout, the compat layer, test tiers, release order |
 | [integration/aliases-and-codemod.md](integration/aliases-and-codemod.md) | runtime aliases for flopy3 idioms in flopy4, then a `flopy4 migrate` codemod |
+| [integration/period-list-values.md](integration/period-list-values.md) | not started: flopy3's `get_data`, `set_data`, `.array` and `.data` on `PeriodRows`, if unchanged 3.x scripts become a goal |
 | [integration/modflowapi.md](integration/modflowapi.md) | speculative, not for 4.x: folding modflowapi into flopy4 as an XMI plugin, with modflowapi's API |
 
 ## xarray
