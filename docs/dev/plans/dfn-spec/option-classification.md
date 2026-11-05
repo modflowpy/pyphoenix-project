@@ -45,7 +45,7 @@ One primary label per distinct option name, decided by one question,
 | Label | Meaning | Examples |
 |---|---|---|
 | layout | an encoding choice: re-encode the data to match, toggle the option, and the logical content is unchanged | `READASARRAYS`, `STORAGECOEFFICIENT`, `K22OVERK` |
-| logical | describes the model: settings (including numerics), column and identity declarations, references to other components, descriptive metadata | `MOVER`, `FIXED_CELL`, `XT3D`, `AUXILIARY`, `BOUNDNAMES`, `XORIGIN`, `CRS` |
+| logical | describes the model: settings (including numerics), column declarations, what other components can refer to, references to other components, descriptive metadata | `MOVER`, `FIXED_CELL`, `XT3D`, `AUXILIARY`, `BOUNDNAMES`, `XORIGIN`, `CRS` |
 | output | a run directive that doesn't change what's computed: print and save, validation, logging, non-convergence policy, parallel partitioning | `PRINT_INPUT`, `SAVE_FLOWS`, `NOCHECK`, `MAXERRORS`, `CONTINUE`, `HPC6` |
 | mixed | partly layout, partly something else | CSUB `HEAD_BASED` |
 
@@ -80,7 +80,8 @@ Applied in order, stopping at the first that fits:
    Is the logical content the same? If yes, **layout**.
 2. Does it only change files, listing output or checking? **output**.
 3. Otherwise **logical**. Add `binding` if it names or attaches another
-   component, and `schema` if it adds columns or gives entities identity.
+   component, and `schema` if it adds columns or something other components
+   can refer to.
 4. If step 1 is partly yes (some of the effect is re-encoding, some isn't),
    **mixed**, with a note saying which part is which.
 

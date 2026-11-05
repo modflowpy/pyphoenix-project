@@ -122,11 +122,10 @@ Then:
    key. Keep the row key idea, but say the key includes the period.
 3. Add to the DDL slice: a list entry's key is `(package, period, position)`,
    and boundname is a non-unique indexed column.
-4. Check `flopy4/mf6/keys.py`: does a bound reference get checked against the
-   right period's rows? (Part 9.)
-5. Consider a warning in flopy4 when an edit shifts positions in a period that
-   MVR or SPC refer to. This is a code question, so it goes in the backlog
-   rather than here.
+4. Check `flopy4/mf6/keys.py` against the right period's rows. It doesn't, so
+   this is in the [backlog](backlog.md#bound-references-and-periods), as a warning.
+5. Warn in flopy4 when an edit shifts positions in a period that MVR or SPC refer
+   to. Also in the backlog, with the question of whether it's worth a proxy.
 
 ### F2. The list/array split is three-way, not two-way
 
@@ -842,7 +841,8 @@ still to do.
 ### S5. Broken or stale references
 
 **Status (2026-11-04):** all applied, so these line numbers predate the edits. The
-CI link check at the end is still only a suggestion. `context-refs-plan.md` is in no
+CI link check at the end is in the
+[backlog](backlog.md#link-check-for-docsdev). `context-refs-plan.md` is in no
 branch of the local devtools clone, so `schema-polymorphism.md` now cites the PR
 alone.
 
@@ -865,8 +865,7 @@ alone.
 - `dfn-spec/overview.md`'s table of docs omits `schema-polymorphism.md`.
 
 A small link check found the dead anchors and missing files. It doesn't catch
-references to quoted section names or "step N". Adding a link check to CI for
-`docs/dev/` would keep the former from coming back.
+references to quoted section names or "step N".
 
 ### S6. Duplication and consistency
 
@@ -941,10 +940,17 @@ S4's status note.
 - Steps 4 and 8 feed Track A and export phase 1, so they're useful even if the rest
   stops there.
 
-**Code that follows, not part of this work:** `keys.py` period-aware references
-(F1), row-order warning (F1), a `persistence` metadata key (F4), `dense()` matching
-the regimes (F4), `step_array` on ATS (C9), removing the broadcast (C3), export
-return types (C8). Each goes to the plan it belongs to.
+**Code that follows, not part of this work:**
+
+| Code | Finding | Where it's planned |
+|---|---|---|
+| `keys.py` period-aware references, as a warning | F1 | [`backlog.md`](backlog.md#bound-references-and-periods) |
+| row-order warning | F1 | [`backlog.md`](backlog.md#bound-references-and-periods) |
+| `persistence` metadata key | F4 | [`dfn-gaps.md`](../dfn-spec/dfn-gaps.md), waiting on the MF6 team |
+| `dense()` following the regimes | F4 | [`export.md`](../xarray/export.md) phase 2, [`representation.md`](../xarray/representation.md#how-periods-persist) |
+| removing the broadcast | C3 | [`layout-logical-decisions.md`](../dfn-spec/layout-logical-decisions.md#226-packages-without-grid-or-time) #226, in Track B |
+| `step_array` on ATS | C9 | step 8 |
+| export return types | C8 | step 8 |
 
 ## 8. Decisions for you
 
@@ -969,6 +975,11 @@ return types (C8). Each goes to the plan it belongs to.
   `check_flow_package` compares `MAXBOUND` to the flow package's `NBOUND`, and for
   MAW `maxbound = sum(ngwfnodes)`. Whether advanced packages can be SPC targets at
   all needs checking against `tsp-ssm.f90`.
+- **SPC period persistence.** F4's table doesn't cover SPC. In list mode,
+  `TspSpc.f90` aliases `dblvec` to a permanent array indexed by `BNDNO`, which
+  suggests a value may hold until set again, unlike a list block's replace. From
+  reading one comment, not confirmed by a run, and it would affect the period-aware
+  check on SPC rows.
 - **What OBS means on a layer array.** RCHA and EVTA have `obs_filerecord`, and no
   boundnames. From reading `bnd_rp_obs`, an `id` is a cell, matched against the
   package's `nodelist`, so it would have to be in the `IRCH` layer to match.

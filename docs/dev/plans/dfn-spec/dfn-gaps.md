@@ -53,10 +53,11 @@ These need no new DFN syntax.
   [overview.md](overview.md#h4-spcspca-pairing-is-a-key-kind-match).
 - **Period persistence.** `fill_forward` is a boolean, so which
   [regime](../xarray/representation.md#how-periods-persist) applies is held
-  in per-package code. A `persistence` key could replace it, with the values
-  `replace`, `per-array` and `per-setting`, and a separate flag for the
-  grid/layer difference on empty blocks. Moving array stress data to `replace`
-  in MF6 (proposed, not decided) would shrink this. The DFNs also disagree with
+  in per-package code. A `persistence` key should replace it. Its values wait
+  on whether MF6 moves array stress data to `replace` (proposed, not decided,
+  and being raised with the MF6 team). As MF6 is today, they'd be `replace`,
+  `per-array` and `per-setting`, with a separate flag for the grid/layer
+  difference on empty blocks. The DFNs also disagree with
   the loader today: they require grid stress arrays in each block, and the
   loader retains them.
 

@@ -163,7 +163,9 @@ whether and when to expand it.
     latter today, so the same call gives different objects depending on
     construction order, and it has to go. Its other jobs need a home: it
     also reshapes arrays given in another shape, and fills an empty
-    griddata dict from the default.
+    griddata dict from the default. Removing only its scalar case failed 40
+    of 2123 smoke tests at develop `8d25e4b7`. Those causes weren't examined,
+    so some may be code relying on it, not just tests pinning it.
   - When the package is bound to a model with a grid, give it a view with
     the grid's shape: the same expansion `dense()` does, named
     consistently with it (Track C).

@@ -32,11 +32,29 @@ doesn't treat it that way yet:
   the dimension, or the longest list in any period. An MVR or SPC row that
   names a position with no entry in its own period passes. It should check
   against the referring row's period, once the period's rows can be found.
+  It should warn, not raise, as `_check_periods` does for harmless input. From
+  reading MF6, not a run, a number is only checked against `maxbound`
+  (`Mover.f90`, `prepare`; `check_flow_package` in `TspSpc.f90`), so such a row
+  does nothing. A row's own period is the simple check. It misses an MVR row
+  carried into a later period where the target has fewer entries, and no check
+  can tell that a position now names a different entry.
 - **Editing:** warn when an edit shifts positions that MVR or SPC rows refer to
   in that period: inserting, deleting or reordering rows, or changing a grid
-  package's active cells.
+  package's active cells. `PeriodRows` sees a whole period being assigned, but
+  not an in-place edit of its rows, and grid arrays can be edited in place too.
+  So decide first whether this is worth a proxy, or should be a documented
+  hazard.
 
-Small to medium.
+Small to medium, without a proxy.
+
+## Link check for `docs/dev`
+
+From the [plan audit](plan-audit.md#s5-broken-or-stale-references). A check of
+relative links and anchors would stop dead ones coming back. It doesn't catch
+references to quoted section names or "step N". It needs a home: CI runs only
+for `main` and `develop`, ignores `**.md` changes, and `develop` has no
+`docs/dev/plans`, so a job there would miss most of the docs. A job on
+`dev-plans` or a pre-commit hook would cover them. Small; decide where first.
 
 ## Dimensions after an in-place append
 

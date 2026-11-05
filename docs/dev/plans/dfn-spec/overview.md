@@ -120,8 +120,8 @@ Every option in the DFNs has been labelled
 - **layout**: an encoding choice. Toggle the option, re-encode the data to
   match, and the model is unchanged (the **re-encoding test**).
   `READASARRAYS`, `STORAGECOEFFICIENT`.
-- **logical**: describes the model. Settings, column and identity
-  declarations, references, descriptive metadata. `MOVER`, `XT3D`,
+- **logical**: describes the model. Settings, column declarations, what
+  other components can refer to, references, descriptive metadata. `MOVER`, `XT3D`,
   `BOUNDNAMES`, `XORIGIN`.
 - **output**: a run directive. Changes only what's printed, saved or
   checked. `PRINT_INPUT`, `SAVE_FLOWS`, `MAXERRORS`.
@@ -133,7 +133,7 @@ Two optional tags:
 - **`binding`**: the option attaches or names another component
   (`OBS6 FILEIN`, `TS6 FILEIN`, `FLOW_PACKAGE_NAME`).
 - **`schema`**: the option decides which logical columns or tables exist,
-  or whether entities have identity. `AUXILIARY` adds columns,
+  or what other components can refer to. `AUXILIARY` adds columns,
   `BOUNDNAMES` adds a name column other components can refer to,
   `SORPTION` decides which arrays exist.
 

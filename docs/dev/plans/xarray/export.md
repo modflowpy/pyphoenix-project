@@ -151,7 +151,8 @@ them directly.
   makes sense). It:
   - densifies list tables onto the grid with the `duplicates` policy
     (`period_lists`' existing logic),
-  - fills period arrays forward over `nper`,
+  - fills period arrays forward over `nper`, by their
+    [regime](representation.md#how-periods-persist),
   - is a no-op on arrays already on the grid.
 
   With `sparse=True` it returns the list table as is (the current

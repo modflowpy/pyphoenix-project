@@ -36,7 +36,9 @@ class Chd(Package):
 | Repeating block, flag | STO period | `Optional[dict[int, str]]` | `str` |
 
 Repeating blocks are keyed by the 0-based period. A period not given
-inherits the last one given (fill-forward).
+inherits the last one given (fill-forward). What a new block does to the
+last one depends on the package: see
+[how periods persist](../xarray/representation.md#how-periods-persist).
 
 **Storage.** Since #479, a tabular list's rows can be held as columns in an
 `ItemTable` (`item_table.py`), a numpy array per field like flopy3's
