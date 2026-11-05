@@ -5228,6 +5228,47 @@ def test_computed_dimension_does_not_warn():
         structure_component(raw, Chd)
 
 
+@pytest.mark.parametrize("row", ["MAXBOUND two", "MAXBOUND"])
+def test_computed_dimension_bad_value(row):
+    """MF6 stops on a bad MAXBOUND, so a value that's never used still has
+    to be one it would read."""
+    from flopy4.mf6.converter.ingress.structure import structure_component
+
+    raw = loads(f"BEGIN DIMENSIONS\n  {row}\nEND DIMENSIONS\n")
+    with pytest.raises(ValueError, match=f"Chd: DIMENSIONS entry {row.upper()} needs an integer"):
+        structure_component(raw, Chd)
+
+
+@pytest.mark.parametrize(
+    "text, match",
+    [
+        (
+            "BEGIN OPTIONS\n  SAVE_FLOWS\nBEGIN DIMENSIONS\n  MAXBOUND 2\nEND DIMENSIONS\n",
+            "OPTIONS block, opened on line 1, has no END: found BEGIN DIMENSIONS",
+        ),
+        (
+            "\nBEGIN PERIOD 1\n  1 1 1 5.0\nBEGIN PERIOD 2\n  1 1 1 6.0\nEND PERIOD 2\n",
+            "PERIOD 1 block, opened on line 2, has no END: found BEGIN PERIOD 2",
+        ),
+        (
+            "BEGIN OPTIONS\n  SAVE_FLOWS\nEND DIMENSIONS\n",
+            "OPTIONS block, opened on line 1, has no END: found END DIMENSIONS",
+        ),
+    ],
+)
+def test_block_without_end(text, match):
+    """A block missing its END doesn't swallow the next one, as MF6 won't."""
+    with pytest.raises(ValueError, match=match):
+        loads(text)
+
+
+def test_block_end_without_index():
+    """END needn't repeat a block's index, or its case."""
+    assert loads("BEGIN period 1\n  1 2\nEND PERIOD\n") == loads(
+        "BEGIN period 1\n  1 2\nEND period 1\n"
+    )
+
+
 def test_options_open_close(tmp_path):
     """An options block can be OPEN/CLOSE-redirected to a file."""
     from flopy4.mf6.converter.ingress.structure import structure_component

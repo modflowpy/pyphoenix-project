@@ -46,13 +46,27 @@ class BasicTransformer(Transformer):
         return blocks
 
     def block(self, items: list[Any]) -> dict[str, Any]:
-        # BEGIN name line... END name
+        # BEGIN name line... END name. The grammar takes a BEGIN inside a
+        # block as a row and any name after END, so a block missing its END
+        # would swallow the next one; like MF6, stop on both.
+        begin, name, end_name = items[0], items[1], items[-1]
+
+        def no_end(found: str) -> ValueError:
+            return ValueError(
+                f"{name.upper()} block, opened on line {begin.line}, has no END: "
+                f"found {found.upper()}"
+            )
+
         body: list[Any] = []
         for item in items[2:-2]:
             if isinstance(item, _RecordRows):
                 body.extend(item)
             else:
+                if isinstance(item, list) and item and item[0].upper() == "BEGIN":
+                    raise no_end(" ".join(item))
                 body.append(item)
+        if end_name.split()[0].lower() != name.split()[0].lower():
+            raise no_end(f"END {end_name}")
         if len(body) == 1 and isinstance(body[0], NumberRows):
             return {items[1]: body[0]}
         if any(isinstance(item, NumberRows) for item in body):

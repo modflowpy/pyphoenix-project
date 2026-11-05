@@ -988,7 +988,10 @@ class _Load(ComponentLoad):
                 continue
             f, aux_name = found
             if (a := self.attribute(name, f)) is None:
-                self.unknown(name, head)
+                if isinstance(getattr(self.cls, f.name, None), property):
+                    self.check_computed(name, head)
+                else:
+                    self.unknown(name, head)
             elif _is_grid_array(a):
                 self.array(a, aux_name, [head, *records], header, values)
             elif item_list_type(a.type) is not None:
@@ -1043,15 +1046,25 @@ class _Load(ComponentLoad):
     def unknown(self, name: str, row: list) -> None:
         """Warn of a row no field of the block `name` takes. MF6 rejects a
         keyword it doesn't know, so this is likely one flopy4 doesn't
-        support yet. A computed one (a list package's MAXBOUND) is
-        derived, not read."""
-        key = str(row[0])
-        if not isinstance(getattr(self.cls, key.lower(), None), property):
-            warnings.warn(
-                f"{self.cls.__name__}: no field takes {name.upper()} entry {key.upper()}, skipped",
-                UserWarning,
-                stacklevel=4,
-            )
+        support yet."""
+        key = str(row[0]).upper()
+        warnings.warn(
+            f"{self.cls.__name__}: no field takes {name.upper()} entry {key}, skipped",
+            UserWarning,
+            stacklevel=4,
+        )
+
+    def check_computed(self, name: str, row: list) -> None:
+        """Check the row of a computed field (a list package's MAXBOUND,
+        the only kind there is). Its value is derived, not read, but MF6
+        stops on a bad one, so don't load what it wouldn't run."""
+        try:
+            from_text(row[1], int)
+        except (IndexError, ValueError):
+            entry = " ".join(str(t) for t in row).upper()
+            raise ValueError(
+                f"{self.cls.__name__}: {name.upper()} entry {entry} needs an integer"
+            ) from None
 
     def array(self, f: Any, aux_name: "str | None", rows: list, header: Any, values: dict) -> None:
         """Read the grid array `f`, from its name row and control records
