@@ -53,6 +53,8 @@ Everything stays in flopy4 for now.
 - [`layout-logical-decisions.md`](../dfn-spec/layout-logical-decisions.md):
   how options appear in the export (logical as data, layout as encoding).
 - Period lists (#476): the spec's "Period data" records the result.
+- [`out-of-core.md`](out-of-core.md): larger-than-memory models (FUNC-8). Lazy
+  `dense()` belongs to job C and chunk-aware encoders to job D.
 - [`sdd.md`](../../sdd.md) "Xarray conversion" and "NetCDF": to update
   (step 7).
 - [xattree #36][x36] and #367 (attrs vs. pydantic): see "xattree".

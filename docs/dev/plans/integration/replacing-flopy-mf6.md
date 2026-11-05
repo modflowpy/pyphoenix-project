@@ -489,7 +489,9 @@ move isn't a risk.
 
 - **I1.** Legacy engine in 4.x: whether, its namespace, and how long it
   stays. Probably `flopy.mf6.legacy`, until 5.0.
-- **I2.** Compat data access: (a) raise with a hint, or (b) views.
+- **I2.** Compat data access: (a) raise with a hint, or (b) views. (b) would
+  also give flopy3's deferred, uncached `.array`
+  ([`out-of-core.md`](../xarray/out-of-core.md) "flopy3 compatibility").
 - **I3.** `output.head`: which side renames.
 - **I4.** Whether to accept 4.x keywords in 3.x (3.x item 5).
 - **I5.** numpy floor and Python range for 4.0. flopy `develop` is at Python

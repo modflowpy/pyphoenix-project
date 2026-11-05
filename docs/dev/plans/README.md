@@ -25,6 +25,7 @@ testing) sit one level up. For what's scheduled, and in what order, see
 | [xarray/overview.md](xarray/overview.md) | layering an MF6 xarray package inside flopy4 so it can be extracted later |
 | [xarray/representation.md](xarray/representation.md) | the spec: grid dims and coordinates, the tree, period data, how it relates to netCDF, CF, UGRID and MF6 NetCDF |
 | [xarray/export.md](xarray/export.md) | lossless `to_xarray`/`from_xarray`, `dense()`, `flatten()`, cell layouts |
+| [xarray/out-of-core.md](xarray/out-of-core.md) | larger-than-memory models (FUNC-8): streaming writes, lazy load, lazy lists, a faster text writer, the tests that prove them |
 | [xarray/datetime-periods.md](xarray/datetime-periods.md) | datetime period keys (#518), then `create_tdis` (#226) |
 | [xarray/rotated-grid-index.md](xarray/rotated-grid-index.md) | DIS coordinates, rotation, `CellIndex`, z selection, the accessor, and what's next |
 | [xarray/rch-evt-layer.md](xarray/rch-evt-layer.md) | z coordinates for RCHA/EVTA arrays |

@@ -103,7 +103,7 @@ target-version = "py311"
 include = ["pyproject.toml", "flopy4/**/*.py", "test/**/*.py", "benchmarks/**/*.py", "docs/**/*.py"]
 extend-include = ["docs/**/*.ipynb"]
 # one-off research scripts, kept as written so the results stay reproducible
-extend-exclude = ["docs/dev/plans/dfn-spec/data"]
+extend-exclude = ["docs/dev/plans/dfn-spec/data", "docs/dev/plans/xarray/data"]
 
 [tool.ruff.lint]
 select = [

@@ -432,6 +432,24 @@ places each period's rows by their key and fills forward:
   Evaluating them (MF6 averages over each step, STEPWISE or LINEAR only) is
   a view; see [`tas-interpolation.md`](tas-interpolation.md).
 
+## Laziness
+
+Planned; [`out-of-core.md`](out-of-core.md) has the design and today's gaps.
+
+Any variable in the representation may be lazy, such as a dask array or a
+deferred read of a file. Producing the representation never computes one. Each
+consumer does one of three things, and says which:
+
+| What it does | Consumers |
+|---|---|
+| **Preserves:** returns lazy data without computing | `to_xarray`, `from_xarray`, `dense()`, `flatten()`, the accessor's selections, the adapters where the target library allows it |
+| **Computes once, a chunk at a time:** one ordered pass, with peak memory set by chunk size | the text, binary and NetCDF writers, and the checks and constant detection they do along the way |
+| **Computes on request:** only when the user asks | explicit checks of values, `.compute()`, `.values` |
+
+A consumer not listed computes nothing. The same values give the same files'
+content and the same results whatever the array type or chunking, except for
+what can't be known without computing, like a lazy array that's constant.
+
 ## Attributes and fill values
 
 - **netCDF-safe attrs**, so the grouped layout is just `to_netcdf`: paths
