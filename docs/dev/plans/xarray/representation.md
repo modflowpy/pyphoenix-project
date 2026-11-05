@@ -373,6 +373,40 @@ RCHA's `recharge`, WELG's `q` and the like (built, in `attrs_xarray`):
   `<name>_tas` coordinate along `<name>_period` (`None` where a period has
   no series).
 
+`<name>_period` is to be renamed `<name>_kper`, since its labels are `kper`
+values.
+
+**Why each array has its own dim (decided 2026-11-05, open to revisiting).** The
+logical data is a step function over every period, so one `kper` dim from TDIS
+looks most correct, and it's what the [dense view](#the-dense-view) gives. But a
+full `kper` dim is the dense form, and this export aims to hold input as given.
+A period list's sparse form has a `kper` value on each row. An array has no rows,
+so its sparse form needs a dim listing the periods given.
+
+The alternatives, for `recharge` given in periods 0 and 3 and `irch` in 1, 2 and 3
+(tested on xarray 2025.12.0, except fill forward):
+
+| Alternative | What happens | Cost |
+|---|---|---|
+| shared `kper`, filled forward | every period has a value | can't tell a repeated block from no block, so `from_xarray` can't rebuild `{0: a, 3: b}` exactly; size grows with the periods; needs TDIS |
+| shared `kper`, NaN where not given | xarray merges the labels to 0-3 and fills the gaps | also needs TDIS for the full dim; `irch` goes from `int64` to `float64`; NaN already means a time-array series value, and "not given" has to stay distinct from DNODATA |
+| shared `kper`, no labels | `ValueError`: conflicting sizes | not an option |
+| shared `kper` over the periods any array gave | the merge above, on fewer periods | the same costs as NaN, and it isn't TDIS's `kper` |
+| one tree node per array, each with its own `kper` | siblings can differ | xarray rejects a child whose `kper` disagrees with a parent's, as a `kper` from TDIS on the simulation's root would |
+| `kper` only when a package's arrays share periods | works for those packages | the shape depends on the data |
+
+The size difference is what makes a shared dim expensive. At 1,000 periods and 1M
+cells per layer, a `recharge` given twice takes about 16 MB here, and about 8 GB as
+plain 8-byte arrays over the full dim. Lazy arrays might reduce that, but that's
+untested.
+
+**What would change this:** if most use turns out to be dense and models stay
+small, the export could use the full `kper` dim, filled forward, with a
+`<name>_given(kper)` mask to stay lossless. A package with no TDIS would label only
+the periods given, so its shape would change on attach, which breaks "a package
+looks the same whether exported alone or pulled out". It would also undo the
+"as given, `dense()` is a view" decision.
+
 ### Period lists
 
 CHD's, WEL's, SFR's stress period data (the sparse form is built, as

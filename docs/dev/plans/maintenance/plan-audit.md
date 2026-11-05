@@ -634,7 +634,7 @@ When choosing a term, prefer in order:
 | Plans | MF6 | Recommendation |
 |---|---|---|
 | "G/A" (only in `converter-simplification.md`, undefined) | list-based, layer array-based, grid array-based | Adopt MF6's. It also fixes F2's confusion. |
-| `bound` (33 lines) | "boundary", "boundary number", "entry"; `bound`, `nbound` in code | Keep `bound` as the role's name. In prose use feature, row (list-based) and non-DNODATA cell (grid array-based). The glossary notes that mf6io says "entry". |
+| `bound` (33 lines) | "boundary", "boundary number", "entry"; `bound`, `nbound` in code | Keep `bound` as the role's name. In prose use F1's feature, list entry and grid entry, which are mf6io's words. |
 | `ftype` for all components | `mtype`, `exgtype`, `slntype`, `ftype` (`sim-nam.dfn`, `gwf-nam.dfn`) | Keep the unified attribute, and note the mapping in the glossary and SDD. |
 | `per`, `kper`, `<name>_period`, "period key" | `iper` in the block header (1-based), `kper` in source (also 1-based; `tdis.f90`) | `kper` is the most used name in flopy3 (888 word matches to `iper`'s 213) and is 0-based there, so MF6 and flopy3 give it different bases. Use `kper` (0-based) for Python arguments and `iper` only for the file's 1-based number, and say so in the glossary. The representation's `per` dim becomes `kper`. |
 | `stress_period_data` on every package with period data, including OC and STO | PERIOD block | Rename to `period_data`, which is generic and accurate (D5). |
@@ -671,7 +671,7 @@ then applies.
 | **field** (195) | attrs/DFN field; "a field over the grid" | Only the first. Use "gridded quantity" for the second. |
 | **layered** | cell indexing; MF6's `LAYERED` | Always backtick and capitalize the keyword. |
 | **sparse** (27) | sparse table; `sparse` library; `dense(sparse=True)` | See S6. |
-| **row / entry / item / record / line** | list row; `entry` dim; `Item`; `Record`; DFN record; "control record" | **Row** everywhere, including MF6's boundary rows, replacing **entry**. Every list's dim is `<field>_row` (S6). A grid array's element isn't a row, so it's a non-DNODATA cell. |
+| **row / entry / item / record / line** | list row; `entry` dim; `Item`; `Record`; DFN record; "control record" | **Row** for tables, and **entry** for an MF6 boundary row, list or grid, as mf6io says. Every list's dim is `<field>_row` (S6), so `entry` isn't a dim. |
 
 ### T3. Theory worth adopting
 
@@ -716,7 +716,7 @@ then move through [`dev-docs.md`](dev-docs.md)'s process.
 
 Two tiers on one page. **Users:** simulation, model, package, utility, exchange,
 solution; stress period, time step; list-based, layer array, grid array;
-feature, row, boundname; `to_xarray`, `dense`. **Developers:** DFN, field,
+feature, entry, boundname; `to_xarray`, `dense`. **Developers:** DFN, field,
 binding, view, layout, representation, sync.
 
 Glossary columns: term, meaning, MF6's term, flopy3's term, theory term (optional).
@@ -899,8 +899,10 @@ references to quoted section names or "step N".
   argument; the export is already sparse.
 - In the representation, every list's dim becomes `<field>_row`, including period
   lists (`period_data_row`), which carry a `kper` coordinate. The dense view has a
-  `kper` dim. Period arrays keep `<name>_period`, one per array, since each array
-  has its own periods given.
+  `kper` dim. Period arrays get `<name>_kper`, one per array, since each array has
+  its own periods given. The
+  [tradeoffs](../xarray/representation.md#period-arrays) are recorded in case we
+  revisit this.
 - The two-file split of `xarray/overview.md` and `representation.md` holds up,
   and I wouldn't change it.
 
@@ -973,7 +975,7 @@ next: steps 5 and 6, then step 4.
 | export return types | C8 | step 8 |
 | `stress_period_data` → `period_data`, across codegen, generated classes and grammars, and tests; flopy3's name stays accepted as a `Legacy` alias | D5 | not yet planned |
 | `Context` → `WorkspaceComponent` | D6 | not yet planned |
-| `per` → `kper` and `entry` → `<field>_row` in the export | T1, S6 | not yet planned |
+| `per` → `kper`, `entry` → `<field>_row` and `<name>_period` → `<name>_kper` in the export | T1, S6 | not yet planned |
 
 ## 8. Decisions for you
 
