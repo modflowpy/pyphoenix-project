@@ -1,6 +1,7 @@
 # Running the DDL slice on real models
 
-Working plan, written 2026-11-05. Not started. It carries out "a flopy4
+Working plan, written 2026-11-05. Stage 1 is underway; results are in the slice
+README. It carries out "a flopy4
 counterpart" under [step 3 of the overview](overview.md#step-3-the-ddl-slice).
 
 The DDL slice has only ever run on a hand-built fixture. This loads real models
@@ -193,6 +194,15 @@ and it checks rules at write time.
 
 Record how each of these turned out.
 
+So far, from stage 1 on `mf6/test`:
+
+- `entry_cell_active` **was wrong.** It never fires, and MF6 rejects these entries
+  when run (`BoundaryPackageExt.f90:694`). It stays a declared rule, for list input
+  only, since array input drops inactive cells silently.
+- "Most rules never fire" holds so far, but 31 of 40 views had no data yet.
+- "Mostly exporter bugs at first" was wrong: there were no rule hits to sort.
+- `r_gwfgwt_grid` holds on 5 exchanges. The other exchange rules await stage 3.
+
 ## Stages
 
 Each answers something on its own, so it's fine to stop after any of them.
@@ -200,10 +210,12 @@ Each answers something on its own, so it's fine to stop after any of them.
 **Stage 1: binding lists, grid and list-based stress packages, on the whole corpus.**
 The most data for the least mapping, and it tests the active-cell assumption first.
 
-- [ ] Widen `bnd`, generate the catalog, make `cell` handle DISV and DISU
-- [ ] Read `MAXBOUND` from the file
-- [ ] Exporter and harness
-- [ ] Run on `mf6/test`, sort the results, and check in with the user
+- [x] Widen `bnd`, generate the catalog, make `cell` handle DISV. DISU is deferred:
+  those models are recorded as `deferred`, and their rule meanings are undecided
+- [x] Read `MAXBOUND` from the file
+- [x] Exporter and harness
+- [x] Run on `mf6/test` and sort the results. No rule fired; 9 of 40 views had data
+- [ ] Check in with the user
 - [ ] `key_errors` comparison so far
 - [ ] `mf6/large`, with timings
 
