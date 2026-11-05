@@ -1,3 +1,4 @@
+import ast
 import os
 import re
 import shutil
@@ -325,6 +326,10 @@ def test_missing_mixin_field_warns(dfn_path, outdir, monkeypatch):
     assert any("Dis.crs" in gap for gap in find_problems(outdir).gaps)
 
 
+def _code(files: dict[str, str]) -> dict[str, str]:
+    return {name: ast.dump(ast.parse(text)) for name, text in files.items()}
+
+
 def _grammars(outdir: Path) -> dict[str, str]:
     return {p.name: p.read_text() for p in (outdir / _sync._GRAMMARS).glob("*.lark")}
 
@@ -438,11 +443,14 @@ def test_installed_dfns_match_classes(tmp_path):
         shutil.copytree(installed, tmp_path / "mf6", ignore=shutil.ignore_patterns("__pycache__"))
     )
     toml = Path(shutil.copytree(installed / "dfns", tmp_path / "toml"))
-    before = _snapshot(outdir) | _grammars(outdir)
+    before = _snapshot(outdir)
+    grammars = _grammars(outdir)
     sync(toml, mf6_version="6.9.0", outdir=outdir)
-    after = _snapshot(outdir) | _grammars(outdir)
+    after = _snapshot(outdir)
     del after["_contract.py"], before["_contract.py"]
-    assert after == before
+    # by their code: sync formats its output only where ruff is installed
+    assert _code(after) == _code(before)
+    assert _grammars(outdir) == grammars
 
 
 def test_resync_from_toml(dfn_path, outdir, tmp_path):
