@@ -194,14 +194,18 @@ and it checks rules at write time.
 
 Record how each of these turned out.
 
-So far, from stage 1 on `mf6/test`:
+So far, from stage 1:
 
 - `entry_cell_active` **was wrong.** It never fires, and MF6 rejects these entries
   when run (`BoundaryPackageExt.f90:694`). It stays a declared rule, for list input
   only, since array input drops inactive cells silently.
 - "Most rules never fire" holds so far, but 31 of 40 views had no data yet.
 - "Mostly exporter bugs at first" was wrong: there were no rule hits to sort.
-- `r_gwfgwt_grid` holds on 5 exchanges. The other exchange rules await stage 3.
+- `r_gwfgwt_grid` holds on 5 exchanges in `mf6/test` and 3 in `mf6/large`. The other
+  exchange rules await stage 3.
+- "`mf6/large` needs indexes" **was wrong.** The 751×751 grid took 0.08 s. Entries were
+  the cost, through a bad join order in `v_bnd_state`: 125 s on 1.28 million entries,
+  and 0.95 s once a `CROSS JOIN` fixed the order. "Under a minute" holds easily.
 
 ## Stages
 
@@ -216,10 +220,17 @@ The most data for the least mapping, and it tests the active-cell assumption fir
 - [x] Exporter and harness
 - [x] Run on `mf6/test` and sort the results. No rule fired; 9 of 40 views had data
 - [x] Check in with the user
-- [x] `key_errors` comparison so far. No errors over 3,152 components and
-  110,083 key values, but it barely overlaps with stage 1's rules, so the rule by
-  rule comparison waits for stage 2
-- [ ] `mf6/large`, with timings
+- [x] `key_errors` comparison so far. No errors over 3,438 components and
+  1,548,123 key values across both corpora, but it barely overlaps with stage 1's
+  rules, so the rule by rule comparison waits for stage 2
+- [x] `mf6/large`, with timings. 17 checked, 2 deferred, no rule fired over 7.75
+  million entries, and every model's views take under a second
+
+**DISU, brought forward from "deferred", before stage 2.** 19 models. `layer` and
+`cell2d` are null on DISU, together. The other decisions are still being discussed.
+
+- [ ] Settle the decisions, then export DISU and rerun those models. The two DISU
+  `test1002_biscqtg` models have about 17.9 million list rows, so they test scale
 
 **Stage 2: MVR and the advanced packages, on the 24 MVR models and then all SFR and
 LAK models.** This answers the mover question with real data.
