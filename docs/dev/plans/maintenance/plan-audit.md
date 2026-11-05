@@ -8,8 +8,8 @@ how they could be organized. Each finding says how I'd address it.
 [Part 8](#8-decisions-for-you) lists what needs your decision.
 
 Baseline: `dev-plans` at `3ff8980c`. Part 1 was rechecked against MF6
-`7f69b525`, and the other parts weren't rechecked. The local checkout is now at
-`0dd9ed1784`, 11 commits later. MF6 paths are
+`7f69b525`, and Part 3's T1 and T2 against `0dd9ed1784`, 11 commits later, and
+`dev-plans` at `5986dbbd`. The other parts weren't rechecked. MF6 paths are
 relative to the modflow6 repo. The constraint audit and option classification
 used MF6 `8aad7bc4a5`, so an MF6 line number there and one here may differ.
 
@@ -633,15 +633,14 @@ When choosing a term, prefer in order:
 
 | Plans | MF6 | Recommendation |
 |---|---|---|
-| "array variant", "`*A`", "G/A" (only in `converter-simplification.md` among live docs, undefined) | list-based, layer array-based, grid array-based | Adopt MF6's. It also fixes F2's confusion. |
-| basic/advanced package (SDD) | simple stress, advanced, hydrologic, utility | See F6. |
-| `bound` (54 lines) | "boundary", "boundary number", "entry"; `bound`, `nbound` in code | Keep `bound` as the role's name. In prose use F1's feature, list entry and grid entry. |
+| "G/A" (only in `converter-simplification.md`, undefined) | list-based, layer array-based, grid array-based | Adopt MF6's. It also fixes F2's confusion. |
+| `bound` (33 lines) | "boundary", "boundary number", "entry"; `bound`, `nbound` in code | Keep `bound` as the role's name. In prose use feature, row (list-based) and non-DNODATA cell (grid array-based). The glossary notes that mf6io says "entry". |
 | `ftype` for all components | `mtype`, `exgtype`, `slntype`, `ftype` (`sim-nam.dfn`, `gwf-nam.dfn`) | Keep the unified attribute, and note the mapping in the glossary and SDD. |
-| `per`, `kper`, `<name>_period`, "period key" | `iper` in the block header (1-based), `kper` in source (also 1-based; `tdis.f90`) | `kper` is the most used name in flopy3 (888 word matches to `iper`'s 213) and is 0-based there, so MF6 and flopy3 give it different bases. Use `kper` (0-based) for Python arguments and `iper` only for the file's 1-based number, and say so in the glossary. Whether the representation's `per` dim stays is still open. |
+| `per`, `kper`, `<name>_period`, "period key" | `iper` in the block header (1-based), `kper` in source (also 1-based; `tdis.f90`) | `kper` is the most used name in flopy3 (888 word matches to `iper`'s 213) and is 0-based there, so MF6 and flopy3 give it different bases. Use `kper` (0-based) for Python arguments and `iper` only for the file's 1-based number, and say so in the glossary. The representation's `per` dim becomes `kper`. |
 | `stress_period_data` on every package with period data, including OC and STO | PERIOD block | Rename to `period_data`, which is generic and accurate (D5). |
 | "MF6 NetCDF (grouped)" | MF6 doesn't read it | Call it the "grouped archive" (D3). Naming our format as MF6's implies an endorsement it doesn't have yet. |
-| "namefile" (7) and "name file" (1) | "name file" (163 vs. 7 in mf6io) | Use "name file" in prose. |
-| "fill forward", "carry forward" | "continue to apply", "retain" | Use "fill forward" as the xarray-world term, but only with a regime from F4. |
+| "namefile" (6) and "name file" (1) | "name file" (163 vs. 7 in mf6io) | Use "name file" in prose. |
+| "fill forward", "carry forward" | "continue to apply", "retain" | "Fill forward" is fine for a period with no block, where all regimes agree. For what a new block does, name its semantics from F4, replace or update, and use the DFN attribute under consideration (F4's `persistence` key) once it exists. |
 | "component" | IDM: `component` = `GWF`, `subcomponent` = `RCHA`; docs: "Stress Package Component (SPC)" | Keep flopy4's meaning. Note the difference for anyone reading IDM. |
 | `user node` | `reduced node`, `user node` in source | Already consistent. Keep, and define both. |
 | `x_world`, "world" | not used in DIS's docs; the DFN says "lower-left corner of the model grid" | Keep. Define it against flopy3's local/model coordinates. |
@@ -651,28 +650,28 @@ feature, boundname, control record, time-array series, cellid.
 
 ### T2. Overloaded terms
 
-Line counts are from the live docs. Each gets a ruling, which the rename pass
+Line counts are word matches in the live docs, without this audit or the data files, at `5986dbbd`. Each gets a ruling, which the rename pass
 then applies.
 
 | Term | Senses in the docs | Proposed ruling |
 |---|---|---|
-| **layout** (183 lines, 17 docs) | MF6 file; runtime memory; NetCDF grouped/ungrouped; cell flat/layered; row | "Layout" alone means MF6 file layout. NetCDF: **profile** (D3). Cells: **cell indexing**. Rows: **row format**. Memory: "memory arrangement". |
-| **package** (36 "the package") | MF6 package; the future Python package | Always the MF6 sense. The other is `mf6xr` (working name). Mostly `xarray/overview.md` and `export.md`. |
-| **spec** (110) | DFN spec; `representation.md`; `flopy4.spec`; `mf6 --spec`; codegen's spec | Never bare: "DFN spec", "representation spec". |
-| **view** (65) | computed form; SQL view; `flow_model` as a view; a row over `ItemTable` | A **view** is computed from held data, never stored, and states if it's read-only or two-way. Say "SQL view", and "row proxy" for `ItemTable`. |
-| **context** (30) | `Context` class; binding context; `RowContext` etc.; MF6 memory context | "Binding arguments" for H3's sense. The class becomes `WorkspaceComponent` (D6). |
-| **rule** (124) | named FK rule; "the rule" (layout/logical); codemod rule; compat rule; K-kinds | "Named rule" for DFN; "**the as-given principle**" for the rule; "rewrite rule" for codemod; "constraint" for K-kinds. |
-| **tag** (24+12) | type tag; `binding`/`schema` option tags; variant discriminator; DFN tagged; `modflow_input` tag | "Tagged" stays DFN. "Type tag" stays. **Discriminator** for variants. **Option attribute** for `binding`/`schema`. |
-| **contract** (15) | `_contract.py`; data contract; import-linter contract; "input contract" | "Sync contract"; "data contract"; "import-linter contract"; "input rules". |
-| **schema** (29) | DFN schema version; `schema` option tag; export schema; schema polymorphism; database schema | "DFN schema version"; "shape-determining option" for the tag; "representation" for export. |
-| **level** (49) | layout/logical/runtime; H1's "where the tag sits"; `arity` | "Level" for the three levels only. H1's column becomes "site". |
+| **layout** (147 lines, 19 docs) | MF6 file; runtime memory; NetCDF grouped/ungrouped; cell flat/layered; row | "Layout" alone means MF6 file layout. NetCDF: **profile** (D3). Cells: **cell indexing**. Rows: **row format**. Memory: "memory arrangement". |
+| **package** (41 "the package") | MF6 package; the future Python package | Always the MF6 sense. The other is `mf6xr` (working name). Mostly `xarray/overview.md` and `export.md`. |
+| **spec** (125) | DFN spec; `representation.md`; `flopy4.spec`; `mf6 --spec`; codegen's spec | Never bare: "DFN spec", "representation spec". |
+| **view** (48) | computed form; SQL view; `flow_model` as a view; a row over `ItemTable` | A **view** is computed from held data, never stored, and states if it's read-only or two-way. Say "SQL view", and "row proxy" for `ItemTable`. |
+| **context** (26) | `Context` class; binding context; `RowContext` etc.; MF6 memory context | "Binding arguments" for H3's sense. The class becomes `WorkspaceComponent` (D6). |
+| **rule** (86) | named FK rule; "the rule" (layout/logical); codemod rule; compat rule; K-kinds | "Named rule" for DFN; "**layout preservation**" for the rule (concrete vs. abstract syntax, with logical forms as views over base data); "rewrite rule" for codemod; "constraint" for K-kinds. |
+| **tag** (12+12 tagged) | type tag; `binding`/`schema` option tags; variant discriminator; DFN tagged; `modflow_input` tag | "Tagged" stays DFN. "Type tag" stays. **Discriminator** for variants. **Option attribute** for `binding`/`schema`. |
+| **contract** (16) | `_contract.py`; data contract; import-linter contract; "input contract" | "Sync contract"; "data contract"; "import-linter contract"; "input constraints". |
+| **schema** (41) | DFN schema version; `schema` option tag; export schema; schema polymorphism; database schema | "DFN schema version"; "`schema` option" for the tag, defined in the glossary; "representation" for export. |
+| **level** (52) | layout/logical/runtime; H1's "where the tag sits"; `arity` | "Level" for the three levels only. H1's column becomes "site". |
 | **output** (a label) | also `CONTINUE`, `NOCHECK`, `MAXERRORS`, `HPC6` | **directive** ("run directive" is the doc's own phrase). See D2. It's also not a level, though `constraint-audit.md` line 173 lists it as one. |
-| **dynamic** (22) | derivation; DFN's `dynamic` key; "dynamic scope" | Binding-time words for derivations (C4). Keep the DFN key's name. |
-| **kind** (53) | K-kinds; lens kinds; polymorphism kinds; `Dim.kind`; key kinds; `Header.kind` | "Key domain" instead of key kind. Others fine, qualified. |
-| **field** (179) | attrs/DFN field; "a field over the grid" | Only the first. Use "gridded quantity" for the second. |
+| **dynamic** (23) | derivation; DFN's `dynamic` key; "dynamic scope" | Binding-time words for derivations (C4). Keep the DFN key's name. |
+| **kind** (44) | K-kinds; lens kinds; polymorphism kinds; `Dim.kind`; key kinds; `Header.kind` | "Key domain" instead of key kind. Others fine, qualified. |
+| **field** (195) | attrs/DFN field; "a field over the grid" | Only the first. Use "gridded quantity" for the second. |
 | **layered** | cell indexing; MF6's `LAYERED` | Always backtick and capitalize the keyword. |
-| **sparse** (23) | sparse table; `sparse` library; `dense(sparse=True)` | See S6. |
-| **row / entry / item / record / line** | list row; `entry` dim; `Item`; `Record`; DFN record; "control record" | **Row** for tables, and **entry** for an MF6 boundary row. `<field>_row` and `entry` dims should agree (S6). |
+| **sparse** (27) | sparse table; `sparse` library; `dense(sparse=True)` | See S6. |
+| **row / entry / item / record / line** | list row; `entry` dim; `Item`; `Record`; DFN record; "control record" | **Row** everywhere, including MF6's boundary rows, replacing **entry**. Every list's dim is `<field>_row` (S6). A grid array's element isn't a row, so it's a non-DNODATA cell. |
 
 ### T3. Theory worth adopting
 
@@ -717,7 +716,7 @@ then move through [`dev-docs.md`](dev-docs.md)'s process.
 
 Two tiers on one page. **Users:** simulation, model, package, utility, exchange,
 solution; stress period, time step; list-based, layer array, grid array;
-feature, entry, boundname; `to_xarray`, `dense`. **Developers:** DFN, field,
+feature, row, boundname; `to_xarray`, `dense`. **Developers:** DFN, field,
 binding, view, layout, representation, sync.
 
 Glossary columns: term, meaning, MF6's term, flopy3's term, theory term (optional).
@@ -725,6 +724,12 @@ It also holds the rulings from T2, every acronym (MMP is expanded only in a
 GitHub milestone description; also IDM, GRB, HDS, CBC, XMI, BMI, TVK, TVS), and
 project shorthand (registry corpus, scoreboard, tier A-E, sync, dev3,
 materialize, compat layer, legacy engine, `flopy4` vs. FloPy 4 vs. flopy 4.x).
+
+Define a **`schema` option** as one that decides which logical columns or tables
+exist, or what other components can refer to. `AUXILIARY` adds columns, `BOUNDNAMES`
+adds a name column others can refer to, and `SORPTION` decides which arrays exist.
+It's an attribute some options carry, separate from their layout, logical or
+directive label.
 
 ### 4.2 The object levels (a section of the SDD)
 
@@ -892,8 +897,10 @@ references to quoted section names or "step N".
   Fine while the work runs, then archive it, and don't treat it as a design doc.
 - `dense(sparse=True)` returns the sparse table (`export.md` phase 2). Drop the
   argument; the export is already sparse.
-- In the representation, period arrays have `<name>_period` while lists have `per`,
-  and `entry` while other lists have `<field>_row`. Make one rule.
+- In the representation, every list's dim becomes `<field>_row`, including period
+  lists (`period_data_row`), which carry a `kper` coordinate. The dense view has a
+  `kper` dim. Period arrays keep `<name>_period`, one per array, since each array
+  has its own periods given.
 - The two-file split of `xarray/overview.md` and `representation.md` holds up,
   and I wouldn't change it.
 
@@ -966,6 +973,7 @@ next: steps 5 and 6, then step 4.
 | export return types | C8 | step 8 |
 | `stress_period_data` → `period_data`, across codegen, generated classes and grammars, and tests; flopy3's name stays accepted as a `Legacy` alias | D5 | not yet planned |
 | `Context` → `WorkspaceComponent` | D6 | not yet planned |
+| `per` → `kper` and `entry` → `<field>_row` in the export | T1, S6 | not yet planned |
 
 ## 8. Decisions for you
 
