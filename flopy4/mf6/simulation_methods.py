@@ -8,7 +8,7 @@ from modflow_devtools.misc import cd, get_ostag, is_in_ci, run_cmd
 from flopy4.dimensions import validate_dimension_resolution
 
 if TYPE_CHECKING:
-    from flopy4.mf6.context import Context
+    from flopy4.mf6.component import WorkspaceComponent
     from flopy4.mf6.simulation import Simulation
     from flopy4.mf6.solution import Solution
     from flopy4.mf6.utils.time import Time
@@ -22,7 +22,7 @@ class SimulationMethods:
 
     def __attrs_post_init__(self) -> None:
         super().__attrs_post_init__()  # type: ignore[misc]
-        sim: "Context" = self  # type: ignore[assignment]
+        sim: "WorkspaceComponent" = self  # type: ignore[assignment]
         if sim._filename != Path("mfsim.nam"):
             if sim._filename is not None:
                 warn(

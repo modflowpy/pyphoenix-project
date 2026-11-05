@@ -22,8 +22,7 @@ from flopy4.mf6._sync import SyncError, SyncResult, sync
 from flopy4.mf6._types import TimeArraySeriesRef, TimeSeriesRef
 from flopy4.mf6.codec import dump as dump_mf6
 from flopy4.mf6.codec import load as load_mf6
-from flopy4.mf6.component import Component
-from flopy4.mf6.context import Context
+from flopy4.mf6.component import Component, WorkspaceComponent
 from flopy4.mf6.converter import structure, unstructure
 from flopy4.mf6.enums import NetCDFFormat
 from flopy4.mf6.load_context import LoadContext
@@ -141,7 +140,7 @@ def _load_mf6(
     with open(path, "r") as fp:
         raw = load_mf6(fp)
     instance = structure_component(raw, cls, context=context, name=name)
-    if isinstance(instance, Context):
+    if isinstance(instance, WorkspaceComponent):
         instance.workspace = context.workspace
     # The file's path as an input file would name it, relative to the
     # simulation directory (gwf/m.nam).

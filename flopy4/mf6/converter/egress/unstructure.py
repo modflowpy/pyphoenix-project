@@ -13,9 +13,8 @@ from flopy4._imports import isinstance_of
 from flopy4.attrs_xarray import child_field_candidates
 from flopy4.mf6._types import TimeArraySeriesRef
 from flopy4.mf6.block import block_list_type
-from flopy4.mf6.component import Component
+from flopy4.mf6.component import Component, WorkspaceComponent
 from flopy4.mf6.constants import FILL_DNODATA
-from flopy4.mf6.context import Context
 from flopy4.mf6.converter.binding import write_row
 from flopy4.mf6.dims_provider_methods import DimsProviderMethods
 from flopy4.mf6.item import (
@@ -66,7 +65,7 @@ def _put_child_file_records(block: dict, field: attrs.Attribute, value: Any) -> 
 
 
 def _make_binding_blocks(value: Component) -> dict[str, dict[str, list[tuple[str, ...]]]]:
-    if not isinstance(value, Context):
+    if not isinstance(value, WorkspaceComponent):
         return {}
 
     blocks = {}  # type: ignore
@@ -506,7 +505,7 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
             # Skip child components already processed as bindings
             field = fields_by_name.get(field_name)
             if (
-                isinstance(value, Context)
+                isinstance(value, WorkspaceComponent)
                 and field is not None
                 and field.metadata.get("child")
                 and child_field_candidates(field) is not None
