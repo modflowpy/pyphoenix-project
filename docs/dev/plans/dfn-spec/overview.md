@@ -397,8 +397,11 @@ file can state its binding context, and MF6 rejects it whenever it
 disagrees with the binding (`gwf-mvr.f90:785-798`). With a `models`
 parameter, the option goes away.
 
-**Evidence:** supported by the constraint audit. The parameter syntax sketch
-tests whether the construct is smaller than what it replaces.
+**Evidence:** supported by the constraint audit, and in part by
+[parameter-sketch.md](parameter-sketch.md). The construct holds, at about the size of what it
+replaces rather than smaller. It corrects this section: `utl-ts`, `utl-tas` and `grid` need no
+parameter, `models` is two names, `MODELNAMES` stays in the file format, the rule registry goes to
+three rather than one, and co-occurrence rules don't fit.
 
 ### H4: SPC/SPCA pairing is a key-kind match
 
@@ -576,6 +579,8 @@ the relational model is right but SQL is too verbose to be the spec, and it adds
 the ones below: a frozen run on unseen models, and generating DDL from the DFNs.
 
 ### Step 4: parameter syntax sketch
+
+Done: [parameter-sketch.md](parameter-sketch.md). What was asked:
 
 Write `[params]` (the name is open) for SPC, MVR, GNC, OBS and TS, and how
 binding rows supply them. Rewrite `ssm_package`, `exchange_models` and
