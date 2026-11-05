@@ -2,6 +2,7 @@ import io
 import mmap
 import os
 import re
+import warnings
 from typing import IO, Any
 
 from lark.exceptions import LarkError
@@ -19,7 +20,7 @@ BASIC_PARSER = get_basic_parser(BasicTransformer(), use_bytes=True)
 # each well-formed block in turn; used as a fallback to trim anything
 # after the last one when the file fails to parse as-is.
 _BLOCK_RE = re.compile(
-    r"^[ \t]*begin\s+\S+.*?^[ \t]*end\s+\S+[ \t]*$",
+    r"^[ \t]*begin\s+\S+.*?^[ \t]*end(?:[ \t][^\n]*)?$",
     re.IGNORECASE | re.MULTILINE | re.DOTALL,
 )
 
@@ -30,6 +31,18 @@ def _trim_trailing_garbage(data: str) -> str:
     if not matches:
         return data
     return data[: matches[-1].end()]
+
+
+def _warn_trimmed(data: str, trimmed: str, name: str | None) -> None:
+    """Say which lines `_trim_trailing_garbage` left out of a file that
+    parsed without them."""
+    start = trimmed.count("\n") + 1
+    rest = data[len(trimmed) :].split("\n")
+    lines = [number for number, line in enumerate(rest, start) if line.strip()]
+    if not lines:
+        return
+    where = f"line {lines[0]}" if len(lines) == 1 else f"lines {lines[0]}-{lines[-1]}"
+    warnings.warn(f"{name or 'MF6 input'}: ignoring text after the last block ({where})")
 
 
 def load(fp: IO[str], *, component: str | None = None) -> Any:
@@ -50,9 +63,10 @@ def load(fp: IO[str], *, component: str | None = None) -> Any:
     Any
         Parsed MF6 input file structure
     """
+    name = getattr(fp, "name", None)
     if component is None and (mapped := _map(fp)) is not None:
-        return _parse_basic(*mapped)
-    return loads(fp.read(), component=component)
+        return _parse_basic(*mapped, name=name)
+    return loads(fp.read(), component=component, name=name)
 
 
 # Files at least this big are mapped (see `_map`): a mapping costs ~4 ms
@@ -83,7 +97,7 @@ def _map(fp: IO[str]) -> tuple[mmap.mmap, str] | None:
     return buffer, encoding
 
 
-def loads(data: str, *, component: str | None = None) -> Any:
+def loads(data: str, *, component: str | None = None, name: str | None = None) -> Any:
     """
     Parse MF6 input file content from string.
 
@@ -95,6 +109,8 @@ def loads(data: str, *, component: str | None = None) -> Any:
         DFN name (e.g. ``"gwf-wel"``) of the file's package/component. If
         given, parses with that component's typed grammar/transformer
         instead of the generic basic grammar.
+    name :
+        What to call the content in warnings, e.g. the file it came from.
 
     Returns
     -------
@@ -102,16 +118,16 @@ def loads(data: str, *, component: str | None = None) -> Any:
         Parsed MF6 input file structure
     """
     if component is not None:
-        return loads_typed(data, component)
-    return loads_basic(data)
+        return loads_typed(data, component, name=name)
+    return loads_basic(data, name=name)
 
 
-def loads_basic(data: str) -> Any:
+def loads_basic(data: str, *, name: str | None = None) -> Any:
     """Parse MF6 input file content with the generic, untyped grammar."""
-    return _parse_basic(data.encode(), "utf-8")
+    return _parse_basic(data.encode(), "utf-8", name=name)
 
 
-def _parse_basic(buffer: bytes | mmap.mmap, encoding: str) -> Any:
+def _parse_basic(buffer: bytes | mmap.mmap, encoding: str, *, name: str | None = None) -> Any:
     """Parse text's bytes, or a buffer of them, in `encoding`."""
     token = SOURCE.set((buffer, encoding))
     try:
@@ -121,12 +137,14 @@ def _parse_basic(buffer: bytes | mmap.mmap, encoding: str) -> Any:
         trimmed = _trim_trailing_garbage(data)
         if trimmed == data:
             raise
-        return _parse_basic(trimmed.encode(encoding), encoding)
+        parsed = _parse_basic(trimmed.encode(encoding), encoding)
+        _warn_trimmed(data, trimmed, name)
+        return parsed
     finally:
         SOURCE.reset(token)
 
 
-def loads_typed(data: str, component: str) -> Any:
+def loads_typed(data: str, component: str, *, name: str | None = None) -> Any:
     """Parse MF6 input file content with ``component``'s typed grammar."""
     parser = get_typed_parser(component)
     transformer = get_typed_transformer()
@@ -137,4 +155,5 @@ def loads_typed(data: str, component: str) -> Any:
         if trimmed == data:
             raise
         tree = parser.parse(trimmed)
+        _warn_trimmed(data, trimmed, name)
     return transformer.transform(tree)
