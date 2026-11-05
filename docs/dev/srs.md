@@ -52,7 +52,7 @@ Requirements are prioritized according to the [MoSCoW method](https://en.wikiped
 | FUNC-5  | The product supports existing MODFLOW 6 discretization types and can be extended to support new ones. | M | MVP |
 | FUNC-6  | The product allows simulation subcomponents to be created independently of parent context, then combined programmatically. | M | MVP |
 | FUNC-7  | The product can round-trip (i.e. load, write, and run) an existing simulation and give identical results to previous runs. | C | MVP |
-| FUNC-8  | The product can manage larger-than-memory models and datasets. E.g., the product can be used to create an example model of the United States with a **?1 km?** grid resolution. | M | MMP |
+| FUNC-8  | The product can manage larger-than-memory models and datasets. E.g., the product can create, write and reload an example model of the conterminous United States at 1 km resolution with 10 layers (about 133M cells), on a machine with less memory than the model's data. | M | MMP |
 | FUNC-9  | The product can determine and report whether it is compatible with a given MODFLOW 6 version (and corresponding specification). | M | MVP |
 | FUNC-10 | The product is compatible with a wide range of MODFLOW 6 versions (and corresponding specifications). | S | MMP |
 | FUNC-11 | The product supports spatial and temporal units to the extent that MODFLOW 6 does. | C | MMP |
@@ -62,6 +62,9 @@ Requirements are prioritized according to the [MoSCoW method](https://en.wikiped
 | FUNC-15 | The product provides appropriate, informative string dumps for simulation components. | M | MVP |
 | FUNC-16 | The product provides programmatic access from any component to any other component registered with the simulation. | S | MVP |
 | FUNC-17 | The product allows specifying the precision with which values are written to input files. | M | MVP |
+| FUNC-18 | The product accepts lazily evaluated data wherever it accepts array or list input, on every discretization type. | M | MMP |
+| FUNC-19 | The product can load arrays and lists in external files without reading their values, and write unchanged data without decoding it. | M | MMP |
+| FUNC-20 | The product allows choosing a faster writer for text input files. | S | MMP |
 
 ### Non-functional requirements
 
@@ -74,6 +77,9 @@ Requirements are prioritized according to the [MoSCoW method](https://en.wikiped
 | NFR-5   | The product can be easily extended e.g. to support new input/output file formats. | S | MVP |
 | NFR-6   | The product provides a well-documented, type-hinted public API. | S | MMP |
 | NFR-7   | The product consolidates entry points and emphasizes API discoverability. | S | MMP |
+| NFR-8   | When writing lazily evaluated data, the product's peak memory depends on chunk size, not model size, in every input format. | M | MMP |
+| NFR-9   | The same values give the same MODFLOW 6 results, whatever the array type or chunking used to hold them. | M | MMP |
+| NFR-10  | A write never corrupts or truncates a source file that lazily evaluated data still depends on. | M | MMP |
 
 ### System requirements
 
@@ -82,3 +88,4 @@ Requirements are prioritized according to the [MoSCoW method](https://en.wikiped
 | SYS-1   | The product complies with scientific-python.org guidelines: <https://scientific-python.org/specs/spec-0000/>. This ensures compatibility with other libraries in the scientific python ecosystem on which the product depends. | M | MVP |
 | SYS-2   | The product runs on the following operating systems: Windows, Linux, MacOS. | M | MVP |
 | SYS-3   | The product is available on the Python Package Index (PyPI) and conda-forge. | M | GA |
+| SYS-4   | The product installs and works without dask or a faster text writer, which stay optional. | S | GA |

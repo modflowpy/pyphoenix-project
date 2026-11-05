@@ -58,7 +58,13 @@ The SRS requirements due at MMP, plus the one MVP requirement still open:
 | req | MoSCoW | status (2026-11-03) | remaining |
 |---|---|---|---|
 | FUNC-7 round-trip with identical results (MVP) | C | Not done. [`test.md`](test.md) lists flopy3/4 comparison and round-trip tests as unchecked. | Track A |
-| FUNC-8 larger-than-memory | M | Partial. dask is an optional extra; external arrays load eagerly (#516); no xarray IO backend (#368). | Track C |
+| FUNC-8 larger-than-memory | M | Partial. Only open/close text writes are bounded by chunk size; period arrays and NetCDF compute everything; loads are eager (#516); no xarray IO backend (#368); lists have no lazy path. | Track C, [`out-of-core.md`](plans/xarray/out-of-core.md) |
+| FUNC-18 lazy input everywhere | M | Griddata and dict-form period arrays only. | Track C |
+| FUNC-19 lazy load, unchanged write-through | M | Not started. | Track C |
+| FUNC-20 faster text writer | S | Not started. | Track C |
+| NFR-8 memory bounded by chunk size | M | Not met, except as under FUNC-8. | Track C |
+| NFR-9 same results whatever the array type | M | Not tested. | Track C |
+| NFR-10 writes keep lazy data's sources safe | M | Not started; only arises with lazy load. | Track C |
 | FUNC-10 wide range of MF6 versions | S | Mostly. `flopy4 mf6 sync`, [`mf6-versions.md`](../mf6-versions.md); tested against the latest release and MF6 `develop` only. | Decide whether "wide range" needs a test matrix of older releases. |
 | FUNC-11 spatial and temporal units | C | Not audited. Grid adapters carry length units. | Audit, or defer past MMP (it's a C). |
 | FUNC-14 reproduce the spec | S | Partial. `_contract.py` records the DFN commit; #299 open. | Track B |
@@ -81,6 +87,9 @@ this doc.
   Testers write code against them, so changing them after MMP breaks
   them.
 - [ ] Datetime period keys (#518) in, or explicitly deferred.
+- [ ] The FUNC-8 target model created, written and reloaded under a memory
+  limit, and the rest of [`out-of-core.md`](plans/xarray/out-of-core.md)'s
+  phases done (FUNC-18 to FUNC-20, NFR-8 to NFR-10).
 - [ ] API reference in the docs, public vs internal marked (NFR-1, NFR-6).
 - [ ] Concepts doc (#217), and [`migrating.md`](../migrating.md) covering the compat layer.
 - [ ] Migration scoreboard running here against MF6's autotests and the
@@ -100,7 +109,7 @@ after MMP is under "After MMP".
 |---|---|---|---|
 | **A. Engine correctness** | bare-list bug; equivalence harness (tier E) over the registry; round-trip tests; fix what they find | everything | [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md) "Tests", [`test.md`](test.md). **Longest and least predictable. Start first.** |
 | **B. API decisions** | `output.head` (I3); `get_package`/`modelgrid` on Model; `name` vs `sim_name`; accessor naming and `flatten()`/`node`; field naming, name or longname (#258); parent/child init (#259); unified output loading (#342); the data-shape questions, decided together by one rule: STO types (#229), UZF placeholders (#523), SFR `connectiondata` (#345), packages without a grid (#226) | decided and implemented | [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md) "Open questions"; [`overview.md`](plans/xarray/overview.md) "Open questions"; [`layout-logical-decisions.md`](plans/dfn-spec/layout-logical-decisions.md) for #226, #229, #259, #345, #523 |
-| **C. Data and xarray** | `to-xarray-constants` fix; datetime period keys (#518, #226); lossless `to_xarray`/`from_xarray` and `dense()` (export phase 1), including an Options section in the representation spec (logical options as data, layout options as encoding, output options off the data) and opt-in views for dynamic derivations (`AUXMULTNAME`, TAS); deferred external arrays (#516) | the fix, #518 and export phase 1; #516 for FUNC-8 | [`export.md`](plans/xarray/export.md), [`datetime-periods.md`](plans/xarray/datetime-periods.md), [`representation.md`](plans/xarray/representation.md), [`layout-logical-decisions.md`](plans/dfn-spec/layout-logical-decisions.md) "Track C" |
+| **C. Data and xarray** | `to-xarray-constants` fix; datetime period keys (#518, #226); lossless `to_xarray`/`from_xarray` and `dense()` (export phase 1), including an Options section in the representation spec (logical options as data, layout options as encoding, output options off the data) and opt-in views for dynamic derivations (`AUXMULTNAME`, TAS); `simplify-converter` rebased and merged; out-of-core phases 0 to 5: streaming writes, lazy `dense()`, lazy load (#516, #368), lazy lists, a faster text writer, the FUNC-8 target | the fix, #518 and export phase 1; `simplify-converter`; out-of-core phases 0 to 5 | [`export.md`](plans/xarray/export.md), [`datetime-periods.md`](plans/xarray/datetime-periods.md), [`representation.md`](plans/xarray/representation.md), [`layout-logical-decisions.md`](plans/dfn-spec/layout-logical-decisions.md) "Track C", [`converter-rebase.md`](plans/io/converter-rebase.md), [`out-of-core.md`](plans/xarray/out-of-core.md) |
 | **D. Docs** | API reference; concepts (#217); 3.x examples adapted; [`migrating.md`](../migrating.md) for compat; SDD update once export phase 1 lands | all | [`map.md`](map.md), [`srs.md`](srs.md), [`sdd.md`](sdd.md) |
 | **E. Migration** | classify every flopy3 difference (accept, deprecate, break); runtime aliases in flopy4 itself (positional parent, `register_ims_package`, `write_simulation`, `get_package`, `modelgrid`, `*_filerecord`, ...); the shared `Legacy` table; the `flopy4 migrate` codemod; the corpus scoreboard over MF6 autotests and examples. Generated `ModflowXxx` class names stay in flopy 4.x's compat layer | classification, aliases and scoreboard; the codemod if time allows | [`aliases-and-codemod.md`](plans/integration/aliases-and-codemod.md); [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md) "The compat layer" |
 | **F. 3.x prep** (flopy `develop`) | 3.x items 1 to 5: utilities out of `flopy/mf6`, the shared-code protocol, upstream patches, deprecations, forward-compatible keywords | nothing required; items 1 and 2 by the `4.x` cut | [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md) "3.x work" |
@@ -127,12 +136,25 @@ release candidates follow MMP.
   decisions (and default file naming), or they get regenerated.
 - Track D's API reference waits for Track B, and the SDD update waits
   for export phase 1 (Track C).
+- Out-of-core's writer work can start now, if it stays byte-identical for
+  lazy arrays while Track A's harness comes up. Lazy load and lazy lists
+  change ingress, so they wait for `simplify-converter`. Its random-chunk
+  test is tier E with a wrapper, so it needs the harness too.
+- Track B reserves `load(chunks=...)` before testers write code against
+  `load`.
+- Export phase 2's `dense()` is built lazy from the start, so it goes with
+  out-of-core phase 2.
 
 ### The longest chain
 
 Equivalence harness → engine fixes → tier E passes → MMP. The other
 tracks should finish inside it. If one starts to hold up the gate,
 that's the time to add people to it.
+
+FUNC-8 at MMP makes a second long chain: `simplify-converter` → lazy load →
+lazy lists → the target model. Its first unknown is the construction peak
+([`out-of-core.md`](plans/xarray/out-of-core.md) phase 0), which could put the
+target out of reach until it's fixed.
 
 ## After MMP
 
