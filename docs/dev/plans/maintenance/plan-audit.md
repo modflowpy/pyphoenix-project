@@ -8,8 +8,8 @@ how they could be organized. Each finding says how I'd address it.
 [Part 8](#8-decisions-for-you) lists what needs your decision.
 
 Baseline: `dev-plans` at `3ff8980c`. Part 1 was rechecked against MF6
-`7f69b525`, the local checkout. The `0dd9ed1784` first recorded here doesn't
-resolve in that checkout, and the other parts weren't rechecked. MF6 paths are
+`7f69b525`, and the other parts weren't rechecked. The local checkout is now at
+`0dd9ed1784`, 11 commits later. MF6 paths are
 relative to the modflow6 repo. The constraint audit and option classification
 used MF6 `8aad7bc4a5`, so an MF6 line number there and one here may differ.
 
@@ -54,8 +54,8 @@ These come first because the hypotheses, the #287 post and the proposed
 concepts doc would otherwise inherit them.
 
 **Status (2026-11-04):** F1-F6 are applied to the live docs, so the line numbers
-below predate those edits. The #287 drafts were deleted before this audit's
-baseline, so they weren't corrected ([Part 9](#9-checks-still-open)). Code
+below predate those edits. The #287 drafts were corrected separately
+([Part 9](#9-checks-still-open)). Code
 follow-ups are in
 [`backlog.md`](backlog.md) or listed in [Part 7](#7-order-of-work).
 
@@ -295,6 +295,12 @@ for flopy4's child relation; say that it's flopy4's word (MF6's nearest is
 
 ## 2. Conceptual gaps
 
+**Status (2026-11-05):** reviewed, with review comments folded into the findings
+below, but not yet applied. C3's broadcast and C8's export type are decided; only
+the former has reached the plans. The rest is scheduled in
+[Part 7](#7-order-of-work): C1-C4 in step 4, C7 in step 7, C5, C8 and C9 in step 8,
+and C6, C10 and C11 in step 9.
+
 ### C1. "Logical content" is defined circularly
 
 Layout is what re-encoding leaves unchanged in the logical content, and we find
@@ -391,9 +397,11 @@ constant" (`layout-logical-decisions.md` line 60). But:
 
 - `sdd.md` line 135 broadcasts griddata to full shape at construction, when
   the dimensions are visible.
-- `FACTOR` is applied on load and not kept on `simplify-converter`
-  (`converter-simplification.md` line 35), though the classification calls it
-  layout "by construction".
+- `FACTOR` is applied on load and not kept, on `develop` and on
+  `simplify-converter` (`converter-simplification.md` line 35). The
+  classification calls it layout "by construction", so it's a layout feature
+  that isn't preserved, by design (D7). An `OPEN/CLOSE` array's file is rewritten
+  with the scaled values, so nothing is scaled twice.
 - Field order is normalized to the DFN's on that branch, and remarks,
   whitespace, case and number formatting aren't discussed.
 - Layout lives in three places: option fields, `ArrayIO`/`ListIO`, and
@@ -412,7 +420,8 @@ feature, deciding whether it's kept and where:
 | `CONSTANT` | yes unless broadcast | decide (below) | value | 0-d, marked |
 | `OPEN/CLOSE`, binary | yes | yes | `ArrayIO`/`ListIO` | **unspecified** |
 | `LAYERED` | to check | yes | `ArrayIO` | **unspecified** |
-| `FACTOR`, `IPRN` | no, on the branch | decide | | |
+| `IPRN` | yes | yes | `ArrayIO` | **unspecified** |
+| `FACTOR` | no, applied on load | no | | no |
 | field order | no, on the branch | no | | no |
 | remarks, whitespace, number format | no | no | | no |
 
@@ -426,7 +435,7 @@ flopy4's nearest equivalent is its Lark parse tree. A real CST would only pay of
 if we kept remarks and formatting, which D7 recommends against, and validation
 belongs in the DFN-driven checks.
 
-**Decided (wpb):** the construction-time broadcast goes, as it makes the same call
+**Decided:** the construction-time broadcast goes, as it makes the same call
 give different objects depending on construction order, which is exactly what
 #226's decision is trying to avoid. `layout-logical-decisions.md` #226 and the SDD
 say so, and the code change is still to do.
@@ -453,7 +462,7 @@ overstates how harmless they are.
 **How I'd address it.** Replace the two values with stages, the question being
 *when is the rule's result fixed?*
 
-| Bound at | Example | Safe to materialize? |
+| Fixed at | Example | Safe to materialize? |
 |---|---|---|
 | **constant** (no other inputs) | unit factors, `COMPLEXITY` | yes |
 | **edit** (inputs are other input data) | `STORAGECOEFFICIENT`, `K22OVERK` | at write time only |
@@ -546,17 +555,18 @@ design question.
 can't hold those, so `from_xarray(to_xarray(rcha)) == rcha` fails as specified,
 and `dense_steps` needs the series that would be missing.
 
-**How I'd address it.** Choose, in `representation.md` and `export.md`:
+**Decided:** every component gives a `DataTree`, with a `.to_dataset()` for a leaf,
+for the simplest stated rule and one return type. It changes the planned
+`DatasetConvertible` split in phase 3. `representation.md` and `export.md` still
+say a package gives a `Dataset`, and step 8 updates them.
 
-- (a) A package gives a `DataTree` when it has children, and a `Dataset`
-  otherwise. Honest, but the return type varies.
-- (b) A package always gives a `Dataset`, and only a tree carries children, so
-  a package exported alone isn't lossless. This breaks "looks the same whether
+The alternatives were:
+
+- A package gives a `DataTree` when it has children, and a `Dataset` otherwise.
+  Honest, but the return type varies.
+- A package always gives a `Dataset`, and only a tree carries children, so a
+  package exported alone isn't lossless. This breaks "looks the same whether
   exported alone or pulled out".
-- (c) Every component gives a `DataTree`, with a `.to_dataset()` for a leaf.
-
-**Decided (wpb):** (c), for the simplest stated rule and one return type. It does
-change the planned `DatasetConvertible` split in phase 3.
 
 ### C9. Time has no home
 
@@ -628,8 +638,8 @@ When choosing a term, prefer in order:
 | `bound` (54 lines) | "boundary", "boundary number", "entry"; `bound`, `nbound` in code | Keep `bound` as the role's name. In prose use F1's feature, list entry and grid entry. |
 | `ftype` for all components | `mtype`, `exgtype`, `slntype`, `ftype` (`sim-nam.dfn`, `gwf-nam.dfn`) | Keep the unified attribute, and note the mapping in the glossary and SDD. |
 | `per`, `kper`, `<name>_period`, "period key" | `iper` in the block header (1-based), `kper` in source (also 1-based; `tdis.f90`) | `kper` is the most used name in flopy3 (888 word matches to `iper`'s 213) and is 0-based there, so MF6 and flopy3 give it different bases. Use `kper` (0-based) for Python arguments and `iper` only for the file's 1-based number, and say so in the glossary. Whether the representation's `per` dim stays is still open. |
-| `stress_period_data` on OC, STO and others | PERIOD block | A public API choice: see D5. |
-| "MF6 NetCDF (grouped)" | MF6 doesn't read it | See D3. Naming our format as MF6's implies an endorsement it doesn't have yet. |
+| `stress_period_data` on every package with period data, including OC and STO | PERIOD block | Rename to `period_data`, which is generic and accurate (D5). |
+| "MF6 NetCDF (grouped)" | MF6 doesn't read it | Call it the "grouped archive" (D3). Naming our format as MF6's implies an endorsement it doesn't have yet. |
 | "namefile" (7) and "name file" (1) | "name file" (163 vs. 7 in mf6io) | Use "name file" in prose. |
 | "fill forward", "carry forward" | "continue to apply", "retain" | Use "fill forward" as the xarray-world term, but only with a regime from F4. |
 | "component" | IDM: `component` = `GWF`, `subcomponent` = `RCHA`; docs: "Stress Package Component (SPC)" | Keep flopy4's meaning. Note the difference for anyone reading IDM. |
@@ -650,7 +660,7 @@ then applies.
 | **package** (36 "the package") | MF6 package; the future Python package | Always the MF6 sense. The other is `mf6xr` (working name). Mostly `xarray/overview.md` and `export.md`. |
 | **spec** (110) | DFN spec; `representation.md`; `flopy4.spec`; `mf6 --spec`; codegen's spec | Never bare: "DFN spec", "representation spec". |
 | **view** (65) | computed form; SQL view; `flow_model` as a view; a row over `ItemTable` | A **view** is computed from held data, never stored, and states if it's read-only or two-way. Say "SQL view", and "row proxy" for `ItemTable`. |
-| **context** (30) | `Context` class; binding context; `RowContext` etc.; MF6 memory context | "Binding arguments" for H3's sense. Define `Context`, or rename the class (D6). |
+| **context** (30) | `Context` class; binding context; `RowContext` etc.; MF6 memory context | "Binding arguments" for H3's sense. The class becomes `WorkspaceComponent` (D6). |
 | **rule** (124) | named FK rule; "the rule" (layout/logical); codemod rule; compat rule; K-kinds | "Named rule" for DFN; "**the as-given principle**" for the rule; "rewrite rule" for codemod; "constraint" for K-kinds. |
 | **tag** (24+12) | type tag; `binding`/`schema` option tags; variant discriminator; DFN tagged; `modflow_input` tag | "Tagged" stays DFN. "Type tag" stays. **Discriminator** for variants. **Option attribute** for `binding`/`schema`. |
 | **contract** (15) | `_contract.py`; data contract; import-linter contract; "input contract" | "Sync contract"; "data contract"; "import-linter contract"; "input rules". |
@@ -676,7 +686,7 @@ all belong in a side column of the glossary.
 | object model holds layout | concrete vs. abstract syntax tree | "Layout-preserving" becomes exact (C3). An analogy only, with no CST library behind it. | Adopt in docs. |
 | lens | get, put, the lens laws, complement (Foster et al.; Bohannon et al. for relational lenses) | Complement relative to the observations (C1). Laws as tests (C2). The view-update problem is exactly `from_xarray` of a dense view. | Adopt in docs. |
 | re-encoding test | observational / contextual equivalence | Removes C1's circularity. | Adopt in docs. |
-| static / dynamic derivation | binding-time analysis (partial evaluation) | Stages (C4). Already the same words. Beware "binding", which means something else here. | Adopt "stage" and "bound at" with care, or "fixed at". |
+| static / dynamic derivation | binding-time analysis (partial evaluation) | Stages (C4). Already the same words. Beware "binding", which means something else here. | Adopt "stage" and "fixed at", not "bound at". |
 | "three kinds of polymorphism" | Cardelli–Wegner: parametric, inclusion, overloading, coercion; plus sums | See Part 4's type model. | Rename to "three kinds of variation". |
 | sum type, arm | sum type, variant, arm | Already right. | Keep. |
 | role, key | trait + associated type | H4 already says so. | Keep. |
@@ -725,7 +735,7 @@ materialize, compat layer, legacy engine, `flopy4` vs. FloPy 4 vs. flopy 4.x).
 | instance | `gwf.npf` | `name` (MF6's `pname`, `mname`) |
 | file | `model.npf` | file name |
 
-With the hierarchy (`Component`, `Context`, `Package`, and why `Tdis`, `Solution`
+With the hierarchy (`Component`, `WorkspaceComponent`, `Package`, and why `Tdis`, `Solution`
 and `Exchange` are `Package`s), the taxonomy (F6), and C6's ownership and
 reference. This replaces the current SDD "Concepts".
 
@@ -918,7 +928,8 @@ Sizes as in `replacing-flopy-mf6.md`: small is days, medium is weeks. These are
 docs changes, except where marked. Steps 1 and 2, Part 1's corrections and the
 contradictions and stale references in S4 and S5, are done. Their follow-ups are in
 [Part 9](#9-checks-still-open), [`backlog.md`](backlog.md), the code list below and
-S4's status note.
+S4's status note. Step 3 is done too, apart from D7's tolerance. Terminology goes
+next: steps 5 and 6, then step 4.
 
 | # | Work | Findings | Size | Needs |
 |---|---|---|---|---|
@@ -934,8 +945,9 @@ S4's status note.
 
 **Why this order:**
 
-- `fidelity.md` comes before the glossary because the gates depend on it, and
-  Track A is the longest chain.
+- `fidelity.md` follows the rename pass, so it's written in the settled terms. The
+  gates depend on it and Track A is the longest chain, so it's next after that. The
+  glossary takes C2's equivalence names from this audit.
 - The rename pass waits for the rulings, so it happens once. Doing it per term
   keeps the diffs reviewable and the commits revertable.
 - Steps 4 and 8 feed Track A and export phase 1, so they're useful even if the rest
@@ -952,19 +964,21 @@ S4's status note.
 | removing the broadcast | C3 | [`layout-logical-decisions.md`](../dfn-spec/layout-logical-decisions.md#226-packages-without-grid-or-time) #226, in Track B |
 | `step_array` on ATS | C9 | step 8 |
 | export return types | C8 | step 8 |
+| `stress_period_data` → `period_data`, across codegen, generated classes and grammars, and tests; flopy3's name stays accepted as a `Legacy` alias | D5 | not yet planned |
+| `Context` → `WorkspaceComponent` | D6 | not yet planned |
 
 ## 8. Decisions for you
 
 | # | Decision | Recommendation | Depends on it |
 |---|---|---|---|
 | D1 | A package's export: `Dataset` or `DataTree` (C8) | decided: always a `DataTree` | export phase 1 |
-| D2 | Rename the `output` label to `directive`, including CSVs | yes, before #287 is posted | classification, audit |
-| D3 | What to call our NetCDF forms | "flopy4 archive" for grouped until MF6 reads it; "MF6 NetCDF" only for ungrouped; "profile" for the pair | representation, `mf6xr` |
+| D2 | Rename the `output` label to `directive`, including CSVs | decided: yes, before #287 is posted | classification, audit |
+| D3 | What to call our NetCDF forms | decided: "grouped archive" for grouped until MF6 reads it, a name that survives extracting `mf6xr`; "MF6 NetCDF" only for ungrouped; "profile" for the pair | representation, `mf6xr` |
 | D4 | #282/#367: attrs or pydantic | decided for now: keep both open, with attrs assumed meanwhile. Settle by MMP, with the possibility of putting it off to GA | xattree v2, Track B |
-| D5 | `stress_period_data` on OC, STO and similar | keep it, documented as flopy4's uniform name; changing it now costs more than the inaccuracy | Track B, compat |
-| D6 | The `Context` class name | keep, and define it. Rename only with Track B's API changes | concepts |
-| D7 | Round-trip fidelity for `FACTOR`, `IPRN`, order, remarks; result tolerance | `FACTOR` and `IPRN` kept, the rest not; tolerance from the framework comparison | Track A, `simplify-converter` |
-| D8 | How much theory vocabulary reaches the docs | T3's "adopt in docs" set, in design docs, and never in user docs | concepts, type model |
+| D5 | `stress_period_data` on OC, STO and similar | decided: rename to `period_data`, on every package. It's generic and accurate, and the repo is in enough flux that the cost is small | Track B, compat |
+| D6 | The `Context` class name | decided: rename to `WorkspaceComponent`, since a workspace is what it adds to `Component`. A model under a simulation uses the simulation's workspace | concepts |
+| D7 | Round-trip fidelity for `FACTOR`, `IPRN`, order, remarks; result tolerance | decided: `IPRN` kept; `FACTOR` applied on load and not kept, as `develop` does; order and remarks not kept. Tolerance still open, to propose in step 4 from the framework comparison | Track A, `simplify-converter` |
+| D8 | How much theory vocabulary reaches the docs | decided: T3's "adopt in docs" set, in design docs, and never in user docs | concepts, type model |
 
 ## 9. Checks still open
 
@@ -988,7 +1002,8 @@ S4's status note.
 - **Empty list blocks in flopy4.** `period_arrays.py` handles grid arrays. Whether
   list `None` or `[]` round-trips as an empty block wasn't checked.
 - **The fidelity table's "kept today" column.** A starting estimate from the docs,
-  not tested.
+  not tested, except the `FACTOR` and `IPRN` rows, which a load, write and reload
+  on `develop` at `8d25e4b7` confirmed.
 - **Grid entry numbering.** Established from the block's first array, in node order,
   per `Mf6FileGridArray.f90`. wpb confirms it should be stable, and that mf6io should
   state it. That work is handed off in `grid-entry-numbering-doc.md` at the modflow6
@@ -998,10 +1013,11 @@ S4's status note.
 - **Array period semantics (F4).** With wpb, to raise with the MF6 team: should layer
   and grid stress arrays replace across blocks? Aux persistence is deliberate, and
   `IRCH`/`IEVT` need their own answer.
-- **The #287 drafts.** They aren't drafts in progress: `17b1a1ac` deleted
-  `discussion-287-comment.md` and `discussion-relational-spec-draft.md` when it
-  rewrote the #287 docs, and they're only in history (`17b1a1ac~1`). Line 125 of
-  the comment still has F2's error, and the relational draft only calls `<=maxbound`
-  an implicit row id, which F1 qualifies. So write the #287 post from the corrected
-  `dfn-spec/overview.md`, not from them. `schema-polymorphism.md` still cites the
-  comment as a draft (S5).
+- **The #287 drafts.** `discussion-287-comment.md` and
+  `discussion-relational-spec-draft.md` left the branch in `17b1a1ac`, and stay as
+  untracked files in this worktree and the main checkout. They were updated on
+  2026-11-05 to match the plans, including F1, F2, F4 and the DDL slice's first pass,
+  so check them against `dfn-spec/overview.md` again before posting. That's step 7
+  there, after its steps 3 and 4. `schema-polymorphism.md` still cites the comment as
+  a draft (S5). The SPC `bndno` on LAK check above affects what the comment says about
+  connections.
