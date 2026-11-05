@@ -53,9 +53,9 @@
   },
   "simulation/ghbmvr/CHD-FROM-IBOUND": {
     "__type__": "Chd",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[1, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null
@@ -100,9 +100,9 @@
   },
   "simulation/ghbmvr/ghb-1": {
     "__type__": "Ghb",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[4, 0] da39a3ee5e6b4b0d",
         "bhead": "float64[4] 12d6ceb9b133be62",
         "boundname": [
@@ -228,7 +228,7 @@
   },
   "simulation/ghbmvr/maw-1": {
     "__type__": "Maw",
-    "_stress_period_data": {
+    "_period_data": {
       "0": []
     },
     "boundnames": false,
@@ -289,9 +289,9 @@
   },
   "simulation/ghbmvr/mvr": {
     "__type__": "Mvr",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "id1": "int64[1] b0aa4b549f325cca",
         "id2": "int64[1] ef4862c8fb031cd5",
         "mname1": [
@@ -374,7 +374,7 @@
   },
   "simulation/ghbmvr/oc": {
     "__type__": "Oc",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Print",

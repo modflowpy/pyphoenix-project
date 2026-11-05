@@ -18,7 +18,7 @@ class Prp(Package):
     multi_package: ClassVar[bool] = True
 
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
-        "perioddata": Legacy("stress_period_data"),
+        "perioddata": Legacy("period_data"),
     }
 
     @attrs.define
@@ -51,7 +51,7 @@ class Prp(Package):
         _keyword: ClassVar[str] = "fraction"
         fraction: tuple[float, ...] = array(default=())
 
-    _StressPeriodDataItem = Literal["ALL", "FIRST", "LAST"] | Frequency | Steps | Fraction
+    _PeriodDataItem = Literal["ALL", "FIRST", "LAST"] | Frequency | Steps | Fraction
 
     boundnames: bool = keyword(
         default=False,
@@ -172,8 +172,8 @@ class Prp(Package):
         block="releasetimes",
         shape=("nreleasetimes",),
     )
-    _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = list_(
-        alias="stress_period_data",
+    _period_data: Optional[dict[int, list[_PeriodDataItem]]] = list_(
+        alias="period_data",
         default=None,
         repr=False,
         block="period",

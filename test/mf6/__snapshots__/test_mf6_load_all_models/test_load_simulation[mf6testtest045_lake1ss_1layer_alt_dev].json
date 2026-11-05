@@ -112,7 +112,7 @@
   },
   "simulation/lakeex1b_1layerb/LAK_1": {
     "__type__": "Lak",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Rainfall",
@@ -206,9 +206,9 @@
   },
   "simulation/lakeex1b_1layerb/chd-1": {
     "__type__": "Chd",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[64, 0] da39a3ee5e6b4b0d",
         "boundname": "384 chars 5f890a6e24f4ab19",
         "cellid": "int64[64, 3] 38a9f81b60694a57",
@@ -301,7 +301,7 @@
   },
   "simulation/lakeex1b_1layerb/oc": {
     "__type__": "Oc",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Print",

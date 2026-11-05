@@ -560,7 +560,7 @@ def _collapse(data):
 def _load_digest(component: Component, workspace: Path) -> dict:
     """Each component under ``component`` (itself included), by its path of
     names, as its type and its fields' values (see `_digest`), private ones
-    like `_stress_period_data` too. Fields left None are omitted, to keep
+    like `_period_data` too. Fields left None are omitted, to keep
     the snapshots small."""
     out: dict = {}
     ws = workspace.as_posix()

@@ -62,9 +62,9 @@
   },
   "simulation/model/chd_0": {
     "__type__": "Chd",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[4212, 0] da39a3ee5e6b4b0d",
         "boundname": "25272 chars 50dc3fe0f08dad7c",
         "cellid": "int64[4212, 2] 7cf35b0512ca4da3",
@@ -164,7 +164,7 @@
   },
   "simulation/model/oc": {
     "__type__": "Oc",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Save",
@@ -224,9 +224,9 @@
   },
   "simulation/model/riv_0": {
     "__type__": "Riv",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[288, 0] da39a3ee5e6b4b0d",
         "boundname": "1728 chars 5adfdf746e461827",
         "cellid": "int64[288, 2] 948779055e9e06b5",

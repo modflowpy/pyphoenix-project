@@ -35,7 +35,7 @@ class Mwe(Package):
     }
 
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
-        "mweperioddata": Legacy("stress_period_data"),
+        "mweperioddata": Legacy("period_data"),
     }
 
     @attrs.define
@@ -73,7 +73,7 @@ class Mwe(Package):
         auxval: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
-    class StressPeriodData(Item):
+    class PeriodData(Item):
         mawno: int = integer(index=True, fk="packagedata.mawno")
         mwesetting: "Mwe.Status | Mwe.Temperature | Mwe.Rate | Mwe.Auxiliary" = union()
 
@@ -158,8 +158,8 @@ class Mwe(Package):
         block="packagedata",
         write_if_empty=True,
     )
-    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
-        alias="stress_period_data",
+    _period_data: Optional[dict[int, list[PeriodData]]] = list_(
+        alias="period_data",
         default=None,
         repr=False,
         block="period",
@@ -172,4 +172,4 @@ MweStatus = Mwe.Status
 MweTemperature = Mwe.Temperature
 MweRate = Mwe.Rate
 MweAuxiliary = Mwe.Auxiliary
-MweStressPeriodData = Mwe.StressPeriodData
+MwePeriodData = Mwe.PeriodData

@@ -46,11 +46,11 @@ def _build(workspace):
     )
     Ic(parent=left, strt=0.0)
     Npf(parent=left, k=1.0, icelltype=0)
-    Chd(parent=left, stress_period_data={0: [[(0, 0, 0), 1.0]]})
+    Chd(parent=left, period_data={0: [[(0, 0, 0), 1.0]]})
     Oc(
         parent=left,
         head_file=f"{NAME_LEFT}.hds",
-        stress_period_data={0: [("SAVE", "HEAD", "LAST")]},
+        period_data={0: [("SAVE", "HEAD", "LAST")]},
     )
 
     right = Gwf(
@@ -70,11 +70,11 @@ def _build(workspace):
     )
     Ic(parent=right, strt=0.0)
     Npf(parent=right, k=1.0, icelltype=0)
-    Chd(parent=right, stress_period_data={0: [[(0, 0, NCOL - 1), 10.0]]})
+    Chd(parent=right, period_data={0: [[(0, 0, NCOL - 1), 10.0]]})
     Oc(
         parent=right,
         head_file=f"{NAME_RIGHT}.hds",
-        stress_period_data={0: [("SAVE", "HEAD", "LAST")]},
+        period_data={0: [("SAVE", "HEAD", "LAST")]},
     )
 
     Gwfgwf(

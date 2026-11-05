@@ -35,7 +35,7 @@ field (0-based), or ``(field, kper, layer)``."""
 
 ListKey = Union[str, tuple[str, int]]
 """A list's key in `WriteContext.lists`, relative to its component: a
-field name (``stress_period_data``), or ``(field, kper)`` for one period
+field name (``period_data``), or ``(field, kper)`` for one period
 of a period field (0-based, like the field's dict keys)."""
 
 

@@ -38,7 +38,7 @@ class Sft(Package):
     }
 
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
-        "reachperioddata": Legacy("stress_period_data"),
+        "reachperioddata": Legacy("period_data"),
     }
 
     @attrs.define
@@ -89,7 +89,7 @@ class Sft(Package):
         auxval: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
-    class StressPeriodData(Item):
+    class PeriodData(Item):
         ifno: int = integer(index=True, fk="packagedata.ifno")
         reachsetting: "Sft.Status | Sft.Concentration | Sft.Rainfall | Sft.Evaporation | Sft.Runoff | Sft.Inflow | Sft.Auxiliary" = union()  # noqa: E501
 
@@ -174,8 +174,8 @@ class Sft(Package):
         block="packagedata",
         write_if_empty=True,
     )
-    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
-        alias="stress_period_data",
+    _period_data: Optional[dict[int, list[PeriodData]]] = list_(
+        alias="period_data",
         default=None,
         repr=False,
         block="period",
@@ -191,4 +191,4 @@ SftEvaporation = Sft.Evaporation
 SftRunoff = Sft.Runoff
 SftInflow = Sft.Inflow
 SftAuxiliary = Sft.Auxiliary
-SftStressPeriodData = Sft.StressPeriodData
+SftPeriodData = Sft.PeriodData

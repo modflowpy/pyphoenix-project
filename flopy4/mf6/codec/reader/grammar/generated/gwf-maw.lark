@@ -38,7 +38,7 @@ dimensions__fields: (nmawwells__val | open_close_redirect _NL)*
 packagedata__fields: (packagedatadata | open_close_redirect _NL)*
 connectiondata__fields: (connectiondatadata | open_close_redirect _NL)*
 angledata__fields: (angledatadata | open_close_redirect _NL)*
-period__fields: (stress_period_data | open_close_redirect _NL)*
+period__fields: (period_data | open_close_redirect _NL)*
 auxiliary__val: "auxiliary"i word+ [_remark] _NL
 boundnames__kw: "boundnames"i  [_remark] _NL
 print_input__kw: "print_input"i  [_remark] _NL
@@ -69,4 +69,4 @@ nmawwells__val: "nmawwells"i integer [_remark] _NL
 packagedatadata: record+
 connectiondatadata: record+
 angledatadata: record+
-stress_period_data: record+
+period_data: record+

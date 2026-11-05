@@ -276,7 +276,7 @@ def test_init_sim_explicit_dims():
     oc = Oc(dims=dims)
     npf = Npf(dims=dims)
     chd = Chd(
-        stress_period_data={0: [((0, 0, 0), 1.0), ((0, 9, 9), 0.0)]},
+        period_data={0: [((0, 0, 0), 1.0), ((0, 9, 9), 0.0)]},
     )
     gwf = Gwf(
         dis=dis,
@@ -364,7 +364,7 @@ def test_sim_children_setitem_delitem():
 def _wel(**kwargs):
     from flopy4.mf6.gwf import Wel
 
-    return Wel(stress_period_data={0: [((0, 0, 0), -1.0)]}, **kwargs)
+    return Wel(period_data={0: [((0, 0, 0), -1.0)]}, **kwargs)
 
 
 def test_child_names_by_class():
@@ -646,8 +646,8 @@ def test_unresolvable_dimensions_raise_on_write(function_tmpdir):
 def test_bad_period_key_raises_on_write(function_tmpdir, kper, match):
     from flopy4.mf6.gwf import Wel
 
-    sim = _wel_sim(function_tmpdir, [Wel(stress_period_data={kper: [((0, 0, 0), -1.0)]})])
-    with pytest.raises(ValueError, match=f"Wel.stress_period_data: {match}"):
+    sim = _wel_sim(function_tmpdir, [Wel(period_data={kper: [((0, 0, 0), -1.0)]})])
+    with pytest.raises(ValueError, match=f"Wel.period_data: {match}"):
         sim.write()
 
 
@@ -656,10 +656,8 @@ def test_period_key_past_nper_warns_on_write(function_tmpdir):
     this is a warning, not an error -- see Package._check_periods."""
     from flopy4.mf6.gwf import Wel
 
-    sim = _wel_sim(function_tmpdir, [Wel(stress_period_data={1: [((0, 0, 0), -1.0)]})])
-    with pytest.warns(
-        UserWarning, match=r"Wel.stress_period_data: MF6 period 2 is past NPER \(1\)"
-    ):
+    sim = _wel_sim(function_tmpdir, [Wel(period_data={1: [((0, 0, 0), -1.0)]})])
+    with pytest.warns(UserWarning, match=r"Wel.period_data: MF6 period 2 is past NPER \(1\)"):
         sim.write()
 
 
@@ -675,7 +673,7 @@ def test_period_array_past_nper_warns_on_write(function_tmpdir):
 def test_period_key_numpy_integer_writes(function_tmpdir):
     from flopy4.mf6.gwf import Wel
 
-    wel = Wel(stress_period_data={np.int64(0): [((0, 0, 0), -1.0)]})
+    wel = Wel(period_data={np.int64(0): [((0, 0, 0), -1.0)]})
     _wel_sim(function_tmpdir, [wel]).write()
     assert "BEGIN PERIOD 1" in (function_tmpdir / "model.wel-1.wel").read_text()
 
@@ -1257,7 +1255,7 @@ def test_init_big_sim():
     npf = Npf(parent=gwf)
     chd = Chd(
         parent=gwf,
-        stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 9999, 9999), 0.0]]},
+        period_data={0: [[(0, 0, 0), 1.0], [(0, 9999, 9999), 0.0]]},
     )
 
     assert sim["gwf-1"] is gwf
@@ -1271,7 +1269,7 @@ def test_init_big_sim():
     assert sim["gwf-1"].npf.k == 1.0
 
     # SPD is a recarray with only 2 rows — no full-grid allocation
-    spd = chd.stress_period_data[0]
+    spd = chd.period_data[0]
     assert len(spd) == 2
     assert tuple(spd[0].cellid) == (0, 0, 0)
     assert float(spd[0].head) == 1.0
@@ -1315,7 +1313,7 @@ def test_write_ascii(function_tmpdir):
     ic = Ic(parent=gwf)
     oc = Oc(parent=gwf)
     npf = Npf(parent=gwf)
-    chd = Chd(parent=gwf, stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]]})
+    chd = Chd(parent=gwf, period_data={0: [[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]]})
 
     sim.write()
 
@@ -1342,13 +1340,13 @@ def test_to_dict_fields():
         "nodes": grid.nnodes,
     }
 
-    chd = Chd(dims=dims, stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]]})
+    chd = Chd(dims=dims, period_data={0: [[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]]})
     result = chd.to_dict()
 
-    assert "stress_period_data" in result
-    assert 0 in result["stress_period_data"]
-    assert result["stress_period_data"][0][0].head == 1.0
-    assert result["stress_period_data"][0][1].head == 0.0
+    assert "period_data" in result
+    assert 0 in result["period_data"]
+    assert result["period_data"][0][0].head == 1.0
+    assert result["period_data"][0][1].head == 0.0
 
     npf = Npf(dims=dims, k=5.0)
     result = npf.to_dict()
@@ -1374,7 +1372,7 @@ def test_to_dict_blocks():
     chd = Chd(
         dims=dims,
         print_flows=True,
-        stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]]},
+        period_data={0: [[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]]},
     )
     result = chd.to_dict(blocks=True)
 
@@ -1382,9 +1380,9 @@ def test_to_dict_blocks():
     assert "period" in result
     assert "print_flows" in result["options"]
     assert result["options"]["print_flows"] is True
-    assert "stress_period_data" in result["period"]
-    assert result["period"]["stress_period_data"][0][0].head == 1.0
-    assert result["period"]["stress_period_data"][0][1].head == 0.0
+    assert "period_data" in result["period"]
+    assert result["period"]["period_data"][0][0].head == 1.0
+    assert result["period"]["period_data"][0][1].head == 0.0
 
     npf = Npf(dims=dims, save_flows=True, k=2.0)
     result = npf.to_dict(blocks=True)
@@ -2287,9 +2285,9 @@ def test_several_packages_of_a_type_default_filenames():
     """Several packages of one type get a file each, named for the package;
     adding one doesn't change the others'."""
     gwf = Gwf(name="gwf")
-    chd = Chd(parent=gwf, stress_period_data={0: [((0, 0, 0), 1.0)]})
+    chd = Chd(parent=gwf, period_data={0: [((0, 0, 0), 1.0)]})
     assert chd.default_filename() == "gwf.chd-1.chd"
-    chd2 = Chd(parent=gwf, stress_period_data={0: [((0, 0, 1), 0.0)]})
+    chd2 = Chd(parent=gwf, period_data={0: [((0, 0, 1), 0.0)]})
     assert chd.default_filename() == "gwf.chd-1.chd"
     assert chd2.default_filename() == "gwf.chd-2.chd"
 
@@ -3423,7 +3421,7 @@ def test_eq_simulation():
             dis=Dis(nlay=1, nrow=1, ncol=3, top=1.0, botm=[0.0], idomain=1),
             npf=Npf(k=2.0),
             ic=Ic(strt=1.0),
-            chd=[Chd(stress_period_data={0: [[(0, 0, 0), head]]})],
+            chd=[Chd(period_data={0: [[(0, 0, 0), head]]})],
         )
         return Simulation(tdis=Tdis(nper=1), models=[gwf], solutiongroup=[Ims(name="ims")])
 

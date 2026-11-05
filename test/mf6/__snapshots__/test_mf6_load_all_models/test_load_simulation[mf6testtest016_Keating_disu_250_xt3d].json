@@ -90,9 +90,9 @@
   },
   "simulation/GWF_1/ghb-1": {
     "__type__": "Ghb",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[5, 0] da39a3ee5e6b4b0d",
         "bhead": "float64[5] 04d99f5c20e110c6",
         "boundname": [
@@ -166,7 +166,7 @@
   },
   "simulation/GWF_1/oc": {
     "__type__": "Oc",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Print",
@@ -203,9 +203,9 @@
   },
   "simulation/GWF_1/rch-1": {
     "__type__": "Rch",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[3, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,

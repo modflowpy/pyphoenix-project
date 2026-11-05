@@ -224,20 +224,20 @@ def test_make_grammar_with_period_block(tmp_path):
     grammar_file = tmp_path / "gwf-test.lark"
     content = grammar_file.read_text()
 
-    # Period block should have a stress_period_data recarray instead of individual fields
-    assert "stress_period_data" in content
+    # Period block should have a period_data recarray instead of individual fields
+    assert "period_data" in content
     assert "period__fields:" in content
 
     # Individual q and aux should not appear as separate rules in period_fields
-    # (they should be combined into stress_period_data)
+    # (they should be combined into period_data)
     lines = content.split("\n")
     period_fields_line = [l for l in lines if "period__fields:" in l][0]
-    assert "stress_period_data" in period_fields_line
+    assert "period_data" in period_fields_line
 
-    # stress_period_data should accept numbers and strings, one row per line
-    assert "stress_period_data:" in content
-    stress_period_data_line = [l for l in lines if l.strip().startswith("stress_period_data:")][0]
-    assert "record" in stress_period_data_line
+    # period_data should accept numbers and strings, one row per line
+    assert "period_data:" in content
+    period_data_line = [l for l in lines if l.strip().startswith("period_data:")][0]
+    assert "record" in period_data_line
 
 
 def test_make_grammar_with_named_subfields(tmp_path):
@@ -266,12 +266,12 @@ def test_make_grammar_with_named_subfields(tmp_path):
     grammar_file = tmp_path / "gwf-rch.lark"
     content = grammar_file.read_text()
 
-    # stress_period_data should be a generic recarray accepting numbers/strings per line
-    assert "stress_period_data" in content
+    # period_data should be a generic recarray accepting numbers/strings per line
+    assert "period_data" in content
     lines = content.split("\n")
-    stress_period_data_line = [l for l in lines if l.strip().startswith("stress_period_data:")][0]
+    period_data_line = [l for l in lines if l.strip().startswith("period_data:")][0]
     # Should accept both numbers and simple strings
-    assert "record" in stress_period_data_line
+    assert "record" in period_data_line
 
 
 def test_make_grammar_with_oc_style_records(tmp_path):

@@ -91,9 +91,9 @@
   },
   "simulation/twrihfb2015/chd-1": {
     "__type__": "Chd",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[30, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -167,9 +167,9 @@
   },
   "simulation/twrihfb2015/drn-1": {
     "__type__": "Drn",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[9, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -207,9 +207,9 @@
   },
   "simulation/twrihfb2015/hfb": {
     "__type__": "Hfb",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "cellid1": "int64[8, 3] 02dceaba8b46f882",
         "cellid2": "int64[8, 3] 72e6bd24c0aff195",
         "hydchr": "float64[8] 0b5723e83d65ca4a",
@@ -274,7 +274,7 @@
   },
   "simulation/twrihfb2015/oc": {
     "__type__": "Oc",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Print",
@@ -340,9 +340,9 @@
   },
   "simulation/twrihfb2015/wel-1": {
     "__type__": "Wel",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[15, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,

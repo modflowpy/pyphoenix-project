@@ -13,16 +13,16 @@ DIMS = {"nlay": 1, "nrow": 2, "ncol": 3, "nper": 3}
 
 
 def round_trips(pkg, **kwargs):
-    expected = pkg.stress_period_data
+    expected = pkg.period_data
     pkg.from_xarray(pkg.to_xarray(**kwargs))
-    assert pkg.stress_period_data == expected
+    assert pkg.period_data == expected
 
 
 # --- cellid rows on the grid ------------------------------------------------
 
 
 def test_chd_on_grid_carries_periods_forward():
-    chd = Chd(stress_period_data={0: [((0, 0, 0), 1.0), ((0, 1, 2), 2.0)], 2: []}, dims=DIMS)
+    chd = Chd(period_data={0: [((0, 0, 0), 1.0), ((0, 1, 2), 2.0)], 2: []}, dims=DIMS)
     head = chd.to_xarray()["head"]
     assert head.dims == ("per", "layer", "row", "col")
     expected = np.full((2, 3), NODATA)
@@ -34,19 +34,19 @@ def test_chd_on_grid_carries_periods_forward():
 
 def test_chd_round_trips():
     spd = {0: [((0, 0, 0), 1.0), ((0, 1, 2), 2.0)], 1: [((0, 0, 1), 3.0)], 2: []}
-    round_trips(Chd(stress_period_data=spd, dims=DIMS))
+    round_trips(Chd(period_data=spd, dims=DIMS))
 
 
 def test_unchanged_periods_load_as_carried():
-    chd = Chd(stress_period_data={0: [((0, 0, 0), 1.0)], 1: [((0, 0, 0), 1.0)]}, dims=DIMS)
+    chd = Chd(period_data={0: [((0, 0, 0), 1.0)], 1: [((0, 0, 0), 1.0)]}, dims=DIMS)
     chd.from_xarray(chd.to_xarray())
-    assert list(chd.stress_period_data) == [0]
+    assert list(chd.period_data) == [0]
 
 
 def test_aux_is_a_variable_per_name():
     wel = Wel(
         auxiliary=["conc", "temp"],
-        stress_period_data={0: [((0, 0, 1), -5.0, (1.0, 2.0))]},
+        period_data={0: [((0, 0, 1), -5.0, (1.0, 2.0))]},
         dims=DIMS,
     )
     ds = wel.to_xarray()
@@ -58,7 +58,7 @@ def test_aux_is_a_variable_per_name():
 def test_array_column_has_a_dim_named_for_its_size():
     evt = Evt(
         nseg=3,
-        stress_period_data={0: [((0, 0, 0), 1.0, 0.1, 2.0, (0.3, 0.6), (0.5, 0.2))]},
+        period_data={0: [((0, 0, 0), 1.0, 0.1, 2.0, (0.3, 0.6), (0.5, 0.2))]},
         dims=DIMS,
     )
     ds = evt.to_xarray()
@@ -73,7 +73,7 @@ def test_conditional_column():
     evt = Evt(
         nseg=2,
         surf_rate_specified=True,
-        stress_period_data={0: [((0, 0, 0), 1.0, 0.1, 2.0, (0.3,), (0.5,), 0.7)]},
+        period_data={0: [((0, 0, 0), 1.0, 0.1, 2.0, (0.3,), (0.5,), 0.7)]},
         dims=DIMS,
     )
     ds = evt.to_xarray()
@@ -82,7 +82,7 @@ def test_conditional_column():
 
 
 def test_disv_grid():
-    chd = Chd(stress_period_data={0: [((1, 2), 1.0)]}, dims={"nlay": 2, "ncpl": 4, "nper": 1})
+    chd = Chd(period_data={0: [((1, 2), 1.0)]}, dims={"nlay": 2, "ncpl": 4, "nper": 1})
     head = chd.to_xarray()["head"]
     assert head.dims == ("per", "layer", "cell")
     assert head.values[0, 1, 2] == 1.0
@@ -92,7 +92,7 @@ def test_disv_grid():
 def test_boundnames_are_a_coordinate():
     chd = Chd(
         boundnames=True,
-        stress_period_data={0: [((0, 0, 0), 1.0, (), "a"), ((0, 1, 1), 2.0, (), None)]},
+        period_data={0: [((0, 0, 0), 1.0, (), "a"), ((0, 1, 1), 2.0, (), None)]},
         dims=DIMS,
     )
     ds = chd.to_xarray()
@@ -103,13 +103,13 @@ def test_boundnames_are_a_coordinate():
 
 
 def test_time_series_value_is_nan_with_its_name():
-    chd = Chd(stress_period_data={0: [((0, 0, 0), "ts-2"), ((0, 0, 1), 2.0)]}, dims=DIMS)
+    chd = Chd(period_data={0: [((0, 0, 0), "ts-2"), ((0, 0, 1), 2.0)]}, dims=DIMS)
     ds = chd.to_xarray()
     assert np.isnan(ds["head"].values[0, 0, 0, 0])
     assert ds.coords["head_ts"].values[0, 0, 0, 0] == "ts-2"
     assert pd.isnull(ds.coords["head_ts"].values[0, 0, 0, 1])
     round_trips(chd)
-    assert chd.stress_period_data[0][0].head == TimeSeriesRef("ts-2")
+    assert chd.period_data[0][0].head == TimeSeriesRef("ts-2")
 
 
 @pytest.mark.parametrize("sparse", [False, True])
@@ -117,17 +117,17 @@ def test_time_series_round_trips_netcdf(tmp_path, sparse):
     """NetCDF saves a cell without a series as '', which loads as none."""
     import xarray as xr
 
-    chd = Chd(stress_period_data={0: [((0, 0, 0), "ts-2"), ((0, 0, 1), 2.0)]}, dims=DIMS)
-    expected = chd.stress_period_data
+    chd = Chd(period_data={0: [((0, 0, 0), "ts-2"), ((0, 0, 1), 2.0)]}, dims=DIMS)
+    expected = chd.period_data
     ds = chd.to_xarray(sparse=sparse)
     ds.drop_attrs().to_netcdf(path := tmp_path / "chd.nc")
     chd.from_xarray(xr.load_dataset(path).assign_attrs(ds.attrs))
-    assert chd.stress_period_data == expected
+    assert chd.period_data == expected
 
 
 def test_no_grid_dims_raises():
     with pytest.raises(ValueError, match="needs the grid's nlay, nrow, ncol"):
-        Chd(stress_period_data={0: [((0, 0, 0), 1.0)]}).to_xarray()
+        Chd(period_data={0: [((0, 0, 0), 1.0)]}).to_xarray()
 
 
 def set_at(ds, names, at, value):
@@ -141,16 +141,16 @@ def set_at(ds, names, at, value):
 @pytest.mark.parametrize(
     "pkg, names, missing",
     [
-        (Drn(stress_period_data={0: [((0, 0, 0), 1.0, 10.0)]}, dims=DIMS), ["elev"], "cond"),
+        (Drn(period_data={0: [((0, 0, 0), 1.0, 10.0)]}, dims=DIMS), ["elev"], "cond"),
         (
-            Wel(auxiliary=["conc"], stress_period_data={0: [((0, 0, 0), -1.0, (5.0,))]}, dims=DIMS),
+            Wel(auxiliary=["conc"], period_data={0: [((0, 0, 0), -1.0, (5.0,))]}, dims=DIMS),
             ["q"],
             "aux",
         ),
         (
             Evt(
                 nseg=3,
-                stress_period_data={0: [((0, 0, 0), 1.0, 0.1, 2.0, (0.3, 0.6), (0.5, 0.2))]},
+                period_data={0: [((0, 0, 0), 1.0, 0.1, 2.0, (0.3, 0.6), (0.5, 0.2))]},
                 dims=DIMS,
             ),
             ["surface", "rate", "depth"],
@@ -169,7 +169,7 @@ def test_cell_missing_a_column_raises(pkg, names, missing):
 
 
 def two_wells():
-    return Wel(stress_period_data={0: [((0, 0, 0), -1.0), ((0, 0, 0), -2.0)]}, dims=DIMS)
+    return Wel(period_data={0: [((0, 0, 0), -1.0), ((0, 0, 0), -2.0)]}, dims=DIMS)
 
 
 def test_two_rows_at_a_cell_raise():
@@ -186,10 +186,10 @@ def test_duplicates_merge(how, q):
 @pytest.mark.parametrize("by_column", [False, True], ids=["rows", "columns"])
 def test_duplicates_keep_a_boundname(how, name, by_column):
     spd = {0: [((0, 0, 0), -1.0, (), "a"), ((0, 0, 0), -2.0, (), "b")]}
-    wel = Wel(stress_period_data=spd, boundnames=True, dims=DIMS)
+    wel = Wel(period_data=spd, boundnames=True, dims=DIMS)
     if not by_column:
-        tables = wel.__dict__["_stress_period_data"]
-        wel.__dict__["_stress_period_data"] = {k: t.to_items() for k, t in tables.items()}
+        tables = wel.__dict__["_period_data"]
+        wel.__dict__["_period_data"] = {k: t.to_items() for k, t in tables.items()}
     assert wel.to_xarray(duplicates=how).coords["boundname"].values[0, 0, 0, 0] == name
 
 
@@ -199,13 +199,13 @@ def test_duplicates_must_be_known():
 
 
 def test_summing_a_time_series_raises():
-    wel = Wel(stress_period_data={0: [((0, 0, 0), "ts-2"), ((0, 0, 0), -2.0)]}, dims=DIMS)
+    wel = Wel(period_data={0: [((0, 0, 0), "ts-2"), ((0, 0, 0), -2.0)]}, dims=DIMS)
     with pytest.raises(ValueError, match="can't be summed"):
         wel.to_xarray(duplicates="sum")
 
 
 def test_periods_past_nper_are_dropped():
-    wel = Wel(stress_period_data={3: [((0, 0, 0), "ts-2"), ((0, 0, 1), -1.0)]}, dims=DIMS)
+    wel = Wel(period_data={3: [((0, 0, 0), "ts-2"), ((0, 0, 1), -1.0)]}, dims=DIMS)
     with pytest.warns(UserWarning, match="past NPER"):
         ds = wel.to_xarray()
     assert (ds["q"].values == NODATA).all()
@@ -221,8 +221,8 @@ def wells_by_column():
         0: [((0, 0, 0), -1.0, (1.0,), "a"), ((0, 1, 2), "ts-2", (2.0,), None)],
         2: [((0, 0, 1), -1.0, (3.0,), "b"), ((0, 0, 1), -2.0, (4.0,), "c")],
     }
-    wel = Wel(stress_period_data=spd, auxiliary=["conc"], boundnames=True, dims=DIMS)
-    assert isinstance(wel.__dict__["_stress_period_data"][0], ItemTable)
+    wel = Wel(period_data=spd, auxiliary=["conc"], boundnames=True, dims=DIMS)
+    assert isinstance(wel.__dict__["_period_data"][0], ItemTable)
     return wel
 
 
@@ -233,18 +233,18 @@ def wells_by_column():
 )
 def test_columns_give_what_rows_do(kwargs):
     wel = wells_by_column()
-    tables = wel.__dict__["_stress_period_data"]
+    tables = wel.__dict__["_period_data"]
     by_column = wel.to_xarray(**kwargs)
-    wel.__dict__["_stress_period_data"] = {k: t.to_items() for k, t in tables.items()}
+    wel.__dict__["_period_data"] = {k: t.to_items() for k, t in tables.items()}
     assert by_column.identical(wel.to_xarray(**kwargs))
 
 
 @pytest.mark.parametrize("sparse", [True, False], ids=["sparse", "dense"])
 def test_tabular_rows_come_back_as_tables(sparse):
     wel = wells_by_column()
-    tables = wel.__dict__["_stress_period_data"]
+    tables = wel.__dict__["_period_data"]
     wel.from_xarray(wel.to_xarray(sparse=sparse, duplicates="last"))
-    spd = wel.__dict__["_stress_period_data"]
+    spd = wel.__dict__["_period_data"]
     assert all(isinstance(t, ItemTable) for t in spd.values())
     assert spd[0] == tables[0]
     assert spd[0].columns["q"].dtype == object  # a series
@@ -267,7 +267,7 @@ def uzf():
             (0, (0, 0, 2), 1, -1, 0.001, 1.0, 0.05, 0.25, 0.05, 4.0),
             (1, (0, 1, 0), 1, -1, 0.001, 1.0, 0.05, 0.25, 0.05, 4.0),
         ],
-        stress_period_data={0: [(1, 0.01, 0.001, 2.25, 0.05, 0.0, 0.0, 0.0)]},
+        period_data={0: [(1, 0.01, 0.001, 2.25, 0.05, 0.0, 0.0, 0.0)]},
         dims=DIMS,
     )
 
@@ -287,7 +287,7 @@ def test_uzf_rows_on_the_grid_through_packagedata():
 
 
 def sfr(spd, **kwargs):
-    return Sfr(nreaches=3, stress_period_data=spd, dims=DIMS, **kwargs)
+    return Sfr(nreaches=3, period_data=spd, dims=DIMS, **kwargs)
 
 
 def test_sfr_settings_are_variables_per_setting():
@@ -336,7 +336,7 @@ def test_lak_settings_are_on_their_keys_dims():
     lak = Lak(
         nlakes=2,
         noutlets=1,
-        stress_period_data={0: [Lak.Stage(1, 10.0), Lak.Rate(0, 0.5)]},
+        period_data={0: [Lak.Stage(1, 10.0), Lak.Rate(0, 0.5)]},
         dims=DIMS,
     )
     ds = lak.to_xarray()
@@ -348,7 +348,7 @@ def test_lak_settings_are_on_their_keys_dims():
 def test_maw_word_or_number_setting_is_an_object_variable():
     maw = Maw(
         nmawwells=2,
-        stress_period_data={0: [(0, "head_limit", "off"), (1, "head_limit", 2.5)]},
+        period_data={0: [(0, "head_limit", "off"), (1, "head_limit", 2.5)]},
         dims=DIMS,
     )
     ds = maw.to_xarray()
@@ -366,7 +366,7 @@ def test_maw_word_or_number_setting_is_an_object_variable():
         pytest.param(
             lambda: Chd(
                 boundnames=True,
-                stress_period_data={
+                period_data={
                     0: [((0, 0, 0), 1.0, (), "a"), ((0, 0, 0), "ts-2")],
                     2: [],
                 },
@@ -378,9 +378,7 @@ def test_maw_word_or_number_setting_is_an_object_variable():
             lambda: Evt(
                 nseg=3,
                 auxiliary=["conc"],
-                stress_period_data={
-                    0: [((0, 0, 0), 1.0, 0.1, 2.0, (0.3, 0.6), (0.5, 0.2), None, (4.0,))]
-                },
+                period_data={0: [((0, 0, 0), 1.0, 0.1, 2.0, (0.3, 0.6), (0.5, 0.2), None, (4.0,))]},
                 dims=DIMS,
             ),
             id="evt",
@@ -395,24 +393,22 @@ def test_maw_word_or_number_setting_is_an_object_variable():
             lambda: Lak(
                 nlakes=2,
                 noutlets=1,
-                stress_period_data={0: [Lak.Stage(1, 10.0), Lak.Auxiliary(0, "conc", 1.0)]},
+                period_data={0: [Lak.Stage(1, 10.0), Lak.Auxiliary(0, "conc", 1.0)]},
                 auxiliary=["conc"],
                 dims=DIMS,
             ),
             id="lak",
         ),
         pytest.param(
-            lambda: Hfb(stress_period_data={0: [((0, 0, 0), (0, 0, 1), 1e-3)]}, dims=DIMS),
+            lambda: Hfb(period_data={0: [((0, 0, 0), (0, 0, 1), 1e-3)]}, dims=DIMS),
             id="hfb",
         ),
         pytest.param(
-            lambda: Mvr(stress_period_data={0: [("wel", 0, "drn", 1, "factor", 0.5)]}, dims=DIMS),
+            lambda: Mvr(period_data={0: [("wel", 0, "drn", 1, "factor", 0.5)]}, dims=DIMS),
             id="mvr",
         ),
         pytest.param(
-            lambda: Oc(
-                stress_period_data={0: [("save", "head", "all"), ("print", "budget", "last")]}
-            ),
+            lambda: Oc(period_data={0: [("save", "head", "all"), ("print", "budget", "last")]}),
             id="oc",
         ),
     ],
@@ -425,7 +421,7 @@ def test_sparse_round_trips(pkg):
 
 
 def test_sparse_cellid_columns_are_named_for_grid_dims():
-    tvk = Tvk(stress_period_data={0: [((0, 1, 2), Tvk.K(5.0))]}, dims=DIMS)
+    tvk = Tvk(period_data={0: [((0, 1, 2), Tvk.K(5.0))]}, dims=DIMS)
     ds = tvk.to_xarray(sparse=True)
     assert [int(ds.coords[n].values[0]) for n in ("cellid_layer", "cellid_row", "cellid_col")] == [
         0,
@@ -437,14 +433,14 @@ def test_sparse_cellid_columns_are_named_for_grid_dims():
 
 
 def test_rows_with_no_single_key_are_sparse():
-    hfb = Hfb(stress_period_data={0: [((0, 0, 0), (0, 0, 1), 1e-3)]}, dims=DIMS)
+    hfb = Hfb(period_data={0: [((0, 0, 0), (0, 0, 1), 1e-3)]}, dims=DIMS)
     ds = hfb.to_xarray()
     assert ds["hydchr"].dims == ("entry",)
     assert list(ds.coords["cellid2_col"].values) == [1]
 
 
 def test_aux_named_like_a_column_raises():
-    wel = Wel(auxiliary=["q"], stress_period_data={0: [((0, 0, 0), -1.0, (2.0,))]}, dims=DIMS)
+    wel = Wel(auxiliary=["q"], period_data={0: [((0, 0, 0), -1.0, (2.0,))]}, dims=DIMS)
     with pytest.raises(ValueError, match="'q'"):
         wel.to_xarray()
     with pytest.raises(ValueError, match="name of a column"):
@@ -456,20 +452,20 @@ def test_assigned_rows_taken_as_at_construction(how):
     import copy
     import pickle
 
-    chd = Chd(stress_period_data={0: [((0, 0, 0), 1.0)]}, dims=DIMS)
+    chd = Chd(period_data={0: [((0, 0, 0), 1.0)]}, dims=DIMS)
     rows = [((0, 1, 2), 2.0, "b")]
     if how == "setter":
-        chd.stress_period_data = {1: rows}
+        chd.period_data = {1: rows}
     elif how == "item":
-        chd.stress_period_data[1] = rows
+        chd.period_data[1] = rows
     else:
-        chd.stress_period_data.update({1: rows})
-    assert isinstance(chd.stress_period_data[1], ItemTable)
-    assert chd.stress_period_data[1][0].boundname == "b"
+        chd.period_data.update({1: rows})
+    assert isinstance(chd.period_data[1], ItemTable)
+    assert chd.period_data[1][0].boundname == "b"
     assert chd.boundnames
     assert chd.to_xarray()["head"].values[1, 0, 1, 2] == 2.0
     for other in (copy.deepcopy(chd), pickle.loads(pickle.dumps(chd))):
         assert other == chd
-        other.stress_period_data[2] = [((0, 0, 1), 3.0)]
-        assert isinstance(other.stress_period_data[2], ItemTable)
-        assert 2 not in chd.stress_period_data
+        other.period_data[2] = [((0, 0, 1), 3.0)]
+        assert isinstance(other.period_data[2], ItemTable)
+        assert 2 not in chd.period_data

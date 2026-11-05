@@ -79,9 +79,9 @@
   },
   "simulation/lake0/chd-1": {
     "__type__": "Chd",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[16, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -158,7 +158,7 @@
   },
   "simulation/lake0/lak-1": {
     "__type__": "Lak",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Rainfall",
@@ -259,7 +259,7 @@
   },
   "simulation/lake0/oc": {
     "__type__": "Oc",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Print",

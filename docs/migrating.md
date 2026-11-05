@@ -2,21 +2,22 @@
 
 ## Period data
 
-flopy4 calls every package's period data `stress_period_data`. flopy3 names
-some packages' period data after the input file's variable instead. flopy4
-still takes flopy3's names, but warns (`DeprecationWarning`) and will stop
-taking them in a future release. Constructors only take the old names: read
-and assign `stress_period_data`.
+flopy4 calls every package's period data `period_data`. flopy3 calls it
+`stress_period_data` on some packages, and names others' after the input
+file's variable. flopy4 still takes flopy3's names, but warns
+(`DeprecationWarning`) and will stop taking them in a future release. Constructors only take the old names: read
+and assign `period_data`.
 
 | flopy3 | flopy4 | packages |
 |---|---|---|
-| `perioddata` | `stress_period_data` | LAK, MAW, MVR, SFR, UZF, PRP, SPC, TVK, TVS |
-| `lakeperioddata` | `stress_period_data` | LKT, LKE |
-| `reachperioddata` | `stress_period_data` | SFT, SFE |
-| `mwtperioddata`, `mweperioddata` | `stress_period_data` | MWT, MWE |
-| `uztperioddata`, `uzeperioddata` | `stress_period_data` | UZT, UZE |
-| `steady_state`, `transient` | `stress_period_data` | STO |
-| `saverecord`, `printrecord` | `stress_period_data` | OC |
+| `stress_period_data` | `period_data` | CDB, CHD, CNC, CSUB, CTP, DRN, ESL, EVP, EVT, FLW, GHB, HFB, PCP, RCH, RIV, SRC, WEL, ZDG |
+| `perioddata` | `period_data` | LAK, MAW, MVR, SFR, UZF, PRP, SPC, TVK, TVS |
+| `lakeperioddata` | `period_data` | LKT, LKE |
+| `reachperioddata` | `period_data` | SFT, SFE |
+| `mwtperioddata`, `mweperioddata` | `period_data` | MWT, MWE |
+| `uztperioddata`, `uzeperioddata` | `period_data` | UZT, UZE |
+| `steady_state`, `transient` | `period_data` | STO |
+| `saverecord`, `printrecord` | `period_data` | OC |
 
 The values are the same, except for STO's and OC's.
 
@@ -32,7 +33,7 @@ STO takes one entry per period, `STEADY-STATE` or `TRANSIENT`:
 sto = flopy.mf6.ModflowGwfsto(gwf, steady_state={0: True}, transient={1: True})
 
 # flopy4
-sto = Sto(parent=gwf, stress_period_data={0: [("STEADY-STATE",)], 1: [("TRANSIENT",)]})
+sto = Sto(parent=gwf, period_data={0: [("STEADY-STATE",)], 1: [("TRANSIENT",)]})
 ```
 
 OC takes each period's saves and prints in one list, each starting with
@@ -49,7 +50,7 @@ oc = flopy.mf6.ModflowGwfoc(
 # flopy4
 oc = Oc(
     parent=gwf,
-    stress_period_data={
+    period_data={
         0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL"), ("PRINT", "BUDGET", "LAST")]
     },
 )

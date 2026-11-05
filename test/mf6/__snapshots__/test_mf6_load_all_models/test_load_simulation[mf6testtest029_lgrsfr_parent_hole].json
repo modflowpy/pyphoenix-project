@@ -81,9 +81,9 @@
   },
   "simulation/sfr_hole/SFR_1": {
     "__type__": "Sfr",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "ifno": "int64[432] f3f619d195a30a00",
         "n": 432,
         "sfrsetting": "19224 chars c844420adf1bbfa4"
@@ -137,9 +137,9 @@
   },
   "simulation/sfr_hole/chd-1": {
     "__type__": "Chd",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[100, 0] da39a3ee5e6b4b0d",
         "boundname": "600 chars e0fe10b4d6d4dd10",
         "cellid": "int64[100, 3] ee1787ddd2f53bba",
@@ -230,7 +230,7 @@
   },
   "simulation/sfr_hole/oc": {
     "__type__": "Oc",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Save",
@@ -279,9 +279,9 @@
   },
   "simulation/sfr_hole/wel-1": {
     "__type__": "Wel",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[1, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null

@@ -477,8 +477,8 @@ def _sim(workspace: Path) -> Simulation:
     gwf = Gwf(parent=sim, name="gwf", dis=dis)
     Ic(parent=gwf, strt=10.0)
     Npf(parent=gwf, k=np.linspace(1.0, 2.0, 24), icelltype=0)
-    Chd(parent=gwf, stress_period_data={0: [[(0, 0, 0), 10.0], [(1, 2, 3), 2.0]]})
-    Oc(parent=gwf, head_file="gwf.hds", stress_period_data={0: [("SAVE", "HEAD", "LAST")]})
+    Chd(parent=gwf, period_data={0: [[(0, 0, 0), 10.0], [(1, 2, 3), 2.0]]})
+    Oc(parent=gwf, head_file="gwf.hds", period_data={0: [("SAVE", "HEAD", "LAST")]})
     return sim
 
 

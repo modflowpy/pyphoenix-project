@@ -16,7 +16,7 @@ class Mvr(Package):
     ftype: ClassVar[str] = "MVR6"
 
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
-        "perioddata": Legacy("stress_period_data"),
+        "perioddata": Legacy("period_data"),
     }
 
     @attrs.define
@@ -33,7 +33,7 @@ class Mvr(Package):
         )
 
     @attrs.define
-    class StressPeriodData(Item):
+    class PeriodData(Item):
         _columns: ClassVar[tuple[str, ...]] = (
             "mname1",
             "pname1",
@@ -106,8 +106,8 @@ class Mvr(Package):
         block="packages",
         shape=("maxpackages",),
     )
-    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
-        alias="stress_period_data",
+    _period_data: Optional[dict[int, list[PeriodData]]] = list_(
+        alias="period_data",
         default=None,
         repr=False,
         block="period",
@@ -116,4 +116,4 @@ class Mvr(Package):
 
 
 MvrPackages = Mvr.Packages
-MvrStressPeriodData = Mvr.StressPeriodData
+MvrPeriodData = Mvr.PeriodData

@@ -71,6 +71,10 @@ def _to_context(blocks: dict[str, Block]) -> tuple[list[dict], dict[str, object]
         for field_name, field in block.fields.items():
             if field.removed:
                 continue
+            # the DFNs' period list, and STO's scalar in its place
+            if field_name == "stress_period_data":
+                field_name = "period_data"
+                field = field.model_copy(update={"name": field_name})
             if field.tagged and getattr(field, "valid", None):
                 tagged_valid.add(field_name)
             field = filters.valid_as_union(field)

@@ -39,7 +39,7 @@ class Lke(Package):
     }
 
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
-        "lakeperioddata": Legacy("stress_period_data"),
+        "lakeperioddata": Legacy("period_data"),
     }
 
     @attrs.define
@@ -92,7 +92,7 @@ class Lke(Package):
         auxval: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
-    class StressPeriodData(Item):
+    class PeriodData(Item):
         lakeno: int = integer(index=True, fk="packagedata.lakeno")
         laksetting: "Lke.Status | Lke.Temperature | Lke.Rainfall | Lke.Evaporation | Lke.Runoff | Lke.ExtInflow | Lke.Auxiliary" = union()  # noqa: E501
 
@@ -177,8 +177,8 @@ class Lke(Package):
         block="packagedata",
         write_if_empty=True,
     )
-    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
-        alias="stress_period_data",
+    _period_data: Optional[dict[int, list[PeriodData]]] = list_(
+        alias="period_data",
         default=None,
         repr=False,
         block="period",
@@ -194,4 +194,4 @@ LkeEvaporation = Lke.Evaporation
 LkeRunoff = Lke.Runoff
 LkeExtInflow = Lke.ExtInflow
 LkeAuxiliary = Lke.Auxiliary
-LkeStressPeriodData = Lke.StressPeriodData
+LkePeriodData = Lke.PeriodData

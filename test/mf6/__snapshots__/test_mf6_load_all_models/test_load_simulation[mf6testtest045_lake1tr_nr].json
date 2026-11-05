@@ -91,9 +91,9 @@
   },
   "simulation/lakeex1a/chd-1": {
     "__type__": "Chd",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[320, 0] da39a3ee5e6b4b0d",
         "boundname": "1920 chars 265ce500d599b872",
         "cellid": "int64[320, 3] 6d91cda5abf34789",
@@ -182,7 +182,7 @@
   },
   "simulation/lakeex1a/lak-1": {
     "__type__": "Lak",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Rainfall",
@@ -317,7 +317,7 @@
   },
   "simulation/lakeex1a/oc": {
     "__type__": "Oc",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Print",

@@ -51,12 +51,12 @@ def written_sim(tmp_path):
     )
     gwf = Gwf(parent=sim, name=gwf_name, save_flows=True, dis=grid)
     gwf.npf = Npf(print_flows=True, save_flows=True, save_specific_discharge=True)
-    Chd(parent=gwf, stress_period_data={0: [((0, 0, 0), 1.0), ((0, 9, 9), 0.0)]})
+    Chd(parent=gwf, period_data={0: [((0, 0, 0), 1.0), ((0, 9, 9), 0.0)]})
     gwf.ic = Ic(strt=1.0)
     gwf.oc = Oc(
         budget_file=f"{gwf.name}.bud",
         head_file=f"{gwf.name}.hds",
-        stress_period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
+        period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
     )
     sim.write()
     return workspace
@@ -110,7 +110,7 @@ def test_load_simulation_resolves_list_package_rows(written_sim):
     assert len(gwf.chd) == 1
     chd = gwf.chd[0]
     assert isinstance(chd, Chd)
-    rows = chd.stress_period_data[0]
+    rows = chd.period_data[0]
     assert [(r.cellid, r.head) for r in rows] == [((0, 0, 0), 1.0), ((0, 9, 9), 0.0)]
 
 
@@ -427,11 +427,11 @@ def test_write_names_packages_attached_by_assignment(tmp_path):
         name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]), solutiongroup=[Ims()]
     )
     gwf = Gwf(parent=sim, name="m", dis=Dis(nlay=1, nrow=1, ncol=2))
-    gwf.chd = [Chd(stress_period_data={0: [[(0, 0, 0), 1.0]]})]
+    gwf.chd = [Chd(period_data={0: [[(0, 0, 0), 1.0]]})]
     sim.write()
 
     del gwf.chd[0]
-    gwf.chd = [Chd(stress_period_data={0: [[(0, 0, 0), 2.0]]})]
+    gwf.chd = [Chd(period_data={0: [[(0, 0, 0), 2.0]]})]
     sim.write()
 
     assert " CHD6 m.chd-1.chd chd-1" in (tmp_path / "m.nam").read_text().splitlines()
@@ -596,7 +596,7 @@ def test_exchange_resolves_cellid_widths_for_dis2d(tmp_path):
     ]
 
 
-def test_loads_cdb_stress_period_data(tmp_path):
+def test_loads_cdb_period_data(tmp_path):
     """`Cdb` (CHF's channel-divergence boundary package) round-trips its
     stress period data -- the one CHF package type no upstream test
     exercises at all, so it's otherwise entirely unverified."""
@@ -621,16 +621,16 @@ def test_loads_cdb_stress_period_data(tmp_path):
     )
     ChfIc(parent=chf, strt=[1.0, 1.0])
     Dfw(parent=chf, manningsn=[0.035, 0.035])
-    Cdb(parent=chf, stress_period_data={0: [[(0,), 0, 1.0]]})
+    Cdb(parent=chf, period_data={0: [[(0,), 0, 1.0]]})
     sim.write()
 
     loaded = Simulation.load(tmp_path / "mfsim.nam")
-    (row,) = loaded.models[0].cdb[0].stress_period_data[0]
+    (row,) = loaded.models[0].cdb[0].period_data[0]
 
     assert (row.cellid, row.idcxs, row.width) == ((0,), 0, 1.0)
 
 
-def test_loads_olf_cdb_stress_period_data(tmp_path):
+def test_loads_olf_cdb_period_data(tmp_path):
     """`Cdb` (OLF's channel-divergence boundary package) round-trips its
     stress period data -- the one OLF package type no upstream test
     exercises at all, so it's otherwise entirely unverified."""
@@ -647,16 +647,16 @@ def test_loads_olf_cdb_stress_period_data(tmp_path):
     Dis2d(parent=olf, nrow=1, ncol=2, delr=1.0, delc=1.0, bottom=0.0)
     OlfIc(parent=olf, strt=[1.0, 1.0])
     Dfw(parent=olf, manningsn=[0.035, 0.035])
-    Cdb(parent=olf, stress_period_data={0: [[(0, 0), 0, 1.0]]})
+    Cdb(parent=olf, period_data={0: [[(0, 0), 0, 1.0]]})
     sim.write()
 
     loaded = Simulation.load(tmp_path / "mfsim.nam")
-    (row,) = loaded.models[0].cdb[0].stress_period_data[0]
+    (row,) = loaded.models[0].cdb[0].period_data[0]
 
     assert (row.cellid, row.idcxs, row.width) == ((0, 0), 0, 1.0)
 
 
-def test_loads_evp_stress_period_data(tmp_path):
+def test_loads_evp_period_data(tmp_path):
     """`Evp` (CHF's evaporation package) round-trips its stress period
     data -- the other CHF package type no upstream test exercises at
     all (alongside `Cdb`), so it's otherwise entirely unverified."""
@@ -681,16 +681,16 @@ def test_loads_evp_stress_period_data(tmp_path):
     )
     ChfIc(parent=chf, strt=[1.0, 1.0])
     Dfw(parent=chf, manningsn=[0.035, 0.035])
-    Evp(parent=chf, stress_period_data={0: [[(0,), 0.01]]})
+    Evp(parent=chf, period_data={0: [[(0,), 0.01]]})
     sim.write()
 
     loaded = Simulation.load(tmp_path / "mfsim.nam")
-    (row,) = loaded.models[0].evp[0].stress_period_data[0]
+    (row,) = loaded.models[0].evp[0].period_data[0]
 
     assert (row.cellid, row.evaporation) == ((0,), 0.01)
 
 
-def test_loads_olf_evp_stress_period_data(tmp_path):
+def test_loads_olf_evp_period_data(tmp_path):
     """`Evp` (OLF's evaporation package) round-trips its stress period
     data -- the other OLF package type no upstream test exercises at
     all (alongside `Cdb`), so it's otherwise entirely unverified."""
@@ -707,10 +707,10 @@ def test_loads_olf_evp_stress_period_data(tmp_path):
     Dis2d(parent=olf, nrow=1, ncol=2, delr=1.0, delc=1.0, bottom=0.0)
     OlfIc(parent=olf, strt=[1.0, 1.0])
     Dfw(parent=olf, manningsn=[0.035, 0.035])
-    Evp(parent=olf, stress_period_data={0: [[(0, 0), 0.01]]})
+    Evp(parent=olf, period_data={0: [[(0, 0), 0.01]]})
     sim.write()
 
     loaded = Simulation.load(tmp_path / "mfsim.nam")
-    (row,) = loaded.models[0].evp[0].stress_period_data[0]
+    (row,) = loaded.models[0].evp[0].period_data[0]
 
     assert (row.cellid, row.evaporation) == ((0, 0), 0.01)

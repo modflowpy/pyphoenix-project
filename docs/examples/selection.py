@@ -58,12 +58,12 @@ Ic(parent=gwf, strt=20.0)
 Npf(parent=gwf, k=1.0)
 west = [((0, r, 0), 25.0) for r in range(nrow)]
 east = [((0, r, ncol - 1), 15.0) for r in range(nrow)]
-Chd(parent=gwf, stress_period_data={0: west + east})
+Chd(parent=gwf, period_data={0: west + east})
 Oc(
     parent=gwf,
     budget_file=f"{name}.cbc",
     head_file=f"{name}.hds",
-    stress_period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
+    period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
 )
 sim.write()
 sim.run()

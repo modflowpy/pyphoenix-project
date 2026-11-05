@@ -30,13 +30,13 @@ def quickstart_model():
     npf = Npf(parent=gwf, save_specific_discharge=True)
     chd = Chd(
         parent=gwf,
-        stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]]},
+        period_data={0: [[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]]},
     )
     oc = Oc(
         parent=gwf,
         budget_file=f"{name}.bud",
         head_file=f"{name}.hds",
-        stress_period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
+        period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
     )
 
     return gwf
@@ -74,9 +74,9 @@ def test_flopy3_model(tmp_path):
     ims.inner_hclose = 1e-6
     ims.inner_rclose = 0.1000000
     ic = Ic(dims=dims)
-    oc = Oc(dims=dims, stress_period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]})
+    oc = Oc(dims=dims, period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]})
     npf = Npf(dims=dims)
-    chd = Chd(name="north", dims=dims, stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]]})
+    chd = Chd(name="north", dims=dims, period_data={0: [[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]]})
 
     gwf = Gwf(
         dis=dis,
@@ -361,14 +361,14 @@ def test_flopy3_list_data(tmp_path):
     from flopy.export.utils import mflist_export, package_export
     from flopy.plot import PlotMapView
 
-    S = Chd.StressPeriodData
+    S = Chd.PeriodData
     dims = {"nlay": 2, "nrow": 3, "ncol": 4, "nper": 4}
     chd = Chd(
         name="c",
         auxiliary=["conc"],
         boundnames=True,
         dims=dims,
-        stress_period_data={
+        period_data={
             # a repeated cell, averaged; period 1 repeats period 0
             0: [
                 S(cellid=(0, 1, 2), head=1.0, aux=(5.0,), boundname="a"),

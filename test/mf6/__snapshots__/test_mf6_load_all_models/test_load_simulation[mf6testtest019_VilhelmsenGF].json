@@ -109,7 +109,7 @@
   },
   "simulation/PARENT/oc": {
     "__type__": "Oc",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Print",
@@ -171,9 +171,9 @@
   },
   "simulation/PARENT/riv-1": {
     "__type__": "Riv",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[217, 0] da39a3ee5e6b4b0d",
         "boundname": "1302 chars 8969c8b27616c96b",
         "cellid": "int64[217, 3] 92fddd098008a7bb",
