@@ -33,7 +33,7 @@ All core and most peripheral functionality, and may involve:
 - Finalizing maintenance/release plans
 - Finalizing MF6 version support plan
 
-Release to wider test audience at USGS and Deltares via `pip install` from github URL. Begin beta versioning.
+Release to wider test audience at USGS and Deltares via `pip install` from github URL. This is the last beta; beta versioning begins before it.
 
 What's left to reach the MMP, and in what order, is in [mmp-plan.md](mmp-plan.md). All plans and design notes are listed in [plans/README.md](plans/README.md).
 

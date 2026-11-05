@@ -76,7 +76,7 @@ These are the "break" group. Aliases here would hide a real change in
 meaning.
 
 - **`npf.k.array` / `.get_data()` / `.set_data()`.** Probably option (a)
-  of [`replacing-flopy-mf6.md`](replacing-flopy-mf6.md) question 2:
+  of [`replacing-flopy-mf6.md`](replacing-flopy-mf6.md) I2:
   `npf.k` is the value itself, and `.array` raises with a hint, keeping
   the rule "same result or a clear error". A `get_data()` on an array
   value would need a wrapper, since numpy arrays can't take new methods.

@@ -172,8 +172,7 @@ When resolving, read each develop PR's diff
   which this branch deletes; retarget to `_Unstructure` (land this first).
 - `simplification-survey.md` #5 (writer's `field_type`): natural follow-up.
 - Update dev-plans copies (`plans/README.md` "Reading and writing" table, the converter
-  plan, `typed-loader-wiring.md` status) — on the dev-plans branch, as a
-  separate commit there.
+  plan) — on the dev-plans branch, as a separate commit there.
 
 ## Status
 

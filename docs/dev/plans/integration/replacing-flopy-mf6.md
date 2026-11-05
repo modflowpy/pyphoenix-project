@@ -173,7 +173,7 @@ wants to remove.
 \* through xugrid; xarray is listed as optional, but `attrs_xarray` and
 the array fields need it.
 
-## Question 1: the new engine in 3.x?
+## Should the engine go into 3.x?
 
 **Replacing the old engine: no.** Even with adapters:
 
@@ -238,7 +238,7 @@ refactoring list where it helps the swap.
    `dfns`, and settle the DFN schema version. This blocks any flopy
    release that includes the new engine.
 
-## Question 2: how to do the replacement
+## How to do the replacement
 
 ### Layout in 4.x
 
@@ -248,7 +248,7 @@ flopy/
     compat/         <- generated flopy3 names: ModflowGwfdis, MFSimulation, ...
     legacy/         <- 3.x's flopy/mf6, frozen (git mv, history kept)
   _core/ or similar <- flopy4's top-level modules (uio, spec, dimensions,
-                       attrs_xarray, mixins, protocols) and flopy4/adapters.py
+                       attrs_xarray, protocols) and flopy4/adapters.py
   discretization/, plot/, export/, utils/, modpath/, ...  <- unchanged
 ```
 
@@ -413,25 +413,25 @@ has the MMP-only tracks (B to E):
 | **A. Engine correctness** | here | bare-list bug, equivalence harness (tier E), then fixing what it finds | MMP. Longest and least predictable, so first |
 | **G. Packaging** | devtools, here | devtools release, drop the git dependency, xugrid range, Python 3.14, numpy floor | the first release candidate (GitHub installs don't need it) |
 | **F. 3.x prep** | flopy `develop` | 3.x items 1 to 5 | items 1 and 2 by the branch cut; items 3 to 5 can land later and merge into `4.x` weekly |
-| **Questions and survey** | team | open questions, downstream survey | question 3 by MMP; 1, 2 and 6 by the branch cut; the rest as below |
+| **Questions and survey** | team | open questions, downstream survey | I3 by MMP; I1, I2 and I6 by the branch cut; the rest as below |
 
 ### Before MMP
 
 Tracked in [`mmp-plan.md`](../../mmp-plan.md). From this plan: tier E passes on the
-registry corpus, question 3 (`output.head`) is settled and implemented,
+registry corpus, I3 (`output.head`) is settled and implemented,
 since testers write code against it, and the migration scoreboard
 ([`aliases-and-codemod.md`](aliases-and-codemod.md) step 8) runs from here.
 
 ### Before cutting `4.x`
 
 - MMP released, and its feedback worked through.
-- Question 2 (compat data access) settled and implemented.
+- I2 (compat data access) settled and implemented.
 - 3.x item 1 merged: engine-agnostic utilities out of `flopy/mf6` (the
   legacy move depends on it).
 - 3.x item 2 merged: the shared-code protocol, implemented by flopy3's
   mf6 classes (Phase 2 step 3 depends on it).
-- Question 1: legacy engine or not, and its namespace (Phase 2 step 1).
-- Question 6: where flopy4's top-level modules go (Phase 2 step 2).
+- I1: legacy engine or not, and its namespace (Phase 2 step 1).
+- I6: where flopy4's top-level modules go (Phase 2 step 2).
 - Equivalence harness running in CI here, so its results carry over. It
   doesn't have to pass yet.
 
@@ -452,7 +452,7 @@ since testers write code against it, and the migration scoreboard
 
 - 3.x item 4 (deprecations) shipped in a 3.x release, ideally two
   releases before 4.0, so users see the warnings first.
-- Question 7 (3.x support window) settled and announced with 4.0.
+- I7 (3.x support window) settled and announced with 4.0.
 
 ### The longest chain
 
@@ -487,16 +487,16 @@ move isn't a risk.
 
 ## Open questions
 
-1. Legacy engine in 4.x: whether, its namespace, and how long it stays.
-   Probably `flopy.mf6.legacy`, until 5.0.
-2. Compat data access: (a) raise with a hint, or (b) views.
-3. `output.head`: which side renames.
-4. Whether to accept 4.x keywords in 3.x (3.x item 5).
-5. numpy floor and Python range for 4.0. flopy `develop` is at Python
-   `>=3.12` and numpy `>=2.2`; the question is whether flopy4 needs more
-   than that.
-6. Where flopy4's top-level modules (`uio`, `spec`, `dimensions`, ...) go:
-   `flopy._core`, or under `flopy.mf6` if nothing else will use them.
-   NFR-4 (one API for MF6 and older MODFLOW programs) says somewhere
-   shared.
-7. How long 3.x is maintained after 4.0.
+- **I1.** Legacy engine in 4.x: whether, its namespace, and how long it
+  stays. Probably `flopy.mf6.legacy`, until 5.0.
+- **I2.** Compat data access: (a) raise with a hint, or (b) views.
+- **I3.** `output.head`: which side renames.
+- **I4.** Whether to accept 4.x keywords in 3.x (3.x item 5).
+- **I5.** numpy floor and Python range for 4.0. flopy `develop` is at Python
+  `>=3.12` and numpy `>=2.2`; the question is whether flopy4 needs more
+  than that.
+- **I6.** Where flopy4's top-level modules (`uio`, `spec`, `dimensions`, ...)
+  go: `flopy._core`, or under `flopy.mf6` if nothing else will use them.
+  NFR-4 (one API for MF6 and older MODFLOW programs) says somewhere
+  shared.
+- **I7.** How long 3.x is maintained after 4.0.

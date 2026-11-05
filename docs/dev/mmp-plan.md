@@ -14,7 +14,7 @@ Decided 2026-11-03.
 | stage | released from | installed by | gate |
 |---|---|---|---|
 | alphas | this repo | `pip install` from GitHub | as needed |
-| betas, MMP the last of them | this repo | `pip install` from GitHub | "MMP gate" below |
+| betas, MMP the last of them | this repo | `pip install` from GitHub | the first: open, below; MMP: "MMP gate" below |
 | release candidates `flopy==4.0.0rcN` | flopy's `4.x` branch | PyPI, conda-forge | the integration plan's "Before the first release candidate" |
 | GA | flopy, the last release candidate | PyPI, conda-forge | the integration plan's "Before GA" |
 
@@ -41,6 +41,9 @@ either way.
 **Open: version numbers.** `flopy4` is at `0.0.1.dev0`. Versioning the
 pre-releases `4.0.0aN`/`4.0.0bN` lines them up with `flopy==4.0.0` and
 avoids a jump from 0.x.
+
+**Open: what starts the betas.** The MMP is the last beta, so the first
+comes before it, but no gate is set for the first.
 
 ## What MMP means
 
@@ -96,12 +99,12 @@ after MMP is under "After MMP".
 | track | items | by MMP | detail |
 |---|---|---|---|
 | **A. Engine correctness** | bare-list bug; equivalence harness (tier E) over the registry; round-trip tests; fix what they find | everything | [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md) "Tests", [`test.md`](test.md). **Longest and least predictable. Start first.** |
-| **B. API decisions** | `output.head` (integration decision 3); `get_package`/`modelgrid` on Model; `name` vs `sim_name`; accessor naming and `flatten()`/`node`; component naming (#258); parent/child init (#259); unified output loading (#342); the data-shape questions, decided together by one rule: STO types (#229), UZF placeholders (#523), SFR `connectiondata` (#345), packages without a grid (#226) | decided and implemented | [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md) "Open decisions"; [`overview.md`](plans/xarray/overview.md) "Open"; [`layout-logical-decisions.md`](plans/dfn-spec/layout-logical-decisions.md) for #226, #229, #259, #345, #523 |
+| **B. API decisions** | `output.head` (I3); `get_package`/`modelgrid` on Model; `name` vs `sim_name`; accessor naming and `flatten()`/`node`; field naming, name or longname (#258); parent/child init (#259); unified output loading (#342); the data-shape questions, decided together by one rule: STO types (#229), UZF placeholders (#523), SFR `connectiondata` (#345), packages without a grid (#226) | decided and implemented | [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md) "Open questions"; [`overview.md`](plans/xarray/overview.md) "Open questions"; [`layout-logical-decisions.md`](plans/dfn-spec/layout-logical-decisions.md) for #226, #229, #259, #345, #523 |
 | **C. Data and xarray** | `to-xarray-constants` fix; datetime period keys (#518, #226); lossless `to_xarray`/`from_xarray` and `dense()` (export phase 1), including an Options section in the representation spec (logical options as data, layout options as encoding, output options off the data) and opt-in views for dynamic derivations (`AUXMULTNAME`, TAS); deferred external arrays (#516) | the fix, #518 and export phase 1; #516 for FUNC-8 | [`export.md`](plans/xarray/export.md), [`datetime-periods.md`](plans/xarray/datetime-periods.md), [`representation.md`](plans/xarray/representation.md), [`layout-logical-decisions.md`](plans/dfn-spec/layout-logical-decisions.md) "Track C" |
 | **D. Docs** | API reference; concepts (#217); 3.x examples adapted; [`migrating.md`](../migrating.md) for compat; SDD update once export phase 1 lands | all | [`map.md`](map.md), [`srs.md`](srs.md), [`sdd.md`](sdd.md) |
 | **E. Migration** | classify every flopy3 difference (accept, deprecate, break); runtime aliases in flopy4 itself (positional parent, `register_ims_package`, `write_simulation`, `get_package`, `modelgrid`, `*_filerecord`, ...); the shared `Legacy` table; the `flopy4 migrate` codemod; the corpus scoreboard over MF6 autotests and examples. Generated `ModflowXxx` class names stay in flopy 4.x's compat layer | classification, aliases and scoreboard; the codemod if time allows | [`aliases-and-codemod.md`](plans/integration/aliases-and-codemod.md); [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md) "The compat layer" |
 | **F. 3.x prep** (flopy `develop`) | 3.x items 1 to 5: utilities out of `flopy/mf6`, the shared-code protocol, upstream patches, deprecations, forward-compatible keywords | nothing required; items 1 and 2 by the `4.x` cut | [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md) "3.x work" |
-| **G. Packaging** | devtools release; drop the git dependency; xugrid range; Python 3.14 and the 3.11 question; numpy floor; lazy xugrid import | nothing required (GitHub installs); all by the first release candidate | [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md) Phase 0 item 3; [`overview.md`](plans/xarray/overview.md) (lazy xugrid, grid composition) |
+| **G. Packaging** | devtools release; drop the git dependency; xugrid range; Python 3.14 and the 3.11 question; numpy floor; lazy xugrid import | nothing required (GitHub installs); all by the first release candidate | [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md) Phase 0 item 3; [`overview.md`](plans/xarray/overview.md) (lazy xugrid) |
 
 Tracks F and G aren't needed for MMP, but start them now: they're small,
 each piece is releasable on its own, and they decide how quickly the
@@ -135,8 +138,8 @@ that's the time to add people to it.
 
 From [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md), Phases 2 and 3:
 
-1. Work through MMP feedback. Make integration decision 2 (compat data
-   access), informed by the scoreboard numbers and the feedback.
+1. Work through MMP feedback. Decide I2 (compat data access), informed by
+   the scoreboard numbers and the feedback.
 2. Cut `4.x` once the API has settled and the integration plan's "Before
    cutting `4.x`" list is done.
 3. Move the old engine to the legacy path, bring `flopy4` in as
@@ -146,20 +149,22 @@ From [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md), Phase
 
 ## Decisions to make
 
-From the plans this doc links to, ordered by when they're needed:
+From the plans this doc links to, ordered by when they're needed. I1 to
+I7 are the integration plan's open questions:
 
 | decision | needed by | where |
 |---|---|---|
 | Pre-release version numbers (`4.0.0bN`?) | first alpha | here |
-| `output.head`: which side renames (integration 3) | MMP | [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md) |
+| What starts the betas | first beta | here |
+| `output.head`: which side renames (I3) | MMP | [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md) |
 | Remaining Track B API questions | MMP | Track B |
 | The layout/logical rule, and with it #226, #229, #259, #345, #523 | MMP; early, since Track B's other data questions follow from it | [`layout-logical-decisions.md`](plans/dfn-spec/layout-logical-decisions.md) |
 | Post #287 before the layout/logical decisions, so Deltares can weigh in on the rule? | before the layout/logical rule | [`layout-logical-decisions.md`](plans/dfn-spec/layout-logical-decisions.md) |
 | Default file names (`m.chd` vs `m.chd0.chd`) | the Part 1 aliases; decide early, it changes flopy4's own tests | [`aliases-and-codemod.md`](plans/integration/aliases-and-codemod.md) |
 | FUNC-10 test matrix; FUNC-11 in or out of MMP | MMP | SRS |
-| Compat data access (integration 2) | `4.x` cut | [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md) |
-| Legacy engine and its namespace (integration 1) | `4.x` cut | [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md) |
-| Where the top-level modules go (integration 6) | `4.x` cut | [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md), [`overview.md`](plans/xarray/overview.md) |
-| numpy floor and Python range (integration 5) | first release candidate | [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md) |
-| 3.x keywords in 3.x (integration 4) | 3.x item 5 | [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md) |
-| 3.x support window (integration 7) | GA | [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md) |
+| Compat data access (I2) | `4.x` cut | [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md) |
+| Legacy engine and its namespace (I1) | `4.x` cut | [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md) |
+| Where the top-level modules go (I6) | `4.x` cut | [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md), [`overview.md`](plans/xarray/overview.md) |
+| numpy floor and Python range (I5) | first release candidate | [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md) |
+| 3.x keywords in 3.x (I4) | 3.x item 5 | [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md) |
+| 3.x support window (I7) | GA | [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md) |

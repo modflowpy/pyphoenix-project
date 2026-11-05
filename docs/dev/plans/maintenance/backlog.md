@@ -11,7 +11,7 @@ archive: [`followups-after-row-layout.md`](../archive/followups-after-row-layout
 `class Item(Record)` (`flopy4/mf6/item.py`) still overrides the row codec.
 Since #479, list rows can also be stored as columns in `ItemTable`
 (`item_table.py`), so the merge has to cover that path too. The design is
-step 4 of [`record-unify.md`](../lists/record-unify.md).
+in [`record-unify.md`](../lists/record-unify.md).
 
 Merging gives one codec for row and line records. It has to carry over:
 - from `Item`: count-sized arrays, 1-based index and cellid, union columns,

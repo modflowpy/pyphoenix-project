@@ -38,8 +38,7 @@ check).
 
 ## Also
 
-- `docs/_toc.yml` lists `dev/protocols-plan` and `dev/array-converter-design`,
-  which don't exist. Remove them, and add the new pages.
+- Add the new pages to `docs/_toc.yml`.
 - `docs/dev/sdd.md`: link the new pages from "Dimension management",
   "Conversion" and "Xarray conversion", and check its description of lists
   against page 1.

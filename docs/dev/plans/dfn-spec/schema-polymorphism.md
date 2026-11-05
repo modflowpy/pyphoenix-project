@@ -1,8 +1,7 @@
 # Schema polymorphism (#287) vs. component key roles (devtools PR #405)
 
 How [discussion #287](https://github.com/modflowpy/pyphoenix-project/discussions/287)
-relates to the component key roles of devtools PR #405 (designed in
-devtools' `context-refs-plan.md`, "Slimmed scope"). They're related, but
+relates to the component key roles of devtools PR #405. They're related, but
 different kinds of polymorphism. Both involve a supertype with
 subtypes. They differ in what the subtypes are and what picks one of them.
 
@@ -48,7 +47,7 @@ Each variant is its own component and declares its own roles. In the devtools sn
   (`packagedata.ifno`), LAK (`<=nlakeconn`) and MAW (`<=ngwfnodes`);
 - `gwf-rcha.toml`, `gwf-evta.toml` and `utl-spca.toml` don't.
 
-That is correct, because array input has no `bndno` rows, so there is nothing for SPC to key
+That is correct, because layer array input has no `bndno` rows, so there is nothing for SPC to key
 into. The two ideas therefore compose: variant selection happens at the component level, and
 roles attach to components.
 
@@ -61,8 +60,7 @@ part of the schema that turns on with an option.
 We removed `when` from the spec and made it a consumer check. (Update: devtools #406
 makes it the named rule `mover_enabled` on MVR `packages.pname`, so no consumer checks
 remain outside the spec's rule registry. #395 has since made field `when` standard, so
-`when` on key sets would reuse existing syntax, not add one-off syntax. See
-`discussion-287-comment.md`.) That is right for now, because
+`when` on key sets would reuse existing syntax, not add one-off syntax.) That is right for now, because
 it was the only construct needing its own syntax for one condition.
 
 If #287 later adds a general way to say "this part of the schema depends on option X", the

@@ -329,7 +329,7 @@ References:
 - Whether the old instance `from_xarray` survives in any form (phase 2).
 - Whether `dense()` lives on DataArray too, or only on Dataset.
 - Names (`flatten()`/`unflatten()`, `node` vs `nodes`) are decided with
-  the accessor name; see [`overview.md`](overview.md) "Open".
+  the accessor name; see [`overview.md`](overview.md) "Open questions".
 - Whether `.grid.sel(layer=, row=, col=)` and `.grid.sel(x=, y=)` should
   work on the flat view (map to `node` positions), or require
   `unflatten()` first.

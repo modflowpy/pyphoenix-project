@@ -198,8 +198,10 @@ Roughly in order; none needs a new repo.
    `flopy4.mf6.{component,package,context,model,simulation,item,item_table}`
    and `flopy4.spec`.
 4. Drop the flopy3 grid inheritance in `utils/grid.py`, and replace
-   `utils/time.py`'s use of `ModelTime`. The biggest piece, and also
-   needed for moving flopy4 into flopy.
+   `utils/time.py`'s use of `ModelTime`. The biggest piece. Moving flopy4
+   into flopy doesn't need it, since these become internal imports
+   ([`replacing-flopy-mf6.md`](../integration/replacing-flopy-mf6.md)
+   "Layout in 4.x"). Extraction does: see "When to extract".
 5. Split `netcdf.py` and `period_lists.py` along the encode/densify line.
 6. Make xugrid lazy throughout the subpackage, then decide whether it's an
    optional dependency.

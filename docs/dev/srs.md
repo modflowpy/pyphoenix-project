@@ -8,7 +8,6 @@
   - [Product value](#product-value)
   - [Intended audience](#intended-audience)
   - [Intended use](#intended-use)
-  - [Use cases](#use-cases)
 - [Requirements](#requirements)
   - [Functional requirements](#functional-requirements)
   - [Non-functional requirements](#non-functional-requirements)

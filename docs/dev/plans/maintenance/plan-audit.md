@@ -33,10 +33,10 @@ search for the errors in Part 1, which found one (see F2).
   are defined where they were first needed, and several have since gained
   other meanings elsewhere. No doc owns the vocabulary, though #217 asks for
   one and it's an MMP gate item.
-- **Four claims in the DFN spec research need correcting,** and H1, H2 and H4
-  rest on them. Bound identity is the important one: MF6 says bound numbers
-  can change meaning between periods and boundnames can repeat, so neither is
-  a key.
+- **Four claims in the DFN spec research were wrong,** and H1, H2 and H4 rested
+  on them. They're now corrected (Part 1). Bound identity was the important one:
+  MF6 says bound numbers can change meaning between periods and boundnames can
+  repeat, so neither is a key.
 - **Four concepts need defining before more plans build on them:** logical
   content, equivalence, "as given", and absence. The first three decide what
   the MMP gate actually checks.
@@ -322,9 +322,19 @@ decision. It makes the options' labels checkable, and gives the partial lens
 a precise statement: RCH and RCHA agree on the first observation, and disagree
 on the second.
 
-In lens terms, identity is the **complement**: what `get` forgets and `put`
-needs back. A layout is logical content plus a complement. RCH → RCHA is
-partial because RCHA has nowhere to put RCH's complement when it's non-trivial.
+In lens terms, a lens has a `get`, from a source to a view, and a `put`, which
+writes an edited view back to the source. The **complement** is what the source
+has and the view lacks, which `put` needs in order to rebuild the source.
+
+For example, say RCH has two rows in cell 5: rate 1 named `north` and rate 2 named
+`south`. A per-cell view shows 3. If that's edited to 4, only the forgotten split
+and names can say how to write it back, and RCHA has nowhere to hold them.
+
+A complement is relative to the chosen observations. Against MF6's results alone,
+identity is complement. Against the whole list, it's logical content, since other
+components can refer to it. So RCH → RCHA is lossless only when RCH has one entry
+per cell and nothing uses its names or numbers. Otherwise it preserves results and
+loses identity.
 
 Add this as a section in `dfn-spec/overview.md`, replacing the paragraph under
 "Three levels" that begins "We find the logical level...". Have the
@@ -357,7 +367,9 @@ The docs use at least five notions, and sometimes mix them:
 
 Then restate:
 
-- FUNC-7 as "layout-equal, and result-equal".
+- FUNC-7 as two requirements, which can then have different priorities: a round
+  trip is layout-equal, and it's result-equal. The other rungs are test tools, not
+  requirements.
 - The MMP gate as two lines with different names, removing "falls out of".
 - The tolerance, from the existing framework comparison that
   `aliases-and-codemod.md` already relies on. Say what happens for a model
@@ -410,11 +422,15 @@ The rule then reads: *layout-equal means equal on the rows marked "should be"*.
 This is where a concrete syntax tree analogy helps: flopy4 holds something
 between a CST and an AST, and this table says exactly where.
 
-Resolve the broadcast conflict directly. Either the SDD's construction-time
-broadcast goes, or rule 1 becomes "a constant stays a constant unless its
-dimensions were visible at construction". I'd remove the broadcast, as the
-current behaviour makes the same call give different objects depending on
-construction order, which is exactly what #226's decision is trying to avoid.
+It's only an analogy, with no CST library behind it. libcst only parses Python, and
+flopy4's nearest equivalent is its Lark parse tree. A real CST would only pay off
+if we kept remarks and formatting, which D7 recommends against, and validation
+belongs in the DFN-driven checks.
+
+**Decided (wpb):** the construction-time broadcast goes, as it makes the same call
+give different objects depending on construction order, which is exactly what
+#226's decision is trying to avoid. `layout-logical-decisions.md` #226 and the SDD
+say so, and the code change is still to do.
 
 ### C4. Static vs. dynamic uses MF6's clock, not flopy4's
 
@@ -476,8 +492,10 @@ applicable-but-missing and inapplicable is a useful starting split. Then settle
 
 ### C6. Ownership, reference and binding aren't related
 
-The SDD says the model is a tree. But exchanges and solutions refer to models,
-SPC targets a package, and `Model.flow_model` crosses models. The docs use
+The SDD says the model is a tree. That's right for ownership, which is the
+structure's main shape, but exchanges and solutions also refer to models, a
+solution can apply to several, SPC targets a package, and `Model.flow_model`
+crosses models. The docs use
 parent/child, child field, reference field, binding, binding row, attach and
 binding graph without saying how they relate. `layout-logical-decisions.md`
 says "the parent/child relation is a binding row", and "binding graph" has no
@@ -496,24 +514,29 @@ definition.
   graph** is the union of both kinds of edge.
 
 Then #226, #259 and step 5's navigation can say which edges they touch, and
-`representation.md` can say references are attrs, not tree edges. Also state
-what happens to a reference when its target is renamed or removed.
+`representation.md` can say how each is exported. In a `DataTree`, a child node is
+a tree edge, while a solution's models are stored as names in `node.attrs`, so a
+reader follows them by lookup. Also state what happens to a reference when its
+target is renamed or removed.
 
-### C7. Name resolution is specified twice
+### C7. Dimension and `when` scopes are undocumented side by side
 
 Dimension resolution goes children, then parent recursively, then own `dims`
 (`sdd.md` line 119). The proposed `when` scope chain goes own options and
 dimensions, then the model's other components, then the binding's parameters
-(`dfn-spec/overview.md` line 355). They differ in order, and neither mentions
-the other. `RowContext`, `LoadContext` and "package context" carry overlapping
-state too, and row layout's `when` handling reads from them.
+(`dfn-spec/overview.md` line 355).
 
-**How I'd address it.** Treat them as one concept, the **typing context**: what
-a component's fields may depend on. Say in one place what's in it, in what
-order, and who supplies it. Then either make the orders agree or explain why
-not. Dimension resolution raising on disagreement may make its order
-unobservable, in which case say that. This is a doc change now. Whether the code
-merges these classes is a later question for the simplification survey.
+These aren't one concept, and don't need one treatment. `when` is a condition on a
+field, while dimensions are values looked up by name, and the children-first step
+pulls a provider's dims up to where they apply (per the SDD; the code wasn't
+traced). xattree let a dim declare its scope. flopy4 has a partial equivalent, as
+the DFN's scope becomes a provider's `shared_dims` through codegen, but nothing
+declares scope where the dim is declared.
+
+**How I'd address it.** Document each mechanism where it belongs, and don't merge
+them. The orders only need to agree if `when` can read shared dims, which hasn't
+been checked. Whether flopy4 should declare scope as xattree did stays an open
+design question.
 
 ### C8. Packages with children break the lossless export
 
@@ -533,8 +556,8 @@ and `dense_steps` needs the series that would be missing.
   exported alone or pulled out".
 - (c) Every component gives a `DataTree`, with a `.to_dataset()` for a leaf.
 
-I'd take (c), for the simplest stated rule and one return type. It does change
-the planned `DatasetConvertible` split in phase 3.
+**Decided (wpb):** (c), for the simplest stated rule and one return type. It does
+change the planned `DatasetConvertible` split in phase 3.
 
 ### C9. Time has no home
 
@@ -553,7 +576,7 @@ depend on convergence. So:
   them, not an input.
 
 **How I'd address it.** A section in the period and time doc (Part 4) defining
-the axes (`iper`, step, simulation time, calendar time) and how each is
+the axes (period, step, simulation time, calendar time) and how each is
 derived. `step_array` should raise on an ATS period before a run, naming the
 period. Period-level views are unaffected. A stepping view could later take its
 steps from the output's times.
@@ -578,10 +601,13 @@ is a must-have at MVP and says new types can be added, so the set is open. But
 yet defined", and they're an open question in `xarray/overview.md`. OLF and CHF
 users would get fallback dims at MMP.
 
-**How I'd address it.** State the grid's interface: its index set, cellid
-width, dims and coordinates, one row per grid type. That's what FUNC-5's
-extensibility would mean. Fill in the three rows, or put them on the MMP
-decision list as explicitly deferred.
+**How I'd address it.** State the grid's interface, one row per grid type: DIS,
+DISV, DISU, DIS2D, DISV2D and DISV1D. That's the minimum, and what FUNC-5's
+extensibility would mean. Its index set, cellid width, dims and coordinates are a
+starting point, not a settled list. Study UGRID, CF and xugrid first, as external
+conventions may shape it, and DISU may be the hard case, having no layer structure.
+Fill in the three missing rows, or put them on the MMP decision list as explicitly
+deferred.
 
 ## 3. Terminology
 
@@ -602,7 +628,7 @@ When choosing a term, prefer in order:
 | basic/advanced package (SDD) | simple stress, advanced, hydrologic, utility | See F6. |
 | `bound` (54 lines) | "boundary", "boundary number", "entry"; `bound`, `nbound` in code | Keep `bound` as the role's name. In prose use F1's feature, list entry and grid entry. |
 | `ftype` for all components | `mtype`, `exgtype`, `slntype`, `ftype` (`sim-nam.dfn`, `gwf-nam.dfn`) | Keep the unified attribute, and note the mapping in the glossary and SDD. |
-| `per`, `kper`, `<name>_period`, "period key" | `iper` in the block header (1-based), `kper` in code | Pick one per context and state the base. Keep `per` 0-based in the representation, say in the glossary that it's `iper - 1`, and use `kper` only for flopy3 parity. |
+| `per`, `kper`, `<name>_period`, "period key" | `iper` in the block header (1-based), `kper` in source (also 1-based; `tdis.f90`) | `kper` is the most used name in flopy3 (888 word matches to `iper`'s 213) and is 0-based there, so MF6 and flopy3 give it different bases. Use `kper` (0-based) for Python arguments and `iper` only for the file's 1-based number, and say so in the glossary. Whether the representation's `per` dim stays is still open. |
 | `stress_period_data` on OC, STO and others | PERIOD block | A public API choice: see D5. |
 | "MF6 NetCDF (grouped)" | MF6 doesn't read it | See D3. Naming our format as MF6's implies an endorsement it doesn't have yet. |
 | "namefile" (7) and "name file" (1) | "name file" (163 vs. 7 in mf6io) | Use "name file" in prose. |
@@ -625,7 +651,7 @@ then applies.
 | **package** (36 "the package") | MF6 package; the future Python package | Always the MF6 sense. The other is `mf6xr` (working name). Mostly `xarray/overview.md` and `export.md`. |
 | **spec** (110) | DFN spec; `representation.md`; `flopy4.spec`; `mf6 --spec`; codegen's spec | Never bare: "DFN spec", "representation spec". |
 | **view** (65) | computed form; SQL view; `flow_model` as a view; a row over `ItemTable` | A **view** is computed from held data, never stored, and states if it's read-only or two-way. Say "SQL view", and "row proxy" for `ItemTable`. |
-| **context** (30) | `Context` class; binding context; `RowContext` etc.; MF6 memory context | "Binding arguments" for H3's sense; "typing context" for C7. Define `Context`, or rename the class (D6). |
+| **context** (30) | `Context` class; binding context; `RowContext` etc.; MF6 memory context | "Binding arguments" for H3's sense. Define `Context`, or rename the class (D6). |
 | **rule** (124) | named FK rule; "the rule" (layout/logical); codemod rule; compat rule; K-kinds | "Named rule" for DFN; "**the as-given principle**" for the rule; "rewrite rule" for codemod; "constraint" for K-kinds. |
 | **tag** (24+12) | type tag; `binding`/`schema` option tags; variant discriminator; DFN tagged; `modflow_input` tag | "Tagged" stays DFN. "Type tag" stays. **Discriminator** for variants. **Option attribute** for `binding`/`schema`. |
 | **contract** (15) | `_contract.py`; data contract; import-linter contract; "input contract" | "Sync contract"; "data contract"; "import-linter contract"; "input rules". |
@@ -648,8 +674,8 @@ all belong in a side column of the glossary.
 | Current wording | Established term | What it buys | Recommendation |
 |---|---|---|---|
 | layout / logical, "as given" | physical / logical schema; physical data independence (ANSI-SPARC) | The framework has a name and a literature. Views are the external schema. | Mention. Keep "layout", which MF6 people follow. |
-| object model holds layout | concrete vs. abstract syntax tree | "Layout-preserving" becomes exact (C3). libcst is the model. | Adopt in docs. |
-| lens | get, put, the lens laws, complement (Foster et al.; Bohannon et al. for relational lenses) | Identity as complement (C1). Laws as tests (C2). The view-update problem is exactly `from_xarray` of a dense view. | Adopt in docs. |
+| object model holds layout | concrete vs. abstract syntax tree | "Layout-preserving" becomes exact (C3). An analogy only, with no CST library behind it. | Adopt in docs. |
+| lens | get, put, the lens laws, complement (Foster et al.; Bohannon et al. for relational lenses) | Complement relative to the observations (C1). Laws as tests (C2). The view-update problem is exactly `from_xarray` of a dense view. | Adopt in docs. |
 | re-encoding test | observational / contextual equivalence | Removes C1's circularity. | Adopt in docs. |
 | static / dynamic derivation | binding-time analysis (partial evaluation) | Stages (C4). Already the same words. Beware "binding", which means something else here. | Adopt "stage" and "bound at" with care, or "fixed at". |
 | "three kinds of polymorphism" | Cardelli–Wegner: parametric, inclusion, overloading, coercion; plus sums | See Part 4's type model. | Rename to "three kinds of variation". |
@@ -727,8 +753,7 @@ The one place for what varies and what determines it. It replaces
 | deferred value | `T \| TimeSeriesRef` | the file | type constructor | `Deferred[T]` |
 | accepted input forms | tuple or dict row | caller | coercion | converters |
 
-Also here: C7's typing context, the scope chain with one order, and the unified
-form of `when`.
+Also here: the `when` scope chain (C7) and the unified form of `when`.
 
 A check against the code that this needs: whether the table matches what codegen
 and `spec.py` do. Rows for `Periodic` and `Deferred` are proposals for naming,
@@ -761,7 +786,7 @@ has Phases, Parallel tracks, Before-X lists, and Longest chain, some repeating
 **Address:** rename `mmp-plan.md` to `road-to-4.0.md`, or supersede it. One
 sequence (Tracks), one set of gates (MMP, `4.x` cut, rc1, GA), one decision
 table. `replacing-flopy-mf6.md` keeps the analysis and designs: where we stand,
-question 1, layout, compat layer, tests, MF6 versions, and sizing. Its "Order of
+the 3.x question, layout, compat layer, tests, MF6 versions, and sizing. Its "Order of
 work" and "Critical path" sections move to the road doc. The published roadmap
 shouldn't depend on unpublished links, so decide whether `plans/` gets published
 or the road doc stands alone.
@@ -773,8 +798,8 @@ or the road doc stands alone.
 - "Feature parity" at GA (`map.md` line 46) is undefined, while `model_splitter`
   is planned as legacy-only. Define parity as an inventory, with each flopy3
   feature marked as supported, legacy-only or dropped.
-- NFR-4 (older MODFLOW programs, GA) has no plan beyond a mention in integration
-  question 6. Plan it or change it.
+- NFR-4 (older MODFLOW programs, GA) has no plan beyond a mention in the
+  integration plan's I6. Plan it or change it.
 - FUNC-8's `?1 km?` placeholder remains.
 - FUNC-7 is a "could" at MVP, but its substance is a gate item for MMP. Raise it
   and move it.
@@ -797,6 +822,13 @@ or the road doc stands alone.
 
 ### S4. Contradictions to resolve
 
+**Status (2026-11-04):** applied, so these line numbers predate the edits, except
+FUNC-7 and tier E, which wait for step 4 (C2), and `schema-polymorphism.md`, which
+waits for step 7 (4.3). What starts the betas is now an open decision in
+`mmp-plan.md`. For the broadcast, wpb agreed to remove it (C3), so
+`layout-logical-decisions.md` #226 and the SDD now say so, and the code change is
+still to do.
+
 | Between | Conflict | Resolution |
 |---|---|---|
 | `map.md:36`, `mmp-plan.md:17` | betas begin at MMP, or end at it | `map.md` follows the 2026-11-03 decision. Then say what gate starts the betas. |
@@ -808,6 +840,11 @@ or the road doc stands alone.
 | `layout-logical-decisions.md`, `sdd.md` | constant stays vs. broadcast | C3. |
 
 ### S5. Broken or stale references
+
+**Status (2026-11-04):** all applied, so these line numbers predate the edits. The
+CI link check at the end is still only a suggestion. `context-refs-plan.md` is in no
+branch of the local devtools clone, so `schema-polymorphism.md` now cites the PR
+alone.
 
 - "Question 2" means a section (`replacing-flopy-mf6.md:241`) and an open question
   (`:492`). `mmp-plan.md` says "integration N". Rename the sections to "Should
@@ -878,26 +915,25 @@ references to quoted section names or "step N". Adding a link check to CI for
 ## 7. Order of work
 
 Sizes as in `replacing-flopy-mf6.md`: small is days, medium is weeks. These are
-docs changes, except where marked.
+docs changes, except where marked. Steps 1 and 2, Part 1's corrections and the
+contradictions and stale references in S4 and S5, are done. Their follow-ups are in
+[Part 9](#9-checks-still-open), [`backlog.md`](backlog.md), the code list below and
+S4's status note.
 
 | # | Work | Findings | Size | Needs |
 |---|---|---|---|---|
-| 1 | Correct the DFN spec docs, and check the #287 drafts for the same errors | F1-F5 | small | |
-| 2 | Fix contradictions and stale references that need no decision | S4, S5, F6 | small | |
 | 3 | Make the decisions | D1-D8 | small | you |
-| 4 | Write `fidelity.md`, and restate the MMP gate and FUNC-7 | C1-C4, S2 | small to medium | 1, D7 |
+| 4 | Write `fidelity.md`, and restate the MMP gate and FUNC-7 | C1-C4, S2 | small to medium | D7 |
 | 5 | Write `concepts.md` and the term rulings | T1, T2, 4.1 | medium | 3 |
 | 6 | Rename pass across live docs, one commit per term | T2, S6, S7 | small | 5 |
-| 7 | Write `type-model.md`; archive `schema-polymorphism.md` | T3, C7, 4.3 | medium | 1, 5 |
-| 8 | Write `periods-and-time.md`, the representation's absence section, and the package-children decision | F4, C5, C8, C9 | medium | 1, D1 |
+| 7 | Write `type-model.md`; archive `schema-polymorphism.md` | T3, C7, 4.3 | medium | 5 |
+| 8 | Write `periods-and-time.md`, the representation's absence section, and the package-children decision | F4, C5, C8, C9 | medium | D1 |
 | 9 | Rewrite the SDD's Concepts | C6, C10, C11, 4.2 | small | 5 |
 | 10 | Merge sequencing into one road doc | S1, S3 | small | 3, 4 |
 | 11 | Triage the MMP milestone against it | S3 | small | team, 10 |
 
 **Why this order:**
 
-- Step 1 goes first, as the #287 post and everything after inherit it. Hold the
-  post until it's done.
 - `fidelity.md` comes before the glossary because the gates depend on it, and
   Track A is the longest chain.
 - The rename pass waits for the rulings, so it happens once. Doing it per term
@@ -914,7 +950,7 @@ return types (C8). Each goes to the plan it belongs to.
 
 | # | Decision | Recommendation | Depends on it |
 |---|---|---|---|
-| D1 | A package's export: `Dataset` or `DataTree` (C8) | always a `DataTree` | export phase 1 |
+| D1 | A package's export: `Dataset` or `DataTree` (C8) | decided: always a `DataTree` | export phase 1 |
 | D2 | Rename the `output` label to `directive`, including CSVs | yes, before #287 is posted | classification, audit |
 | D3 | What to call our NetCDF forms | "flopy4 archive" for grouped until MF6 reads it; "MF6 NetCDF" only for ungrouped; "profile" for the pair | representation, `mf6xr` |
 | D4 | #282/#367: attrs or pydantic | close both as decided for attrs, if you agree: the archive calls the plan stale and develop has moved on, but I haven't read the #282 thread | xattree v2, Track B |

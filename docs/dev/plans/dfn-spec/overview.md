@@ -14,6 +14,7 @@ applies the rule to specific flopy4 issues.
 | [constraint-audit.md](constraint-audit.md) | the kinds of constraint a valid simulation must satisfy, and where each is enforced |
 | [dfn-gaps.md](dfn-gaps.md) | what those two studies found missing from the DFNs and the memory catalog, for MF6 and devtools developers |
 | [layout-logical-decisions.md](layout-logical-decisions.md) | the rule applied to open MMP issues (#226, #229, #259, #345, #523) |
+| [schema-polymorphism.md](schema-polymorphism.md) | how #287's variants relate to devtools' component key roles |
 | `data/` | scripts and CSVs behind the two studies |
 
 [d287]: https://github.com/modflowpy/pyphoenix-project/discussions/287
@@ -537,7 +538,7 @@ a parallel construct.
 Add explicit navigation (`Spc.target`, `Mvr.models`, `Obs.target`,
 `Model.flow_model`), implemented once over the binding graph, and have
 `keys.py` and reference fields
-([../components/reference-fields-notes.md](../archive/reference-fields-notes.md))
+([../archive/reference-fields-notes.md](../archive/reference-fields-notes.md))
 both use it. This is worth doing whatever happens in the spec, because both
 already need it. #226 and #259 need the same attach operation; see
 [layout-logical-decisions.md](layout-logical-decisions.md).
