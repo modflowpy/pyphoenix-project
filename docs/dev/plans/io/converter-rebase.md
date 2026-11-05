@@ -178,11 +178,12 @@ When resolving, read each develop PR's diff
 
 - [x] 1 backup ref
 - [x] 2 squash
-- [x] 3 rebase + conflicts (onto `be07090a`, #539; #540 has landed since, not
-  rebased over)
+- [x] 3 rebase + conflicts (onto `be07090a`, #539, then `379b761d`, #540; tip
+  `83ca691b`, pushed)
 - [x] 4 typed loader dropped
 - [x] 5 ports (in the rebased commit, not one commit per feature)
-- [x] 6 regenerate + snapshots (reviewed by diff, only a corpus slice run)
+- [x] 6 regenerate + snapshots (reviewed by diff; after #540 the whole load
+  snapshot file and the round-trip file ran)
 - [ ] 7 docs (the plan lives here now, dropped from the branch; the
   `datetime-periods.md` note not done)
 - [x] 8 typed-loader branch + worktree (local; holds only

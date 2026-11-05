@@ -3,8 +3,8 @@
 One schema-driven model of an MF6 block, used the same way to read and to
 write. On the unmerged `simplify-converter` branch, squashed and rebased
 2026-11-05 onto `be07090a` (#539), which also took the typed loader off the
-branch (see "The typed loader"); develop has since moved on, with #540 still
-to rebase over. It's a refactor on the attrs object model. The safety net is
+branch (see "The typed loader"), then rebased onto `379b761d` (#540). It's a
+refactor on the attrs object model. The safety net is
 the round-trip suite (`test/mf6/test_mf6_io_roundtrip.py`) and the load and
 written-file snapshots. The one API change is STO's period value.
 
@@ -66,8 +66,7 @@ On develop at `916c2f8b`:
   `{0: [("STEADY-STATE",)]}` becomes `{0: "steady-state"}`. flopy3's
   `steady_state=`/`transient=` convert to it
   (`flopy4.mf6.legacy.sto_period_data`). `string(valid=...)` keeps a value
-  as the DFN spells it, whatever its case. Rebasing over #540 renames the
-  field `period_data`.
+  as the DFN spells it, whatever its case.
 
 Not done: taking the value kind from the DFN on ingress, and having one
 runtime source of truth instead of the classes plus the stored DFNs joined
