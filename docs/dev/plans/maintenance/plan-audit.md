@@ -596,8 +596,8 @@ steps from the output's times.
 components as instances in a hierarchy. Five names identify a kind of thing
 (`gwf-npf`, `Npf`, `NPF6`, `ModflowGwfnpf`, the type tag), and one identifies an
 instance (`pname`, or `name`). In code, `Tdis`, `Solution` and `Exchange` are
-`Package` subclasses and `Simulation` and `Model` are `Context`
-(`flopy4/mf6/context.py`), and `export.md` relies on the latter without defining
+`Package` subclasses and `Simulation` and `Model` are `WorkspaceComponent`
+(`flopy4/mf6/component.py`), and `export.md` relies on the latter without defining
 it.
 
 **How I'd address it.** Part 4's object levels section.
@@ -671,7 +671,7 @@ then applies.
 | **field** (195) | attrs/DFN field; "a field over the grid" | Only the first. Use "gridded quantity" for the second. |
 | **layered** | cell indexing; MF6's `LAYERED` | Always backtick and capitalize the keyword. |
 | **sparse** (27) | sparse table; `sparse` library; `dense(sparse=True)` | See S6. |
-| **row / entry / item / record / line** | list row; `entry` dim; `Item`; `Record`; DFN record; "control record" | **Row** for tables, and **entry** for an MF6 boundary row, list or grid, as mf6io says. Every list's dim is `<field>_row` (S6), so `entry` isn't a dim. |
+| **row / entry / item / record / line** | list row; `entry` dim; `Item`; `Record`; DFN record; "control record" | **Row** for tables, and **entry** for an MF6 boundary row, list or grid, as mf6io says. A period list's dim is `entry`; other lists' dims aren't named yet (S6). |
 
 ### T3. Theory worth adopting
 
@@ -897,8 +897,9 @@ references to quoted section names or "step N".
   Fine while the work runs, then archive it, and don't treat it as a design doc.
 - `dense(sparse=True)` returns the sparse table (`export.md` phase 2). Drop the
   argument; the export is already sparse.
-- In the representation, every list's dim becomes `<field>_row`, including period
-  lists (`period_data_row`), which carry a `kper` coordinate. The dense view has a
+- In the representation, a period list's dim stays `entry`, with a `kper`
+  coordinate ([why](../xarray/representation.md#period-lists)). Other lists need a
+  dim per field, named when they're built. The dense view has a
   `kper` dim. Period arrays get `<name>_kper`, one per array, since each array has
   its own periods given. The
   [tradeoffs](../xarray/representation.md#period-arrays) are recorded in case we
@@ -974,9 +975,9 @@ only, per D8. Step 6 is next, then step 4.
 | removing the broadcast | C3 | [`layout-logical-decisions.md`](../dfn-spec/layout-logical-decisions.md#226-packages-without-grid-or-time) #226, in Track B |
 | `step_array` on ATS | C9 | step 8 |
 | export return types | C8 | step 8 |
-| `stress_period_data` → `period_data`, across codegen, generated classes and grammars, and tests; flopy3's name stays accepted as a `Legacy` alias | D5 | not yet planned |
-| `Context` → `WorkspaceComponent` | D6 | not yet planned |
-| `per` → `kper`, `entry` → `<field>_row` and `<name>_period` → `<name>_kper` in the export | T1, S6 | not yet planned |
+| `stress_period_data` → `period_data`, across codegen, generated classes and grammars, and tests; flopy3's name stays accepted as a `Legacy` alias, where flopy3 takes it and on CHF's and OLF's stress packages | D5 | done (#540, #541) |
+| `Context` → `WorkspaceComponent` | D6 | done (#542) |
+| `per` → `kper` and `<name>_period` → `<name>_kper` in the export | T1, S6 | done (#543) |
 
 ## 8. Decisions for you
 

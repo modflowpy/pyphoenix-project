@@ -368,13 +368,10 @@ decide what happens to aux and to `IRCH`/`IEVT`: an omitted `IRCH` means layer
 
 RCHA's `recharge`, WELG's `q` and the like (built, in `attrs_xarray`):
 
-- stacked along a `<name>_period` dim, labelled by the periods given;
+- stacked along a `<name>_kper` dim, labelled by the periods given;
 - a value from a time-array series is NaN, with the series' name in a
-  `<name>_tas` coordinate along `<name>_period` (`None` where a period has
+  `<name>_tas` coordinate along `<name>_kper` (`None` where a period has
   no series).
-
-`<name>_period` is to be renamed `<name>_kper`, since its labels are `kper`
-values.
 
 **Why each array has its own dim (decided 2026-11-05, open to revisiting).** The
 logical data is a step function over every period, so one `kper` dim from TDIS
@@ -413,7 +410,7 @@ CHD's, WEL's, SFR's stress period data (the sparse form is built, as
 `to_xarray(sparse=True)`; export phase 1 makes it the stored form):
 
 - a sparse table along an `entry` dim, one entry per row;
-- a `per` coordinate, 0-based;
+- a `kper` coordinate, 0-based;
 - one coordinate per cellid component: `cellid_layer`, `cellid_row`,
   `cellid_col` on DIS;
 - a `setting` coordinate for keystring packages (SFR, LAK, MAW);
@@ -424,8 +421,16 @@ CHD's, WEL's, SFR's stress period data (the sparse form is built, as
 
 Unset values are `FILL_DNODATA` (floats), `FILL_INT64` (ints) or `None`.
 
+**Why `entry`, not `period_data_row` (decided 2026-11-05).** `entry` is mf6io's
+word for a boundary row. A package has at most one period list, so the name isn't
+ambiguous within a package, and `period_data_row` wouldn't separate packages either,
+since every package would use the same name. `row` is also a grid axis here, so
+`cellid_row` along `period_data_row` would give one suffix two meanings.
+
 **Other row lists** (TDIS `perioddata`, `packagedata`, `connectiondata`)
-get the same treatment along a `<field>_row` dim (planned).
+get the same treatment (planned). A package can have several, of different lengths,
+so each needs its own dim. The name is open: `<field>_row` has the same clash with
+`cellid_row`.
 
 ### The dense view
 
@@ -452,10 +457,10 @@ places each period's rows by their key and fills forward:
 
 ## Time
 
-- **`per`** is the 0-based stress period index, in list tables and in
-  `<name>_period` labels.
+- **`kper`** is the 0-based stress period index, in list tables and in
+  `<name>_kper` labels.
 - **Datetime period keys** ([`datetime-periods.md`](datetime-periods.md), #518): packages
-  may be keyed by datetimes. Keys stay as given and are resolved to `per`
+  may be keyed by datetimes. Keys stay as given and are resolved to `kper`
   against TDIS when needed, so TDIS stays the one source of truth for what
   period *n* means.
 - **Time coordinates:** period start times come from TDIS

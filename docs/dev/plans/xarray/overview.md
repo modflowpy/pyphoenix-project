@@ -155,7 +155,7 @@ flopy4 has mostly built this since dropping xattree (#356, #359):
 
 So xattree v2 would start from `attrs_xarray.py` and the generic part of
 `dimensions.py`. What isn't generic yet: period-array stacking along
-`<name>_period` (keyed off `fill_forward`), the `<name>_name` aux dim,
+`<name>_kper` (keyed off `fill_forward`), the `<name>_name` aux dim,
 `TimeArraySeriesRef` and `FILL_DNODATA`, references stored by name, the
 reserved names `dims`, `parent` and `_parent`, and DFN dimension
 expressions.

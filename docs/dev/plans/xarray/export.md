@@ -27,17 +27,17 @@ RCHA, OC, IMS, TDIS), comparing `pkg.to_xarray()` with
    `layer,cell` / `node`, with x/y/z), falling back to DFN dims (`nodes`,
    `ncpl`, ...) when the grid doesn't resolve. A package looks the same
    whether you ask it or pull it out of a model's tree.
-4. **Period arrays as given**, along `<name>_period`, as `attrs_xarray`
+4. **Period arrays as given**, along `<name>_kper`, as `attrs_xarray`
    does now. Filling forward is the accessor's job.
 5. **The complete export is writable to netCDF.** It is distinct from
    MF6's NetCDF input format (`flopy4/mf6/netcdf.py`, `NetCDFModel`), and
    the docs must say which is which. [`representation.md`](representation.md)
    does: this is MF6 NetCDF (grouped), and `netcdf.py` writes MF6 NetCDF
    (ungrouped), a flattening of the same representation.
-6. **Keep `protocols.py`; put the methods on `Package`/`Context` directly;
+6. **Keep `protocols.py`; put the methods on `Package`/`WorkspaceComponent` directly;
    delete `mixins.py`.** The protocols are cheap, the SDD describes them,
    and `isinstance(x, DataTreeConvertible)` is useful. The mixins are
-   two-line forwarders that sit awkwardly in the hierarchy (`Context`
+   two-line forwarders that sit awkwardly in the hierarchy (`WorkspaceComponent`
    subclasses `Component`). The reverse functions in `attrs_xarray.py`
    stay and get finished.
 7. **Both cell layouts, flat and layered, through the accessor.** The
@@ -56,7 +56,7 @@ RCHA, OC, IMS, TDIS), comparing `pkg.to_xarray()` with
 | `Package` with griddata, period arrays or a period list | the view (`package.py`, `Package.to_xarray`), with `sparse`/`duplicates`/`grid` options |
 | `Package` with none of these (IMS, ...) | `Component.to_xarray` (`component.py`) = `attrs_to_dataset` + a child-griddata merge that never fires |
 | `Tdis` | its own `kper` dataset (`tdis_methods.py`) |
-| `Context` (`Model`, `Simulation`) | `attrs_to_datatree` (`context.py`), already the generic layer |
+| `WorkspaceComponent` (`Model`, `Simulation`) | `attrs_to_datatree` (`component.py`), already the generic layer |
 | `Simulation` | the above + Tdis's `kper` vars merged into the root (`simulation_methods.py`) |
 
 `Package.from_xarray(ds)` is an *instance* method that sets stress period
@@ -65,9 +65,9 @@ sparse forms.
 
 ### Gaps in the generic layer (`attrs_to_dataset` / `attrs_to_datatree`)
 
-- **List data** (CHD, WEL, OC, ...) isn't encoded. `_stress_period_data`
+- **List data** (CHD, WEL, OC, ...) isn't encoded. `_period_data`
   goes into attrs as a live `PeriodRows` object. `dataset_to_attrs` then
-  raises `TypeError: unexpected keyword argument '_stress_period_data'`.
+  raises `TypeError: unexpected keyword argument '_period_data'`.
 - **Item tables** (`Tdis.perioddata` as `ItemTable`) go into attrs as objects too.
 - **Attrs aren't netCDF-safe**: `PosixPath`, `bool`, `ChildList`,
   `PeriodRows`, `ItemTable`.
@@ -107,12 +107,13 @@ them directly.
 
 - **List fields** encode as the sparse table from
   `period_lists.to_dataset(pkg, sparse=True)`: a variable per column
-  along an entry dim, with `per` and the cellid as coordinates. Decode
+  along an `entry` dim, with `kper` and the cellid as coordinates. Decode
   through `period_lists.from_dataset`. Map the private field name to its
-  init name (`_stress_period_data` → `stress_period_data`) both ways.
-- **Item tables and other row lists** (`Tdis.perioddata`, OC's rows,
+  init name (`_period_data` → `period_data`) both ways.
+- **Item tables and other row lists** (`Tdis.perioddata`,
   `packagedata`/`connectiondata` in SFR/LAK/MAW/UZF): the same sparse
-  treatment, one variable per column along a `<field>_row` dim. Check
+  treatment, one variable per column along a dim per field (name open, see
+  [`representation.md`](representation.md#period-lists)). Check
   whether `period_lists` already has a helper for non-period lists before
   writing one.
 - **NetCDF-safe attrs**: paths as str, bools as int8 with a flag in the
@@ -244,7 +245,7 @@ How this fits [`overview.md`](overview.md):
   Budget output on reduced nodes (active cells only) is a different
   layout; leave it out of these methods, and don't name it `node`.
 - **Tests**: `flatten().unflatten()` is the identity on a DIS and a DISV
-  package export, on a period array (with `per`), and on a dense list
+  package export, on a period array (with `kper`), and on a dense list
   variable. Flat values match the package's internal flat arrays.
   `unflatten()` from attrs alone. `CellIndex` comes back after the round
   trip. DISU is a no-op.
@@ -326,9 +327,9 @@ References:
 
 ### Phase 3: wiring and cleanup
 
-- `Context.from_xarray(tree)` classmethod (`datatree_to_attrs`), with
+- `WorkspaceComponent.from_xarray(tree)` classmethod (`datatree_to_attrs`), with
   parents and dims rebinding through the normal constructors.
-- `Package` satisfies `DatasetConvertible`, and `Context` satisfies
+- `Package` satisfies `DatasetConvertible`, and `WorkspaceComponent` satisfies
   `DataTreeConvertible` (`flopy4/protocols.py`). Align the protocol
   method names with what's implemented (`from_xarray` vs
   `from_dataset`/`from_datatree`). Add `isinstance` checks to the tests.

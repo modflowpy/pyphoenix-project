@@ -11,8 +11,8 @@ elevations of their cells (`Package._with_cell_centers`, via
 layer 0's, since it's the top layer's cells' tops.
 
 RCHA's `recharge`/`irch`/`aux` and EVTA's `surface`/`rate`/`depth`/`ievt`/
-`aux` also come out with a size-1 `layer` dim, `(per, layer=1, row, col)`
-or `(per, layer=1, cell)`, but get no z coordinates, except in a 1-layer
+`aux` also come out with a size-1 `layer` dim, `(kper, layer=1, row, col)`
+or `(kper, layer=1, cell)`, but get no z coordinates, except in a 1-layer
 model, where the shapes happen to match `botm`. Their values don't belong
 to a fixed layer:
 
@@ -30,7 +30,7 @@ wherever any of those move it.
 
 1. **Resolve the target layer**: a function, say
    `rch_layer(irch, idomain, fixed_cell) -> DataArray` on
-   `(per, row, col)`/`(per, cell)`, giving each column's layer per period:
+   `(kper, row, col)`/`(kper, cell)`, giving each column's layer per period:
    - `irch`'s value (check whether it's stored 1- or 0-based: it's an
      `index=True` field), else 0;
    - without `fixed_cell`, the first layer at or below it with
@@ -39,11 +39,11 @@ wherever any of those move it.
    EVTA uses the same function with `ievt`.
 2. **Take the elevations at that layer**: index `z_coords(top, botm)` by
    the layer along `layer` (as `vertical.sel_z` does with `layer_at`),
-   giving `z_top`/`z_bot`/`z` on `(per, row, col)`, plus the chosen
+   giving `z_top`/`z_bot`/`z` on `(kper, row, col)`, plus the chosen
    `layer` as a coordinate, as `sel_z` keeps it.
 3. **Attach them** in `_with_cell_centers` for RCHA/EVTA period arrays,
    dropping the size-1 `layer` dim's place in the coordinates' dims.
-   Unlike other z coordinates these vary with `per`; check that
+   Unlike other z coordinates these vary with `kper`; check that
    `sel_z`/`mask_z` handle the extra dim (they should broadcast).
 4. **Changing `irch`/`ievt`**: the coordinates are computed when the array
    is built, so they're as fresh as `to_dataarray`. Note it in the
@@ -69,6 +69,6 @@ wherever any of those move it.
   column's `irch` layer.
 - No `irch`: layer 0's, the same as `top`'s.
 - An inactive target with and without `fixed_cell`: moved down vs. NaN.
-- `irch` changing between periods: the coordinates differ by `per`.
+- `irch` changing between periods: the coordinates differ by `kper`.
 - DISV EVTA with `ievt`.
 - `sel_z`/`mask_z` on a recharge array.

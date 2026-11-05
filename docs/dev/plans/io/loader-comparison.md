@@ -103,7 +103,7 @@ with both loaders:
 | missing `END OPTIONS` (CHD) | loads; warns "no field takes OPTIONS entry BEGIN" | `UnexpectedToken` at the `MAXBOUND` line, line and column, the tokens expected |
 | misspelled keyword (`PRINT_FLOWZ`) | loads; warns "no field takes OPTIONS entry PRINT_FLOWZ" | the same |
 | wrong value type (`MAXBOUND two`) | loads silently | `UnexpectedToken` at `two`, line and column, expecting an integer |
-| short list row (CHD, no head) | `ValueError: StressPeriodData: can't read a row from [1, 1, 10]` | the same |
+| short list row (CHD, no head) | `ValueError: PeriodData: can't read a row from [1, 1, 10]` | the same |
 | bad OPEN/CLOSE path (NPF `K`) | `FileNotFoundError` naming the path | the same |
 | short array (IC `STRT`, 9 values for 10 cells) | loads silently | the same |
 | unknown block (`DIMENSIONZ`) | loads; warns "ignoring unknown block" | the same |

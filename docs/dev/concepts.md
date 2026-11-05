@@ -12,11 +12,6 @@ code yet, so until then use the name on the right.
 
 | This page | In the code today |
 |---|---|
-| `period_data` | `stress_period_data` |
-| `WorkspaceComponent` | `Context` |
-| `kper` dim | `per` |
-| `<field>_row` dim | `entry` |
-| `<name>_kper` dim | `<name>_period` |
 | `to_xarray()` gives a `DataTree` for every component | a package gives a `Dataset` |
 | `dense()` on the `grid` accessor | `to_xarray()`'s default for a list package |
 
@@ -100,7 +95,7 @@ grid (`ncpl`), and nothing refers to one by number.
 | **`to_xarray()`** | Exports a component to xarray as it's held: what you gave, in the periods you gave it. A list stays a table of rows. `from_xarray()` reads it back. |
 | **`dense()`** | Computes the array you'd usually want to plot or do arithmetic on: values placed on the grid, for every period. It's computed from the export, and isn't stored. |
 | **`kper`** | The period dim of a dense array. In a table of rows, a coordinate saying which period each row is in. |
-| **`<field>_row`** | A list's row dim, as in `period_data_row`. |
+| **`entry`** | A period list's row dim, one entry per row, with `kper` as a coordinate on it. |
 | **`<name>_kper`** | The periods given for one array, as in `recharge_kper`. Each array has its own, since each can be given in different periods. |
 
 ### Other terms you'll meet

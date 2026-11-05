@@ -49,7 +49,7 @@ Each flopy3 → flopy4 difference falls into one of three groups:
 | parent positional: `ModflowGwfdis(gwf, ...)` | `parent=` keyword only | **accept** | `kw_only=True` exists so attrs allows optional base fields before required subclass fields (`component.py:235`), not to stop positional use. `LegacyKwargs.__call__` can move one positional argument to `parent=` before attrs sees it. `Dis(gwf, nlay=3)` reads fine. |
 | bare list `stress_period_data=[...]` | raises `'list' object has no attribute 'items'` | **accept (bug fix)** | [`migrating.md`](../../../migrating.md) already says a list means period 0. |
 | `*_filerecord` / `*printrecord` (106 keywords), e.g. `head_filerecord="m.hds"` or `[("m.hds",)]` | `head_file=` | **deprecate** | `head_file` is better. Convert each flopy3 value shape (a string, a 1-tuple, a list of 1-tuples) to a path. These are generated `Legacy` entries like the period-data ones. |
-| `perioddata`, `steady_state`/`transient`, `saverecord`/`printrecord`, ... | `stress_period_data` | **deprecate** (done) | Already `LegacyKwargs` (`legacy.py`, from `_LEGACY_PERIOD_KWARGS` in `utils/codegen/make.py`). |
+| `stress_period_data`, `perioddata`, `steady_state`/`transient`, `saverecord`/`printrecord`, ... | `period_data` | **deprecate** (done) | Already `LegacyKwargs` (`legacy.py`, from `_LEGACY_PERIOD_KWARGS` in `utils/codegen/make.py`). The names also work as attributes, by name only: `wel.stress_period_data` is `wel.period_data`, and STO's and OC's raise, pointing to `period_data`. |
 | `timeseries=`, `timearrayseries=`, `observations=` (66 keywords) | `ts` / `tas` / `obs` children | **deprecate** | flopy3 accepts a dict (`{"filename": ..., "timeseries": ..., ...}`) or a file name. The common shapes convert. Raise on any other shape. |
 | `maxbound=` (12) | derived from the data | **accept, check it** | Drop it if it agrees with the data, raise if it doesn't. A warning only adds noise: the value is redundant, not wrong. |
 | `pname=` | `name=` | **accept** | A synonym. |
@@ -194,7 +194,7 @@ runtime-only on purpose.
 2. **Questions that block Part 1:** default file naming, `output.head`
    (property or method), data access. Step 3 can start
    without them, but its scoreboard numbers inform them.
-3. **Bug fix:** bare-list `stress_period_data` (independent, do first).
+3. **Bug fix:** bare-list `period_data` (independent, do first).
 4. **Part 1 runtime aliases**, in order of MF6 autotest usage:
    positional parent, `register_ims_package`, `write_simulation` /
    `run_simulation`, `Simulation.load` from a directory, `get_model` /

@@ -13,7 +13,7 @@ A union (keystring) list has one arm class per keyword.
 ```python
 class Chd(Package):
     @attrs.define
-    class StressPeriodData(Item):
+    class PeriodData(Item):
         cellid: tuple[int, ...] = cellid_()
         head: Union[float, TimeSeriesRef] = double(time_series=True)
         aux: tuple[Union[float, TimeSeriesRef], ...] = array(
@@ -23,8 +23,8 @@ class Chd(Package):
             default=None, empty_is_none=True, optional=True, when="boundnames"
         )
 
-    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
-        alias="stress_period_data", block="period", fill_forward=True, ...
+    _period_data: Optional[dict[int, list[PeriodData]]] = list_(
+        alias="period_data", block="period", fill_forward=True, ...
     )
 ```
 
