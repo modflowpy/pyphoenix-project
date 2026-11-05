@@ -114,8 +114,8 @@ follow `Record.convert`:
 1. **Stop `LegacyKwargs.__call__` hiding constructors.** Put it behind
    `if not TYPE_CHECKING:`. Also check `_LegacyInputs` in `disv_methods.py`,
    which the prototype didn't cover. This restores Pyright's types and
-   brings back false errors on plain values, until stubs land. It can ship
-   alone: see the open questions.
+   brings back false errors on plain values, until stubs land. It ships
+   alone, ahead of the other steps.
 2. **Survey accepted values.** Fill in the table above, with a parametrized
    runtime test per kind. These tests keep the stubs from promising a form
    the runtime rejects.
@@ -160,24 +160,37 @@ follow `Record.convert`:
 Pyright reads stubs without `py.typed`, so Pylance users benefit from step 3
 on. mypy users of an installed package only benefit from step 7.
 
+## Decisions
+
+- **Step 1 ships soon, ahead of the rest.** Pylance users trade missing
+  hints for correct types, plus false errors on plain values until stubs
+  land. Wrong types are harder to notice than a visible error.
+- **`legacy_kwargs` stay out of the stubs.** 26 classes have them. They're
+  deprecated and warn at runtime, and a type error points people to the new
+  name.
+- **Assume attrs for now.** #282/#367 are still open, and moving to pydantic
+  would change the stub design.
+
 ## Open questions
 
-- **Does step 1 ship now?** Without it, Pylance users get no hints on
-  constructor results and no false errors. With it, they get correct types
-  and false errors on plain values. Recommend shipping it, because wrong
-  types are harder to notice than a visible error, but it's a real
-  trade-off.
-- **Do record arguments take `str`?** `Record.convert` parses any string,
-  so allowing it would let `Gwf(newtonoptions="garbage")` type-check.
-  Recommend leaving it out at first, and treating it as a runtime-only form,
-  as `TimeSeriesRef`'s docstring does for plain names. Add it for specific
-  fields like OC's print formats if that proves annoying.
-- **Do `legacy_kwargs` go in the stubs?** 26 classes have them. Recommend
-  leaving them out. They're deprecated and warn at runtime, and a type error
-  points people to the new name. Stubs then reject flopy3 keywords that
-  work, so this should be weighed against the flopy3 migration story.
-- **Attrs or pydantic?** The stubs assume attrs, and #282/#367 are still
-  open. Settle that first: moving to pydantic would change the stub design.
+- **Which record arguments take `str`?** A string is the record as written
+  in the file: `Record.convert` splits it into tokens and parses them with
+  `from_tokens`. It isn't a shorthand for a tuple or list of strings, though
+  a record of one string array behaves like one (`"a b"` gives TS6's names
+  `("a", "b")`). Recommend allowing `str` only on records with a string
+  field, such as OC's print formats and TS6's names. That needs no
+  per-field list, and it keeps `str` off keyword-only and numeric records,
+  which have `bool` and `tuple` forms.
+
+## Related bug
+
+`Record.convert` drops tokens it doesn't recognize.
+`Gwf(newtonoptions="garbage")` makes the record with `under_relaxation=None`,
+which turns on the Newton formulation, and `Npf(xt3doptions="garbage")` turns
+on XT3D, with no error. `Npf(rewet="garbage")` does raise, because the token
+fills a float field. Stubs would catch these calls statically only where
+`str` is left out, so this needs a runtime fix either way, independent of
+this plan.
 
 ## Costs
 
