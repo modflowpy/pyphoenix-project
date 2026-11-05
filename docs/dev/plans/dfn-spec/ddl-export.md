@@ -1,6 +1,6 @@
 # Running the DDL slice on real models
 
-Working plan, written 2026-11-05. Stage 1 is underway; results are in the slice
+Working plan, written 2026-11-05. All three stages are done; results are in the slice
 README. It carries out "a flopy4
 counterpart" under [step 3 of the overview](overview.md#step-3-the-ddl-slice).
 
@@ -70,10 +70,11 @@ Models per component, by file extension in the registry, so approximate:
 
 Among the MVR models: SFR 15, WEL 14, LAK 11, GHB 10, MAW 7, UZF 6, DRN 2, RIV 1.
 
-**None has SPC, SPCA, LKT or SFT by extension,** so those rules can't be tested on
-this corpus. Look for models in `/Users/wbonelli/dev/modflow6-examples` (not checked
-yet), or generate some with the MF6 autotests that use SPC
-(`test_gwt_spc_ts.py`, `test_gwt_ssm*.py`, `test_gwe_ssm*.py`).
+**None has SPC, SPCA, LKT or SFT,** so those rules can't be tested on this corpus. Stage 3
+built 49 models from MF6's autotests instead (`export/build_autotest_models.py`).
+
+The RCHA count is low: `READASARRAYS` in a `.rch` file makes it RCHA too, which gives 92
+packages in 87 models.
 
 ## What a loaded model looks like
 
@@ -106,9 +107,12 @@ sim = Simulation.load(workspace / "mfsim.nam")            # flopy4.mf6.simulatio
 | `ssm_row` | `ssm.fileinput`, `ssm.sources` | `Ssm.Fileinput(pname='wel', spc=Spc(...), mixed=False)` |
 | `spc`, `spc_set` | `fileinput.spc`, not a child of the model | `.maxbound` keeps the file's value |
 
-**Everything else is unchecked:** GNC, exchange data, OBS, RCHA, DISV and DISU. Look
-at the loaded form before writing those. Add 1 to every index the schema treats as
-1-based, including period keys.
+| `gnc`, `gnc_row`, `gnc_j` | `gnc.gncdata`, with `cellidn`, `cellidm`, `cellidsj`, `alphasj` | a child of the model or of the exchange. A `cellidsj` of `None` is the file's 0 |
+| `exg_data` | `exchange.exchangedata`, with `cellidm1`, `cellidm2` | `.nexg` keeps the file's value |
+| `obs`, `obs_row` | `pkg.obs` on a package, or a `utl-obs` child of a model or an exchange | `.continuous` holds blocks, each with `.output` and rows. `id_` and `id2` are a tuple, an int or a str, and `id2` also a float (UZF's depth) |
+| `rcha_block`, `rcha_value` | `rcha.recharge`, `rcha.irch`: a dict of period to array | size 1 for a constant. `TimeArraySeriesRef` for a series |
+
+Add 1 to every index the schema treats as 1-based, including period keys.
 
 ## Known problems
 
@@ -194,6 +198,15 @@ and it checks rules at write time.
 
 Record how each of these turned out.
 
+From stage 3:
+
+- `w_spc_bound_unset` is noisy on extraction wells: **not seen,** though on little data. It
+  fires on 3 of 11 SPC models, on wells that inject, in the autotest that leaves them unset.
+- `r_gwfgwt_grid` and the exchange rules hold: **held,** on 57 corpus exchanges and 6 built
+  GWT-GWT ones. A GWT-GWT exchange whose data differs from its GWF-GWF's is rejected by both.
+- "Mostly exporter bugs at first" finally held once: `ncol` for `ncpl`. The other first-run
+  hits were one schema bug, a key stricter than MF6, and one model that's invalid.
+
 From stage 2:
 
 - `r_sfr_ustrf` fires: **wrong on the corpus, right that the rule was wrong.** It never
@@ -266,16 +279,22 @@ LAK models.** This answers the mover question with real data.
 
 **Stage 3: GNC, exchanges, OBS, SSM and SPC.**
 
-- [ ] Look at the loaded forms first (see above)
-- [ ] RCHA values (`rcha_value`), for `r_rcha_shape` and `v_rch_rate`, alongside SPCA,
-  which needs the same array form
-- [ ] GNC and exchange data
-- [ ] OBS, widened past WEL, including `id2`
-- [ ] SSM, and whether `flow_mname` resolves
-- [ ] Find or generate SPC, SPCA, LKT and SFT models, then run those rules
+- [x] Look at the loaded forms first (see above)
+- [x] RCHA values (`rcha_value`), for `r_rcha_shape` and `v_rch_rate`, alongside SPCA. The
+  corpus never uses `IRCH`, and a row per value doesn't scale: 64 million on Biscayne
+- [x] GNC and exchange data. Clean on 213,240 GNC rows and 23,311 exchange rows
+- [x] OBS on packages, models and exchanges, including `id2`. 1,087 corpus rows. Which ID2
+  a type takes is now in `obs_type`
+- [x] SSM. `flow_mname` resolves on all 92 rows
+- [x] Build SPC, SPCA, LKT and SFT models, then run those rules. 49 from MF6's autotests
 
-**Afterwards:** update the slice README's results, this plan's predictions, and H1,
-H2b and H3 in the [overview](overview.md#hypotheses) if real data changes them.
+MF6 and the rules agree on 75 of 78 copies. The other 3 run on the release build, and two of
+those overrun its arrays (`NUMGNC` above the rows, and an OBS boundname with `BOUNDNAMES` off).
+
+**Afterwards:**
+
+- [x] Update the slice README's results, this plan's predictions, and the overview's H1, H2b
+  and H3. Real data didn't change a verdict
 
 ## Where this could lead
 

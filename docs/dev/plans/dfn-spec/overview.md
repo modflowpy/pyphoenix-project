@@ -559,12 +559,17 @@ hold, and H2b holds for the three regimes in the slice. H5 fails as predicted.
 H1 and H3 fail as worded, which wasn't predicted: H1 has four encoded sum types,
 all expressible as exclusive columns, and `ssm_package`'s exemption for advanced
 transport packages isn't on the binding chain. Rule length passes. SQL passes its
-threshold at 65% declared, or 56% of the audited rules. It hasn't been run on a
-real simulation.
+threshold at 62% declared.
 
-A flopy4 counterpart: export a simulation to SQLite or DuckDB, and write
-the key checks as SQL queries to compare with `keys.py`.
-[ddl-export.md](ddl-export.md) is the plan for this.
+**On real simulations,** in [ddl-export.md](ddl-export.md): the rules ran on the 260 corpus
+models that load, and 49 built from MF6's autotests. No rule rejects a valid model, and no
+verdict above changed: stage 3 added no fifth encoded sum type to H1, H2b holds on real data
+for its three regimes, and `flow_model` stays the one rule H3 expected, with `ssm_package`'s
+exemption. MF6 and the rules agree on 128 of 131 changed or baseline copies. Getting there
+corrected several rules, and found two more array overruns in MF6.
+
+A flopy4 counterpart exports a simulation to SQLite, and compares the checks with `keys.py`.
+`keys.py` claims less, with no check of OBS ids, and it never fires where a rule doesn't.
 
 ### Step 4: parameter syntax sketch
 
