@@ -403,7 +403,7 @@ def test_simulation_spec(all_dfns):
     root = Path("/fake/mf6")
     spec = build_component_spec(all_dfns["sim-nam"], root=root, dfns=all_dfns)
     assert spec.class_name == "Simulation"
-    assert spec.base_class == "Context"
+    assert spec.base_class == "WorkspaceComponent"
     assert spec.mixins == ["SimulationMethods"]
     assert spec.outpath == root / "simulation.py"
     types = {f.py_name: f.type_annotation for f in spec.fields}

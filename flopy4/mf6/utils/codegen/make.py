@@ -998,7 +998,7 @@ def _generated_imports(
     _base_imports = {
         "Package": "from flopy4.mf6.package import Package",
         "Solution": "from flopy4.mf6.solution import Solution",
-        "Context": "from flopy4.mf6.context import Context",
+        "WorkspaceComponent": "from flopy4.mf6.component import WorkspaceComponent",
         "Exchange": "from flopy4.mf6.exchange import Exchange",
         "Model": "from flopy4.mf6.model import Model",
     }
@@ -1561,7 +1561,7 @@ def _model_package_specs(
 def _base_class(component: Component) -> str:
     """Determine the Python base class for a component."""
     if component.type == "simulation":
-        return "Context"
+        return "WorkspaceComponent"
     if filters.is_model_nam(component.name):
         return "Model"
     if component.name.split("-")[0] == _SLN_PREFIX:

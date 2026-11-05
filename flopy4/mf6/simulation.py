@@ -3,7 +3,7 @@ from typing import ClassVar, Optional
 
 import attrs
 
-from flopy4.mf6.context import Context
+from flopy4.mf6.component import WorkspaceComponent
 from flopy4.mf6.exchange import Exchange
 from flopy4.mf6.model import Model
 from flopy4.mf6.simulation_methods import SimulationMethods
@@ -14,7 +14,7 @@ from flopy4.mf6.utl.hpc import Hpc
 
 
 @attrs.define(kw_only=True, slots=False)
-class Simulation(SimulationMethods, Context):
+class Simulation(SimulationMethods, WorkspaceComponent):
     dfn_name: ClassVar[str] = "sim-nam"
 
     continue_: bool = keyword(

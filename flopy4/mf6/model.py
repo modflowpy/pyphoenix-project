@@ -3,12 +3,12 @@ from pathlib import Path
 
 import attrs
 
-from flopy4.mf6.context import Context
+from flopy4.mf6.component import WorkspaceComponent
 from flopy4.utils import to_path
 
 
 @attrs.define(kw_only=True, slots=False)
-class Model(Context, ABC):
+class Model(WorkspaceComponent, ABC):
     @property  # type: ignore[override]
     def workspace(self) -> Path:
         """The simulation's workspace, or the model's own if it has no
@@ -16,7 +16,7 @@ class Model(Context, ABC):
         the simulation's directory, so a model's filenames are relative
         to it too (`gwf/m.dis` for a model in a subdirectory)."""
         parent = self.__dict__.get("_parent")
-        if isinstance(parent, Context):
+        if isinstance(parent, WorkspaceComponent):
             return parent.workspace
         return self.__dict__.get("_workspace")  # type: ignore[return-value]
 
@@ -26,7 +26,11 @@ class Model(Context, ABC):
         workspace is the simulation's: set that instead."""
         value = to_path(value)
         parent = self.__dict__.get("_parent")
-        if isinstance(parent, Context) and value is not None and value != parent.workspace:
+        if (
+            isinstance(parent, WorkspaceComponent)
+            and value is not None
+            and value != parent.workspace
+        ):
             raise ValueError(
                 f"{self.name}: a model's workspace is its simulation's "  # type: ignore[attr-defined]
                 f"({parent.workspace}); set the simulation's workspace instead"

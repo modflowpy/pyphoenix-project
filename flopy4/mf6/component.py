@@ -17,7 +17,7 @@ from flopy4.mf6.spec import fields_dict
 from flopy4.mf6.write_context import WriteContext
 from flopy4.spec import is_reference, reference_names, referenced, resolve, retarget
 from flopy4.uio import IO, Loader, Writer
-from flopy4.utils import empty_if_none
+from flopy4.utils import empty_if_none, to_path
 
 if TYPE_CHECKING:
     from flopy4.mf6.load_context import LoadContext
@@ -658,7 +658,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping, metaclass=LegacyKwa
     @classmethod
     def __attrs_init_subclass__(cls):
         # Only register classes that declare their own `dfn_name`.
-        # Abstract bases (Package, Context, Model, Exchange, Solution, ...)
+        # Abstract bases (Package, WorkspaceComponent, Model, Exchange, Solution, ...)
         # have no `dfn_name` of their own and are silently skipped.
         dfn_name = cls.__dict__.get("dfn_name")
         if dfn_name is not None:
@@ -895,7 +895,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping, metaclass=LegacyKwa
 
         if strict:
             data.pop("_filename")
-            data.pop("workspace", None)  # might be a Context
+            data.pop("workspace", None)  # might be a WorkspaceComponent
 
         if blocks:
             blocks_ = {}  # type: ignore
@@ -957,3 +957,31 @@ class Component(DimensionResolverMixin, ABC, MutableMapping, metaclass=LegacyKwa
         except Exception:
             pass
         return result
+
+
+@attrs.define(kw_only=True, slots=False)
+class WorkspaceComponent(Component, ABC):
+    workspace: Path = attrs.field(default=None, converter=to_path)
+    """The directory the component's files are written to and read from.
+    A model under a simulation has the simulation's (see
+    `Model.workspace`)."""
+
+    def __attrs_post_init__(self):
+        super().__attrs_post_init__()
+        if self.workspace is None:
+            self.workspace = Path.cwd()
+
+    @property
+    def path(self) -> Path:
+        return self.workspace / self.filename
+
+    def to_xarray(self):
+        """DataTree for this component and its full child hierarchy.
+
+        Built directly from live attribute values via flopy4.attrs_xarray's
+        attrs_to_datatree. Each child node, leaf packages included, is
+        built from its own fields directly, so griddata appears natively.
+        """
+        from flopy4.attrs_xarray import attrs_to_datatree
+
+        return attrs_to_datatree(self)

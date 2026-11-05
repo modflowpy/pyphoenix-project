@@ -4,8 +4,7 @@ from typing import Any
 import cattr
 from cattr import Converter
 
-from flopy4.mf6.component import Component
-from flopy4.mf6.context import Context
+from flopy4.mf6.component import Component, WorkspaceComponent
 from flopy4.mf6.converter.egress.unstructure import (
     unstructure_component,
 )
@@ -32,7 +31,7 @@ COMPONENT_CONVERTER = _make_converter()
 
 def structure(data: dict[str, Any], path: Path) -> Component:
     component = COMPONENT_CONVERTER.structure(data, Component)
-    if isinstance(component, Context):
+    if isinstance(component, WorkspaceComponent):
         component.workspace = path.parent
     component.filename = Path(path.name)
     return component

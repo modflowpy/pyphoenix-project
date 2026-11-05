@@ -3218,7 +3218,7 @@ def test_explicit_parent_top_down():
 
 def test_explicit_parent_bottom_up_non_package():
     """The bottom-up (`parent=`) half of _parent tracking works for a
-    non-Package component (Model/Context/Component's own chain), whose
+    non-Package component (Model/WorkspaceComponent/Component's own chain), whose
     own __attrs_post_init__ chains to Component's."""
     sim = Simulation()
     gwf = Gwf(parent=sim, name="gwf")
