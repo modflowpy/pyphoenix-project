@@ -1,15 +1,16 @@
 """flopy3's constructor keywords and attributes, with a deprecation warning.
 
-flopy3 names a package's period list after its v1 DFN field (CHD's
-`stress_period_data`, LAK's `perioddata`, LKT's `lakeperioddata`, ...), and
-spreads STO's and OC's over several keywords whose values are shaped
-differently. flopy4 calls each of them `period_data`. A generated class
-lists flopy3's names in `legacy_kwargs`, and `LegacyKwargs` translates them
-when the class is called, before attrs' `__init__` sees them.
+flopy3 names some packages' period list after its v1 DFN field (LAK's
+`perioddata`, LKT's `lakeperioddata`, ...), and spreads STO's and OC's over
+several keywords whose values are shaped differently. flopy4 calls each of
+them `stress_period_data`. A generated class lists flopy3's names in
+`legacy_kwargs`, and `LegacyKwargs` translates them when the class is
+called, before attrs' `__init__` sees them.
 
-The same names work as attributes, by name only: `wel.stress_period_data` is
-`wel.period_data`, not flopy3's `MFTransientList`. A keyword that's converted
-has no value of its own to read or assign, so its attribute raises instead.
+The same names work as attributes, by name only: `lak.perioddata` is
+`lak.stress_period_data`, not flopy3's `MFTransientList`. A keyword that's
+converted has no value of its own to read or assign, so its attribute raises
+instead.
 """
 
 import warnings
@@ -106,7 +107,7 @@ def _periods(value: Any) -> dict[int, Any]:
 
 
 def sto_period_data(steady_state: Any = None, transient: Any = None) -> dict[int, list]:
-    """STO's `period_data` from flopy3's `steady_state` and
+    """STO's `stress_period_data` from flopy3's `steady_state` and
     `transient`. Each is `{kper: True}`, `True` (period 0), or a list of
     periods. A period can't be both."""
 
@@ -129,7 +130,7 @@ def sto_period_data(steady_state: Any = None, transient: Any = None) -> dict[int
 
 
 def oc_period_data(saverecord: Any = None, printrecord: Any = None) -> dict[int, list]:
-    """OC's `period_data` from flopy3's `saverecord` and
+    """OC's `stress_period_data` from flopy3's `saverecord` and
     `printrecord`. Each is a list of `(rtype, ocsetting...)` tuples for
     period 0, or a dict of them by period. Each period's saves come
     before its prints, as flopy3 writes them."""

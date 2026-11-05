@@ -312,10 +312,10 @@ class Flopy3Package(PackageInterface):
     @property
     def has_stress_period_data(self):
         # Stress-period recarray packages (CHD, DRN, etc.)
-        if getattr(self._package, "_period_data", None) is not None:
+        if getattr(self._package, "_stress_period_data", None) is not None:
             return True
         # Any other fill-forward (period) field (covers OC's own
-        # _period_data too, redundantly with the check above -- kept
+        # _stress_period_data too, redundantly with the check above -- kept
         # as a generic fallback for any period field shape).
         try:
             for f in attrs.fields(type(self._package)):
@@ -513,7 +513,7 @@ class Flopy3ListData(DataInterface, DataListInterface):
         self._nper = nper
         pkg = package._package
         item_cls = item_list_type(pkg._period_item_field().type)
-        self._kpers = sorted(pkg.period_data)
+        self._kpers = sorted(pkg.stress_period_data)
         self._dtype, flat = _flatten(pkg.to_dataframe(), item_cls, pkg)
         self._data = {}
         for kper in self._kpers:
@@ -525,7 +525,7 @@ class Flopy3ListData(DataInterface, DataListInterface):
         """The package's stress period data, or None if it has none, or
         its rows are of more than one kind (a list of unions)."""
         pkg = package._package
-        if not getattr(pkg, "period_data", None):
+        if not getattr(pkg, "stress_period_data", None):
             return None
         try:
             field = pkg._period_item_field()
@@ -721,7 +721,7 @@ def _nper(package: "Flopy3Package") -> int:
     pkg = package._package
     if nper := pkg.resolve_dims("nper").get("nper"):
         return int(nper)
-    return max(pkg.period_data) + 1
+    return max(pkg.stress_period_data) + 1
 
 
 def _flatten(df, item_cls, pkg) -> "tuple[np.dtype, Any]":

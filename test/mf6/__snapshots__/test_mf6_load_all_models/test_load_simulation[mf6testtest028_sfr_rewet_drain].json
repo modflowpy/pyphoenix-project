@@ -79,9 +79,9 @@
   },
   "simulation/mf6/SFR_1": {
     "__type__": "Sfr",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "ifno": "int64[1] 05fe405753166f12",
         "n": 1,
         "sfrsetting": {
@@ -91,7 +91,7 @@
         }
       },
       "1": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "ifno": "int64[21] 00eef150977c3560",
         "n": 21,
         "sfrsetting": {
@@ -127,7 +127,7 @@
         }
       },
       "2": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "ifno": "int64[22] 6f683556bd9b0bb8",
         "n": 22,
         "sfrsetting": [
@@ -608,7 +608,7 @@
   },
   "simulation/mf6/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Save",

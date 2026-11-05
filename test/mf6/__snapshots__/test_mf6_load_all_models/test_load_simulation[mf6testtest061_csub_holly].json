@@ -53,9 +53,9 @@
   },
   "simulation/holly/chd": {
     "__type__": "Chd",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[4, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -440,7 +440,7 @@
   },
   "simulation/holly/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "352": {
         "__table__": "Save",
         "n": 2,
@@ -469,11 +469,11 @@
   },
   "simulation/holly/sto": {
     "__type__": "Sto",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "n": 1,
-        "period_data": [
+        "stress_period_data": [
           "TRANSIENT"
         ]
       }

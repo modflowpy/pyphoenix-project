@@ -260,7 +260,7 @@ class TypedTransformer(Transformer):
         """Extract block index (e.g., period number, or utl-tas's time)."""
         return parse_number(str(items[0]))
 
-    def period_data(self, items: list[Any]) -> list | NumberRows:
+    def stress_period_data(self, items: list[Any]) -> list | NumberRows:
         """A period block's list rows."""
         return _rows(items)
 
@@ -342,12 +342,12 @@ class TypedTransformer(Transformer):
         """A block's contents, by field name. A list's elements are always a
         list, anything else one value."""
         if children and not any(isinstance(c, tuple) for c in children):
-            # list data (e.g. period_data records), not named fields
+            # list data (e.g. stress_period_data records), not named fields
             if all(_is_rows(c) for c in children):
-                return {"period_data": _rows(children)}
+                return {"stress_period_data": _rows(children)}
             if len(children) == 1 and isinstance(children[0], list):
-                return {"period_data": children[0]}
-            return {"period_data": children}
+                return {"stress_period_data": children[0]}
+            return {"stress_period_data": children}
         fields: dict = {}
         rows: list = []
         for item in children:
@@ -360,7 +360,7 @@ class TypedTransformer(Transformer):
                 # SOLUTIONGROUP: MXITER, then its solutions' rows)
                 rows.append(item)
         if rows:
-            fields["period_data"] = _rows(rows)
+            fields["stress_period_data"] = _rows(rows)
         return fields
 
     def __default__(self, data, children, meta):

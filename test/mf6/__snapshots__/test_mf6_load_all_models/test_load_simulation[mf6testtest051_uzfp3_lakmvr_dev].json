@@ -100,7 +100,7 @@
   },
   "simulation/uzfp3_lakmvr/LAK_1": {
     "__type__": "Lak",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Rainfall",
@@ -211,9 +211,9 @@
   },
   "simulation/uzfp3_lakmvr/SFR_1": {
     "__type__": "Sfr",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "ifno": "int64[125] 7fe61607eba9945c",
         "n": 125,
         "sfrsetting": "5578 chars 395dbece313511c3"
@@ -309,7 +309,7 @@
   },
   "simulation/uzfp3_lakmvr/UZF_1": {
     "__type__": "Uzf",
-    "_period_data": "4994 chars b12280fe9341261b",
+    "_stress_period_data": "5066 chars 671331d7499acead",
     "boundnames": false,
     "dims": {
       "ncelldim": 3,
@@ -371,9 +371,9 @@
   },
   "simulation/uzfp3_lakmvr/ghb-1": {
     "__type__": "Ghb",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[2, 0] da39a3ee5e6b4b0d",
         "bhead": "float64[2] 5c05b40737dca5f1",
         "boundname": [
@@ -420,9 +420,9 @@
   },
   "simulation/uzfp3_lakmvr/mvr": {
     "__type__": "Mvr",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "id1": "int64[104] 294d02ba9aefb89a",
         "id2": "int64[104] 93de698407eb6371",
         "mname1": "624 chars c20d2bcef7082b5b",
@@ -497,7 +497,7 @@
   },
   "simulation/uzfp3_lakmvr/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Save",
@@ -568,18 +568,18 @@
   },
   "simulation/uzfp3_lakmvr/sto": {
     "__type__": "Sto",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "n": 1,
-        "period_data": [
+        "stress_period_data": [
           "STEADY-STATE"
         ]
       },
       "1": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "n": 1,
-        "period_data": [
+        "stress_period_data": [
           "TRANSIENT"
         ]
       }
@@ -605,9 +605,9 @@
   },
   "simulation/uzfp3_lakmvr/wel-1": {
     "__type__": "Wel",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[10, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -626,7 +626,7 @@
         "q": "float64[10] fc2f474a3ffea575"
       },
       "10": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[10, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -645,7 +645,7 @@
         "q": "float64[10] fefe62be516873d9"
       },
       "11": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": [],
         "boundname": [],
         "cellid": [],
@@ -653,7 +653,7 @@
         "q": []
       },
       "2": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[10, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -672,7 +672,7 @@
         "q": "float64[10] 0a6920c55d9f43f5"
       },
       "4": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[10, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -691,7 +691,7 @@
         "q": "float64[10] fefe62be516873d9"
       },
       "5": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": [],
         "boundname": [],
         "cellid": [],
@@ -699,7 +699,7 @@
         "q": []
       },
       "6": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[10, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -718,7 +718,7 @@
         "q": "float64[10] fc2f474a3ffea575"
       },
       "7": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": [],
         "boundname": [],
         "cellid": [],
@@ -726,7 +726,7 @@
         "q": []
       },
       "8": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[10, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -745,7 +745,7 @@
         "q": "float64[10] 0a6920c55d9f43f5"
       },
       "9": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": [],
         "boundname": [],
         "cellid": [],

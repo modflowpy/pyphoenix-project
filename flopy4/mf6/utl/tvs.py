@@ -17,7 +17,7 @@ class Tvs(Package):
     ftype: ClassVar[str] = "TVS6"
 
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
-        "perioddata": Legacy("period_data"),
+        "perioddata": Legacy("stress_period_data"),
     }
 
     @attrs.define
@@ -31,7 +31,7 @@ class Tvs(Package):
         sy: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
-    class PeriodData(Item):
+    class StressPeriodData(Item):
         cellid: tuple[int, ...] = cellid_()
         tvssetting: "Tvs.Ss | Tvs.Sy" = union()
 
@@ -50,8 +50,8 @@ class Tvs(Package):
     ts: list[Ts] = child(
         block="options", keyword="ts6", direction="in", default=attrs.Factory(list)
     )
-    _period_data: Optional[dict[int, list[PeriodData]]] = list_(
-        alias="period_data",
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
+        alias="stress_period_data",
         default=None,
         repr=False,
         block="period",
@@ -61,4 +61,4 @@ class Tvs(Package):
 
 TvsSs = Tvs.Ss
 TvsSy = Tvs.Sy
-TvsPeriodData = Tvs.PeriodData
+TvsStressPeriodData = Tvs.StressPeriodData

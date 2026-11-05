@@ -99,9 +99,9 @@
   },
   "simulation/gwf_henry/ghb-1": {
     "__type__": "Ghb",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[40, 2] f319bd5f01990db0",
         "bhead": "float64[40] ddbd774456e1d0a7",
         "boundname": "240 chars 65361fa17dffc6e6",
@@ -175,7 +175,7 @@
   },
   "simulation/gwf_henry/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Save",
@@ -224,9 +224,9 @@
   },
   "simulation/gwf_henry/wel-1": {
     "__type__": "Wel",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[40, 1] 1aa0cb9b7917d445",
         "boundname": "240 chars 65361fa17dffc6e6",
         "cellid": "int64[40, 3] 6cbd93e97319537a",
@@ -374,7 +374,7 @@
   },
   "simulation/gwt_henry/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Save",

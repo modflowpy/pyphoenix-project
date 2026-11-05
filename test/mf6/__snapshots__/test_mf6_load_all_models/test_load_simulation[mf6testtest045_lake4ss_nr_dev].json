@@ -80,9 +80,9 @@
   },
   "simulation/lakeex4/CHD-IB": {
     "__type__": "Chd",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[352, 0] da39a3ee5e6b4b0d",
         "boundname": "2112 chars 9ceac4e25648e11c",
         "cellid": "int64[352, 3] 03a632afe5a5a1bd",
@@ -142,7 +142,7 @@
   },
   "simulation/lakeex4/lak-1": {
     "__type__": "Lak",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Rainfall",
@@ -284,7 +284,7 @@
   },
   "simulation/lakeex4/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",

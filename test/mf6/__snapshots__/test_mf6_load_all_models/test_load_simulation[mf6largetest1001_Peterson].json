@@ -107,9 +107,9 @@
   },
   "simulation/v6/chd-1": {
     "__type__": "Chd",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[60, 0] da39a3ee5e6b4b0d",
         "boundname": "360 chars a355591c3fb117f6",
         "cellid": "int64[60, 3] a5c5d747a32ba267",
@@ -153,9 +153,9 @@
   },
   "simulation/v6/drn-1": {
     "__type__": "Drn",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[1097, 0] da39a3ee5e6b4b0d",
         "boundname": "6582 chars fa500dc9d73f95c7",
         "cellid": "int64[1097, 3] e2e644db03a961ab",
@@ -212,9 +212,9 @@
   },
   "simulation/v6/hfb": {
     "__type__": "Hfb",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "cellid1": "int64[69, 3] 73f773b75d22f522",
         "cellid2": "int64[69, 3] c83ae10d4b3f5f10",
         "hydchr": "float64[69] 817174715b073ca9",
@@ -280,7 +280,7 @@
   },
   "simulation/v6/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Save",
@@ -356,9 +356,9 @@
   },
   "simulation/v6/sfr-1": {
     "__type__": "Sfr",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "ifno": "int64[41844] 23eca3b50f48cb49",
         "n": 41844,
         "sfrsetting": "1862071 chars ba918997812e943e"

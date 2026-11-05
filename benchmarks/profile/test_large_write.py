@@ -110,10 +110,12 @@ class Model1000(Model):
     def __init__(self, gwf3):
         super().__init__(gwf3.npf.k.array)
         self.chd = {
-            tuple(int(x) for x in rec[0]): float(rec[1]) for rec in gwf3.chd.period_data.data[0]
+            tuple(int(x) for x in rec[0]): float(rec[1])
+            for rec in gwf3.chd.stress_period_data.data[0]
         }
         self.wel = {
-            tuple(int(x) for x in rec[0]): float(rec[1]) for rec in gwf3.wel.period_data.data[1]
+            tuple(int(x) for x in rec[0]): float(rec[1])
+            for rec in gwf3.wel.stress_period_data.data[1]
         }
         self.rch = {
             "uniform": np.full((self.nper, self.ncpl), 0.001),
@@ -174,7 +176,7 @@ class Model1000(Model):
             oc=gwf.Oc(
                 budget_file=Path(f"{self.name}.cbc"),
                 head_file=Path(f"{self.name}.hds"),
-                period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
+                stress_period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
                 dims=dims,
             ),
         )
@@ -248,10 +250,12 @@ class Model1005(Model):
         # drop WEL's auxiliary iface column
         self.wel = {
             period: {tuple(int(x) for x in rec[0]): float(rec[1]) for rec in records}
-            for period, records in gwf3.wel.period_data.data.items()
+            for period, records in gwf3.wel.stress_period_data.data.items()
         }
         # constant head 0, with the time series stripped
-        self.chd = {tuple(int(x) for x in rec[0]): 0.0 for rec in gwf3.chd.period_data.data[0]}
+        self.chd = {
+            tuple(int(x) for x in rec[0]): 0.0 for rec in gwf3.chd.stress_period_data.data[0]
+        }
 
     def grid(self):
         import flopy4
@@ -295,7 +299,7 @@ class Model1005(Model):
             oc=gwf.Oc(
                 budget_file=Path(f"{self.name}.cbc"),
                 head_file=Path(f"{self.name}.hds"),
-                period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
+                stress_period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
                 dims=dims,
             ),
             rch=[gwf.Rcha(recharge=self.rcha, dims=dims)],
@@ -393,8 +397,10 @@ def test_test1000_sparse(benchmark, quiet, tmp_path, test1000, variant):
 
     def lists(dims):
         return dict(
-            chd=gwf.Chd(period_data=spd({0: t.chd}), print_flows=True, save_flows=True, dims=dims),
-            wel=gwf.Wel(period_data=spd({1: t.wel}), save_flows=True, dims=dims),
+            chd=gwf.Chd(
+                stress_period_data=spd({0: t.chd}), print_flows=True, save_flows=True, dims=dims
+            ),
+            wel=gwf.Wel(stress_period_data=spd({1: t.wel}), save_flows=True, dims=dims),
         )
 
     def grids(dims):
@@ -445,7 +451,7 @@ def test_test1000_rch(benchmark, quiet, tmp_path, test1000, data, variant):
         rch_list = spd(t.rch_list(data))
 
         def packages(dims):
-            return dict(rch=[gwf.Rch(period_data=rch_list, dims=dims)])
+            return dict(rch=[gwf.Rch(stress_period_data=rch_list, dims=dims)])
     else:
 
         def packages(dims):
@@ -466,8 +472,10 @@ def test_test1005(benchmark, quiet, tmp_path, test1005, variant):
 
     def lists(dims):
         return dict(
-            chd=gwf.Chd(period_data=spd({0: t.chd}), print_flows=True, save_flows=True, dims=dims),
-            wel=gwf.Wel(period_data=spd(t.wel), save_flows=True, dims=dims),
+            chd=gwf.Chd(
+                stress_period_data=spd({0: t.chd}), print_flows=True, save_flows=True, dims=dims
+            ),
+            wel=gwf.Wel(stress_period_data=spd(t.wel), save_flows=True, dims=dims),
         )
 
     def grids(dims):

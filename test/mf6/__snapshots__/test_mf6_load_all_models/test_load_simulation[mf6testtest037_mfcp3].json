@@ -91,9 +91,9 @@
   },
   "simulation/test037/chd-1": {
     "__type__": "Chd",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[40, 0] da39a3ee5e6b4b0d",
         "boundname": "240 chars 65361fa17dffc6e6",
         "cellid": "int64[40, 3] a202b9aa37f2855f",
@@ -183,7 +183,7 @@
   },
   "simulation/test037/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",
@@ -283,9 +283,9 @@
   },
   "simulation/test037/riv-1": {
     "__type__": "Riv",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[21, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -336,25 +336,25 @@
   },
   "simulation/test037/sto": {
     "__type__": "Sto",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "n": 1,
-        "period_data": [
+        "stress_period_data": [
           "STEADY-STATE"
         ]
       },
       "1": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "n": 1,
-        "period_data": [
+        "stress_period_data": [
           "TRANSIENT"
         ]
       },
       "2": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "n": 1,
-        "period_data": [
+        "stress_period_data": [
           "STEADY-STATE"
         ]
       }
@@ -380,9 +380,9 @@
   },
   "simulation/test037/wel-1": {
     "__type__": "Wel",
-    "_period_data": {
+    "_stress_period_data": {
       "1": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[1, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null

@@ -32,7 +32,7 @@ period__block: _BEGIN "period"i block_index [_remark] _NL period__fields _END "p
 %import typed.block_index -> block_index
 options__fields: (print_input__kw | open_close_redirect _NL)*
 dimensions__fields: (maxhfb__val | open_close_redirect _NL)*
-period__fields: (period_data | open_close_redirect _NL)*
+period__fields: (stress_period_data | open_close_redirect _NL)*
 print_input__kw: "print_input"i  [_remark] _NL
 maxhfb__val: "maxhfb"i integer [_remark] _NL
-period_data: record+
+stress_period_data: record+

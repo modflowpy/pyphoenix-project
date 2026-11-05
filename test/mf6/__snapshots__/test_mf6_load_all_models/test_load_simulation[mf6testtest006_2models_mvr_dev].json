@@ -87,9 +87,9 @@
   },
   "simulation/CHILD/maw-1": {
     "__type__": "Maw",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "ifno": "int64[1] 05fe405753166f12",
         "mawsetting": {
           "__table__": "Rate",
@@ -178,7 +178,7 @@
   },
   "simulation/CHILD/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",
@@ -251,9 +251,9 @@
   },
   "simulation/PARENT/chd-1": {
     "__type__": "Chd",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[14, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -328,9 +328,9 @@
   },
   "simulation/PARENT/maw-1": {
     "__type__": "Maw",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "ifno": "int64[1] 05fe405753166f12",
         "mawsetting": {
           "__table__": "Rate",
@@ -419,7 +419,7 @@
   },
   "simulation/PARENT/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",
@@ -570,9 +570,9 @@
   },
   "simulation/gwfgwf-1/mvr": {
     "__type__": "Mvr",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "id1": "int64[1] 05fe405753166f12",
         "id2": "int64[1] 05fe405753166f12",
         "mname1": [

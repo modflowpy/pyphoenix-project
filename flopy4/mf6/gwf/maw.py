@@ -59,7 +59,7 @@ class Maw(Package):
     }
 
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
-        "perioddata": Legacy("period_data"),
+        "perioddata": Legacy("stress_period_data"),
     }
 
     @attrs.define
@@ -151,7 +151,7 @@ class Maw(Package):
         auxval: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
-    class PeriodData(Item):
+    class StressPeriodData(Item):
         ifno: int = integer(index=True, fk="packagedata.ifno")
         mawsetting: "Maw.Status | Maw.ConnectionStatus | Maw.Bottom | Maw.FlowingWell | Maw.Rate | Maw.WellHead | Maw.HeadLimit | Maw.Shutoff | Maw.RateScaling | Maw.Auxiliary" = union()  # noqa: E501
 
@@ -287,8 +287,8 @@ class Maw(Package):
         default=None,
         block="angledata",
     )
-    _period_data: Optional[dict[int, list[PeriodData]]] = list_(
-        alias="period_data",
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
+        alias="stress_period_data",
         default=None,
         repr=False,
         block="period",
@@ -311,4 +311,4 @@ MawHeadLimit = Maw.HeadLimit
 MawShutoff = Maw.Shutoff
 MawRateScaling = Maw.RateScaling
 MawAuxiliary = Maw.Auxiliary
-MawPeriodData = Maw.PeriodData
+MawStressPeriodData = Maw.StressPeriodData

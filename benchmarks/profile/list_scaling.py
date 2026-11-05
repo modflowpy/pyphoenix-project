@@ -61,7 +61,9 @@ def build_sim(n: int, ws: Path):
         idomain=np.ones((nlay, nrow, n), dtype=int),
     )
     dims = {"nper": nper, **grid.dims}
-    rch = flopy4.mf6.gwf.Rch(period_data={0: [((0, 0, c), 0.001) for c in range(n)]}, dims=dims)
+    rch = flopy4.mf6.gwf.Rch(
+        stress_period_data={0: [((0, 0, c), 0.001) for c in range(n)]}, dims=dims
+    )
     gwf = flopy4.mf6.gwf.Gwf(
         name="diag",
         dis=grid,

@@ -140,9 +140,9 @@
   },
   "simulation/GWF_1/ghb-1": {
     "__type__": "Ghb",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[2, 0] da39a3ee5e6b4b0d",
         "bhead": "float64[2] 5c05b40737dca5f1",
         "boundname": [
@@ -216,7 +216,7 @@
   },
   "simulation/GWF_1/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",
@@ -290,9 +290,9 @@
   },
   "simulation/GWF_1/sfr-1": {
     "__type__": "Sfr",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "ifno": "int64[4] b3027245114724b2",
         "n": 4,
         "sfrsetting": [
@@ -542,9 +542,9 @@
   },
   "simulation/GWF_1/wel-1": {
     "__type__": "Wel",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[10, 0] da39a3ee5e6b4b0d",
         "boundname": [
           "w01",
@@ -563,7 +563,7 @@
         "q": "float64[10] 0ff76dfb0237f562"
       },
       "1": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": [],
         "boundname": [],
         "cellid": [],

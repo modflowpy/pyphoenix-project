@@ -36,7 +36,7 @@ options__fields: (boundnames__kw | print_input__kw | save_flows__kw | gammaw__va
 dimensions__fields: (ninterbeds__val | maxsig0__val | open_close_redirect _NL)*
 griddata__fields: (cg_ske_cr__val | cg_theta__val | sgm__val | sgs__val | open_close_redirect _NL)*
 packagedata__fields: (packagedatadata | open_close_redirect _NL)*
-period__fields: (period_data | open_close_redirect _NL)*
+period__fields: (stress_period_data | open_close_redirect _NL)*
 boundnames__kw: "boundnames"i  [_remark] _NL
 print_input__kw: "print_input"i  [_remark] _NL
 save_flows__kw: "save_flows"i  [_remark] _NL
@@ -83,4 +83,4 @@ cg_theta__val: "cg_theta"i [_remark] [_NL] array
 sgm__val: "sgm"i [_remark] [_NL] array
 sgs__val: "sgs"i [_remark] [_NL] array
 packagedatadata: record+
-period_data: record+
+stress_period_data: record+

@@ -34,7 +34,7 @@ period__block: _BEGIN "period"i block_index [_remark] _NL period__fields _END "p
 options__fields: (auxiliary__val | auxmultname__val | boundnames__kw | print_input__kw | print_flows__kw | save_flows__kw | wc_filerecord__rec | budget_filerecord__rec | budgetcsv_filerecord__rec | package_convergence_filerecord__rec | ts_filerecord__rec__elem | obs_filerecord__rec | mover__kw | dev_no_final_check__kw | simulate_et__kw | linear_gwet__kw | square_gwet__kw | simulate_gwseep__kw | unsat_etwc__kw | unsat_etae__kw | open_close_redirect _NL)*
 dimensions__fields: (nuzfcells__val | ntrailwaves__val | nwavesets__val | open_close_redirect _NL)*
 packagedata__fields: (packagedatadata | open_close_redirect _NL)*
-period__fields: (period_data | open_close_redirect _NL)*
+period__fields: (stress_period_data | open_close_redirect _NL)*
 auxiliary__val: "auxiliary"i word+ [_remark] _NL
 auxmultname__val: "auxmultname"i string
 boundnames__kw: "boundnames"i  [_remark] _NL
@@ -65,4 +65,4 @@ nuzfcells__val: "nuzfcells"i integer [_remark] _NL
 ntrailwaves__val: "ntrailwaves"i integer [_remark] _NL
 nwavesets__val: "nwavesets"i integer [_remark] _NL
 packagedatadata: record+
-period_data: record+
+stress_period_data: record+

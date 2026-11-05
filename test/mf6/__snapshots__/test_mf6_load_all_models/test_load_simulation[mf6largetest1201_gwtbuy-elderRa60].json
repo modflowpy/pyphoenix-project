@@ -142,7 +142,7 @@
   },
   "simulation/gwf_elder/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Save",
@@ -296,9 +296,9 @@
   },
   "simulation/gwt_elder/cnc": {
     "__type__": "Cnc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[176, 0] da39a3ee5e6b4b0d",
         "boundname": "1056 chars 8e496e98369d28cd",
         "cellid": "int64[176, 3] 1ef70eb90893c0e2",
@@ -440,7 +440,7 @@
   },
   "simulation/gwt_elder/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Save",

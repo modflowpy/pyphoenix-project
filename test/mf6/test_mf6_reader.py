@@ -487,10 +487,10 @@ def test_transform_gwf_wel_file(model_workspace):
 
     # Should have a period 2 entry (indexed period blocks are flattened to "period N" keys)
     assert "period 2" in result
-    assert "period_data" in result["period 2"]
+    assert "stress_period_data" in result["period 2"]
 
     # Should have 2 rows of data (MAXBOUND = 2)
-    spd = result["period 2"]["period_data"]
+    spd = result["period 2"]["stress_period_data"]
     assert len(spd) == 2
 
     # Each row should have 4 values (cellid components + q value)
@@ -846,7 +846,7 @@ def test_typed_loads_fortran_real_forms_in_list_rows_as_words():
         "BEGIN period 1\n  1 1 1 1.0+1 1-2\nEND period\n",
         "gwf-chd",
     )
-    assert result["period 1"]["period_data"] == [["1", "1", "1", "1.0+1", "1-2"]]
+    assert result["period 1"]["stress_period_data"] == [["1", "1", "1", "1.0+1", "1-2"]]
 
 
 def test_typed_loads_iso_datetime():
@@ -868,13 +868,13 @@ def test_typed_loads_words_starting_with_begin_or_end():
         "BEGIN PERIOD 1\n  1 1 1 1.0 10.0 endpoint\n  1 1 2 1.0 10.0 Beginning\n"
         "  1 1 3 1.0 10.0 end_x\nEND PERIOD\n"
     )
-    rows = loads_typed(ghb, "gwf-ghb")["period 1"]["period_data"]
+    rows = loads_typed(ghb, "gwf-ghb")["period 1"]["stress_period_data"]
     assert [r[-1] for r in rows] == ["endpoint", "Beginning", "end_x"]
     assert rows == loads(ghb)["PERIOD 1"]
 
     obs = "BEGIN CONTINUOUS FILEOUT x.csv\n  endwell HEAD 1 1 1\nEND CONTINUOUS\n"
     typed = loads_typed(obs, "utl-obs")["continuous FILEOUT x.csv"]
-    assert typed["period_data"] == loads(obs)["CONTINUOUS FILEOUT x.csv"]
+    assert typed["stress_period_data"] == loads(obs)["CONTINUOUS FILEOUT x.csv"]
 
 
 def test_typed_loads_bare_begin_or_end_word():
@@ -892,12 +892,12 @@ def test_typed_loads_begin_or_end_after_row_start():
     from flopy4.mf6.codec.reader import loads, loads_typed
 
     ghb = "BEGIN PERIOD 1\n  1 1 1 1.0 10.0 end\n  1 1 2 1.0 10.0 BEGIN\nEND PERIOD\n"
-    rows = loads_typed(ghb, "gwf-ghb")["period 1"]["period_data"]
+    rows = loads_typed(ghb, "gwf-ghb")["period 1"]["stress_period_data"]
     assert [r[-1] for r in rows] == ["end", "BEGIN"]
     assert rows == loads(ghb)["PERIOD 1"]
 
     ts = "BEGIN TIMESERIES\n  0.0 1.0 begin SP 1\n  1.0 2.0 end\nEND TIMESERIES\n"
-    typed = loads_typed(ts, "utl-ts")["timeseries"]["period_data"]
+    typed = loads_typed(ts, "utl-ts")["timeseries"]["stress_period_data"]
     assert typed == [["0.0", "1.0", "begin", "SP", "1"], ["1.0", "2.0", "end"]]
 
 
@@ -907,7 +907,7 @@ def test_typed_loads_bang_comment_after_number():
     from flopy4.mf6.codec.reader import loads, loads_typed
 
     ghb = "BEGIN PERIOD 1\n  1 1 1 1.0 10.0!note\nEND PERIOD\n"
-    rows = loads_typed(ghb, "gwf-ghb")["period 1"]["period_data"]
+    rows = loads_typed(ghb, "gwf-ghb")["period 1"]["stress_period_data"]
     assert rows == [["1", "1", "1", "1.0", "10.0"]]
     assert rows == loads(ghb)["PERIOD 1"]
 
@@ -925,17 +925,17 @@ def test_typed_loads_number_lines_as_text():
         "BEGIN PERIOD 2\n  1 1 1 1.0 10.0 a\n  # a comment\n  1 1 2 1.0 10.0\nEND PERIOD\n"
     )
     typed, basic = loads_typed(ghb, "gwf-ghb"), loads(ghb)
-    rows = typed["period 1"]["period_data"]
+    rows = typed["period 1"]["stress_period_data"]
     assert isinstance(rows, NumberRows)
     assert rows == [["1", "1", "1", "1.0", "10.0"], ["1", "1", "2", "1.0D1", "10.0"]]
     assert rows == basic["PERIOD 1"]
-    rows = typed["period 2"]["period_data"]
+    rows = typed["period 2"]["stress_period_data"]
     assert rows == [["1", "1", "1", "1.0", "10.0", "a"], ["1", "1", "2", "1.0", "10.0"]]
     assert rows == basic["PERIOD 2"]
 
     # a block's list other than a period's
     disv = "BEGIN VERTICES\n  1 0.0 0.0\n  2 1.0 0.0\nEND VERTICES\n"
-    assert loads_typed(disv, "gwf-disv")["vertices"]["period_data"] == [
+    assert loads_typed(disv, "gwf-disv")["vertices"]["stress_period_data"] == [
         ["1", "0.0", "0.0"],
         ["2", "1.0", "0.0"],
     ]
@@ -951,7 +951,7 @@ def test_typed_loads_records():
         "BEGIN PERIOD 1\n  1 inflow 0.0\n  1 status active, 2 'a b' 3\n"
         "  2 rainfall 1.0 # note\n  2 stage 1.5\n\n  # c\n  3 end 1\nEND PERIOD\n"
     )
-    rows = loads_typed(sfr, "gwf-sfr")["period 1"]["period_data"]
+    rows = loads_typed(sfr, "gwf-sfr")["period 1"]["stress_period_data"]
     assert rows == [
         ["1", "inflow", "0.0"],
         ["1", "status", "active", "2", "a b", "3"],
@@ -966,7 +966,7 @@ def test_typed_loads_records():
     nam = "BEGIN SOLUTIONGROUP 1\n  MXITER 2\n  IMS6 sim.ims gwf\nEND SOLUTIONGROUP\n"
     assert loads_typed(nam, "sim-nam")["solutiongroup 1"] == {
         "mxiter": 2,
-        "period_data": [["IMS6", "sim.ims", "gwf"]],
+        "stress_period_data": [["IMS6", "sim.ims", "gwf"]],
     }
     # ...its rows kept on either side of the field
     nam = (
@@ -974,7 +974,7 @@ def test_typed_loads_records():
     )
     assert loads_typed(nam, "sim-nam")["solutiongroup 1"] == {
         "mxiter": 3,
-        "period_data": [["IMS6", "a.ims", "gwf"], ["EMS6", "b.ems", "gwe"]],
+        "stress_period_data": [["IMS6", "a.ims", "gwf"], ["EMS6", "b.ems", "gwe"]],
     }
 
 

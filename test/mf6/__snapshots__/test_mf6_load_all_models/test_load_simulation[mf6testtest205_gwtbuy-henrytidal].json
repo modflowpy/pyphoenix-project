@@ -107,7 +107,7 @@
   },
   "simulation/gwf_henry/drn-1": {
     "__type__": "Drn",
-    "_period_data": "275142 chars 3c3019997629777a",
+    "_stress_period_data": "280764 chars 252fa3d80715f79c",
     "auxiliary": [
       "CONCENTRATION"
     ],
@@ -130,7 +130,7 @@
   },
   "simulation/gwf_henry/ghb-1": {
     "__type__": "Ghb",
-    "_period_data": "329603 chars 373b2c5212ccad37",
+    "_stress_period_data": "335609 chars 45b6b0f7db21250a",
     "auxiliary": [
       "CONCENTRATION",
       "DENSITY"
@@ -196,7 +196,7 @@
   },
   "simulation/gwf_henry/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Save",
@@ -245,11 +245,11 @@
   },
   "simulation/gwf_henry/sto": {
     "__type__": "Sto",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "n": 1,
-        "period_data": [
+        "stress_period_data": [
           "TRANSIENT"
         ]
       }
@@ -275,9 +275,9 @@
   },
   "simulation/gwf_henry/wel-1": {
     "__type__": "Wel",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[40, 1] 1aa0cb9b7917d445",
         "boundname": "240 chars 65361fa17dffc6e6",
         "cellid": "int64[40, 3] 6cbd93e97319537a",
@@ -442,7 +442,7 @@
   },
   "simulation/gwt_henry/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Save",
