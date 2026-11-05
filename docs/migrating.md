@@ -5,8 +5,13 @@
 flopy4 calls every package's period data `period_data`. flopy3 calls it
 `stress_period_data` on some packages, and names others' after the input
 file's variable. flopy4 still takes flopy3's names, but warns
-(`DeprecationWarning`) and will stop taking them in a future release. Constructors only take the old names: read
-and assign `period_data`.
+(`DeprecationWarning`) and will stop taking them in a future release.
+
+The old names also work as attributes, with the same warning, but only as
+names. `wel.stress_period_data` is `wel.period_data`, a dict of rows by period,
+not flopy3's `MFTransientList`, so `.get_data()` and `.set_data()` aren't there.
+STO's and OC's old attributes raise `AttributeError`, since their values are
+shaped differently: use `period_data`.
 
 | flopy3 | flopy4 | packages |
 |---|---|---|

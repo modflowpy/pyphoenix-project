@@ -1,8 +1,9 @@
-"""flopy3's period-data constructor keywords, accepted with a warning."""
+"""flopy3's period-data constructor keywords and attributes."""
 
 import inspect
 import warnings
 
+import attrs
 import flopy
 import pytest
 
@@ -75,6 +76,54 @@ def test_stress_period_data_reaches_period_data():
 def test_stress_period_data_and_period_data_conflict():
     with pytest.raises(TypeError, match="got both"):
         Wel(stress_period_data={}, period_data={})
+
+
+@pytest.mark.parametrize(
+    ("cls", "old"),
+    [(Wel, "stress_period_data"), (Lak, "perioddata")],
+)
+def test_attribute_reads_and_assigns_period_data(cls, old):
+    pkg = cls(period_data={})
+    match = f"{old} is deprecated; use period_data"
+    with pytest.warns(DeprecationWarning, match=match) as record:
+        assert getattr(pkg, old) is pkg.period_data
+    assert record[0].filename == __file__
+
+    with pytest.warns(DeprecationWarning, match=match) as record:
+        setattr(pkg, old, {})
+    assert record[0].filename == __file__
+    assert pkg.period_data == {}
+    assert old not in vars(pkg)
+
+
+def test_attribute_assignment_is_coerced_like_period_data():
+    wel = Wel()
+    with pytest.warns(DeprecationWarning):
+        wel.stress_period_data = {0: [((0, 0, 0), -1.0)]}
+    assert wel.period_data[0][0].q == -1.0
+
+
+@pytest.mark.parametrize(
+    ("cls", "old"),
+    [
+        (Sto, "steady_state"),
+        (Sto, "transient"),
+        (Oc, "saverecord"),
+        (Oc, "printrecord"),
+    ],
+)
+def test_converted_attribute_raises(cls, old):
+    pkg = cls()
+    with pytest.raises(AttributeError, match=f"{old} is gone.*period_data"):
+        getattr(pkg, old)
+    with pytest.raises(AttributeError, match=f"{old} is gone.*period_data"):
+        setattr(pkg, old, {})
+    assert not hasattr(pkg, old)
+
+
+def test_legacy_names_are_not_fields():
+    for cls in set(get_fnames().values()):
+        assert not set(cls.legacy_kwargs) & set(attrs.fields_dict(cls)), cls.dfn_name
 
 
 def test_warning_points_at_caller():

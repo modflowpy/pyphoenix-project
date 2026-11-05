@@ -1,4 +1,4 @@
-"""flopy3's constructor keywords, accepted with a deprecation warning.
+"""flopy3's constructor keywords and attributes, with a deprecation warning.
 
 flopy3 names a package's period list after its v1 DFN field (CHD's
 `stress_period_data`, LAK's `perioddata`, LKT's `lakeperioddata`, ...), and
@@ -6,6 +6,10 @@ spreads STO's and OC's over several keywords whose values are shaped
 differently. flopy4 calls each of them `period_data`. A generated class
 lists flopy3's names in `legacy_kwargs`, and `LegacyKwargs` translates them
 when the class is called, before attrs' `__init__` sees them.
+
+The same names work as attributes, by name only: `wel.stress_period_data` is
+`wel.period_data`, not flopy3's `MFTransientList`. A keyword that's converted
+has no value of its own to read or assign, so its attribute raises instead.
 """
 
 import warnings
@@ -27,8 +31,44 @@ class Legacy(NamedTuple):
     convert: Callable[..., Any] | None = None
 
 
+class _LegacyAttribute:
+    """A class's attribute for a `legacy_kwargs` keyword."""
+
+    def __init__(self, old: str, new: Legacy) -> None:
+        self.old = old
+        self.new = new
+
+    def _name(self, obj: Any, stacklevel: int) -> str:
+        cls_name = type(obj).__name__
+        if self.new.convert is not None:
+            # an AttributeError, so hasattr() is False
+            raise AttributeError(
+                f"{cls_name}.{self.old} is gone: flopy4 keeps it in {self.new.name}, "
+                "shaped differently. See docs/migrating.md."
+            )
+        warnings.warn(
+            f"{cls_name}.{self.old} is deprecated; use {self.new.name}",
+            DeprecationWarning,
+            stacklevel=stacklevel,
+        )
+        return self.new.name
+
+    def __get__(self, obj: Any, objtype: type | None = None) -> Any:
+        return self if obj is None else getattr(obj, self._name(obj, stacklevel=3))
+
+    def __set__(self, obj: Any, value: Any) -> None:
+        # one more than __get__, for attrs' generated __setattr__
+        setattr(obj, self._name(obj, stacklevel=4), value)
+
+
 class LegacyKwargs(ABCMeta):
-    """Translate a class's `legacy_kwargs` when it's called."""
+    """Translate a class's `legacy_kwargs` when it's called, and give it an
+    attribute for each."""
+
+    def __init__(cls, name: str, bases: tuple, namespace: dict, **kwargs: Any) -> None:
+        super().__init__(name, bases, namespace, **kwargs)
+        for old, new in namespace.get("legacy_kwargs", {}).items():
+            setattr(cls, old, _LegacyAttribute(old, new))
 
     def __call__(cls, *args: Any, **kwargs: Any) -> Any:
         legacy = getattr(cls, "legacy_kwargs", None)
