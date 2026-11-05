@@ -42,23 +42,23 @@ npf = Npf(parent=gwf, save_specific_discharge=True)
 chd = Chd(
     parent=gwf,
     # 1) tuples (like flopy3)
-    stress_period_data=[[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]],
+    period_data=[[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]],
     #
     # (a tangential idea)
     # "*" could mean "apply to all stress periods"?
     # this is the default anyway if only one period
     # is specified. "*" is just a bit more explicit
-    # stress_period_data={
+    # period_data={
     #     "*": [[(0, 0, 0), 1.], [(0, 9, 9), 0.]]
     # }
     #
     # 2) dictionaries
-    # stress_period_data=[
+    # period_data=[
     #     {(0, 0, 0): {"head": 1.}, (0, 9, 9): {"head": 0.}}
     # ]
     #
     # 3) typed records
-    # stress_period_data=[
+    # period_data=[
     #     Chd.Period(cellid=(0, 0, 0), head=1.),
     #     Chd.Period(cellid=(0, 9, 9), head=0.),
     # ],
@@ -71,20 +71,20 @@ chd = Chd(
 # chd.data["head"].loc(dict(k=0, i=9, j=9)) = 0.
 #
 # 5) xarray, object dtype
-# chd.data["stress_period_data"].loc(dict(k=0, i=0, j=0)) = Chd.Period(head=1.)
-# chd.data["stress_period_data"].loc(dict(k=0, i=9, j=9)) = Chd.Period(head=0.)
+# chd.data["period_data"].loc(dict(k=0, i=0, j=0)) = Chd.Period(head=1.)
+# chd.data["period_data"].loc(dict(k=0, i=9, j=9)) = Chd.Period(head=0.)
 #
 # 5a) xarray, object dtype, labeled vars (does this work? TODO test it)
-# chd.data["stress_period_data"].loc(dict(k=0, i=0, j=0, var="head")) = 1.
-# chd.data["stress_period_data"].loc(dict(k=0, i=9, j=9, var="head")) = 0.
+# chd.data["period_data"].loc(dict(k=0, i=0, j=0, var="head")) = 1.
+# chd.data["period_data"].loc(dict(k=0, i=9, j=9, var="head")) = 0.
 # TODO does this work?
-# chd.data["stress_period_data"].loc(dict(k=0, i=0, j=0)) = (1., 0.)
-# chd.data["stress_period_data"].loc(dict(k=0, i=9, j=9)) = (0., 0.)
+# chd.data["period_data"].loc(dict(k=0, i=0, j=0)) = (1., 0.)
+# chd.data["period_data"].loc(dict(k=0, i=9, j=9)) = (0., 0.)
 
 #
 # 6) sparse array
 # spd = sparse.COO([[0,0], [0,9], [0,9]], [1., 0.])
-# chd = Chd(gwf, stress_period_data=spd)
+# chd = Chd(gwf, period_data=spd)
 
 # OC. first with builtins
 budget_file = name + ".bud"

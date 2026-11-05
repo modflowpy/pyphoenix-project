@@ -1,7 +1,7 @@
-"""Tests for stress_period_data / to_dataframe() API.
+"""Tests for period_data / to_dataframe() API.
 
 Stress-period packages (Chd, Drn, Wel, …) expose:
-  - ``stress_period_data`` property returning ``Optional[dict[int, np.recarray]]``
+  - ``period_data`` property returning ``Optional[dict[int, np.recarray]]``
   - ``to_dataframe()`` returning a tidy DataFrame with ``kper``, ``cellid``
     (tuple column), and field value columns (head, q, elev, cond, …)
 """
@@ -15,7 +15,7 @@ from flopy4.mf6.prt import Prp
 
 def test_chd_to_dataframe():
     """to_dataframe() for CHD returns kper, cellid tuple, and head columns."""
-    chd = Chd(stress_period_data={0: [((0, 0, 0), 1.0), ((0, 9, 9), 0.0)]})
+    chd = Chd(period_data={0: [((0, 0, 0), 1.0), ((0, 9, 9), 0.0)]})
     df = chd.to_dataframe()
 
     assert isinstance(df, type(df))  # is a DataFrame
@@ -38,7 +38,7 @@ def test_chd_to_dataframe():
 def test_wel_to_dataframe():
     """to_dataframe() for WEL returns q column."""
     wel = Wel(
-        stress_period_data={0: [((0, 5, 5), -100.0), ((0, 8, 8), 50.0)]},
+        period_data={0: [((0, 5, 5), -100.0), ((0, 8, 8), 50.0)]},
     )
     df = wel.to_dataframe()
 
@@ -51,7 +51,7 @@ def test_wel_to_dataframe():
 
 def test_drn_to_dataframe_multifield():
     """to_dataframe() for DRN returns both elev and cond columns."""
-    drn = Drn(stress_period_data={0: [((0, 7, 5), 10.0, 1.0)]})
+    drn = Drn(period_data={0: [((0, 7, 5), 10.0, 1.0)]})
     df = drn.to_dataframe()
 
     assert len(df) == 1
@@ -64,7 +64,7 @@ def test_drn_to_dataframe_multifield():
 def test_multi_period_to_dataframe():
     """to_dataframe() includes rows for each stress period."""
     chd = Chd(
-        stress_period_data={
+        period_data={
             0: [((0, 0, 0), 1.0)],
             1: [((0, 0, 0), 0.9)],
             2: [((0, 0, 0), 0.8)],
@@ -81,7 +81,7 @@ def test_multi_period_to_dataframe():
 def test_multiple_cells_to_dataframe():
     """to_dataframe() includes all cells for each period."""
     chd = Chd(
-        stress_period_data={
+        period_data={
             0: [((0, 0, 0), 1.0), ((0, 5, 5), 0.5), ((0, 9, 9), 0.0)],
             1: [((0, 0, 0), 0.9), ((0, 5, 5), 0.45), ((0, 9, 9), 0.0)],
         },
@@ -99,9 +99,9 @@ def test_multiple_cells_to_dataframe():
     assert sorted(float(v) for v in per1["head"]) == [0.0, 0.45, 0.9]
 
 
-def test_empty_stress_period_data_to_dataframe():
+def test_empty_period_data_to_dataframe():
     """to_dataframe() returns empty DataFrame when no stress period data."""
-    chd = Chd()  # No stress_period_data
+    chd = Chd()  # No period_data
     df = chd.to_dataframe()
 
     import pandas as pd
@@ -115,115 +115,115 @@ def test_empty_stress_period_data_to_dataframe():
 # ---------------------------------------------------------------------------
 
 
-def test_stress_period_data_setter_single_field():
-    """Set CHD stress_period_data from a DataFrame with one value column."""
-    chd = Chd(stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 0, 1), 2.0]]})
+def test_period_data_setter_single_field():
+    """Set CHD period_data from a DataFrame with one value column."""
+    chd = Chd(period_data={0: [[(0, 0, 0), 1.0], [(0, 0, 1), 2.0]]})
     df = chd.to_dataframe()
     chd.from_dataframe(df)
-    spd = chd.stress_period_data
+    spd = chd.period_data
     assert tuple(spd[0][0].cellid) == (0, 0, 0)
     assert spd[0][0].head == 1.0
     assert spd[0][1].head == 2.0
 
 
-def test_stress_period_data_setter_multifield():
-    """Set DRN stress_period_data from a DataFrame with multiple value columns."""
-    drn = Drn(stress_period_data={0: [[(0, 0, 0), 5.0, 0.01], [(0, 1, 0), 4.0, 0.02]]})
+def test_period_data_setter_multifield():
+    """Set DRN period_data from a DataFrame with multiple value columns."""
+    drn = Drn(period_data={0: [[(0, 0, 0), 5.0, 0.01], [(0, 1, 0), 4.0, 0.02]]})
     df = drn.to_dataframe()
     drn.from_dataframe(df)
-    spd = drn.stress_period_data
+    spd = drn.period_data
     assert spd[0][0].elev == pytest.approx(5.0)
     assert spd[0][1].cond == pytest.approx(0.02)
 
 
-def test_stress_period_data_setter_modify_existing():
+def test_period_data_setter_modify_existing():
     """Modify a value in the DataFrame then set back."""
-    chd = Chd(stress_period_data={0: [[(0, 0, 0), 1.0]]})
+    chd = Chd(period_data={0: [[(0, 0, 0), 1.0]]})
     df = chd.to_dataframe()
     df.loc[0, "head"] = 99.0
     chd.from_dataframe(df)
-    assert chd.stress_period_data[0][0].head == pytest.approx(99.0)
+    assert chd.period_data[0][0].head == pytest.approx(99.0)
 
 
-def test_stress_period_data_setter_node_format():
+def test_period_data_setter_node_format():
     """CHD with DISV (2D cellid) round-trips through DataFrame."""
     chd = Chd(
         dims={"ncpl": 10, "nlay": 1, "nodes": 10},
-        stress_period_data={0: [[(0, 5), 1.0], [(0, 9), 2.0]]},
+        period_data={0: [[(0, 5), 1.0], [(0, 9), 2.0]]},
     )
     df = chd.to_dataframe()
     chd.from_dataframe(df)
-    spd = chd.stress_period_data
+    spd = chd.period_data
     assert tuple(spd[0][0].cellid) == (0, 5)
     assert spd[0][1].head == pytest.approx(2.0)
 
 
-def test_stress_period_data_setter_partial_fields():
+def test_period_data_setter_partial_fields():
     """Setting from a DataFrame with fewer rows than original replaces SPD."""
-    chd = Chd(stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 0, 1), 2.0]]})
+    chd = Chd(period_data={0: [[(0, 0, 0), 1.0], [(0, 0, 1), 2.0]]})
     df = chd.to_dataframe()
     # Keep only first row
     df = df.iloc[:1]
     chd.from_dataframe(df)
-    assert len(chd.stress_period_data[0]) == 1
+    assert len(chd.period_data[0]) == 1
 
 
-def test_stress_period_data_setter_structured_grid():
+def test_period_data_setter_structured_grid():
     """CHD with multiple stress periods round-trips correctly."""
     chd = Chd(
-        stress_period_data={
+        period_data={
             0: [[(0, 0, 0), 1.0], [(0, 0, 1), 2.0]],
             1: [[(0, 0, 0), 3.0]],
         }
     )
     df = chd.to_dataframe()
     chd.from_dataframe(df)
-    spd = chd.stress_period_data
+    spd = chd.period_data
     assert set(spd.keys()) == {0, 1}
     assert spd[1][0].head == pytest.approx(3.0)
 
 
-def test_stress_period_data_setter_errors():
+def test_period_data_setter_errors():
     """from_dataframe raises on missing kper column."""
-    chd = Chd(stress_period_data={0: [[(0, 0, 0), 1.0]]})
+    chd = Chd(period_data={0: [[(0, 0, 0), 1.0]]})
     df = pd.DataFrame({"cellid": [(0, 0, 0)], "head": [1.0]})
     with pytest.raises(ValueError, match="kper"):
         chd.from_dataframe(df)
 
 
-def test_stress_period_data_setter_with_named_aux_column():
+def test_period_data_setter_with_named_aux_column():
     """WEL with one aux column round-trips through DataFrame."""
     wel = Wel(
         auxiliary=["concentration"],
-        stress_period_data={0: [[(0, 0, 0), -100.0, 35.0]]},
+        period_data={0: [[(0, 0, 0), -100.0, 35.0]]},
     )
     df = wel.to_dataframe()
     wel.from_dataframe(df)
-    spd = wel.stress_period_data
+    spd = wel.period_data
     assert spd[0][0].q == pytest.approx(-100.0)
     assert float(spd[0][0].aux[0]) == pytest.approx(35.0)
 
 
-def test_stress_period_data_setter_with_two_named_aux_columns():
+def test_period_data_setter_with_two_named_aux_columns():
     """WEL with two aux columns round-trips through DataFrame."""
     wel = Wel(
         auxiliary=["concentration", "density"],
-        stress_period_data={0: [[(0, 0, 0), -100.0, 35.0, 1025.0]]},
+        period_data={0: [[(0, 0, 0), -100.0, 35.0, 1025.0]]},
     )
     df = wel.to_dataframe()
     wel.from_dataframe(df)
-    spd = wel.stress_period_data
+    spd = wel.period_data
     assert float(spd[0][0].aux[0]) == pytest.approx(35.0)
     assert float(spd[0][0].aux[1]) == pytest.approx(1025.0)
 
 
 def test_from_dataframe_drops_missing_optional_columns():
     """A NaN in an optional str column (boundname) falls back to the default."""
-    chd = Chd(stress_period_data={0: [[(0, 0, 0), 1.0, "a"], [(0, 0, 1), 2.0]]})
+    chd = Chd(period_data={0: [[(0, 0, 0), 1.0, "a"], [(0, 0, 1), 2.0]]})
     df = chd.to_dataframe()
     assert "boundname" in df.columns and pd.isna(df["boundname"].iloc[1])
     chd.from_dataframe(df)
-    rows = chd.stress_period_data[0]
+    rows = chd.period_data[0]
     assert rows[0].boundname == "a"
     assert rows[1].boundname is None
 
@@ -232,7 +232,7 @@ def test_union_field_rows_round_trip():
     """A row's union field (MAW's mawsetting) is a column of arm instances,
     not of dicts, so the frame round-trips."""
     maw = Maw(
-        stress_period_data={
+        period_data={
             0: [(0, "RATE", -1.0), (1, "STATUS", "INACTIVE")],
             1: [(0, "RATE", -2.0)],
         }
@@ -242,7 +242,7 @@ def test_union_field_rows_round_trip():
     assert df["mawsetting"].iloc[0] == Maw.Rate(rate=-1.0)
     maw2 = Maw()
     maw2.from_dataframe(df)
-    assert maw2.stress_period_data == maw.stress_period_data
+    assert maw2.period_data == maw.period_data
 
 
 def test_union_list_round_trip():
@@ -250,11 +250,11 @@ def test_union_list_round_trip():
     a keyword column, and keep their ints though other arms leave gaps."""
     prp = Prp(
         dims={"nper": 2},
-        stress_period_data={0: [("FREQUENCY", 2), "ALL"], 1: [("STEPS", 1, 3)]},
+        period_data={0: [("FREQUENCY", 2), "ALL"], 1: [("STEPS", 1, 3)]},
     )
     df = prp.to_dataframe()
     assert list(df["keyword"]) == ["FREQUENCY", "ALL", "STEPS"]
     assert df["frequency"].iloc[0] == 2 and isinstance(df["frequency"].iloc[0], int)
     prp2 = Prp(dims={"nper": 2})
     prp2.from_dataframe(df)
-    assert prp2.stress_period_data == prp.stress_period_data
+    assert prp2.period_data == prp.period_data

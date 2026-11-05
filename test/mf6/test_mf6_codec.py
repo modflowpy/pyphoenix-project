@@ -317,7 +317,7 @@ def test_load_bare_exponents(tmp_path):
         "BEGIN DIMENSIONS\n  MAXBOUND 1\nEND DIMENSIONS\n"
         "BEGIN PERIOD 1\n  1 1 1 1.0+1\nEND PERIOD\n"
     )
-    (row,) = Chd.load(path, context=context).stress_period_data[0]
+    (row,) = Chd.load(path, context=context).period_data[0]
     assert row.head == 10.0
 
 
@@ -389,7 +389,7 @@ def test_dumps_sto():
     from flopy4.mf6.gwf import Sto
 
     sto = Sto(
-        stress_period_data={
+        period_data={
             0: [("TRANSIENT",)],
             1: [("STEADY-STATE",)],
             2: [("TRANSIENT",)],
@@ -422,7 +422,7 @@ def test_dumps_oc():
         dims={"nper": 1},
         budget_file="test.bud",
         head_file="test.hds",
-        stress_period_data={
+        period_data={
             0: [
                 ("SAVE", "HEAD", "ALL"),
                 ("SAVE", "BUDGET", "ALL"),
@@ -453,7 +453,7 @@ def test_dumps_oc2():
         dims={"nper": 1},
         budget_file="test.bud",
         head_file="test.hds",
-        stress_period_data={
+        period_data={
             0: [
                 ("SAVE", "HEAD", "LAST"),
                 ("SAVE", "BUDGET", "FIRST"),
@@ -802,7 +802,7 @@ def test_evt_segments_round_trip():
     from flopy4.mf6.gwf import Evt
 
     evt = Evt(
-        stress_period_data={
+        period_data={
             0: [
                 ((0, 0, 0), 59.0, 0.01, 6.0, (0.5, 0.9), (1.0, 0.7)),
                 ((0, 0, 1), 59.0, "etrate", 6.0, (0.4, "pxdp2"), (0.9, 0.6)),
@@ -815,7 +815,7 @@ def test_evt_segments_round_trip():
     evt2 = structure_component(
         raw, Evt, context=LoadContext(dims={"nlay": 1, "nrow": 1, "ncol": 2})
     )
-    assert evt2.stress_period_data == evt.stress_period_data
+    assert evt2.period_data == evt.period_data
 
 
 def test_ts_round_trip():
@@ -863,24 +863,22 @@ def test_ts_reference_must_name_a_series(function_tmpdir, monkeypatch):
 
     chd = Chd(
         auxiliary=["conc"],
-        stress_period_data={0: [Chd.StressPeriodData(cellid=(0, 0, 0), head="HeadSeries")]},
+        period_data={0: [Chd.PeriodData(cellid=(0, 0, 0), head="HeadSeries")]},
         ts=[ts("headseries")],
         filename=function_tmpdir / "gwf.chd",
     )
     chd.write()
 
-    chd.stress_period_data = {
-        0: [Chd.StressPeriodData(cellid=(0, 0, 0), head=1.0, aux=("concseries",))]
-    }
+    chd.period_data = {0: [Chd.PeriodData(cellid=(0, 0, 0), head=1.0, aux=("concseries",))]}
     with pytest.raises(
-        ValueError, match=r"stress_period_data: period 0 names .*'concseries'.*\['headseries'\]"
+        ValueError, match=r"period_data: period 0 names .*'concseries'.*\['headseries'\]"
     ):
         chd.write()
 
     maw = Maw(
         packagedata=[(0, 0.1, -10.0, 5.0, "THIEM", 1)],
         connectiondata=[(0, 0, (0, 0, 0), 0.0, -10.0, 1.0, 0.2)],
-        stress_period_data={0: [Maw.StressPeriodData(ifno=0, mawsetting=Maw.Rate(rate="pumping"))]},
+        period_data={0: [Maw.PeriodData(ifno=0, mawsetting=Maw.Rate(rate="pumping"))]},
         filename=function_tmpdir / "gwf.maw",
     )
     with pytest.raises(ValueError, match=r"'pumping'.*none"):
@@ -899,7 +897,7 @@ def test_ts_reference_typed(function_tmpdir, monkeypatch):
     from flopy4.mf6.utl import Ts
 
     monkeypatch.chdir(function_tmpdir)
-    row = Chd.StressPeriodData(cellid=(0, 0, 0), head="HeadSeries", aux=["conc", "1.5", 2.0])
+    row = Chd.PeriodData(cellid=(0, 0, 0), head="HeadSeries", aux=["conc", "1.5", 2.0])
     assert row.head == TimeSeriesRef("HeadSeries")
     assert row.aux == (TimeSeriesRef("conc"), 1.5, 2.0)
     row.aux = (2.0,)
@@ -917,11 +915,11 @@ def test_ts_reference_typed(function_tmpdir, monkeypatch):
     chd = Chd(
         auxiliary=["conc"],
         boundnames=True,
-        stress_period_data={0: [row, ((0, 0, 1), 1.0, "conc", "edge")]},
+        period_data={0: [row, ((0, 0, 1), 1.0, "conc", "edge")]},
         ts=[ts],
         filename=function_tmpdir / "gwf.chd",
     )
-    rows = chd.stress_period_data[0]
+    rows = chd.period_data[0]
     assert rows[1].aux == (TimeSeriesRef("conc"),)
     assert rows[1].boundname == "edge"
     chd.write()
@@ -929,12 +927,12 @@ def test_ts_reference_typed(function_tmpdir, monkeypatch):
     assert ["1", "1", "1", "headseries", "2.0"] in lines
     assert ["1", "1", "2", "1.0", "conc", "edge"] in lines
     loaded = Chd.load(function_tmpdir / "gwf.chd")
-    assert loaded.stress_period_data[0] == rows
+    assert loaded.period_data[0] == rows
 
     df = chd.to_dataframe()
     assert df["head"].tolist() == [TimeSeriesRef("headseries"), 1.0]
     chd.from_dataframe(df)
-    assert chd.stress_period_data[0] == rows
+    assert chd.period_data[0] == rows
 
 
 def test_series_attributes_from_values():
@@ -959,7 +957,7 @@ def test_series_attributes_from_values():
         ["METHODS", "linear", "stepwise"],
         ["SFAC", 2.0],
     ]
-    Chd(stress_period_data={0: [((0, 0, 0), "a")]}, ts=[ts])._check_ts_refs()
+    Chd(period_data={0: [((0, 0, 0), "a")]}, ts=[ts])._check_ts_refs()
 
     tas = Tas(time_series_name="rch", interpolation_method="linear", tas_array={0.0: [1.0]})
     assert tas.time_series_name == Tas.TimeSeriesName(time_series_name=("rch",))
@@ -1052,7 +1050,7 @@ def test_union_field_takes_arm_values():
     or takes one of its words; anything else raises."""
     from flopy4.mf6.gwf import Maw, Oc
 
-    row = Maw.StressPeriodData(ifno=0, mawsetting=("status", "active"))
+    row = Maw.PeriodData(ifno=0, mawsetting=("status", "active"))
     assert row.mawsetting == Maw.Status(status="active")
     assert row.to_tokens() == (1, "STATUS", "active")
     row.mawsetting = ("RATE", -1.0)
@@ -1060,7 +1058,7 @@ def test_union_field_takes_arm_values():
     assert Oc.Save(rtype="HEAD", ocsetting="all").ocsetting == "ALL"
     assert Oc.Save(rtype="HEAD", ocsetting=("frequency", 2)).ocsetting == Oc.Frequency(2)
     with pytest.raises(ValueError, match="no arm"):
-        Maw.StressPeriodData(ifno=0, mawsetting=("bogus", 1))
+        Maw.PeriodData(ifno=0, mawsetting=("bogus", 1))
 
 
 def test_union_field_rows_from_dicts():
@@ -1070,21 +1068,21 @@ def test_union_field_rows_from_dicts():
     from flopy4.mf6.gwt import Lkt
 
     maw = Maw(
-        stress_period_data={
+        period_data={
             0: [
                 {"ifno": 0, "mawsetting": ("rate", -1.0)},
                 {"ifno": 1, "mawsetting": Maw.Status(status="INACTIVE")},
             ]
         }
     )
-    assert maw.stress_period_data[0] == [
-        Maw.StressPeriodData(ifno=0, mawsetting=Maw.Rate(rate=-1.0)),
-        Maw.StressPeriodData(ifno=1, mawsetting=Maw.Status(status="INACTIVE")),
+    assert maw.period_data[0] == [
+        Maw.PeriodData(ifno=0, mawsetting=Maw.Rate(rate=-1.0)),
+        Maw.PeriodData(ifno=1, mawsetting=Maw.Status(status="INACTIVE")),
     ]
-    lkt = Lkt(stress_period_data={0: [{"ifno": 0, "laksetting": ("concentration", 1.5)}]})
-    assert lkt.stress_period_data[0][0].laksetting == Lkt.Concentration(concentration=1.5)
+    lkt = Lkt(period_data={0: [{"ifno": 0, "laksetting": ("concentration", 1.5)}]})
+    assert lkt.period_data[0][0].laksetting == Lkt.Concentration(concentration=1.5)
     with pytest.raises(ValueError, match="no arm"):
-        Maw(stress_period_data={0: [{"ifno": 0, "mawsetting": ("bogus", 1)}]})
+        Maw(period_data={0: [{"ifno": 0, "mawsetting": ("bogus", 1)}]})
 
 
 def test_maw_round_trip():
@@ -1099,10 +1097,10 @@ def test_maw_round_trip():
             (0, 1, (1, 0, 0), 0.0, -10.0, 1.0, 0.2),
             (1, 0, (0, 0, 1), 0.0, -10.0, 1.0, 0.2),
         ],
-        stress_period_data={
+        period_data={
             0: [
-                Maw.StressPeriodData(ifno=0, mawsetting=Maw.Rate(rate=-100.0)),
-                Maw.StressPeriodData(ifno=1, mawsetting=Maw.Status(status="INACTIVE")),
+                Maw.PeriodData(ifno=0, mawsetting=Maw.Rate(rate=-100.0)),
+                Maw.PeriodData(ifno=1, mawsetting=Maw.Status(status="INACTIVE")),
             ]
         },
     )
@@ -1113,7 +1111,7 @@ def test_maw_round_trip():
     )
     assert maw2.packagedata == maw.packagedata
     assert maw2.connectiondata == maw.connectiondata
-    assert maw2.stress_period_data == maw.stress_period_data
+    assert maw2.period_data == maw.period_data
 
 
 def test_hfb_round_trip():
@@ -1121,16 +1119,14 @@ def test_hfb_round_trip():
     from flopy4.mf6.converter.ingress.structure import structure_component
     from flopy4.mf6.gwf import Hfb
 
-    hfb = Hfb(
-        stress_period_data={0: [((0, 0, 0), (0, 0, 1), 0.001), ((0, 1, 0), (0, 1, 1), 0.002)]}
-    )
+    hfb = Hfb(period_data={0: [((0, 0, 0), (0, 0, 1), 0.001), ((0, 1, 0), (0, 1, 1), 0.002)]})
     assert hfb.maxhfb == 2
     raw = loads(dumps(unstructure_component(hfb)))
     assert _numbers(raw["PERIOD 1"][0]) == [1, 1, 1, 1, 1, 2, 0.001]
     hfb2 = structure_component(
         raw, Hfb, context=LoadContext(dims={"nlay": 1, "nrow": 2, "ncol": 2})
     )
-    assert hfb2.stress_period_data == hfb.stress_period_data
+    assert hfb2.period_data == hfb.period_data
 
 
 def test_uzf_round_trip():
@@ -1143,14 +1139,14 @@ def test_uzf_round_trip():
             (0, (0,), 1, 1, 0.001, 1.0, 0.05, 0.25, 0.05, 4.0),
             (1, (1,), 0, None, 0.001, 1.0, 0.05, 0.25, 0.05, 4.0),
         ],
-        stress_period_data={0: [(0, 0.01, 0.001, 2.25, 0.05, 0.0, 0.0, 0.0)]},
+        period_data={0: [(0, 0.01, 0.001, 2.25, 0.05, 0.0, 0.0, 0.0)]},
     )
     raw = loads(dumps(unstructure_component(uzf)))
     # ivertcon 1 -> 2; None (no underlying cell) -> 0
     assert [r[3] for r in _numbers(raw["PACKAGEDATA"])] == [2, 0]
     uzf2 = structure_component(raw, Uzf, context=LoadContext(dims={"nodes": 2}))
     assert uzf2.packagedata == uzf.packagedata
-    assert uzf2.stress_period_data == uzf.stress_period_data
+    assert uzf2.period_data == uzf.period_data
 
 
 def test_sfr_connections_round_trip():
@@ -1199,9 +1195,9 @@ def test_sfr_diversion_row():
     from flopy4.mf6.gwf import Sfr
 
     # the row's ifno, then the setting: its keyword, then its own index
-    row = Sfr.StressPeriodData(ifno=0, sfrsetting=Sfr.Diversion(idv=1, divflow=0.5))
+    row = Sfr.PeriodData(ifno=0, sfrsetting=Sfr.Diversion(idv=1, divflow=0.5))
     assert row.to_tokens() == (1, "DIVERSION", 2, 0.5)
-    assert Sfr.StressPeriodData.from_tokens([1, "diversion", 2, 0.5]) == row
+    assert Sfr.PeriodData.from_tokens([1, "diversion", 2, 0.5]) == row
 
 
 def test_sfr_unconnected_reach_round_trip():
@@ -1309,7 +1305,7 @@ def test_cellid_no_cell_needs_allow_zero():
     from flopy4.mf6.gwf import Chd
 
     with pytest.raises(ValueError, match="no cellid given"):
-        Chd.StressPeriodData(None, 1.0).to_tokens()
+        Chd.PeriodData(None, 1.0).to_tokens()
 
 
 def test_loads_block_header_remark():
@@ -1430,7 +1426,7 @@ def test_dumps_chd():
     chd = Chd(
         save_flows=True,
         print_input=True,
-        stress_period_data={0: [((0, 0, 0), 10.0), ((0, 9, 9), 20.0)]},
+        period_data={0: [((0, 0, 0), 10.0), ((0, 9, 9), 20.0)]},
     )
 
     dumped = dumps(COMPONENT_CONVERTER.unstructure(chd))
@@ -1479,7 +1475,7 @@ def test_chd_spd_input_styles(style):
     elif style == "list_of_dicts":
         spd = {0: [{"cellid": (0, 0, 0), "head": 1.0}, {"cellid": (0, 9, 9), "head": 0.0}]}
 
-    chd = Chd(stress_period_data=spd)
+    chd = Chd(period_data=spd)
     dumped = dumps(COMPONENT_CONVERTER.unstructure(chd))
 
     # All styles must produce the same period block
@@ -1490,7 +1486,7 @@ def test_chd_spd_input_styles(style):
     # Round-trip: reload and verify recarray contents
     loaded = loads(dumped)
     chd2 = structure_component(loaded, Chd)
-    rec = chd2.stress_period_data[0]
+    rec = chd2.period_data[0]
     assert len(rec) == 2
     assert tuple(rec[0].cellid) == (0, 0, 0)
     assert float(rec[0].head) == 1.0
@@ -1818,15 +1814,15 @@ END PERIOD
 """
     dims = {"nlay": 1, "nrow": 1, "ncol": 2, "ncpl": 2, "nodes": 2}
     wel = structure_component(loads(text), Wel, context=LoadContext(dims=dims))
-    assert list(wel.stress_period_data) == [0, 2]
-    assert wel.stress_period_data[2] == []
+    assert list(wel.period_data) == [0, 2]
+    assert wel.period_data[2] == []
 
     out = dumps(unstructure_component(wel))
     cleared = out.upper().split("BEGIN PERIOD 3")[1].split("END PERIOD")[0]
     assert cleared.strip() == ""
-    assert structure_component(
-        loads(out), Wel, context=LoadContext(dims=dims)
-    ).stress_period_data == (wel.stress_period_data)
+    assert structure_component(loads(out), Wel, context=LoadContext(dims=dims)).period_data == (
+        wel.period_data
+    )
 
 
 def test_dumps_wel():
@@ -1835,7 +1831,7 @@ def test_dumps_wel():
     wel = Wel(
         print_input=True,
         save_flows=True,
-        stress_period_data={
+        period_data={
             0: [
                 ((0, 2, 3), -100.0),
                 ((1, 5, 7), -50.0),
@@ -1871,7 +1867,7 @@ def test_dumps_drn():
 
     drn = Drn(
         print_flows=True,
-        stress_period_data={
+        period_data={
             0: [((0, 0, 4), 10.0, 1.0), ((1, 4, 0), 8.0, 2.0)],
             1: [((0, 1, 1), 12.0, 1.5), ((0, 2, 3), 9.0, 0.8), ((1, 3, 2), 7.0, 2.2)],
         },
@@ -1933,7 +1929,7 @@ def test_dumps_chd_2():
     rows_bottom = [((0, 19, col), 98.0) for col in range(10, 20)]
     all_rows = rows_left + rows_right + rows_bottom
 
-    chd = Chd(print_input=True, save_flows=True, stress_period_data={0: all_rows})
+    chd = Chd(print_input=True, save_flows=True, period_data={0: all_rows})
 
     dumped = dumps(COMPONENT_CONVERTER.unstructure(chd))
     print("CHD dump:")
@@ -1960,7 +1956,7 @@ def test_dumps_wel_with_aux():
     wel = Wel(
         auxiliary=["well_id"],
         print_input=True,
-        stress_period_data={
+        period_data={
             0: [
                 ((0, 1, 2), -75.0, 1.0),
                 ((1, 3, 4), -25.0, 2.0),
@@ -1992,7 +1988,7 @@ def test_dumps_wel_double_aux():
 
     wel = Wel(
         auxiliary=["well_id", "temp"],
-        stress_period_data={
+        period_data={
             0: [
                 ((0, 1, 2), -75.0, 1.0, 25.0),
             ]
@@ -2233,14 +2229,14 @@ def test_dumps_zero_field_exg():
 
 
 def test_dumps_gwt_oc_per_period():
-    """gwt-oc stress_period_data writes SAVE CONCENTRATION and SAVE BUDGET per period."""
+    """gwt-oc period_data writes SAVE CONCENTRATION and SAVE BUDGET per period."""
     from flopy4.mf6.gwt.oc import Oc
 
     oc = Oc(
         dims={"nper": 2},
         budget_file="gwt.bud",
         concentration_file="gwt.conc",
-        stress_period_data={
+        period_data={
             0: [("SAVE", "CONCENTRATION", "LAST"), ("SAVE", "BUDGET", "LAST")],
             1: [("SAVE", "CONCENTRATION", "ALL")],
         },
@@ -2259,7 +2255,7 @@ def test_dumps_gwt_oc_wildcard():
     oc = Oc(
         budget_file="gwt.bud",
         concentration_file="gwt.conc",
-        stress_period_data={"*": [("SAVE", "CONCENTRATION", "LAST"), ("SAVE", "BUDGET", "ALL")]},
+        period_data={"*": [("SAVE", "CONCENTRATION", "LAST"), ("SAVE", "BUDGET", "ALL")]},
     )
 
     dumped = dumps(COMPONENT_CONVERTER.unstructure(oc))
@@ -2268,7 +2264,7 @@ def test_dumps_gwt_oc_wildcard():
 
 
 def test_dumps_prt_prp_release_setting():
-    """prt-prp period release settings write correct MF6 keywords via stress_period_data.
+    """prt-prp period release settings write correct MF6 keywords via period_data.
 
     PRP's `releasesetting` union has no per-row index (unlike LAK/
     LKE/SFR) -- the v1 DFN declares it a bare `recarray releasesetting` with
@@ -2280,7 +2276,7 @@ def test_dumps_prt_prp_release_setting():
 
     prp = Prp(
         dims={"nper": 2},
-        stress_period_data={
+        period_data={
             0: [("FREQUENCY", 2)],
             1: [("FIRST",)],
         },
@@ -2300,13 +2296,13 @@ def test_prt_prp_period_roundtrip():
 
     prp = Prp(
         dims={"nper": 3},
-        stress_period_data={
+        period_data={
             0: [("FREQUENCY", 2), "all"],
             1: [("FIRST",)],
             2: [{"keyword": "last"}, Prp.Steps(steps=(1, 3))],
         },
     )
-    assert prp.stress_period_data == {
+    assert prp.period_data == {
         0: [Prp.Frequency(frequency=2), "ALL"],
         1: ["FIRST"],
         2: ["LAST", Prp.Steps(steps=(1, 3))],
@@ -2314,7 +2310,7 @@ def test_prt_prp_period_roundtrip():
     text = dumps(unstructure_component(prp))
     assert "BEGIN PERIOD 2\n FIRST\nEND PERIOD 2" in text
     prp2 = structure_component(loads(text), Prp)
-    assert prp2.stress_period_data == prp.stress_period_data
+    assert prp2.period_data == prp.period_data
 
 
 def test_union_list_rejects_rows_no_arm_takes():
@@ -2323,9 +2319,9 @@ def test_union_list_rejects_rows_no_arm_takes():
     from flopy4.mf6.prt.prp import Prp
 
     with pytest.raises(ValueError, match="no arm"):
-        Prp(dims={"nper": 1}, stress_period_data={0: ["bogus"]})
+        Prp(dims={"nper": 1}, period_data={0: ["bogus"]})
     with pytest.raises(ValueError, match="no arm"):
-        Prp(dims={"nper": 1}, stress_period_data={0: [("BOGUS", 1)]})
+        Prp(dims={"nper": 1}, period_data={0: [("BOGUS", 1)]})
 
 
 def test_oc_ocsetting_typed_dispatch():
@@ -2339,7 +2335,7 @@ def test_oc_ocsetting_typed_dispatch():
 
     oc = Oc(
         dims={"nper": 1},
-        stress_period_data={
+        period_data={
             0: [
                 ("SAVE", "BUDGET", "STEPS", 1, 3, 5),
                 ("PRINT", "HEAD", "ALL"),
@@ -2350,7 +2346,7 @@ def test_oc_ocsetting_typed_dispatch():
     raw = loads(text)
     oc2 = structure_component(raw, Oc)
 
-    spd = oc2.stress_period_data
+    spd = oc2.period_data
     assert spd is not None and 0 in spd
     rows = spd[0]
     assert len(rows) == 2
@@ -2368,8 +2364,8 @@ def test_oc_ocsetting_from_values_positional():
     ocsetting the same way from_tokens does."""
     from flopy4.mf6.gwf import Oc
 
-    oc = Oc(stress_period_data={0: [("SAVE", "HEAD", "all"), ("PRINT", "BUDGET", "FREQUENCY", 2)]})
-    save, print_ = oc.stress_period_data[0]
+    oc = Oc(period_data={0: [("SAVE", "HEAD", "all"), ("PRINT", "BUDGET", "FREQUENCY", 2)]})
+    save, print_ = oc.period_data[0]
     assert isinstance(save, Oc.Save)
     assert save.ocsetting == "ALL"
     assert isinstance(print_.ocsetting, Oc.Frequency)
@@ -2382,10 +2378,10 @@ def test_row_flat_or_tupled():
     makes room for."""
     from flopy4.mf6.gwf import Chd, Wel
 
-    chd = Chd(stress_period_data={0: [(0, 0, 0, 1.0), ((0, 0, 1), 2.0)]})
-    assert [r.cellid for r in chd.stress_period_data[0]] == [(0, 0, 0), (0, 0, 1)]
-    wel = Wel(auxiliary=["a", "b"], stress_period_data={0: [(0, 0, 0, -5.0, 0.1, 0.2)]})
-    assert wel.stress_period_data[0][0].aux == (0.1, 0.2)
+    chd = Chd(period_data={0: [(0, 0, 0, 1.0), ((0, 0, 1), 2.0)]})
+    assert [r.cellid for r in chd.period_data[0]] == [(0, 0, 0), (0, 0, 1)]
+    wel = Wel(auxiliary=["a", "b"], period_data={0: [(0, 0, 0, -5.0, 0.1, 0.2)]})
+    assert wel.period_data[0][0].aux == (0.1, 0.2)
 
 
 def test_row_ambiguous_widths_raise():
@@ -2404,10 +2400,10 @@ def test_row_boundname_sets_option():
     boundname, whatever its type, and the package then sets BOUNDNAMES."""
     from flopy4.mf6.gwf import Wel
 
-    wel = Wel(stress_period_data={0: [((0, 0, 0), -5.0, 5)]})
-    assert wel.stress_period_data[0][0].boundname == "5"
+    wel = Wel(period_data={0: [((0, 0, 0), -5.0, 5)]})
+    assert wel.period_data[0][0].boundname == "5"
     assert wel.boundnames
-    assert not Wel(stress_period_data={0: [((0, 0, 0), -5.0)]}).boundnames
+    assert not Wel(period_data={0: [((0, 0, 0), -5.0)]}).boundnames
 
 
 @pytest.mark.parametrize("boundnames", [True, False])
@@ -2419,7 +2415,7 @@ def test_row_boundname_by_option(boundnames):
     from flopy4.mf6.item import RowContext
 
     context = RowContext(ncelldim=3, enabled=frozenset({"boundnames"} if boundnames else ()))
-    row = Wel.StressPeriodData.from_tokens([1, 1, 1, -5.0, 5], context)
+    row = Wel.PeriodData.from_tokens([1, 1, 1, -5.0, 5], context)
     assert row.boundname == ("5" if boundnames else None)
 
 
@@ -2450,7 +2446,7 @@ def test_row_conditional_field_or_boundname(boundnames, surf_rate, tokens, petm0
             }
         ),
     )
-    row = Evt.StressPeriodData.from_tokens([1, 1, 1, 10.0, 0.001, 2.0, *tokens], context)
+    row = Evt.PeriodData.from_tokens([1, 1, 1, 10.0, 0.001, 2.0, *tokens], context)
     assert (row.petm0, row.boundname) == (petm0, boundname)
 
 
@@ -2459,17 +2455,17 @@ def test_row_conditional_field_sets_option():
     needs to read it; then a row's last value is its boundname."""
     from flopy4.mf6.gwf import Evt
 
-    evt = Evt(stress_period_data={0: [((0, 0, 0), 10.0, 0.001, 2.0, 0.5)]})
-    assert evt.stress_period_data[0][0].petm0 == 0.5
+    evt = Evt(period_data={0: [((0, 0, 0), 10.0, 0.001, 2.0, 0.5)]})
+    assert evt.period_data[0][0].petm0 == 0.5
     assert evt.surf_rate_specified
-    assert not Evt(stress_period_data={0: [((0, 0, 0), 10.0, 0.001, 2.0)]}).surf_rate_specified
+    assert not Evt(period_data={0: [((0, 0, 0), 10.0, 0.001, 2.0)]}).surf_rate_specified
 
     evt = Evt(
         boundnames=True,
         surf_rate_specified=True,
-        stress_period_data={0: [((0, 0, 0), 10.0, 0.001, 2.0, 0.5, 7)]},
+        period_data={0: [((0, 0, 0), 10.0, 0.001, 2.0, 0.5, 7)]},
     )
-    row = evt.stress_period_data[0][0]
+    row = evt.period_data[0][0]
     assert (row.petm0, row.boundname) == (0.5, "7")
 
 
@@ -2495,7 +2491,7 @@ BEGIN PERIOD 1
 END PERIOD 1
 """
     evt = structure_component(loads(text), Evt)
-    rows = evt.stress_period_data[0]
+    rows = evt.period_data[0]
     assert [(r.petm0, r.boundname) for r in rows] == [(0.5, None), (0.25, "well")]
 
 
@@ -2537,8 +2533,8 @@ def test_union_rows_as_each_row_reads():
         [3, "auxiliary", "conc", 1.5],
         [4, "upstream_fraction", 0.5],
     ]
-    items = Sfr.StressPeriodData.from_rows(rows, context)
-    assert items == [Sfr.StressPeriodData.from_tokens(row, context) for row in rows]
+    items = Sfr.PeriodData.from_rows(rows, context)
+    assert items == [Sfr.PeriodData.from_tokens(row, context) for row in rows]
     assert [type(item.sfrsetting).__name__ for item in items] == [
         "Inflow",
         "Rainfall",
@@ -2613,7 +2609,7 @@ def test_table_declines(item_cls, text):
     from flopy4.mf6.item import RowContext
     from flopy4.mf6.item_table import read_rows
 
-    cls = {"Riv": Riv.StressPeriodData, "Gnc": Gnc.Gncdata}[item_cls]
+    cls = {"Riv": Riv.PeriodData, "Gnc": Gnc.Gncdata}[item_cls]
     context = RowContext(ncelldim=1, sizes={"auxiliary": 0, "numalphaj": 1})
     assert read_rows(cls, text, context) is None
 
@@ -2680,7 +2676,7 @@ def test_table_rows():
     from flopy4.mf6.item import RowContext
     from flopy4.mf6.item_table import read_rows
 
-    cls = Riv.StressPeriodData
+    cls = Riv.PeriodData
     text = "1 5 1.0 2.0 0.5\n2 7 3.0 4.0 0.25\n"
     context = RowContext(ncelldim=2, sizes={"auxiliary": 0})
     table = read_rows(cls, text, context)
@@ -2712,13 +2708,11 @@ def test_package_rows_as_table():
     from flopy4.mf6.gwf import Riv
     from flopy4.mf6.item_table import ItemTable
 
-    riv = Riv(stress_period_data={0: [((0, 0, 0), 1.0, 2.0, 0.5, "b")]})
-    rows = riv.stress_period_data[0]
+    riv = Riv(period_data={0: [((0, 0, 0), 1.0, 2.0, 0.5, "b")]})
+    rows = riv.period_data[0]
     assert isinstance(rows, ItemTable)
     assert riv.boundnames
-    assert rows[0] == Riv.StressPeriodData(
-        cellid=(0, 0, 0), stage=1.0, cond=2.0, rbot=0.5, boundname="b"
-    )
+    assert rows[0] == Riv.PeriodData(cellid=(0, 0, 0), stage=1.0, cond=2.0, rbot=0.5, boundname="b")
 
 
 @pytest.mark.parametrize("boundname", [None, "b"])
@@ -2727,14 +2721,12 @@ def test_row_positional_trailing_boundname(boundname):
     not, rather than another value of the aux array before it."""
     from flopy4.mf6.gwf import Evt, Wel
 
-    wel = Wel(stress_period_data={0: [((0, 0, 0), 1.0, (), boundname)]})
-    assert wel.stress_period_data[0][0] == Wel.StressPeriodData(
-        cellid=(0, 0, 0), q=1.0, boundname=boundname
-    )
+    wel = Wel(period_data={0: [((0, 0, 0), 1.0, (), boundname)]})
+    assert wel.period_data[0][0] == Wel.PeriodData(cellid=(0, 0, 0), q=1.0, boundname=boundname)
     row = ((0, 0, 0), 10.0, 0.001, 2.0, (0.3, 0.6), (0.7, 0.4), None, (), boundname)
-    evt = Evt(stress_period_data={0: [row]})
-    assert evt.stress_period_data[0][0].aux == ()
-    assert evt.stress_period_data[0][0].boundname == boundname
+    evt = Evt(period_data={0: [row]})
+    assert evt.period_data[0][0].aux == ()
+    assert evt.period_data[0][0].boundname == boundname
 
 
 def test_empty_boundname_is_none():
@@ -2742,9 +2734,9 @@ def test_empty_boundname_is_none():
     or without its aux, so None is the only "no boundname"."""
     from flopy4.mf6.gwf import Wel
 
-    assert Wel.StressPeriodData(cellid=(0, 0, 0), q=1.0, boundname="").boundname is None
-    wel = Wel(stress_period_data={0: [((0, 0, 0), 1.0, ""), ((0, 0, 1), 1.0, (), "")]})
-    assert [r.boundname for r in wel.stress_period_data[0]] == [None, None]
+    assert Wel.PeriodData(cellid=(0, 0, 0), q=1.0, boundname="").boundname is None
+    wel = Wel(period_data={0: [((0, 0, 0), 1.0, ""), ((0, 0, 1), 1.0, (), "")]})
+    assert [r.boundname for r in wel.period_data[0]] == [None, None]
 
 
 @pytest.mark.parametrize(
@@ -2795,11 +2787,11 @@ def test_oc_period_string_int_keys():
     dims = {"nper": 3}
     oc_int = Oc(
         dims=dims,
-        stress_period_data={0: [("SAVE", "BUDGET", "ALL")], 1: [("SAVE", "BUDGET", "LAST")]},
+        period_data={0: [("SAVE", "BUDGET", "ALL")], 1: [("SAVE", "BUDGET", "LAST")]},
     )
     oc_str = Oc(
         dims=dims,
-        stress_period_data={"0": [("SAVE", "BUDGET", "ALL")], "1": [("SAVE", "BUDGET", "LAST")]},
+        period_data={"0": [("SAVE", "BUDGET", "ALL")], "1": [("SAVE", "BUDGET", "LAST")]},
     )
 
     pb_int = _period_blocks(oc_int)
@@ -2817,9 +2809,7 @@ def test_oc_period_wildcard_fillforward():
     from flopy4.mf6.gwf import Oc
 
     oc = Oc(
-        stress_period_data={
-            i: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "LAST")] for i in range(4)
-        },
+        period_data={i: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "LAST")] for i in range(4)},
     )
     pb = _period_blocks(oc)
 
@@ -2834,7 +2824,7 @@ def test_oc_period_steps_syntax():
 
     oc = Oc(
         dims={"nper": 2},
-        stress_period_data={
+        period_data={
             0: [("SAVE", "BUDGET", "STEPS", 1, 3, 5), ("PRINT", "BUDGET", "STEPS", 1)],
             1: [("PRINT", "BUDGET", "LAST")],
         },
@@ -2850,13 +2840,13 @@ def test_oc_period_steps_syntax():
 
 def test_oc_period_stop_sentinel():
     """Omitting a setting from a later period's list is how it "stops" --
-    no special empty-string sentinel needed under stress_period_data, unlike
+    no special empty-string sentinel needed under period_data, unlike
     the old per-rtype dict API. Matches every other stress-period-data
     package's semantics: each kper's list is exactly what gets written."""
     from flopy4.mf6.gwf import Oc
 
     oc = Oc(
-        stress_period_data={
+        period_data={
             0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "STEPS", 1)],
             1: [("SAVE", "HEAD", "ALL")],
             2: [("SAVE", "HEAD", "ALL")],
@@ -2879,7 +2869,7 @@ def test_oc_period_mixed_keys_no_silent_drop():
 
     oc = Oc(
         dims={"nper": 3},
-        stress_period_data={
+        period_data={
             "0": [("SAVE", "HEAD", "FIRST")],
             1: [("SAVE", "HEAD", "LAST")],
             2: [("SAVE", "HEAD", "ALL")],
@@ -2899,7 +2889,7 @@ def test_oc_dumps_steps_in_output():
     oc = Oc(
         budget_file="t.bud",
         head_file="t.hds",
-        stress_period_data={
+        period_data={
             0: [
                 ("SAVE", "HEAD", "ALL"),
                 ("SAVE", "BUDGET", "STEPS", 1, 5),
@@ -2925,7 +2915,7 @@ def test_oc_period_frequency():
     from flopy4.mf6.gwf import Oc
 
     oc = Oc(
-        stress_period_data={
+        period_data={
             0: [("SAVE", "HEAD", "FREQUENCY", 2), ("SAVE", "BUDGET", "ALL")],
             1: [("SAVE", "HEAD", "FREQUENCY", 2)],
             2: [("SAVE", "HEAD", "FREQUENCY", 2)],
@@ -2956,7 +2946,7 @@ def test_lak_period_lake_keywords():
     from flopy4.mf6.gwf.lak import Lak
 
     lak = Lak(
-        stress_period_data={
+        period_data={
             0: [
                 (0, "STATUS", "ACTIVE"),
                 (1, "STATUS", "CONSTANT"),
@@ -2980,7 +2970,7 @@ def test_lak_period_outlet_keywords():
     from flopy4.mf6.gwf.lak import Lak
 
     lak = Lak(
-        stress_period_data={
+        period_data={
             0: [
                 (0, "RATE", 100.0),
                 (1, "RATE", 200.0),
@@ -3004,7 +2994,7 @@ def test_lak_period_dumps():
     from flopy4.mf6.gwf.lak import Lak
 
     lak = Lak(
-        stress_period_data={
+        period_data={
             0: [
                 (0, "STATUS", "ACTIVE"),
                 (1, "STATUS", "CONSTANT"),
@@ -3392,7 +3382,7 @@ def test_ssm_fileinput_children(tmp_path):
     assert isinstance(wel.spc, Spc) and wel.mixed
     assert isinstance(rch.spc, Spca)
     assert wel.spc.filename == Path("wel.spc")
-    assert [r.spcsetting.concentration for r in wel.spc.stress_period_data[0]] == [100.0]
+    assert [r.spcsetting.concentration for r in wel.spc.period_data[0]] == [100.0]
     assert sorted(ssm._children) == ["spc-1", "spc-2"]
     assert wel.spc.parent is ssm
 
@@ -3423,8 +3413,8 @@ def test_sfr_period_cross_section_children(tmp_path, monkeypatch):
         )
     sfr = Sfr.load(tmp_path / "gwf.sfr", dims={"nlay": 1, "nrow": 1, "ncol": 1})
     a = sfr.crosssections[0].sfrtab
-    (b_row,) = (r.sfrsetting for r in sfr.stress_period_data[1])
-    (a_row,) = (r.sfrsetting for r in sfr.stress_period_data[2])
+    (b_row,) = (r.sfrsetting for r in sfr.period_data[1])
+    (a_row,) = (r.sfrsetting for r in sfr.period_data[2])
     assert isinstance(b_row.sfrtab, Sfrtab)
     assert b_row.sfrtab.filename == Path("b.tab")
     assert b_row.sfrtab.table[0].height == 2.0
@@ -3624,7 +3614,7 @@ def test_lak_status_input():
             "connlen": np.zeros(nconn),
             "connwidth": np.zeros(nconn),
         },
-        stress_period_data={
+        period_data={
             0: [(0, "RAINFALL", 0.1)],
             1: [(0, "STATUS", "inactive")],
             2: [(0, "STATUS", "active")],
@@ -3826,7 +3816,7 @@ def test_lak_period_roundtrip():
 
     lak = Lak(
         nlakes=2,
-        stress_period_data={
+        period_data={
             0: [
                 (0, "STATUS", "ACTIVE"),
                 (0, "RAINFALL", 0.1),
@@ -3852,7 +3842,7 @@ def test_lak_period_roundtrip():
     raw = loads(text)
     lak2 = structure_component(raw, Lak)
 
-    spd = lak2.stress_period_data
+    spd = lak2.period_data
     assert spd is not None
     assert set(spd.keys()) == {0, 1, 2}
 
@@ -4008,7 +3998,7 @@ def test_lkt_period_keywords():
     from flopy4.mf6.gwt.lkt import Lkt
 
     lkt = Lkt(
-        stress_period_data={
+        period_data={
             0: [
                 (0, "STATUS", "ACTIVE"),
                 (1, "STATUS", "CONSTANT"),
@@ -4031,7 +4021,7 @@ def test_lkt_period_dumps():
     from flopy4.mf6.gwt.lkt import Lkt
 
     lkt = Lkt(
-        stress_period_data={
+        period_data={
             0: [
                 (0, "STATUS", "ACTIVE"),
                 (1, "STATUS", "CONSTANT"),
@@ -4054,7 +4044,7 @@ def test_lkt_period_roundtrip():
     from flopy4.mf6.gwt.lkt import Lkt
 
     lkt = Lkt(
-        stress_period_data={
+        period_data={
             0: [
                 (0, "STATUS", "ACTIVE"),
                 (1, "STATUS", "CONSTANT"),
@@ -4069,7 +4059,7 @@ def test_lkt_period_roundtrip():
     raw = loads(text)
     lkt2 = structure_component(raw, Lkt)
 
-    spd = lkt2.stress_period_data
+    spd = lkt2.period_data
     assert spd is not None
     assert set(spd.keys()) == {0, 1}
 
@@ -4124,7 +4114,7 @@ def test_lke_period_keywords():
     from flopy4.mf6.gwe.lke import Lke
 
     lke = Lke(
-        stress_period_data={
+        period_data={
             0: [
                 (0, "STATUS", "ACTIVE"),
                 (1, "STATUS", "CONSTANT"),
@@ -4147,7 +4137,7 @@ def test_lke_period_dumps():
     from flopy4.mf6.gwe.lke import Lke
 
     lke = Lke(
-        stress_period_data={
+        period_data={
             0: [
                 (0, "TEMPERATURE", 18.5),
             ]
@@ -4165,7 +4155,7 @@ def test_lke_period_roundtrip():
     from flopy4.mf6.gwe.lke import Lke
 
     lke = Lke(
-        stress_period_data={
+        period_data={
             0: [
                 (0, "STATUS", "ACTIVE"),
                 (1, "STATUS", "CONSTANT"),
@@ -4180,7 +4170,7 @@ def test_lke_period_roundtrip():
     raw = loads(text)
     lke2 = structure_component(raw, Lke)
 
-    spd = lke2.stress_period_data
+    spd = lke2.period_data
     assert spd is not None
     assert set(spd.keys()) == {0, 1}
 
@@ -4279,7 +4269,7 @@ def test_chd_period_roundtrip():
     from flopy4.mf6.gwf import Chd
 
     chd = Chd(
-        stress_period_data={
+        period_data={
             0: [((0, 0, 0), 10.0), ((0, 9, 9), 0.0)],
         }
     )
@@ -4288,7 +4278,7 @@ def test_chd_period_roundtrip():
     raw = loads(text)
     chd2 = structure_component(raw, Chd)
 
-    spd = chd2.stress_period_data
+    spd = chd2.period_data
     assert spd is not None and 0 in spd
     rows = spd[0]
     head_by_cellid = {tuple(rows[i].cellid): float(rows[i].head) for i in range(len(rows))}
@@ -4303,7 +4293,7 @@ def test_chd_period_multi_stress_period_roundtrip():
     from flopy4.mf6.gwf import Chd
 
     chd = Chd(
-        stress_period_data={
+        period_data={
             0: [((0, 0, 0), 10.0), ((0, 4, 4), 5.0)],
             1: [((0, 0, 0), 8.0), ((0, 4, 4), 3.0)],
         }
@@ -4313,7 +4303,7 @@ def test_chd_period_multi_stress_period_roundtrip():
     raw = loads(text)
     chd2 = structure_component(raw, Chd)
 
-    spd = chd2.stress_period_data
+    spd = chd2.period_data
     assert spd is not None
     for kper, expected in {
         0: {(0, 0, 0): 10.0, (0, 4, 4): 5.0},
@@ -4364,7 +4354,7 @@ def test_structure_component_reads_binary_period_rows_without_aux(tmp_path):
     context = LoadContext(workspace=tmp_path, dims={"nlay": 1, "nrow": 2, "ncol": 2})
     chd = structure_component(raw, Chd, context=context)
 
-    rows = chd.stress_period_data[0]
+    rows = chd.period_data[0]
     assert len(rows) == 2
     assert tuple(rows[0].cellid) == (0, 0, 0)
     assert rows[0].head == pytest.approx(1.0)
@@ -4384,7 +4374,7 @@ def test_structure_component_reads_binary_period_rows_with_aux(tmp_path):
     context = LoadContext(workspace=tmp_path, dims={"nlay": 1, "nrow": 2, "ncol": 2})
     chd = structure_component(raw, Chd, context=context)
 
-    rows = chd.stress_period_data[0]
+    rows = chd.period_data[0]
     assert len(rows) == 2
     assert tuple(rows[0].cellid) == (0, 0, 0)
     assert rows[0].head == pytest.approx(1.0)
@@ -4399,9 +4389,9 @@ def test_binary_list_row_spec_rejects_complex_layout():
     from flopy4.mf6.gwf import Maw
 
     context = LoadContext(dims={"nlay": 1, "nrow": 1, "ncol": 1})
-    # MAW's stress_period_data row has a union field (mawsetting) --
+    # MAW's period_data row has a union field (mawsetting) --
     # not representable in MF6's fixed-width binary list format
-    assert _binary_list_row_spec(Maw.StressPeriodData, context, {}) is None
+    assert _binary_list_row_spec(Maw.PeriodData, context, {}) is None
 
 
 def test_binary_list_row_spec_simple_chd():
@@ -4410,13 +4400,13 @@ def test_binary_list_row_spec_simple_chd():
 
     context = LoadContext(dims={"nlay": 1, "nrow": 1, "ncol": 1})
     # cellid (3 ints), head (1 double), aux (1 double, from sizes)
-    assert _binary_list_row_spec(Chd.StressPeriodData, context, {"auxiliary": 1}) == [
+    assert _binary_list_row_spec(Chd.PeriodData, context, {"auxiliary": 1}) == [
         ("<i4", 3),
         ("<f8", 1),
         ("<f8", 1),
     ]
     # no AUXILIARY given at all -- aux contributes nothing, not an unsupported layout
-    assert _binary_list_row_spec(Chd.StressPeriodData, context, {}) == [
+    assert _binary_list_row_spec(Chd.PeriodData, context, {}) == [
         ("<i4", 3),
         ("<f8", 1),
     ]
@@ -4429,14 +4419,14 @@ def test_binary_list_row_spec_when_gated_field():
     context = LoadContext(dims={"nlay": 1, "nrow": 1, "ncol": 1})
     # cellid (3) + surface, rate, depth (1 each); pxdp/petm (nseg-1=0) and
     # aux (no AUXILIARY) contribute nothing; petm0 only when its option is on
-    assert _binary_list_row_spec(Evt.StressPeriodData, context, {"nseg-1": 0}) == [
+    assert _binary_list_row_spec(Evt.PeriodData, context, {"nseg-1": 0}) == [
         ("<i4", 3),
         ("<f8", 1),
         ("<f8", 1),
         ("<f8", 1),
     ]
     assert _binary_list_row_spec(
-        Evt.StressPeriodData, context, {"nseg-1": 0}, frozenset({"surf_rate_specified"})
+        Evt.PeriodData, context, {"nseg-1": 0}, frozenset({"surf_rate_specified"})
     ) == [
         ("<i4", 3),
         ("<f8", 1),
@@ -4474,9 +4464,7 @@ def test_binary_list_row_spec_rejects_boundnames():
     from flopy4.mf6.gwf import Chd
 
     context = LoadContext(dims={"nlay": 1, "nrow": 1, "ncol": 1})
-    assert (
-        _binary_list_row_spec(Chd.StressPeriodData, context, {}, frozenset({"boundnames"})) is None
-    )
+    assert _binary_list_row_spec(Chd.PeriodData, context, {}, frozenset({"boundnames"})) is None
 
 
 def test_read_binary_list_file_drops_partial_row(tmp_path):
@@ -4498,7 +4486,7 @@ def test_wel_period_roundtrip():
     from flopy4.mf6.gwf import Wel
 
     wel = Wel(
-        stress_period_data={
+        period_data={
             0: [((0, 1, 2), -75.0), ((1, 3, 4), -25.0)],
         }
     )
@@ -4507,7 +4495,7 @@ def test_wel_period_roundtrip():
     raw = loads(text)
     wel2 = structure_component(raw, Wel)
 
-    spd = wel2.stress_period_data
+    spd = wel2.period_data
     assert spd is not None and 0 in spd
     rows = spd[0]
     q_by_cellid = {tuple(rows[i].cellid): float(rows[i].q) for i in range(len(rows))}
@@ -4522,7 +4510,7 @@ def test_drn_period_roundtrip():
     from flopy4.mf6.gwf import Drn
 
     drn = Drn(
-        stress_period_data={
+        period_data={
             0: [((0, 2, 2), 5.0, 1.0)],
         }
     )
@@ -4531,7 +4519,7 @@ def test_drn_period_roundtrip():
     raw = loads(text)
     drn2 = structure_component(raw, Drn)
 
-    spd = drn2.stress_period_data
+    spd = drn2.period_data
     assert spd is not None and 0 in spd
     rows = spd[0]
     assert tuple(rows[0].cellid) == (0, 2, 2)
@@ -4556,7 +4544,7 @@ END period 1
     raw = loads(text)
     wel = structure_component(raw, Wel)
 
-    spd = wel.stress_period_data
+    spd = wel.period_data
     assert spd is not None and 0 in spd
     rows = spd[0]
     assert tuple(rows[0].cellid) == (0, 1, 2)
@@ -4581,7 +4569,7 @@ END period 1
     raw = loads(text)
     wel = structure_component(raw, Wel)
 
-    spd = wel.stress_period_data
+    spd = wel.period_data
     assert spd is not None and 0 in spd
     rows = spd[0]
     assert tuple(rows[0].cellid) == (0, 1, 2)
@@ -4603,7 +4591,7 @@ def test_cnc_period_aux_roundtrip():
 
     cnc = Cnc(
         auxiliary=["tracer_id"],
-        stress_period_data={0: [((0, 0, 2), 35.0, 99.0)]},
+        period_data={0: [((0, 0, 2), 35.0, 99.0)]},
     )
 
     text = dumps(unstructure_component(cnc))
@@ -4613,7 +4601,7 @@ def test_cnc_period_aux_roundtrip():
     raw = loads(text)
     cnc2 = structure_component(raw, Cnc)
 
-    spd = cnc2.stress_period_data
+    spd = cnc2.period_data
     assert spd is not None and 0 in spd
     rows = spd[0]
     assert tuple(rows[0].cellid) == (0, 0, 2)
@@ -4629,7 +4617,7 @@ def test_src_period_aux_roundtrip():
 
     src = Src(
         auxiliary=["src_id"],
-        stress_period_data={0: [((0, 0, 3), 0.5, 7.0)]},
+        period_data={0: [((0, 0, 3), 0.5, 7.0)]},
     )
 
     text = dumps(unstructure_component(src))
@@ -4639,7 +4627,7 @@ def test_src_period_aux_roundtrip():
     raw = loads(text)
     src2 = structure_component(raw, Src)
 
-    spd = src2.stress_period_data
+    spd = src2.period_data
     assert spd is not None and 0 in spd
     rows = spd[0]
     assert tuple(rows[0].cellid) == (0, 0, 3)
@@ -4655,7 +4643,7 @@ def test_ctp_period_aux_roundtrip():
 
     ctp = Ctp(
         auxiliary=["zone"],
-        stress_period_data={0: [((0, 0, 1), 20.0, 3.0)]},
+        period_data={0: [((0, 0, 1), 20.0, 3.0)]},
     )
 
     text = dumps(unstructure_component(ctp))
@@ -4665,7 +4653,7 @@ def test_ctp_period_aux_roundtrip():
     raw = loads(text)
     ctp2 = structure_component(raw, Ctp)
 
-    spd = ctp2.stress_period_data
+    spd = ctp2.period_data
     assert spd is not None and 0 in spd
     rows = spd[0]
     assert tuple(rows[0].cellid) == (0, 0, 1)
@@ -4681,7 +4669,7 @@ def test_esl_period_aux_roundtrip():
 
     esl = Esl(
         auxiliary=["esl_id"],
-        stress_period_data={0: [((0, 0, 4), 1.25, 55.0)]},
+        period_data={0: [((0, 0, 4), 1.25, 55.0)]},
     )
 
     text = dumps(unstructure_component(esl))
@@ -4691,7 +4679,7 @@ def test_esl_period_aux_roundtrip():
     raw = loads(text)
     esl2 = structure_component(raw, Esl)
 
-    spd = esl2.stress_period_data
+    spd = esl2.period_data
     assert spd is not None and 0 in spd
     rows = spd[0]
     assert tuple(rows[0].cellid) == (0, 0, 4)
@@ -4707,7 +4695,7 @@ def test_rch_period_aux_roundtrip():
 
     rch = Rch(
         auxiliary=["rch_id"],
-        stress_period_data={0: [((0, 0, 0), 0.001, 42.0)]},
+        period_data={0: [((0, 0, 0), 0.001, 42.0)]},
     )
 
     text = dumps(unstructure_component(rch))
@@ -4717,7 +4705,7 @@ def test_rch_period_aux_roundtrip():
     raw = loads(text)
     rch2 = structure_component(raw, Rch)
 
-    spd = rch2.stress_period_data
+    spd = rch2.period_data
     assert spd is not None and 0 in spd
     rows = spd[0]
     assert tuple(rows[0].cellid) == (0, 0, 0)
@@ -4892,7 +4880,7 @@ def test_evt_period_aux_roundtrip():
 
     evt = Evt(
         auxiliary=["et_zone"],
-        stress_period_data={
+        period_data={
             0: [
                 {
                     "cellid": (0, 1, 1),
@@ -4912,7 +4900,7 @@ def test_evt_period_aux_roundtrip():
     raw = loads(text)
     evt2 = structure_component(raw, Evt)
 
-    spd = evt2.stress_period_data
+    spd = evt2.period_data
     assert spd is not None
     assert 0 in spd
     arr = spd[0]
@@ -5044,7 +5032,7 @@ def test_spc_round_trip(tmp_path):
         "BEGIN PERIOD 3\n  1 CONCENTRATION 0.0\nEND PERIOD\n"
     )
     spc = Spc.load(path)
-    rows = spc.stress_period_data
+    rows = spc.period_data
     values = [[(r.bndno, r.spcsetting.concentration) for r in rows[k]] for k in (0, 2)]
     assert values == [[(0, 100.0), (1, TimeSeriesRef("myts"))], [(0, 0.0)]]
     assert spc.maxbound == 2
@@ -5054,7 +5042,7 @@ def test_spc_round_trip(tmp_path):
     assert "1 CONCENTRATION 100.0" in dumped
     assert "2 CONCENTRATION myts" in dumped
     path.write_text(dumped)
-    assert Spc.load(path).stress_period_data == rows
+    assert Spc.load(path).period_data == rows
 
 
 OBS_TEXT = """BEGIN OPTIONS
@@ -5320,7 +5308,7 @@ END continuous
 """
     basic = loads(mf6_input)["continuous FILEOUT x.csv"]
     typed = loads(mf6_input, component="utl-obs")["continuous FILEOUT x.csv"]
-    assert basic == typed["stress_period_data"]
+    assert basic == typed["period_data"]
 
 
 _MAPPED_INPUT = """BEGIN options

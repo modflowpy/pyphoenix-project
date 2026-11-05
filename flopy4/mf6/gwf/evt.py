@@ -7,6 +7,7 @@ from numpy.typing import NDArray
 
 from flopy4.mf6._types import TimeSeriesRef, to_array
 from flopy4.mf6.item import Item
+from flopy4.mf6.legacy import Legacy
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, cellid_, child, double, integer, keyword, list_, string
 from flopy4.mf6.utl.obs import Obs
@@ -28,8 +29,12 @@ class Evt(Package):
         "bound": "<=maxbound",
     }
 
+    legacy_kwargs: ClassVar[dict[str, Legacy]] = {
+        "stress_period_data": Legacy("period_data"),
+    }
+
     @attrs.define
-    class StressPeriodData(Item):
+    class PeriodData(Item):
         cellid: tuple[int, ...] = cellid_()
         surface: Union[float, TimeSeriesRef] = double(time_series=True)
         rate: Union[float, TimeSeriesRef] = double(time_series=True)
@@ -107,8 +112,8 @@ class Evt(Package):
         block="dimensions",
         longname="number of ET segments",
     )
-    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
-        alias="stress_period_data",
+    _period_data: Optional[dict[int, list[PeriodData]]] = list_(
+        alias="period_data",
         default=None,
         repr=False,
         block="period",
@@ -119,12 +124,12 @@ class Evt(Package):
     def maxbound(self) -> int:
         """Maximum number of active entries in any stress period.
 
-        Computed live from `stress_period_data`'s row counts -- not
+        Computed live from `period_data`'s row counts -- not
         stored or independently settable.
         """
-        if not self.stress_period_data:
+        if not self.period_data:
             return 0
-        return max(len(v) for v in self.stress_period_data.values())
+        return max(len(v) for v in self.period_data.values())
 
 
-EvtStressPeriodData = Evt.StressPeriodData
+EvtPeriodData = Evt.PeriodData

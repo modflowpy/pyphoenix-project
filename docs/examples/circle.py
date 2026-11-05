@@ -172,7 +172,7 @@ npf = flopy4.mf6.gwf.Npf(
 sto = flopy4.mf6.gwf.Sto(
     ss=1.0e-5,
     sy=0.15,
-    stress_period_data={0: [("STEADY-STATE",)]},
+    period_data={0: [("STEADY-STATE",)]},
     iconvert=0,
     dims=dims,
 )
@@ -186,7 +186,7 @@ chd_location = xu.zeros_like(idomain.sel(layer=2), dtype=bool).ugrid.binary_dila
 for i in np.where(chd_location)[0]:
     chd_head[(1, int(i))] = 1.0
 chd = flopy4.mf6.gwf.Chd(
-    stress_period_data={0: [(cellid, head_val) for cellid, head_val in chd_head.items()]},
+    period_data={0: [(cellid, head_val) for cellid, head_val in chd_head.items()]},
     print_input=True,
     print_flows=True,
     save_flows=True,
@@ -194,13 +194,13 @@ chd = flopy4.mf6.gwf.Chd(
 )
 
 # Recharge: uniform rate applied to every cell in the top layer.
-rch = flopy4.mf6.gwf.Rch(stress_period_data={0: [((0, j), 0.001) for j in range(ncpl)]}, dims=dims)
+rch = flopy4.mf6.gwf.Rch(period_data={0: [((0, j), 0.001) for j in range(ncpl)]}, dims=dims)
 
 # Output control: write heads and budget to binary files.
 oc = flopy4.mf6.gwf.Oc(
     budget_file="gwf.bud",
     head_file="gwf.hds",
-    stress_period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
+    period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
     dims=dims,
 )
 

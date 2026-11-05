@@ -61,9 +61,9 @@
   },
   "simulation/Biscayne/chd-1": {
     "__type__": "Chd",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[3536, 0] da39a3ee5e6b4b0d",
         "boundname": "21216 chars ca6cbcc81e1d47a7",
         "cellid": "int64[3536, 2] 0bec98f2d78b71bb",
@@ -212,7 +212,7 @@
   },
   "simulation/Biscayne/oc": {
     "__type__": "Oc",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Save",
@@ -292,7 +292,7 @@
   },
   "simulation/Biscayne/riv-1": {
     "__type__": "Riv",
-    "_stress_period_data": "31890 chars fe8e43a9bcc14554",
+    "_period_data": "31290 chars 210cbd048452ad0b",
     "boundnames": false,
     "dims": {
       "ncelldim": 2,
@@ -331,7 +331,7 @@
   },
   "simulation/Biscayne/wel-1": {
     "__type__": "Wel",
-    "_stress_period_data": "21890 chars 62de59c04de82b92",
+    "_period_data": "21290 chars d840e67f9dec25cf",
     "boundnames": false,
     "dims": {
       "ncelldim": 2,

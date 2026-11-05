@@ -86,7 +86,8 @@ def part_tag(field: InputField) -> str:
 
 def get_recarray_name(block_name: str) -> str:
     """Get the name for a recarray representing period data in a block."""
-    # Use similar naming to V1: stress_period_data, perioddata, etc.
+    # The DFNs call a period list stress_period_data, perioddata, etc.;
+    # flopy4 calls them all period_data.
     if block_name == "period":
-        return "stress_period_data"
+        return "period_data"
     return f"{block_name}data"

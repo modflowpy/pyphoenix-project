@@ -104,7 +104,7 @@
   },
   "simulation/uzfp3_lakmvr/LAK-1": {
     "__type__": "Lak",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Rainfall",
@@ -274,9 +274,9 @@
   },
   "simulation/uzfp3_lakmvr/SFR-1": {
     "__type__": "Sfr",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "ifno": "int64[125] 7fe61607eba9945c",
         "n": 125,
         "sfrsetting": "5578 chars 395dbece313511c3"
@@ -567,7 +567,7 @@
   },
   "simulation/uzfp3_lakmvr/UZF-1": {
     "__type__": "Uzf",
-    "_stress_period_data": "10142 chars c1b65f59cfe75884",
+    "_period_data": "9998 chars 718fb4389b842405",
     "boundnames": true,
     "budget_file": "uzf.cbc",
     "dims": {
@@ -685,9 +685,9 @@
   },
   "simulation/uzfp3_lakmvr/WEL-1": {
     "__type__": "Wel",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[10, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -706,7 +706,7 @@
         "q": "float64[10] 8fc36a50d0ba5aab"
       },
       "10": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[10, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -725,7 +725,7 @@
         "q": "float64[10] 5a2536e675985b27"
       },
       "11": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": [],
         "boundname": [],
         "cellid": [],
@@ -733,7 +733,7 @@
         "q": []
       },
       "2": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[10, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -752,7 +752,7 @@
         "q": "float64[10] 23859eb00ce8c537"
       },
       "4": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[10, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -771,7 +771,7 @@
         "q": "float64[10] 94cd9ffcb724ea34"
       },
       "5": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": [],
         "boundname": [],
         "cellid": [],
@@ -779,7 +779,7 @@
         "q": []
       },
       "6": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[10, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -798,7 +798,7 @@
         "q": "float64[10] 23859eb00ce8c537"
       },
       "7": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": [],
         "boundname": [],
         "cellid": [],
@@ -806,7 +806,7 @@
         "q": []
       },
       "8": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[10, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -825,7 +825,7 @@
         "q": "float64[10] 23859eb00ce8c537"
       },
       "9": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": [],
         "boundname": [],
         "cellid": [],
@@ -871,9 +871,9 @@
   },
   "simulation/uzfp3_lakmvr/ghb-1": {
     "__type__": "Ghb",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[2, 0] da39a3ee5e6b4b0d",
         "bhead": "float64[2] 5c05b40737dca5f1",
         "boundname": [
@@ -920,9 +920,9 @@
   },
   "simulation/uzfp3_lakmvr/mvr": {
     "__type__": "Mvr",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "id1": "int64[114] c5e20e1adf65ed73",
         "id2": "int64[114] 601bbf474d1b2f6d",
         "mname1": "684 chars 4d42695ad710d98d",
@@ -1043,7 +1043,7 @@
   },
   "simulation/uzfp3_lakmvr/oc": {
     "__type__": "Oc",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Save",
@@ -1114,18 +1114,18 @@
   },
   "simulation/uzfp3_lakmvr/sto": {
     "__type__": "Sto",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "n": 1,
-        "stress_period_data": [
+        "period_data": [
           "STEADY-STATE"
         ]
       },
       "1": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "n": 1,
-        "stress_period_data": [
+        "period_data": [
           "TRANSIENT"
         ]
       }

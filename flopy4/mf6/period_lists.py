@@ -1,4 +1,4 @@
-"""Period list fields (CHD's, SFR's stress_period_data) as xarray.
+"""Period list fields (CHD's, SFR's period_data) as xarray.
 
 Each period's rows are placed by their key, which sets the dense form's
 dims:
@@ -59,7 +59,7 @@ Kind = Literal["float", "int", "object"]
 
 
 def period_list_field(cls: type) -> Optional[attrs.Attribute]:
-    """A package's period list field (``_stress_period_data``), if any."""
+    """A package's period list field (``_period_data``), if any."""
     return next(
         (
             f

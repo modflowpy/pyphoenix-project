@@ -116,7 +116,7 @@
   },
   "simulation/child1/oc": {
     "__type__": "Oc",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Save",
@@ -188,9 +188,9 @@
   },
   "simulation/child1/riv_0": {
     "__type__": "Riv",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[15, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -327,7 +327,7 @@
   },
   "simulation/child2/oc": {
     "__type__": "Oc",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Save",
@@ -399,9 +399,9 @@
   },
   "simulation/child2/riv_0": {
     "__type__": "Riv",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[15, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -585,9 +585,9 @@
   },
   "simulation/mv/chd_0": {
     "__type__": "Chd",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[65, 0] da39a3ee5e6b4b0d",
         "boundname": "390 chars 68127652e53348d9",
         "cellid": "int64[65, 3] c3b303d294db114a",
@@ -673,7 +673,7 @@
   },
   "simulation/mv/oc": {
     "__type__": "Oc",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
         "__table__": "Save",
         "n": 2,
@@ -725,9 +725,9 @@
   },
   "simulation/mv/riv_0": {
     "__type__": "Riv",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[8, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,

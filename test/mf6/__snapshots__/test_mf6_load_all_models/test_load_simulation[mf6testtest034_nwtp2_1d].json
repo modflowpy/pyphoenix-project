@@ -105,9 +105,9 @@
   },
   "simulation/test034_nwtp2/chd-1": {
     "__type__": "Chd",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[5, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -287,7 +287,7 @@
   },
   "simulation/test034_nwtp2/oc": {
     "__type__": "Oc",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Print",
@@ -430,11 +430,11 @@
   },
   "simulation/test034_nwtp2/sto": {
     "__type__": "Sto",
-    "_stress_period_data": {
+    "_period_data": {
       "3": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "n": 1,
-        "stress_period_data": [
+        "period_data": [
           "steady-state"
         ]
       }

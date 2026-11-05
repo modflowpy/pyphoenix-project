@@ -48,9 +48,9 @@
   },
   "simulation/GWF_1/CHD_LEFT": {
     "__type__": "Chd",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[28, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -105,9 +105,9 @@
   },
   "simulation/GWF_1/CHD_RIGHT": {
     "__type__": "Chd",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[30, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -224,7 +224,7 @@
   },
   "simulation/GWF_1/oc": {
     "__type__": "Oc",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Print",

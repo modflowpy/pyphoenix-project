@@ -102,7 +102,7 @@ class BlockPropertySpec:
 class ItemClassSpec:
     """Pre-computed context for one generated Item class: the element type
     of a list field, in any block (see _build_list_item_specs) -- a plain
-    row (CHD's StressPeriodData, LAK's Packagedata), a keyword-led row (a
+    row (CHD's PeriodData, LAK's Packagedata), a keyword-led row (a
     tagged list's record), or one arm of a union (LAK's Stage/Rate/Status,
     OC's Saverecord/Printrecord).
 
@@ -119,7 +119,7 @@ class ItemClassSpec:
 
 @dataclass
 class ItemUnionSpec:
-    """A union list's element type alias (e.g. ``_StressPeriodDataItem =
+    """A union list's element type alias (e.g. ``_PeriodDataItem =
     Stage | Rate | ...``), keeping the field annotation short. Its keyword
     arms are words, like a union field's (PRP's ``Literal['ALL', 'FIRST',
     'LAST'] | Frequency | ...``)."""
@@ -152,7 +152,7 @@ class BlockClassSpec:
 class ComputedFieldSpec:
     """Pre-computed context for a read-only computed property, replacing a
     stored attrs field entirely -- e.g. ``maxbound``, derived live from
-    ``stress_period_data``'s row counts rather than stored and kept in
+    ``period_data``'s row counts rather than stored and kept in
     sync by hand (see ``build_component_spec``'s ``_maxbound_is_computed``
     for when this applies)."""
 
@@ -543,7 +543,7 @@ def _build_list_item_specs(
       union, its keyword arms words (PRP's ALL, FIRST and LAST)
     - a tagged (keyword-led) record element: one class whose leading
       keyword is its ``_keyword``, built like a union arm
-    - an untagged record element (packagedata, CHD's stress_period_data,
+    - an untagged record element (packagedata, CHD's period_data,
       LKT's ``ifno`` and ``laksetting``): one class of positional columns,
       a union among them a field of its own (see _union_arm_specs)
 
@@ -1324,10 +1324,41 @@ def _child_field_spec(
 
 # flopy3's constructor keywords for the period list, by component, as
 # (keyword, converter): flopy4 takes them as deprecated aliases of
-# stress_period_data (see flopy4.mf6.legacy). A closed set, since flopy3's
-# names are frozen. Most are the v1 DFN's name for the list; STO's and
-# OC's are reshaped by the converter named.
+# period_data (see flopy4.mf6.legacy). Most are the v1 DFN's name for the
+# list; STO's and OC's are reshaped by the converter named. CHF and OLF
+# aren't in a flopy3 release yet, since MF6 hasn't released them, but
+# flopy3 generates its classes from the same DFNs.
 _LEGACY_PERIOD_KWARGS: dict[str, tuple[tuple[str, str | None], ...]] = {
+    **{
+        name: (("stress_period_data", None),)
+        for name in (
+            "chf-cdb",
+            "chf-chd",
+            "chf-evp",
+            "chf-flw",
+            "chf-pcp",
+            "chf-zdg",
+            "gwe-ctp",
+            "gwe-esl",
+            "gwf-chd",
+            "gwf-csub",
+            "gwf-drn",
+            "gwf-evt",
+            "gwf-ghb",
+            "gwf-hfb",
+            "gwf-rch",
+            "gwf-riv",
+            "gwf-wel",
+            "gwt-cnc",
+            "gwt-src",
+            "olf-cdb",
+            "olf-chd",
+            "olf-evp",
+            "olf-flw",
+            "olf-pcp",
+            "olf-zdg",
+        )
+    },
     **{
         name: (("perioddata", None),)
         for name in (
@@ -1365,7 +1396,7 @@ def _legacy_kwargs(component: Component) -> dict[str, str]:
     """The component's legacy_kwargs, by flopy3 keyword, as the Legacy
     calls to render."""
     return {
-        old: f'Legacy("stress_period_data"{f", {convert}" if convert else ""})'
+        old: f'Legacy("period_data"{f", {convert}" if convert else ""})'
         for old, convert in _LEGACY_PERIOD_KWARGS.get(component.name, ())
     }
 
@@ -1569,7 +1600,7 @@ def build_component_spec(
     }
     # Repeating blocks whose missing occurrences reuse the prior one's
     # values (period) -- see filters.fill_forward_blocks. Their contents
-    # consolidate into one stress_period_data field (plus any READARRAY
+    # consolidate into one period_data field (plus any READARRAY
     # fields), which assumes at most one such block per component.
     _fill_forward_blocks = filters.fill_forward_blocks(component)
     if len(_fill_forward_blocks) > 1:
@@ -1695,7 +1726,7 @@ def build_component_spec(
             continue
 
         if block_name in _fill_forward_blocks and filters.is_list_field(f):
-            _period_item = _add_list_items(f, "StressPeriodData")
+            _period_item = _add_list_items(f, "PeriodData")
             continue
 
         # G-variant packages (CHDG, DRNG, WELG, RCHA …) declare period arrays
@@ -1713,12 +1744,14 @@ def build_component_spec(
         if block_name in _fill_forward_blocks and filters.is_scalar(f):
             item_classes.append(
                 ItemClassSpec(
-                    class_name="StressPeriodData",
+                    class_name="PeriodData",
                     keyword="",
-                    schema=[filters.attr_column(f.name, "str", "string", {}, optional=False)],
+                    schema=[
+                        filters.attr_column("period_data", "str", "string", {}, optional=False)
+                    ],
                 )
             )
-            _period_item = "StressPeriodData"
+            _period_item = "PeriodData"
             continue
 
         # maxbound: emitted as a computed property (see computed_field_specs
@@ -1918,12 +1951,10 @@ def build_component_spec(
                 _spd_meta["dim_required"] = True
         period_specs.append(
             FieldSpec(
-                dfn_name="_stress_period_data",
-                py_name="_stress_period_data",
+                dfn_name="_period_data",
+                py_name="_period_data",
                 type_annotation=f"Optional[dict[int, list[{_period_item}]]]",
-                spec_call=_ml_field(
-                    "list_", alias="stress_period_data", repr_=False, metadata=_spd_meta
-                ),
+                spec_call=_ml_field("list_", alias="period_data", repr_=False, metadata=_spd_meta),
                 generatable=True,
             )
         )
@@ -2092,7 +2123,7 @@ def build_component_spec(
     )
 
     computed_field_specs = (
-        [ComputedFieldSpec(py_name="maxbound", source_field="stress_period_data")]
+        [ComputedFieldSpec(py_name="maxbound", source_field="period_data")]
         if _maxbound_is_computed
         else []
     )

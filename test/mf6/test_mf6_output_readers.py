@@ -49,13 +49,13 @@ def _dis_model_output(function_tmpdir, **dis_kwargs):
     Chd(
         parent=gwf,
         print_flows=True,
-        stress_period_data={0: [[(0, 0, 0), 10.0], [(0, 0, ncol - 1), 0.0]]},
+        period_data={0: [[(0, 0, 0), 10.0], [(0, 0, ncol - 1), 0.0]]},
     )
     Oc(
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        stress_period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
+        period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
     )
 
     sim.write()
@@ -155,12 +155,12 @@ def _disv_model_output(function_tmpdir, **dis_kwargs):
     gwf = Gwf(parent=sim, save_flows=True, dis=disv, name=gwf_name)
     Ic(parent=gwf, strt=5.0)
     Npf(parent=gwf, k=1.0, icelltype=0)
-    Chd(parent=gwf, print_flows=True, stress_period_data={0: [[(0, 0), 10.0], [(0, 8), 0.0]]})
+    Chd(parent=gwf, print_flows=True, period_data={0: [[(0, 0), 10.0], [(0, 8), 0.0]]})
     Oc(
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        stress_period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
+        period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
     )
 
     sim.write()

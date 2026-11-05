@@ -80,9 +80,9 @@
   },
   "simulation/mf6/CHD-IB": {
     "__type__": "Chd",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[2, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -111,9 +111,9 @@
   },
   "simulation/mf6/UZF_1": {
     "__type__": "Uzf",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[1, 0] da39a3ee5e6b4b0d",
         "extdp": "float64[1] 05fe405753166f12",
         "extwc": "float64[1] 05fe405753166f12",
@@ -237,7 +237,7 @@
   },
   "simulation/mf6/oc": {
     "__type__": "Oc",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Print",

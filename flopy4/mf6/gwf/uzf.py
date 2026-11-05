@@ -48,7 +48,7 @@ class Uzf(Package):
     }
 
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
-        "perioddata": Legacy("stress_period_data"),
+        "perioddata": Legacy("period_data"),
     }
 
     @attrs.define
@@ -68,7 +68,7 @@ class Uzf(Package):
         )
 
     @attrs.define
-    class StressPeriodData(Item):
+    class PeriodData(Item):
         ifno: int = integer(index=True, fk="packagedata.ifno")
         finf: Union[float, TimeSeriesRef] = double(time_series=True)
         pet: Union[float, TimeSeriesRef] = double(time_series=True)
@@ -213,8 +213,8 @@ class Uzf(Package):
         block="packagedata",
         shape=("nuzfcells",),
     )
-    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
-        alias="stress_period_data",
+    _period_data: Optional[dict[int, list[PeriodData]]] = list_(
+        alias="period_data",
         default=None,
         repr=False,
         block="period",
@@ -223,4 +223,4 @@ class Uzf(Package):
 
 
 UzfPackagedata = Uzf.Packagedata
-UzfStressPeriodData = Uzf.StressPeriodData
+UzfPeriodData = Uzf.PeriodData

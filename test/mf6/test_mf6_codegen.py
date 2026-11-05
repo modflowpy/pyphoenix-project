@@ -103,7 +103,7 @@ TRANSPORT_TIER = {
 }
 
 # Tier 1a: OC period union — saverecord/printrecord arms become real typed
-# Save/Print classes composed into stress_period_data, the same generic
+# Save/Print classes composed into period_data, the same generic
 # mechanism LAK/SFR/MAW use for their own period settings' union arms.
 # Each tuple is (class_name, base_class, model_prefix).
 OC_TIER = {
@@ -257,7 +257,7 @@ class TestFilters:
         assert is_generatable(f)
 
     def test_item_class_empty_returns_empty_string(self):
-        assert item_class([], "StressPeriodData") == ""
+        assert item_class([], "PeriodData") == ""
 
     def test_item_class_static_block_no_aux(self):
         # No sized column in the schema, no aux field. The field functions'
@@ -296,7 +296,7 @@ class TestFilters:
             array_column("aux", "auxiliary", optional=True),
             attr_column("boundname", "str", "string", {}, optional=True),
         ]
-        result = item_class(schema, "StressPeriodData")
+        result = item_class(schema, "PeriodData")
         assert (
             'aux: tuple[float, ...] = array(default=(), shape=("auxiliary",), optional=True)'
             in result
@@ -332,7 +332,7 @@ class TestFilters:
             cellid_column("cellidm", "2"),
             cellid_column("cellidz", allow_zero=True),
         ]
-        result = item_class(schema, "StressPeriodData")
+        result = item_class(schema, "PeriodData")
         assert "cellid: tuple[int, ...] = cellid_()" in result
         assert 'cellidm: tuple[int, ...] = cellid_(model="2")' in result
         assert "cellidz: Optional[tuple[int, ...]] = cellid_(allow_zero=True)" in result
@@ -349,7 +349,7 @@ class TestFilters:
         schema = [
             value_column("head", time_series=True),
         ]
-        result = item_class(schema, "StressPeriodData")
+        result = item_class(schema, "PeriodData")
         assert "head: Union[float, TimeSeriesRef] = double(time_series=True)" in result
 
 
@@ -553,7 +553,7 @@ def test_lak_numeric_index_autodetects_cellid(all_dfns):
         ("exg-gwfgwf", "Exchangedata", {"cellidm1": "1", "cellidm2": "2"}),
         ("exg-gwtgwt", "Exchangedata", {"cellidm1": "1", "cellidm2": "2"}),
         ("gwf-gnc", "Gncdata", {"cellidn": "1", "cellidm": "2", "cellidsj": "1"}),
-        ("gwf-chd", "StressPeriodData", {"cellid": None}),
+        ("gwf-chd", "PeriodData", {"cellid": None}),
     ],
 )
 def test_cellid_model_from_dfn(all_dfns, name, item, expected):
@@ -613,17 +613,17 @@ def test_fk_allow_zero_from_dfn(all_dfns, name, item, column):
 
 
 def test_mvr_list_fields_expanded_and_optional(all_dfns):
-    """gwf-mvr period data is emitted as a single stress_period_data recarray field."""
+    """gwf-mvr period data is emitted as a single period_data recarray field."""
     if "gwf-mvr" not in all_dfns:
         pytest.skip("gwf-mvr not in DFN set")
     spec = build_component_spec(all_dfns["gwf-mvr"], root=Path("/fake"))
     field_map = {f.py_name: f for f in spec.fields}
 
-    # Period data -> single _stress_period_data field with a period item class
-    assert "StressPeriodData" in {ic.class_name for ic in spec.item_classes}
-    assert "_stress_period_data" in field_map
-    spd_field = field_map["_stress_period_data"]
-    assert spd_field.type_annotation == "Optional[dict[int, list[StressPeriodData]]]"
+    # Period data -> single _period_data field with a period item class
+    assert "PeriodData" in {ic.class_name for ic in spec.item_classes}
+    assert "_period_data" in field_map
+    spd_field = field_map["_period_data"]
+    assert spd_field.type_annotation == "Optional[dict[int, list[PeriodData]]]"
     # Packages block → single list field
     assert "packages" in field_map
 
@@ -1482,7 +1482,7 @@ def test_oc_tier_generates_importable_files(tmp_path, all_dfns):
         assert arm_names.count("Frequency") == 1, (
             f"{dfn_name}: ocsetting arms must not be duplicated"
         )
-        (period_union,) = [u for u in spec.item_unions if u.alias == "_StressPeriodDataItem"]
+        (period_union,) = [u for u in spec.item_unions if u.alias == "_PeriodDataItem"]
         top_level_names = set(period_union.members)
         assert top_level_names == {"Save", "Print"}, (
             f"{dfn_name}: only Save/Print may be top_level (dispatch union) arms"
@@ -1540,7 +1540,7 @@ def test_aux_columns_follow_dfn():
 
     from flopy4.mf6.gwf import Buy, Lak, Wel
 
-    assert attrs.fields_dict(Wel.StressPeriodData)["aux"].metadata["shape"] == ("auxiliary",)
+    assert attrs.fields_dict(Wel.PeriodData)["aux"].metadata["shape"] == ("auxiliary",)
     assert attrs.fields_dict(Lak.Packagedata)["aux"].metadata["shape"] == ("auxiliary",)
     # BUY has no AUXILIARY option and its packagedata no aux column
     assert "aux" not in attrs.fields_dict(Buy.Packagedata)
@@ -1553,7 +1553,7 @@ def test_sized_column_from_tokens():
 
     tokens = [1, 2, 3, -5.0, 0.1, 0.2, "well1"]
     context = RowContext(ncelldim=3, sizes={"auxiliary": 2}, enabled=frozenset({"boundnames"}))
-    item = Wel.StressPeriodData.from_tokens(tokens, context)
+    item = Wel.PeriodData.from_tokens(tokens, context)
     assert item.cellid == (0, 1, 2)
     assert item.q == -5.0
     assert item.aux == (0.1, 0.2)
@@ -1572,7 +1572,7 @@ def test_optional_leading_columns(tokens, mnames):
     """MVR's optional model name columns come before its required ones."""
     from flopy4.mf6.gwf import Mvr
 
-    item = Mvr.StressPeriodData.from_tokens(tokens)
+    item = Mvr.PeriodData.from_tokens(tokens)
     assert (item.mname1, item.mname2) == mnames
     assert (item.pname1, item.id1, item.pname2, item.id2) == ("sfr-1", 7, "sfr-2", 0)
     assert (item.mvrtype, item.value) == ("FACTOR", 1.0)
@@ -1656,9 +1656,9 @@ def test_number_or_word_in_union_arm():
     """MAW's HEAD_LIMIT takes OFF or a number."""
     from flopy4.mf6.gwf import Maw
 
-    off = Maw.StressPeriodData.from_tokens([1, "head_limit", "off"])
+    off = Maw.PeriodData.from_tokens([1, "head_limit", "off"])
     assert (off.ifno, off.mawsetting) == (0, Maw.HeadLimit(head_limit="OFF"))
-    limit = Maw.StressPeriodData.from_tokens([1, "HEAD_LIMIT", 2.5])
+    limit = Maw.PeriodData.from_tokens([1, "HEAD_LIMIT", 2.5])
     assert limit.mawsetting.head_limit == 2.5
     assert limit.to_tokens() == (1, "HEAD_LIMIT", 2.5)
 
@@ -1680,7 +1680,7 @@ def test_number_or_word_validated():
 def test_legacy_period_kwargs_match_dfns(all_dfns):
     """flopy3 names a period list after its v1 DFN field. Where the DFNs
     still give that name, it's the legacy keyword. Once they name every
-    list stress_period_data, the table stands on its own."""
+    list period_data, the table stands on its own."""
     from flopy4.mf6.utils.codegen import filters
     from flopy4.mf6.utils.codegen.make import _LEGACY_PERIOD_KWARGS
 
@@ -1697,11 +1697,11 @@ def test_legacy_period_kwargs_match_dfns(all_dfns):
 
 def test_legacy_kwargs_spec(all_dfns):
     lak = build_component_spec(all_dfns["gwf-lak"], root=Path("."), dfns=all_dfns)
-    assert lak.legacy_kwargs == {"perioddata": 'Legacy("stress_period_data")'}
+    assert lak.legacy_kwargs == {"perioddata": 'Legacy("period_data")'}
     oc = build_component_spec(all_dfns["gwf-oc"], root=Path("."), dfns=all_dfns)
     assert oc.legacy_kwargs == {
-        "saverecord": 'Legacy("stress_period_data", oc_period_data)',
-        "printrecord": 'Legacy("stress_period_data", oc_period_data)',
+        "saverecord": 'Legacy("period_data", oc_period_data)',
+        "printrecord": 'Legacy("period_data", oc_period_data)',
     }
     assert "from flopy4.mf6.legacy import Legacy, oc_period_data" in oc.imports["flopy4"]
     ic = build_component_spec(all_dfns["gwf-ic"], root=Path("."), dfns=all_dfns)

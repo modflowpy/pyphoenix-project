@@ -91,9 +91,9 @@
   },
   "simulation/CHILD/maw-1": {
     "__type__": "Maw",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "ifno": "int64[3] ab2fa50ae23ce035",
         "mawsetting": {
           "__table__": "Rate",
@@ -186,7 +186,7 @@
   },
   "simulation/CHILD/oc": {
     "__type__": "Oc",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Print",
@@ -248,9 +248,9 @@
   },
   "simulation/CHILD/riv-1": {
     "__type__": "Riv",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[123, 0] da39a3ee5e6b4b0d",
         "boundname": "738 chars 8761383b60507b8d",
         "cellid": "int64[123, 3] 33bb7ac35b491921",
@@ -350,9 +350,9 @@
   },
   "simulation/PARENT/maw-1": {
     "__type__": "Maw",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "ifno": "int64[4] 13a5b0f4ed6a1037",
         "mawsetting": [
           {
@@ -431,9 +431,9 @@
   },
   "simulation/PARENT/maw-2": {
     "__type__": "Maw",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "ifno": "int64[1] 05fe405753166f12",
         "mawsetting": {
           "__table__": "Rate",
@@ -522,7 +522,7 @@
   },
   "simulation/PARENT/oc": {
     "__type__": "Oc",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Print",
@@ -584,9 +584,9 @@
   },
   "simulation/PARENT/riv-1": {
     "__type__": "Riv",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[33, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,

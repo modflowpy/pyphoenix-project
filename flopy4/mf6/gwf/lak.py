@@ -68,7 +68,7 @@ class Lak(Package):
     }
 
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
-        "perioddata": Legacy("stress_period_data"),
+        "perioddata": Legacy("period_data"),
     }
 
     @attrs.define
@@ -190,7 +190,7 @@ class Lak(Package):
         auxname: str = string()
         auxval: Union[float, TimeSeriesRef] = double(time_series=True)
 
-    _StressPeriodDataItem = (
+    _PeriodDataItem = (
         Status
         | Stage
         | Rainfall
@@ -354,8 +354,8 @@ class Lak(Package):
         block="outlets",
         shape=("noutlets",),
     )
-    _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = list_(
-        alias="stress_period_data",
+    _period_data: Optional[dict[int, list[_PeriodDataItem]]] = list_(
+        alias="period_data",
         default=None,
         repr=False,
         block="period",

@@ -110,7 +110,7 @@
   },
   "simulation/CHILD/oc": {
     "__type__": "Oc",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Print",
@@ -149,9 +149,9 @@
   },
   "simulation/CHILD/sfr-1": {
     "__type__": "Sfr",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "ifno": "int64[356] 4481f2a9b17c7e7b",
         "n": 356,
         "sfrsetting": "15842 chars 09dd39bbfa1d7e84"
@@ -235,9 +235,9 @@
   },
   "simulation/PARENT/chd-1": {
     "__type__": "Chd",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[45, 0] da39a3ee5e6b4b0d",
         "boundname": "270 chars 03a0378c149a4d8b",
         "cellid": "int64[45, 3] 7ad911d6fdea24d5",
@@ -263,9 +263,9 @@
   },
   "simulation/PARENT/chd-2": {
     "__type__": "Chd",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[45, 0] da39a3ee5e6b4b0d",
         "boundname": "270 chars 03a0378c149a4d8b",
         "cellid": "int64[45, 3] 4f0b4b59304c3e0d",
@@ -352,7 +352,7 @@
   },
   "simulation/PARENT/oc": {
     "__type__": "Oc",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Print",
@@ -391,9 +391,9 @@
   },
   "simulation/PARENT/sfr-1": {
     "__type__": "Sfr",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "ifno": "int64[72] 7feb4a81a73fc62e",
         "n": 72,
         "sfrsetting": [
@@ -802,9 +802,9 @@
   },
   "simulation/gwfgwf-1/mvr": {
     "__type__": "Mvr",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "id1": "int64[2] 1881cda810558dfe",
         "id2": "int64[2] e88d9e1ac6adb38b",
         "mname1": [

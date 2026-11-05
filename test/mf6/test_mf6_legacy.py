@@ -1,11 +1,13 @@
 """flopy3's period-data constructor keywords, accepted with a warning."""
 
+import inspect
 import warnings
 
+import flopy
 import pytest
 
 from flopy4.mf6.component import get_fnames
-from flopy4.mf6.gwf import Lak, Oc, Sto
+from flopy4.mf6.gwf import Lak, Oc, Sto, Wel
 from flopy4.mf6.gwf.ic import Ic
 from flopy4.mf6.legacy import oc_period_data, sto_period_data
 
@@ -22,20 +24,57 @@ def _renames():
 @pytest.mark.parametrize(("dfn_name", "old"), _renames())
 def test_rename(dfn_name, old):
     cls = get_fnames()[dfn_name]
-    with pytest.warns(DeprecationWarning, match=f"{old}=.*use stress_period_data=") as record:
+    with pytest.warns(DeprecationWarning, match=f"{old}=.*use period_data=") as record:
         legacy = cls(**{old: {}})
     assert len(record) == 1
-    assert legacy == cls(stress_period_data={})
+    assert legacy == cls(period_data={})
 
 
 def test_renames():
-    renames = dict(_renames())
-    assert renames["gwf-lak"] == "perioddata"
-    assert renames["gwt-lkt"] == "lakeperioddata"
-    assert renames["gwe-sfe"] == "reachperioddata"
-    assert renames["gwt-mwt"] == "mwtperioddata"
-    assert renames["gwe-uze"] == "uzeperioddata"
-    assert len(renames) == 17
+    assert {
+        ("gwf-lak", "perioddata"),
+        ("gwt-lkt", "lakeperioddata"),
+        ("gwe-sfe", "reachperioddata"),
+        ("gwt-mwt", "mwtperioddata"),
+        ("gwe-uze", "uzeperioddata"),
+    } <= set(_renames())
+
+
+def test_stress_period_data_matches_flopy3():
+    """The alias is on each class whose flopy3 class takes the keyword, and
+    on CHF's and OLF's stress packages, which flopy3 doesn't have yet."""
+
+    def flopy3_takes(cls):
+        ftype, _, name = cls.dfn_name.partition("-")
+        flopy3 = getattr(flopy.mf6, f"Modflow{ftype.capitalize()}{name}", None)
+        return flopy3 is not None and (
+            "stress_period_data" in inspect.signature(flopy3.__init__).parameters
+        )
+
+    classes = set(get_fnames().values())
+    unreleased = {f"{m}-{p}" for m in ("chf", "olf") for p in "cdb chd evp flw pcp zdg".split()}
+    assert {c.dfn_name for c in classes if flopy3_takes(c)} | unreleased == {
+        c.dfn_name for c in classes if "stress_period_data" in c.legacy_kwargs
+    }
+
+
+@pytest.mark.parametrize("cls", [Lak, Oc, Sto])
+def test_stress_period_data_not_where_flopy3_has_another_name(cls):
+    with pytest.raises(TypeError, match="stress_period_data"):
+        cls(stress_period_data={})
+
+
+def test_stress_period_data_reaches_period_data():
+    rows = {0: [((0, 0, 0), -1.0)]}
+    with pytest.warns(DeprecationWarning, match="use period_data="):
+        wel = Wel(stress_period_data=rows)
+    assert wel == Wel(period_data=rows)
+    assert wel.period_data[0][0].q == -1.0
+
+
+def test_stress_period_data_and_period_data_conflict():
+    with pytest.raises(TypeError, match="got both"):
+        Wel(stress_period_data={}, period_data={})
 
 
 def test_warning_points_at_caller():
@@ -63,7 +102,7 @@ def test_sto(kwargs, expected):
     with pytest.warns(DeprecationWarning) as record:
         sto = Sto(**kwargs)
     assert len(record) == 1
-    assert sto == Sto(stress_period_data=expected)
+    assert sto == Sto(period_data=expected)
 
 
 def test_sto_conflict():
@@ -101,7 +140,7 @@ def test_oc(kwargs, expected):
     with pytest.warns(DeprecationWarning) as record:
         oc = Oc(**kwargs)
     assert len(record) == 1
-    assert oc == Oc(stress_period_data=expected)
+    assert oc == Oc(period_data=expected)
 
 
 @pytest.mark.parametrize(
@@ -113,8 +152,8 @@ def test_oc(kwargs, expected):
     ],
 )
 def test_old_and_new(cls, kwargs):
-    with pytest.raises(TypeError, match="got both .* and stress_period_data="):
-        cls(stress_period_data={}, **kwargs)
+    with pytest.raises(TypeError, match="got both .* and period_data="):
+        cls(period_data={}, **kwargs)
 
 
 def test_no_legacy_kwargs():

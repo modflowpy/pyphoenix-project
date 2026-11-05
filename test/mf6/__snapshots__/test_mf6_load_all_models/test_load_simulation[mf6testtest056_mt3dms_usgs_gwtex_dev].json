@@ -84,9 +84,9 @@
   },
   "simulation/m1/CHD-1": {
     "__type__": "Chd",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[322, 0] da39a3ee5e6b4b0d",
         "boundname": "1932 chars 97abcc9eec8dbd60",
         "cellid": "int64[322, 3] d27c3a72f0d729e6",
@@ -112,7 +112,7 @@
   },
   "simulation/m1/LAK-1": {
     "__type__": "Lak",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Rainfall",
@@ -223,9 +223,9 @@
   },
   "simulation/m1/SFR-1": {
     "__type__": "Sfr",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "ifno": "int64[1] 05fe405753166f12",
         "n": 1,
         "sfrsetting": {
@@ -235,7 +235,7 @@
         }
       },
       "1": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "ifno": "int64[1] 05fe405753166f12",
         "n": 1,
         "sfrsetting": {
@@ -329,9 +329,9 @@
   },
   "simulation/m1/mvr": {
     "__type__": "Mvr",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "id1": "int64[2] 4b9722225a75f1ba",
         "id2": "int64[2] 2c41883f58ce1c76",
         "mname1": [
@@ -420,7 +420,7 @@
   },
   "simulation/m1/oc": {
     "__type__": "Oc",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Save",

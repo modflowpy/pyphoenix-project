@@ -100,9 +100,9 @@
   },
   "simulation/mf6/ghb-1": {
     "__type__": "Ghb",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[1, 0] da39a3ee5e6b4b0d",
         "bhead": "float64[1] 4012bb3ed12fff68",
         "boundname": [
@@ -179,7 +179,7 @@
   },
   "simulation/mf6/oc": {
     "__type__": "Oc",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Save",
@@ -251,9 +251,9 @@
   },
   "simulation/mf6/riv-1": {
     "__type__": "Riv",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[1, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null
@@ -284,9 +284,9 @@
   },
   "simulation/mf6/wel-1": {
     "__type__": "Wel",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[1, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null

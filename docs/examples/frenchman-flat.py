@@ -533,7 +533,7 @@ sto = flopy4.mf6.gwf.Sto(
 # Constant-rate pumping well: alternates between extraction and shut-in.
 wel_crt = flopy4.mf6.gwf.Wel(
     filename="ff.crt.wel",
-    stress_period_data={
+    period_data={
         0: [((1, 43, 43), -30992.50)],
         1: [((1, 43, 43), -00000.0)],
         2: [((1, 43, 43), -30992.50)],
@@ -550,7 +550,7 @@ wel_crt = flopy4.mf6.gwf.Wel(
 # Leakage well: injects contaminated water at rates that vary by period.
 wel_leak = flopy4.mf6.gwf.Wel(
     filename="ff.leak.wel",
-    stress_period_data={
+    period_data={
         0: [((1, 43, 43), 1.0000000e-05)],
         7: [((1, 43, 43), 1.5000000e03)],
         8: [((1, 43, 43), 2.6500000e03)],
@@ -576,7 +576,7 @@ wel_leak = flopy4.mf6.gwf.Wel(
 # Sampling well: extracts water for monitoring at scheduled intervals.
 wel_sampleQ = flopy4.mf6.gwf.Wel(
     filename="ff.sampleQ.wel",
-    stress_period_data={
+    period_data={
         0: [((1, 43, 43), -00000.0)],
         22: [((1, 43, 43), -04981.90)],
         23: [((1, 43, 43), -00000.0)],
@@ -599,7 +599,7 @@ wel_sampleQ = flopy4.mf6.gwf.Wel(
 oc = flopy4.mf6.gwf.Oc(
     budget_file=Path("ff.cbc"),
     head_file=Path("ff.hds"),
-    stress_period_data={
+    period_data={
         0: [
             ("SAVE", "HEAD", "ALL"),
             ("SAVE", "BUDGET", "STEPS", 1),

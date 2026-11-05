@@ -112,7 +112,7 @@
   },
   "simulation/mv/lak-1": {
     "__type__": "Lak",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Status",
@@ -250,7 +250,7 @@
   },
   "simulation/mv/oc": {
     "__type__": "Oc",
-    "_stress_period_data": {
+    "_period_data": {
       "0": [
         {
           "__type__": "Save",
@@ -502,18 +502,18 @@
   },
   "simulation/mv/sto": {
     "__type__": "Sto",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "n": 1,
-        "stress_period_data": [
+        "period_data": [
           "STEADY-STATE"
         ]
       },
       "1": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "n": 1,
-        "stress_period_data": [
+        "period_data": [
           "TRANSIENT"
         ]
       }
@@ -539,9 +539,9 @@
   },
   "simulation/mv/wel-1": {
     "__type__": "Wel",
-    "_stress_period_data": {
+    "_period_data": {
       "0": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[3, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -553,7 +553,7 @@
         "q": "float64[3] d3399b7262fb56cb"
       },
       "1": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[3, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -565,7 +565,7 @@
         "q": "float64[3] 1c7c6fbd21bec6b6"
       },
       "2": {
-        "__table__": "StressPeriodData",
+        "__table__": "PeriodData",
         "aux": "float64[3, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,

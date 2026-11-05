@@ -36,7 +36,7 @@ class Uzt(Package):
     }
 
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
-        "uztperioddata": Legacy("stress_period_data"),
+        "uztperioddata": Legacy("period_data"),
     }
 
     @attrs.define
@@ -77,7 +77,7 @@ class Uzt(Package):
         auxval: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
-    class StressPeriodData(Item):
+    class PeriodData(Item):
         ifno: int = integer(index=True, fk="packagedata.ifno")
         uztsetting: "Uzt.Status | Uzt.Concentration | Uzt.Infiltration | Uzt.Uzet | Uzt.Auxiliary" = union()  # noqa: E501
 
@@ -162,8 +162,8 @@ class Uzt(Package):
         block="packagedata",
         write_if_empty=True,
     )
-    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
-        alias="stress_period_data",
+    _period_data: Optional[dict[int, list[PeriodData]]] = list_(
+        alias="period_data",
         default=None,
         repr=False,
         block="period",
@@ -177,4 +177,4 @@ UztConcentration = Uzt.Concentration
 UztInfiltration = Uzt.Infiltration
 UztUzet = Uzt.Uzet
 UztAuxiliary = Uzt.Auxiliary
-UztStressPeriodData = Uzt.StressPeriodData
+UztPeriodData = Uzt.PeriodData
