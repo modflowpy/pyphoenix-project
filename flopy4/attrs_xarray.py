@@ -112,9 +112,9 @@ def _named_dim(field: attrs.Attribute) -> str | None:
 
 def _period_dim(field: attrs.Attribute) -> str | None:
     """For period arrays (WELG's q, RCHA's aux), ``{kper: array}``, the dim to
-    stack the given periods along, labeled by period ("q_period")."""
+    stack the given periods along, labeled by kper ("q_kper")."""
     periods = field.metadata.get("fill_forward") and is_array(field)
-    return f"{field.name}_period" if periods else None
+    return f"{field.name}_kper" if periods else None
 
 
 def _period_shape(arrays: list) -> tuple[int, ...]:
@@ -139,7 +139,7 @@ def _period_dataarray(field: attrs.Attribute, name: str, value: dict) -> xr.Data
     from flopy4.mf6._types import TimeArraySeriesRef
     from flopy4.mf6.constants import FILL_DNODATA
 
-    period, tas = f"{name}_period", f"{name}_tas"
+    period, tas = f"{name}_kper", f"{name}_tas"
     if key := _named_dim(field):
         names = list(dict.fromkeys(n for arrays in value.values() for n in arrays))
         cells = [a for arrays in value.values() for a in arrays.values()]
@@ -183,7 +183,7 @@ def _period_value(field: attrs.Attribute, da: xr.DataArray) -> dict:
     from flopy4.mf6._types import TimeArraySeriesRef
     from flopy4.mf6.constants import FILL_DNODATA
 
-    period = f"{field.name}_period"
+    period = f"{field.name}_kper"
     tas = da.coords.get(f"{field.name}_tas")
     periods = [int(k) for k in da[period].values]
 

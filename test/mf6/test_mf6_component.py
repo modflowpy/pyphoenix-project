@@ -3058,7 +3058,7 @@ def test_to_dataarray_period_arrays_on_cells():
     gwf.rch = [Rcha(recharge={0: 0.1, 2: np.full(6, 0.3)})]
 
     da = gwf.rch[0].to_dataarray("recharge")
-    assert da.dims == ("per", "layer", "row", "col")
+    assert da.dims == ("kper", "layer", "row", "col")
     assert da.shape == (3, 1, 2, 3)
     # period 1 fills forward from period 0, a constant filled to the grid
     assert da.values[:, 0, 0, 0].tolist() == [0.1, 0.1, 0.3]
@@ -3681,8 +3681,8 @@ def test_to_xarray_period_arrays_share_periods_without_nper():
         irch={0: np.array([0, 1])},
     )
     ds = rch.to_xarray()
-    assert ds.sizes["per"] == 2
-    np.testing.assert_array_equal(ds["irch"].isel(per=0), ds["irch"].isel(per=1))
+    assert ds.sizes["kper"] == 2
+    np.testing.assert_array_equal(ds["irch"].isel(kper=0), ds["irch"].isel(kper=1))
     assert rch.period_array("irch").shape[0] == 2
     assert rch.period_array("irch", nper=4).shape[0] == 4
 
@@ -3706,6 +3706,6 @@ def test_to_dataarray_period_constants_need_a_shape():
 
     rch = Rcha(recharge={0: 0.1, 1: 0.2}, irch={0: 1}, dims={"ncpl": 4})
     ds = rch.to_xarray()
-    assert ds["recharge"].dims == ("per", "layer", "cell")
+    assert ds["recharge"].dims == ("kper", "layer", "cell")
     assert ds["recharge"].shape == (2, 1, 4)
-    assert (ds["recharge"].isel(per=1) == 0.2).all()
+    assert (ds["recharge"].isel(kper=1) == 0.2).all()

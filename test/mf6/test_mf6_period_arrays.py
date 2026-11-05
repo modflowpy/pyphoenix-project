@@ -155,8 +155,8 @@ def test_welg_xarray_round_trip_keeps_periods():
     )
     assert welg.q[2] is None
     ds = attrs_to_dataset(welg)
-    assert ds["q"].dims == ("q_period", "nodes")
-    assert list(ds["q_period"].values) == [0, 2]
+    assert ds["q"].dims == ("q_kper", "nodes")
+    assert list(ds["q_kper"].values) == [0, 2]
     np.testing.assert_array_equal(ds["q"].values[1], [NODATA, NODATA])
     loaded = dataset_to_attrs(Welg, ds)
     assert loaded == welg
@@ -166,7 +166,7 @@ def test_welg_xarray_round_trip_keeps_periods():
 def test_rcha_to_dataarray_fills_forward():
     rcha = Rcha(recharge={0: np.array([0.1, 0.2]), 2: np.array([0.3, 0.4])})
     da = rcha.to_dataarray("recharge")
-    assert da.dims == ("per", "node")
+    assert da.dims == ("kper", "node")
     np.testing.assert_array_equal(da.values[1], [0.1, 0.2])
 
 
@@ -221,14 +221,14 @@ def test_tas_reference_xarray_coordinate(tmp_path):
     )
     ds = attrs_to_dataset(rcha)
     recharge = ds["recharge"]
-    assert list(recharge["recharge_period"].values) == [0, 2]
+    assert list(recharge["recharge_kper"].values) == [0, 2]
     assert recharge["recharge_tas"].values[0] == "rch"
     assert pd.isnull(recharge["recharge_tas"].values[1])
-    assert np.isnan(recharge.sel(recharge_period=0)).all()
+    assert np.isnan(recharge.sel(recharge_kper=0)).all()
     # the coordinate goes along with the data
-    assert recharge.isel(recharge_period=0)["recharge_tas"].item() == "rch"
-    assert ds["aux"]["aux_tas"].sel(aux_period=0, aux_name="conc").item() == "cs"
-    assert np.isnan(ds["aux"].sel(aux_period=0, aux_name="conc")).all()
+    assert recharge.isel(recharge_kper=0)["recharge_tas"].item() == "rch"
+    assert ds["aux"]["aux_tas"].sel(aux_kper=0, aux_name="conc").item() == "cs"
+    assert np.isnan(ds["aux"].sel(aux_kper=0, aux_name="conc")).all()
 
     path = tmp_path / "rcha.nc"
     ds.drop_attrs().to_netcdf(path)

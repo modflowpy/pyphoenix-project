@@ -8,7 +8,7 @@ dims:
   table's dim (``nreaches``), or with ``grid=True`` the grid via its cellid;
 - the package's own index (SPC's ``bndno``): a dim named for it.
 
-``to_dataset`` gives each value column a ``(per, ...)`` variable, plus one
+``to_dataset`` gives each value column a ``(kper, ...)`` variable, plus one
 per aux name and, for keystring packages (SFR, LAK, MAW), per setting. An
 array column (EVT's pxdp) gets a dim for its size (``nseg-1``). Unset
 positions are ``FILL_DNODATA``, ``FILL_INT64`` or ``None``.
@@ -22,8 +22,8 @@ Two rows at one position raise unless ``duplicates`` ("sum", "first",
 "last") merges them. "sum" adds every value column, aux included; a series
 can't be summed. The merged position keeps one boundname: the first row's
 for "first", the last row's for "sum" and "last". ``sparse=True`` keeps
-every row along an ``entry`` dim, with period, key and setting as
-coordinates; rows without a single key (HFB, MVR, OC) have only this form.
+every row along an ``entry`` dim, with ``kper``, key and setting
+as coordinates; rows without a single key (HFB, MVR, OC) have only this form.
 
 Use ``ds["head"]``, not ``ds.head``, which is ``Dataset.head()``.
 
@@ -469,14 +469,14 @@ def to_dataset(
     data_vars = {}
     coords = {}
     for n, var in variables.items():
-        dims = ("per", *var.extra_dims, *var.key.dims)
+        dims = ("kper", *var.extra_dims, *var.key.dims)
         data_vars[n] = xr.DataArray(_stack(frames[n], nper), dims=dims)
         if n in ts_frames:
             none = np.full(shape(var), None, object)  # periods before its first series
             series = {k: ts_frames[n].get(k, none) for k in sorted(periods)}
             coords[f"{n}_ts"] = (dims, _stack(series, nper))
     if bnames is not None:
-        coords["boundname"] = (("per", *keys[bkey].dims), _stack(frames["boundname"], nper))  # type: ignore[index]
+        coords["boundname"] = (("kper", *keys[bkey].dims), _stack(frames["boundname"], nper))  # type: ignore[index]
     return xr.Dataset(data_vars, coords=coords)
 
 
@@ -678,14 +678,14 @@ def _dense_tables(
     data_vars = {}
     coords = {}
     for n, var in variables.items():
-        dims = ("per", *var.extra_dims, *var.key.dims)
+        dims = ("kper", *var.extra_dims, *var.key.dims)
         data_vars[n] = xr.DataArray(_stack(frames[n], nper), dims=dims)
         if n in has_ts:
             none = np.full(shape(var), None, object)  # periods without series
             series = {k: ts_frames[n].get(k, none) for k in sorted(periods)}
             coords[f"{n}_ts"] = (dims, _stack(series, nper))
     if with_bnames:
-        coords["boundname"] = (("per", *key.dims), _stack(bframes, nper))
+        coords["boundname"] = (("kper", *key.dims), _stack(bframes, nper))
     return xr.Dataset(data_vars, coords=coords)
 
 
@@ -942,7 +942,7 @@ def _block_rows(
     key, back = keys[layout.settings[0].key.name]
     spd: dict[int, Any] = {}
     prev: Optional[dict] = None
-    for p in range(dense.ds.sizes["per"]):
+    for p in range(dense.ds.sizes["kper"]):
         now = dense.period(p)
         if prev is not None and not any(_changed(now[n], prev[n]).any() for n in now):
             continue
@@ -974,7 +974,7 @@ def _setting_rows(
     for n in [n for n in prev if f"{n}_ts" in first]:
         prev[f"{n}_ts"] = np.full(prev[n].shape, None, object)
     spd: dict[int, list] = {}
-    for p in range(dense.ds.sizes["per"]):
+    for p in range(dense.ds.sizes["kper"]):
         now = dense.period(p)
         changed = {n: _changed(now[n], prev[n]) for n in prev if not n.endswith("_ts")}
         for n in changed:
@@ -1185,7 +1185,7 @@ def _to_sparse(pkg: Any, periods: dict[int, Any]) -> xr.Dataset:
         n += len(rows)
 
     data_vars: dict[str, Any] = {}
-    coords: dict[str, Any] = {"per": ("entry", np.concatenate(per))}
+    coords: dict[str, Any] = {"kper": ("entry", np.concatenate(per))}
     if union:
         coords["setting"] = ("entry", np.array(keywords, dtype=object))
     for name, col in columns.items():
@@ -1300,7 +1300,7 @@ def _sparse_tables(pkg: Any, ds: xr.Dataset, item: Any, names: dict) -> Optional
     table = ItemTable.from_columns(item, n, given)
     if table is None:
         return None
-    per = ds.coords["per"].values.astype(np.int64)
+    per = ds.coords["kper"].values.astype(np.int64)
     spd: dict[int, Any] = {int(k): ItemTable(item, {}, 0) for k in ds.attrs.get("periods", [])}
     order = np.argsort(per, kind="stable")
     kpers, starts = np.unique(per[order], return_index=True)
@@ -1334,7 +1334,7 @@ def _from_sparse(pkg: Any, ds: xr.Dataset) -> dict[int, Any]:
             words, arms = cast(tuple, _union_field_arms(item, arm_field))
     by_keyword = {a.keyword().upper(): a for a in arms}
     aux = _aux_names(pkg)
-    names = {**ds.data_vars, **{c: ds.coords[c] for c in ds.coords if c not in ("per", "setting")}}
+    names = {**ds.data_vars, **{c: ds.coords[c] for c in ds.coords if c not in ("kper", "setting")}}
     if not arms and "setting" not in ds.coords:
         if (tables := _sparse_tables(pkg, ds, item, names)) is not None:
             return tables
@@ -1368,7 +1368,7 @@ def _from_sparse(pkg: Any, ds: xr.Dataset) -> dict[int, Any]:
     n = ds.sizes["entry"]
     spd: dict[int, list] = {int(k): [] for k in ds.attrs.get("periods", [])}
     for i in range(n):
-        kper = int(ds.coords["per"].values[i])
+        kper = int(ds.coords["kper"].values[i])
         keyword = ds.coords["setting"].values[i] if "setting" in ds.coords else None
         if keyword is not None and str(keyword).upper() in words:
             row: Any = str(keyword).upper()

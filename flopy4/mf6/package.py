@@ -1055,7 +1055,7 @@ class Package(Component, ABC):
     def to_dataarray(self, field_name: str) -> "xr.DataArray":
         """Single griddata or period array field as xr.DataArray. A period
         array is the values in effect each period (see `period_array`), with
-        a leading "per" dim. Stays lazy if dask-backed."""
+        a leading "kper" dim. Stays lazy if dask-backed."""
         period = any(f.name == field_name for f in self._period_array_fields())
         arr = self.period_array(field_name) if period else getattr(self, field_name)
         if arr is None:
@@ -1097,7 +1097,7 @@ class Package(Component, ABC):
             width = 1
         dims = tuple(d for _, d in GRID_DIMS[width])
         if nper is not None:
-            dims = ("per", *dims)
+            dims = ("kper", *dims)
         da = xr.DataArray(arr, dims=dims, name=field_name)
         return self._with_cell_centers(da)
 
@@ -1122,7 +1122,7 @@ class Package(Component, ABC):
         if len(coords) < 2:
             return da
         da = da.assign_coords(coords)
-        cells = tuple(d for d in da.dims if d != "per")
+        cells = tuple(d for d in da.dims if d != "kper")
         top, botm = getattr(dis, "top", None), getattr(dis, "botm", None)
         shape = tuple(da.sizes[d] for d in cells)
         if cells[0] == "layer" and top is not None and botm is not None:
