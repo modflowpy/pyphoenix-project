@@ -2989,6 +2989,99 @@ def test_npf_to_xarray_via_parent_chain():
     assert np.allclose(ic_ds.strt.values, 10.0)
 
 
+def test_to_xarray_constants_attached_later():
+    """Constants given before the package knows its grid (NPF's default
+    icelltype, IC's strt) are still scalars when attached; to_xarray()
+    fills them to the grid instead of failing to reshape them."""
+    dims = {"nlay": 1, "nrow": 2, "ncol": 3, "nodes": 6}
+    dis = Dis(dims=dims, nlay=1, nrow=2, ncol=3, delr=1.0, delc=1.0, top=0.0, botm=-1.0)
+    gwf = Gwf(dis=dis, dims=dims)
+    gwf.npf = Npf(k=np.ones(6))
+    gwf.ic = Ic(strt=10.0)
+
+    npf_ds = gwf.npf.to_xarray()
+    assert npf_ds.icelltype.dims == ("layer", "row", "col")
+    assert (npf_ds.icelltype.values == 0).all()
+    ic_ds = gwf.ic.to_xarray()
+    assert ic_ds.strt.shape == (1, 2, 3)
+    assert np.allclose(ic_ds.strt.values, 10.0)
+
+
+def test_dis_to_xarray_axis_arrays():
+    """DIS's delr/delc lie along one axis each, not on the cells."""
+    dims = {"nlay": 1, "nrow": 2, "ncol": 3, "nodes": 6}
+    dis = Dis(dims=dims, nlay=1, nrow=2, ncol=3, delr=[1.0, 2.0, 3.0], delc=1.0, top=0.0, botm=-1.0)
+    ds = dis.to_xarray()
+    assert ds.delr.dims == ("col",)
+    assert ds.delr.values.tolist() == [1.0, 2.0, 3.0]
+    assert ds.delc.dims == ("row",)
+    assert ds.botm.dims == ("layer", "row", "col")
+
+
+def test_to_xarray_filled_constant_matches_given_array():
+    """A constant filled on the way out has the field's dtype, and is as
+    writable as one filled when the package knew its grid."""
+    dims = {"nlay": 2, "nrow": 2, "ncol": 3, "nodes": 12}
+    dis = Dis(dims=dims, nlay=2, nrow=2, ncol=3, delr=1.0, delc=1.0, top=0.0, botm=[-1.0, -2.0])
+    gwf = Gwf(dis=dis, dims=dims)
+    gwf.ic = Ic(strt=10)  # an int, on a double field
+
+    filled = gwf.ic.to_dataarray("strt")
+    known = Ic(strt=10, dims=dims).to_dataarray("strt")
+    assert filled.dims == known.dims == ("layer", "row", "col")
+    assert filled.shape == (2, 2, 3)
+    assert filled.dtype == known.dtype == np.float64
+    assert filled.values.flags.writeable
+
+
+def test_to_dataarray_constant_without_grid():
+    """With no grid to fill, a constant stays a scalar."""
+    da = Ic(strt=10.0).to_dataarray("strt")
+    assert da.dims == ()
+    assert da.item() == 10.0
+
+
+def test_to_dataarray_constant_on_disv():
+    dis = Disv(nlay=2, ncpl=4, nvert=6, top=0.0, botm=[-1.0, -2.0])
+    gwf = Gwf(dis=dis)
+    gwf.ic = Ic(strt=10.0)
+    da = gwf.ic.to_dataarray("strt")
+    assert da.dims == ("layer", "cell")
+    assert da.shape == (2, 4)
+
+
+def test_to_dataarray_period_arrays_on_cells():
+    """Period arrays stay on the cells beside DIS's axis arrays, one layer's
+    worth for RCHA's recharge, whether a period is one value or a full one."""
+    from flopy4.mf6.gwf import Rcha
+
+    dis = Dis(nlay=2, nrow=2, ncol=3, delr=[1.0, 2.0, 3.0], delc=1.0, top=0.0, botm=[-1.0, -2.0])
+    gwf = Gwf(dis=dis)
+    gwf.rch = [Rcha(recharge={0: 0.1, 2: np.full(6, 0.3)})]
+
+    da = gwf.rch[0].to_dataarray("recharge")
+    assert da.dims == ("per", "layer", "row", "col")
+    assert da.shape == (3, 1, 2, 3)
+    # period 1 fills forward from period 0, a constant filled to the grid
+    assert da.values[:, 0, 0, 0].tolist() == [0.1, 0.1, 0.3]
+    assert gwf.dis.to_dataarray("delr").dims == ("col",)
+
+
+def test_dis2d_to_dataarray_axis_arrays():
+    from flopy4.mf6.olf import Dis2d
+
+    dis = Dis2d(nrow=2, ncol=3, delr=[1.0, 2.0, 3.0], delc=1.0, bottom=0.0)
+    assert dis.to_dataarray("delr").dims == ("col",)
+    assert dis.to_dataarray("delc").dims == ("row",)
+
+
+def test_to_dataarray_axis_array_stays_lazy():
+    da = pytest.importorskip("dask.array")
+    dims = {"nlay": 1, "nrow": 2, "ncol": 3, "nodes": 6}
+    dis = Dis(dims=dims, nlay=1, nrow=2, ncol=3, delr=da.ones(3), delc=1.0, top=0.0, botm=-1.0)
+    assert isinstance(dis.to_dataarray("delr").data, da.Array)
+
+
 # ---------------------------------------------------------------------------
 # Dis/Disv class identity across models
 # ---------------------------------------------------------------------------

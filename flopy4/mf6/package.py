@@ -47,6 +47,10 @@ from flopy4.mf6.spec import to_field_type
 from flopy4.mf6.write_context import WriteContext
 from flopy4.spec import is_array
 
+# DFN dim -> the grid axis it sizes (GRID_DIMS's naming), for arrays along
+# one axis, e.g. DIS's delr ("ncol") on "col".
+_AXIS_DIMS: dict[str, str] = {size: dim for g in GRID_DIMS.values() for size, dim in g}
+
 # DFN type -> numpy dtype, for broadcasting a scalar griddata default to a
 # full array.
 _DTYPE_MAP: dict = {
@@ -1050,10 +1054,22 @@ class Package(Component, ABC):
             raise ValueError(f"{field_name!r} is not set")
         if isinstance(arr, dict):
             raise ValueError(f"{field_name!r} holds named arrays, not one array")
+        f = attrs.fields_dict(type(self))[field_name]  # type: ignore[arg-type]
+        names = tuple(f.metadata.get("shape") or ())
+        if not period and np.ndim(arr) == 0:
+            # a constant (e.g. CONSTANT, or a scalar default): fill its shape
+            shape = period_shape(self, f)
+            if shape is None:
+                return xr.DataArray(arr, name=field_name)
+            dtype = _DTYPE_MAP.get(to_field_type(f.type), np.float64)  # type: ignore[arg-type]
+            arr = np.full(shape, arr, dtype=dtype)
+        if names and names[0] not in ("nodes", "ncpl"):
+            # not on the cells (DIS's delr/delc): one dim per shape name
+            dims = tuple(_AXIS_DIMS.get(n, n) for n in names)
+            return xr.DataArray(arr, dims=dims, name=field_name)
         nper = arr.shape[0] if period else None
         _d = self.resolve_dims("nlay", "nrow", "ncol", "ncpl", "nodes")
         _nlay = _d.get("nlay", 1)
-        f = attrs.fields_dict(type(self))[field_name]  # type: ignore[arg-type]
         if f.metadata.get("shape") == ("ncpl",) and not f.metadata.get("layered"):
             _nlay = 1  # one layer's worth (RCHA's recharge, DIS's top)
         _nrow = _d.get("nrow")
