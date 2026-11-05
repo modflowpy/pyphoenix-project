@@ -41,7 +41,7 @@ DRN, RIV, GHB, RCH and EVT) can change their boundaries between periods.
 | **`kper`** | A stress period's number in Python, starting at 0 | `iper` in a file | `kper`, also from 0 |
 | **`iper`** | A stress period's number in an input file, starting at 1 | `iper` | |
 
-So `period_data={0: ...}` in Python writes `BEGIN PERIOD 1` in the file. MF6's
+So `stress_period_data={0: ...}` in Python writes `BEGIN PERIOD 1` in the file. MF6's
 source also has a `kper`, which starts at 1. You'd only meet it reading the Fortran.
 
 ### How a package takes period data

@@ -82,7 +82,7 @@ this doc.
 - [ ] Tier E (equivalence harness) passes on the registry corpus, with
   any accepted gaps listed. FUNC-7 falls out of this.
 - [ ] Round-trip load/write tests over the corpus.
-- [ ] The bare-list `period_data` bug fixed.
+- [ ] The bare-list `stress_period_data` bug fixed.
 - [ ] The user-facing API decisions in Track B made and implemented.
   Testers write code against them, so changing them after MMP breaks
   them.

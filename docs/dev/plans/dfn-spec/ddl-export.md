@@ -94,16 +94,16 @@ sim = Simulation.load(workspace / "mfsim.nam")            # flopy4.mf6.simulatio
 | `exchange` | `sim.exchanges`, class such as `Gwfgwt` | `.exgmnamea` and `.exgmnameb` hold **model objects**, not names |
 | `package` | `model._children`: key is the name, value is the package | `.dfn_name` is the component. Default names look like `wel-1` |
 | `aux_name` | `pkg.auxiliary` | |
-| `list_block`, `bnd_entry` | `pkg._period_data`, a dict of period to rows | keys are 0-based. An **empty block is `{1: []}`, and an absent block has no key**. An `ItemTable`, or a plain list when empty |
+| `list_block`, `bnd_entry` | `pkg._stress_period_data`, a dict of period to rows | keys are 0-based. An **empty block is `{1: []}`, and an absent block has no key**. An `ItemTable`, or a plain list when empty |
 | `bnd_entry.node` | `row.cellid`, such as `(0, 5, 3)` | a 0-based tuple; needs the grid to become a node |
 | `bnd_entry.rate`, `rate_ts` | `row.q`, or `TimeSeriesRef(name='pumping')` | check the type |
 | `bnd_entry_aux` | `row.aux`, a tuple in `auxiliary` order | |
 | `sfr_reach` | `sfr.packagedata` | `ifno` is 0-based. `cellid` is a tuple |
 | `sfr_conn` | `sfr.connectiondata`, `ic=((1, -1),)` | **pairs of 0-based index and sign**: here `ic = -2` in the schema |
-| `sfr_set` and arms | `Sfr.PeriodData(ifno=0, sfrsetting=Sfr.Inflow(inflow=25.0))` | the arm is the class of `sfrsetting` |
+| `sfr_set` and arms | `Sfr.StressPeriodData(ifno=0, sfrsetting=Sfr.Inflow(inflow=25.0))` | the arm is the class of `sfrsetting` |
 | `lak_set`, `lak_outlet_set` | rows are the arm itself, such as `Lak.Rainfall(lakeno=0, rainfall=5e-08)` | key on the row's class |
 | `lak_lake`, `lak_outlet` | `lak.packagedata`, `lak.outlets` | `lakeout=None` means none |
-| `mvr`, `mvr_package`, `mvr_row` | `mvr.packages`, `mvr._period_data` | **ids are 0-based**. `mname` is `None` on a model's mover, so fill it from the owner |
+| `mvr`, `mvr_package`, `mvr_row` | `mvr.packages`, `mvr._stress_period_data` | **ids are 0-based**. `mname` is `None` on a model's mover, so fill it from the owner |
 | `ssm_row` | `ssm.fileinput`, `ssm.sources` | `Ssm.Fileinput(pname='wel', spc=Spc(...), mixed=False)` |
 | `spc`, `spc_set` | `fileinput.spc`, not a child of the model | `.maxbound` keeps the file's value |
 

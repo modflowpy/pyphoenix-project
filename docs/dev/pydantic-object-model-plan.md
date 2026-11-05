@@ -279,7 +279,7 @@ priced:
 the `Dis` prototype explicitly deferred: `Component`'s full `MutableMapping`
 interface for a *list*-kind child field (several packages in one slot, not
 just `Dis.ncf`'s single-child case), and `Package`'s Item-list period-data
-coercion, modeled on the real `Chd`/`Chd.PeriodData`
+coercion, modeled on the real `Chd`/`Chd.StressPeriodData`
 (`flopy4/mf6/gwf/chd.py`). Run via
 `pixi run -e dev python docs/dev/prototypes/pydantic_chd_prototype.py`.
 
@@ -303,13 +303,13 @@ deletion all work).
 
 **The Item-list half surfaces one real, new problem pydantic-specific to
 this field shape, not the array-field one already solved:** attrs applies
-zero validation to a field like `Chd._period_data` (no
+zero validation to a field like `Chd._stress_period_data` (no
 validator/converter declared) — raw tuples/dicts pass through attrs'
 `__init__` untouched, and `Package.__attrs_post_init__` coerces them
 afterward. A plain pydantic-typed equivalent
 (`Optional[dict[int, list[Row]]]`) does NOT behave this way: it's eagerly,
 strictly validated at construction, so the exact raw-tuple/raw-dict input
-`Chd(period_data=...)` accepts today raises
+`Chd(stress_period_data=...)` accepts today raises
 `ValidationError: Input should be an instance of Row` before any
 post-init coercion hook runs — confirmed directly, including a control
 case proving the identical field without the fix does reject the identical
@@ -325,7 +325,7 @@ new costs:
   return `None` (no item type found) without it. Small, mechanical,
   one-time addition to one function.
 - `SkipValidation` also opts the field out of `validate_assignment`
-  re-validation, confirmed directly (`pkg.period_data = "junk"` is
+  re-validation, confirmed directly (`pkg.stress_period_data = "junk"` is
   silently accepted). Not a regression versus attrs (no validator is
   declared on this field today either), but it is a per-field, explicit
   opt-out rather than something that falls out of the shared config the
@@ -337,7 +337,7 @@ new costs:
 not need to migrate to pydantic at all.** With `SkipValidation`, pydantic
 never inspects what's inside the list — `ChdRowProto` in this prototype is
 a genuine, unmodified `attrs.define` class, exactly like the real
-`Chd.PeriodData`. A real migration can leave `item.py`/`record.py`
+`Chd.StressPeriodData`. A real migration can leave `item.py`/`record.py`
 attrs-based indefinitely and only port `Component`/`Package` (and
 generated leaf classes) to pydantic — a materially smaller migration
 surface than porting the whole object model in one pass would suggest.
@@ -457,13 +457,13 @@ gwf/oc.py` `Oc` package — the only in-repo package currently exercising
 this machinery at all (grepped: no `list[Union[...]]`-typed top-level
 period-data field exists yet in `gwf/`/`gwt/`/`gwe/`/`prt/` — LAK/SFR/MAW/
 UZF's own period-data fields turn out to be plain Item types, not unions;
-`Oc.period_data` is the real thing to model, and it's actually a
+`Oc.stress_period_data` is the real thing to model, and it's actually a
 harder case than any of those four, since it exercises the coercion path
 at BOTH levels at once (see below)).
 
 `Oc` exercises two nested layers of the same mechanism:
 
-1. Top-level: `Oc._period_data` holds `Save | Print` (a `tuple` of
+1. Top-level: `Oc._stress_period_data` holds `Save | Print` (a `tuple` of
    arm classes, item.py's `construct_union_item()`/`dispatch_union_item()`,
    called from `Package._coerce_item_list()`'s `isinstance(item_cls,
    tuple)` branch — the branch `pydantic_chd_prototype.py`'s version of
@@ -474,7 +474,7 @@ at BOTH levels at once (see below)).
    field via `_nested_union_classes()`).
 
 Confirmed against the real `Oc` package before writing any prototype code
-(`Oc(period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET",
+(`Oc(stress_period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET",
 "STEPS", 1, 3, 5), ("PRINT", "HEAD", "ALL")]})`) and reproduced
 byte-for-byte by the prototype, including the untyped `steps=(1, 3, 5)`
 int tuple (not floats — `construct_item()`'s array-field branch does no

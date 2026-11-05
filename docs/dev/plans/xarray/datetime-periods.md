@@ -7,7 +7,7 @@ RCHA/WELG/... arrays, OC) be keyed by datetimes as well as 0-based period
 indices, e.g.
 
 ```python
-chd = Chd(period_data={
+chd = Chd(stress_period_data={
     "2000-01-01": [((0, 0, 0), 1.0)],
     pd.Timestamp("2000-03-01"): [((0, 0, 0), 2.0)],
 })

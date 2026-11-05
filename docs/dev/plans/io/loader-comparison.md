@@ -106,7 +106,7 @@ typed loader isn't on the current base:
 | missing `END OPTIONS` (CHD) | `ValueError: OPTIONS block, opened on line 3, has no END: found BEGIN DIMENSIONS` | `UnexpectedToken` at the `MAXBOUND` line, line and column, the tokens expected |
 | misspelled keyword (`PRINT_FLOWZ`) | loads; warns "no field takes OPTIONS entry PRINT_FLOWZ" | the same |
 | wrong value type (`MAXBOUND two`) | `ValueError: Chd: DIMENSIONS entry MAXBOUND TWO needs an integer` | `UnexpectedToken` at `two`, line and column, expecting an integer |
-| short list row (CHD, no head) | `ValueError: PeriodData: can't read a row from ['1', '1', '10']` | the same, with numbers |
+| short list row (CHD, no head) | `ValueError: StressPeriodData: can't read a row from ['1', '1', '10']` | the same, with numbers |
 | bad OPEN/CLOSE path (NPF `K`) | `FileNotFoundError` naming the path | the same |
 | short array (IC `STRT`, 9 values for 10 cells) | `ValueError: strt: expected 10 values, got 9` | loaded silently |
 | unknown block (`DIMENSIONZ`, on both `BEGIN` and `END`) | loads; warns "ignoring unknown block" | the same |

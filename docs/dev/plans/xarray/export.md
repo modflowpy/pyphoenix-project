@@ -65,9 +65,9 @@ sparse forms.
 
 ### Gaps in the generic layer (`attrs_to_dataset` / `attrs_to_datatree`)
 
-- **List data** (CHD, WEL, OC, ...) isn't encoded. `_period_data`
+- **List data** (CHD, WEL, OC, ...) isn't encoded. `_stress_period_data`
   goes into attrs as a live `PeriodRows` object. `dataset_to_attrs` then
-  raises `TypeError: unexpected keyword argument '_period_data'`.
+  raises `TypeError: unexpected keyword argument '_stress_period_data'`.
 - **Item tables** (`Tdis.perioddata` as `ItemTable`) go into attrs as objects too.
 - **Attrs aren't netCDF-safe**: `PosixPath`, `bool`, `ChildList`,
   `PeriodRows`, `ItemTable`.
@@ -109,7 +109,7 @@ them directly.
   `period_lists.to_dataset(pkg, sparse=True)`: a variable per column
   along an `entry` dim, with `kper` and the cellid as coordinates. Decode
   through `period_lists.from_dataset`. Map the private field name to its
-  init name (`_period_data` → `period_data`) both ways.
+  init name (`_stress_period_data` → `stress_period_data`) both ways.
 - **Item tables and other row lists** (`Tdis.perioddata`,
   `packagedata`/`connectiondata` in SFR/LAK/MAW/UZF): the same sparse
   treatment, one variable per column along a dim per field (name open, see

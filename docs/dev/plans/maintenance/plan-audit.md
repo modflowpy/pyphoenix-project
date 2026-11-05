@@ -637,7 +637,7 @@ When choosing a term, prefer in order:
 | `bound` (33 lines) | "boundary", "boundary number", "entry"; `bound`, `nbound` in code | Keep `bound` as the role's name. In prose use F1's feature, list entry and grid entry, which are mf6io's words. |
 | `ftype` for all components | `mtype`, `exgtype`, `slntype`, `ftype` (`sim-nam.dfn`, `gwf-nam.dfn`) | Keep the unified attribute, and note the mapping in the glossary and SDD. |
 | `per`, `kper`, `<name>_period`, "period key" | `iper` in the block header (1-based), `kper` in source (also 1-based; `tdis.f90`) | `kper` is the most used name in flopy3 (888 word matches to `iper`'s 213) and is 0-based there, so MF6 and flopy3 give it different bases. Use `kper` (0-based) for Python arguments and `iper` only for the file's 1-based number, and say so in the glossary. The representation's `per` dim becomes `kper`. |
-| `stress_period_data` on every package with period data, including OC and STO | PERIOD block | Rename to `period_data`, which is generic and accurate (D5). |
+| `stress_period_data` on every package with period data, including OC and STO | PERIOD block | Keep. A stress period is MODFLOW's unit of time, so the name is accurate on OC and STO too (D5). |
 | "MF6 NetCDF (grouped)" | MF6 doesn't read it | Call it the "grouped archive" (D3). Naming our format as MF6's implies an endorsement it doesn't have yet. |
 | "namefile" (6) and "name file" (1) | "name file" (163 vs. 7 in mf6io) | Use "name file" in prose. |
 | "fill forward", "carry forward" | "continue to apply", "retain" | "Fill forward" is fine for a period with no block, where all regimes agree. For what a new block does, name its semantics from F4, replace or update, and use the DFN attribute under consideration (F4's `persistence` key) once it exists. |
@@ -975,7 +975,7 @@ only, per D8. Step 6 is next, then step 4.
 | removing the broadcast | C3 | [`layout-logical-decisions.md`](../dfn-spec/layout-logical-decisions.md#226-packages-without-grid-or-time) #226, in Track B |
 | `step_array` on ATS | C9 | step 8 |
 | export return types | C8 | step 8 |
-| `stress_period_data` → `period_data`, across codegen, generated classes and grammars, and tests; flopy3's name stays accepted as a `Legacy` alias, where flopy3 takes it and on CHF's and OLF's stress packages | D5 | done (#540, #541) |
+| `stress_period_data` stays the name, on every package with period data | D5 | done: #540 renamed it `period_data`, #546 renamed it back |
 | `Context` → `WorkspaceComponent` | D6 | done (#542) |
 | `per` → `kper` and `<name>_period` → `<name>_kper` in the export | T1, S6 | done (#543) |
 
@@ -987,7 +987,7 @@ only, per D8. Step 6 is next, then step 4.
 | D2 | Rename the `output` label to `directive`, including CSVs | decided: yes, before #287 is posted | classification, audit |
 | D3 | What to call our NetCDF forms | decided: "grouped archive" for grouped until MF6 reads it, a name that survives extracting `mf6xr`; "MF6 NetCDF" only for ungrouped; "profile" for the pair | representation, `mf6xr` |
 | D4 | #282/#367: attrs or pydantic | decided for now: keep both open, with attrs assumed meanwhile. Settle by MMP, with the possibility of putting it off to GA | xattree v2, Track B |
-| D5 | `stress_period_data` on OC, STO and similar | decided: rename to `period_data`, on every package. It's generic and accurate, and the repo is in enough flux that the cost is small | Track B, compat |
+| D5 | `stress_period_data` on OC, STO and similar | decided: keep `stress_period_data`, on every package. A stress period is MODFLOW's unit of time, not a property of stress packages. Decided the other way first (`period_data`, #540), then reversed on 2026-11-05 (#546) | Track B, compat |
 | D6 | The `Context` class name | decided: rename to `WorkspaceComponent`, since a workspace is what it adds to `Component`. A model under a simulation uses the simulation's workspace | concepts |
 | D7 | Round-trip fidelity for `FACTOR`, `IPRN`, order, remarks; result tolerance | decided: `IPRN` kept; `FACTOR` applied on load and not kept, as `develop` does; order and remarks not kept. Tolerance still open, to propose in step 4 from the framework comparison | Track A, `simplify-converter` |
 | D8 | How much theory vocabulary reaches the docs | decided: T3's "adopt in docs" set, in design docs, and never in user docs | concepts, type model |

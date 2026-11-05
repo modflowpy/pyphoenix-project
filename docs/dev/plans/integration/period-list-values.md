@@ -6,22 +6,25 @@ to be what real migrations trip on.
 
 ## Where things stand
 
-#541 made flopy3's period-list names work as attributes, by name only:
+flopy3's and flopy4's name are the same on most stress packages, and #541 made
+flopy3's other period-list names work as attributes, by name only:
 
 | flopy3 code | flopy4 today |
 |---|---|
-| `wel.stress_period_data` | warns, returns `wel.period_data` |
-| `wel.stress_period_data = rows` | warns, assigns `wel.period_data` |
-| `wel.stress_period_data.get_data(0)` | warns, then `AttributeError`: `PeriodRows` has no `get_data` |
-| `sto.transient`, `oc.saverecord` | `AttributeError` pointing to `period_data` |
+| `wel.stress_period_data` | the field, a `PeriodRows` |
+| `lak.perioddata` | warns, returns `lak.stress_period_data` |
+| `lak.perioddata = rows` | warns, assigns `lak.stress_period_data` |
+| `wel.stress_period_data.get_data(0)` | `AttributeError`: `PeriodRows` has no `get_data` |
+| `lak.perioddata.get_data(0)` | warns, then the same `AttributeError` |
+| `sto.transient`, `oc.saverecord` | `AttributeError` pointing to `stress_period_data` |
 
-So the third row is the gap. flopy3 scripts rarely stop at the name: its
+So the `.get_data` rows are the gap. flopy3 scripts rarely stop at the name: its
 `MFTransientList` has `.get_data(key=None, apply_mult=False)`,
 `.set_data(data, key=None, autofill=False, replace=False)`, `.array` and `.data`.
 
 ## Proposal
 
-`period_data` is already a dict subclass. `flopy4.mf6.package.PeriodRows` holds its
+`stress_period_data` is already a dict subclass. `flopy4.mf6.package.PeriodRows` holds its
 package and coerces rows assigned to a period. So add flopy3's methods to it
 instead of building a new type:
 
@@ -40,13 +43,12 @@ class PeriodRows(dict):
 Each one warns with `DeprecationWarning` and names the flopy4 way to do the same
 thing. Existing dict code keeps working, because the object is still the dict.
 
-**Why not a subclass returned only by the legacy attribute?** It looks tidier,
-because `period_data` itself wouldn't carry flopy3's methods. But it would be a
-second object, so `wel.stress_period_data[1] = rows` would change a copy, which
-brings back the silent no-op #541 removed. A view that delegates
-fixes that, at the cost of a whole mapping to maintain. Methods on the one object
-are simpler, and the only cost is that `wel.period_data.get_data()` also works,
-with a warning.
+**Why not a subclass returned only by the legacy attribute?** There's no legacy
+attribute where the name is the same: `wel.stress_period_data` is the field, so
+flopy3's most common case wouldn't get the methods. It would also be a second
+object, so `lak.perioddata[1] = rows` would change a copy, which brings back the
+silent no-op #541 removed. Methods on the one object are simpler, and the cost is
+only that scripts written for flopy4 can call them too, with a warning.
 
 ## What each one returns
 
@@ -102,7 +104,7 @@ In `test/mf6/test_mf6_legacy.py`:
 
 - Compare each member to a real `flopy.mf6.ModflowGwfwel` built from the same rows,
   including a period that fills forward and one given empty.
-- `set_data` coerces rows, and `wel.period_data` sees the change.
+- `set_data` coerces rows, and `wel.stress_period_data` sees the change.
 - Each member warns, and the warning points at the caller.
 
 The migration tool's flag list in [`aliases-and-codemod.md`](aliases-and-codemod.md) (step 7) should drop

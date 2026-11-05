@@ -61,7 +61,7 @@ On develop at `916c2f8b`:
   `_resolve_bindings` with one ftype comparison per
   field and one context carried through a block.
 - **STO period** is one word per period,
-  `period_data: Optional[dict[int, Literal["steady-state",
+  `stress_period_data: Optional[dict[int, Literal["steady-state",
   "transient"]]]`, filled forward and written uppercase:
   `{0: [("STEADY-STATE",)]}` becomes `{0: "steady-state"}`. flopy3's
   `steady_state=`/`transient=` convert to it

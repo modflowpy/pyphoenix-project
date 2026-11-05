@@ -229,7 +229,7 @@ refactoring list where it helps the swap.
    introspection, `set_record`, and so on, as was done for `check` (#2357).
    Users see the warnings for a release or two before anything breaks.
 5. **Optionally, accept 4.x idioms in 3.x**: `parent=` as a keyword,
-   `sim.write()`/`sim.run()`, the `period_data` names (the inverse
+   `sim.write()`/`sim.run()`, the `stress_period_data` names (the inverse
    of `legacy.py`), and `*_file` for `*_filerecord`. Then users can write
    code that runs on both, and migrate before they upgrade. It's cheap
    for constructor keywords and top-level methods (codegen templates);
@@ -351,7 +351,7 @@ developer step.
 
 **Phase 0 (here, through MMP):**
 
-1. Fix the bare-list `period_data` bug (open on `8d25e4b7`).
+1. Fix the bare-list `stress_period_data` bug (open on `8d25e4b7`).
 2. Equivalence harness (tier E) over the registry, starting with the
    models that both load.
 3. Release modflow-devtools (3.x item 6); drop the git dependency; unpin
