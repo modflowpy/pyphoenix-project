@@ -3633,3 +3633,81 @@ def test_model_unmatched_package_warns(function_tmpdir):
 
     with pytest.warns(UserWarning, match="ZZZ6"):
         Simulation.load(function_tmpdir / "mfsim.nam")
+
+
+def test_dis_to_dataarray_outside_a_model():
+    """A discretization sizes its own arrays, without a model to resolve from."""
+    dis = Dis(nlay=2, nrow=3, ncol=4, top=5.0, botm=[0.0, -1.0], idomain=1)
+    assert dis.to_dataarray("botm").dims == ("layer", "row", "col")
+    assert dis.to_dataarray("botm").shape == (2, 3, 4)
+    assert dis.to_dataarray("idomain").shape == (2, 3, 4)
+    assert dis.to_dataarray("top").shape == (1, 3, 4)
+
+
+def test_dis_to_dataarray_outside_a_model_matches_inside():
+    def dis():
+        return Dis(nlay=2, nrow=3, ncol=4, top=5.0, botm=[0.0, -1.0], delr=2.0, delc=3.0)
+
+    inside = dis()
+    Gwf(dis=inside)
+    outside = dis()
+    for name in ("botm", "top", "delr", "delc"):
+        xr.testing.assert_identical(outside.to_dataarray(name), inside.to_dataarray(name))
+
+
+def test_dis_to_xarray_outside_a_model():
+    ds = Dis(nlay=1, nrow=3, ncol=4, top=5.0, botm=0.0).to_xarray()
+    assert ds["botm"].dims == ("layer", "row", "col")
+    assert ds["top"].shape == (1, 3, 4)
+
+
+def test_disv_to_dataarray_outside_a_model():
+    dis = Disv(nlay=2, ncpl=4, nvert=6, top=0.0, botm=[-1.0, -2.0])
+    da = dis.to_dataarray("botm")
+    assert da.dims == ("layer", "cell")
+    assert da.shape == (2, 4)
+
+
+def test_to_dataarray_consumer_outside_a_model_stays_unsized():
+    """A package that doesn't provide dims still has none without a model."""
+    assert Ic(strt=[1.0, 2.0]).to_dataarray("strt").dims == ("node",)
+
+
+def test_to_xarray_period_arrays_share_periods_without_nper():
+    """With no simulation to give nper, a package's fields align on the
+    last period any of them gives."""
+    from flopy4.mf6.gwf import Rcha
+
+    rch = Rcha(
+        recharge={0: np.array([0.1, 0.2]), 1: np.array([0.3, 0.4])},
+        irch={0: np.array([0, 1])},
+    )
+    ds = rch.to_xarray()
+    assert ds.sizes["per"] == 2
+    np.testing.assert_array_equal(ds["irch"].isel(per=0), ds["irch"].isel(per=1))
+    assert rch.period_array("irch").shape[0] == 2
+    assert rch.period_array("irch", nper=4).shape[0] == 4
+
+
+def test_dis_to_dataarray_constant_set_outside_a_model():
+    """A constant set after construction is filled from the package's own dims."""
+    dis = Dis(nlay=2, nrow=3, ncol=4, top=5.0, botm=[0.0, -1.0])
+    dis.top = 7.0
+    assert np.ndim(dis.top) == 0
+    da = dis.to_dataarray("top")
+    assert da.shape == (1, 3, 4)
+    assert (da == 7.0).all()
+
+
+def test_to_dataarray_period_constants_need_a_shape():
+    """One value each period has no shape without an array, a model or dims."""
+    from flopy4.mf6.gwf import Rcha
+
+    with pytest.raises(ValueError, match="pass its dims"):
+        Rcha(recharge={0: 0.1, 1: 0.2}).to_dataarray("recharge")
+
+    rch = Rcha(recharge={0: 0.1, 1: 0.2}, irch={0: 1}, dims={"ncpl": 4})
+    ds = rch.to_xarray()
+    assert ds["recharge"].dims == ("per", "layer", "cell")
+    assert ds["recharge"].shape == (2, 1, 4)
+    assert (ds["recharge"].isel(per=1) == 0.2).all()

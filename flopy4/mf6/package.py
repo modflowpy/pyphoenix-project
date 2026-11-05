@@ -1015,7 +1015,8 @@ class Package(Component, ABC):
         field fills forward on its own, in grid packages too.
 
         Dynamically named arrays (aux) give ``{name: (nper, ...)}``. ``nper``
-        defaults to the simulation's, else to one past the last given period.
+        defaults to the simulation's, else to one past the last period any of
+        the package's period array fields gives.
         """
         fields = self._period_array_fields()
         f = next((f for f in fields if f.name == name), None)
@@ -1025,10 +1026,8 @@ class Package(Component, ABC):
         if not periods:
             return None
         if nper is None:
-            # a grid package's periods are its period blocks, over all fields
-            given = set(periods)
-            if is_grid_package(type(self)):
-                given = {k for g in fields for k in (self._period_dict(g) or {})}
+            # a package's periods are its period blocks, over all fields
+            given = {k for g in fields for k in (self._period_dict(g) or {})}
             nper = self.resolve_dims("nper").get("nper") or max(given) + 1
         shape = period_shape(self, f)
         if not f.metadata.get("fk"):
@@ -1043,6 +1042,15 @@ class Package(Component, ABC):
             )
             for n in names
         }
+
+    def _array_dims(self, *names: str) -> dict[str, int]:
+        """The dims sizing this package's arrays: resolved, else a dimension
+        provider's own, for a discretization outside a model."""
+        dims = self.resolve_dims(*names)
+        if isinstance(self, DimsProviderMethods):
+            own = self.get_dims()
+            dims |= {n: own[n] for n in names if n not in dims and n in own}
+        return dims
 
     def to_dataarray(self, field_name: str) -> "xr.DataArray":
         """Single griddata or period array field as xr.DataArray. A period
@@ -1068,7 +1076,7 @@ class Package(Component, ABC):
             dims = tuple(_AXIS_DIMS.get(n, n) for n in names)
             return xr.DataArray(arr, dims=dims, name=field_name)
         nper = arr.shape[0] if period else None
-        _d = self.resolve_dims("nlay", "nrow", "ncol", "ncpl", "nodes")
+        _d = self._array_dims("nlay", "nrow", "ncol", "ncpl", "nodes")
         _nlay = _d.get("nlay", 1)
         if f.metadata.get("shape") == ("ncpl",) and not f.metadata.get("layered"):
             _nlay = 1  # one layer's worth (RCHA's recharge, DIS's top)
@@ -1182,14 +1190,14 @@ class Package(Component, ABC):
         setattr(self, spd.name, period_lists.from_dataset(self, ds))
 
 
-def period_shape(component: Any, f: attrs.Attribute) -> tuple[int, ...] | None:
+def period_shape(package: Package, f: attrs.Attribute) -> tuple[int, ...] | None:
     """A period array field's shape in one period, from its DFN shape and
-    the grid's dims (``component``'s), or None if they aren't known."""
+    the grid's dims (``package``'s), or None if they aren't known."""
     names = f.metadata.get("shape") or ()
     if not names:
         return None
     try:
-        dims = component.resolve_dims(*names)
+        dims = package._array_dims(*names)
     except ValueError:
         return None
     if any(dims.get(n) is None for n in names):
