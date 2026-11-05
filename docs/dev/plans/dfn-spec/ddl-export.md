@@ -261,7 +261,7 @@ LAK models.** This answers the mover question with real data.
 - [x] `r_sfr_*` and `r_lak_*` sorted. No rejection of a valid model is left. On the way,
   `r_lak_belev` and `r_sfr_ustrf` were stricter than MF6 and got fixed, `r_uzf_vert_area`
   went, and `r_lak_telev`, `r_sfr_div_ustrf` and `r_uzf_cell_area` were added
-- [x] Rule by rule comparison with `key_errors`, on 54 broken or baseline copies, which
+- [x] Rule by rule comparison with `key_errors`, on 53 broken or baseline copies, which
   MF6 and the rules agree on. It reports 6 of them, and a rule fires on all 6
 
 **Stage 3: GNC, exchanges, OBS, SSM and SPC.**
