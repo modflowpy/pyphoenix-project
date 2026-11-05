@@ -215,8 +215,10 @@ The most data for the least mapping, and it tests the active-cell assumption fir
 - [x] Read `MAXBOUND` from the file
 - [x] Exporter and harness
 - [x] Run on `mf6/test` and sort the results. No rule fired; 9 of 40 views had data
-- [ ] Check in with the user
-- [ ] `key_errors` comparison so far
+- [x] Check in with the user
+- [x] `key_errors` comparison so far. No errors over 3,152 components and
+  110,083 key values, but it barely overlaps with stage 1's rules, so the rule by
+  rule comparison waits for stage 2
 - [ ] `mf6/large`, with timings
 
 **Stage 2: MVR and the advanced packages, on the 24 MVR models and then all SFR and
@@ -230,6 +232,8 @@ LAK models.** This answers the mover question with real data.
 **Stage 3: GNC, exchanges, OBS, SSM and SPC.**
 
 - [ ] Look at the loaded forms first (see above)
+- [ ] RCHA values (`rcha_value`), for `r_rcha_shape` and `v_rch_rate`, alongside SPCA,
+  which needs the same array form
 - [ ] GNC and exchange data
 - [ ] OBS, widened past WEL, including `id2`
 - [ ] SSM, and whether `flow_mname` resolves
