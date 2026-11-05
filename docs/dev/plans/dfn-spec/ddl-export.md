@@ -1,7 +1,7 @@
 # Running the DDL slice on real models
 
 Working plan, written 2026-11-05. All three stages are done; results are in the slice
-README. It carries out "a flopy4
+README, and [ddl-next-steps.md](ddl-next-steps.md) has what follows. It carries out "a flopy4
 counterpart" under [step 3 of the overview](overview.md#step-3-the-ddl-slice).
 
 The DDL slice has only ever run on a hand-built fixture. This loads real models

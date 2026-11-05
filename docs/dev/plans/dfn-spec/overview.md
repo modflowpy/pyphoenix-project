@@ -571,6 +571,10 @@ corrected several rules, and found two more array overruns in MF6.
 A flopy4 counterpart exports a simulation to SQLite, and compares the checks with `keys.py`.
 `keys.py` claims less, with no check of OBS ids, and it never fires where a rule doesn't.
 
+[ddl-next-steps.md](ddl-next-steps.md) has what follows from this. Its working conclusion is that
+the relational model is right but SQL is too verbose to be the spec, and it adds two steps before
+the ones below: a frozen run on unseen models, and generating DDL from the DFNs.
+
 ### Step 4: parameter syntax sketch
 
 Write `[params]` (the name is open) for SPC, MVR, GNC, OBS and TS, and how
