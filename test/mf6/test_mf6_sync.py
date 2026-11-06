@@ -341,6 +341,12 @@ def test_grammars_generated(dfn_path, outdir):
     parser.parse("BEGIN OPTIONS\n  PRINT_INPUT\nEND OPTIONS\n")
 
 
+def test_dfn_fixes_generated(outdir):
+    """A sync keeps the corrections to the DFNs, in the classes and grammars."""
+    assert "format_: Optional[str] = string(default=None" in (outdir / "gwf" / "oc.py").read_text()
+    assert "[formatrecord__format__val]" in _grammars(outdir)["gwf-oc.lark"]
+
+
 def test_stale_grammars_removed(dfn_path, outdir):
     """A grammar for a component the DFNs no longer have is removed."""
     stale = outdir / _sync._GRAMMARS / "swf-zzz.lark"
