@@ -147,15 +147,15 @@
     "END GRIDDATA",
     "",
     "BEGIN PERIOD 1",
-    " STEADY-STATE",
+    "  STEADY-STATE",
     "END PERIOD 1",
     "",
     "BEGIN PERIOD 2",
-    " TRANSIENT",
+    "  TRANSIENT",
     "END PERIOD 2",
     "",
     "BEGIN PERIOD 3",
-    " STEADY-STATE",
+    "  STEADY-STATE",
     "END PERIOD 3"
   ],
   "mf6.tdis": [
@@ -208,8 +208,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 mf6.ims mf6",
     " MXITER 1",
+    " IMS6 mf6.ims mf6",
     "END SOLUTIONGROUP 1"
   ]
 }

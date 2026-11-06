@@ -30,6 +30,7 @@ class Ats(Package):
     perioddata: Optional[list[Perioddata]] = list_(
         default=None,
         block="perioddata",
+        tagged=False,
         shape=("<=maxats",),
     )
 

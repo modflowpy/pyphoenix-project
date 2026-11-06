@@ -779,7 +779,7 @@ def test_load_several_solution_groups(function_tmpdir):
     text += f"\nBEGIN SOLUTIONGROUP 2\n{second}\nEND SOLUTIONGROUP 2\n"
     nam.write_text(text)
 
-    with pytest.raises(ValueError, match="more than one solution group"):
+    with pytest.raises(ValueError, match="more than one solutiongroup block"):
         Simulation.load(nam)
 
 

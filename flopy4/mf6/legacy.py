@@ -106,7 +106,7 @@ def _periods(value: Any) -> dict[int, Any]:
     return dict(value) if isinstance(value, Mapping) else {0: value}
 
 
-def sto_period_data(steady_state: Any = None, transient: Any = None) -> dict[int, list]:
+def sto_period_data(steady_state: Any = None, transient: Any = None) -> dict[int, str]:
     """STO's `stress_period_data` from flopy3's `steady_state` and
     `transient`. Each is `{kper: True}`, `True` (period 0), or a list of
     periods. A period can't be both."""
@@ -120,12 +120,12 @@ def sto_period_data(steady_state: Any = None, transient: Any = None) -> dict[int
             return [kper for kper, on in value.items() if on]
         return list(value)
 
-    data: dict[int, list] = {}
-    for word, value in (("STEADY-STATE", steady_state), ("TRANSIENT", transient)):
+    data: dict[int, str] = {}
+    for word, value in (("steady-state", steady_state), ("transient", transient)):
         for kper in periods(value):
             if kper in data:
                 raise ValueError(f"period {kper} is both steady-state and transient")
-            data[kper] = [(word,)]
+            data[kper] = word
     return dict(sorted(data.items()))
 
 

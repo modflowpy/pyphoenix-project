@@ -320,8 +320,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 mf6-gwt.ims m1",
     " MXITER 1",
+    " IMS6 mf6-gwt.ims m1",
     "END SOLUTIONGROUP 1"
   ]
 }

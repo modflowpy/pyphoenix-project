@@ -135,8 +135,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 flowdivert.ims GWF_1",
     " MXITER 1",
+    " IMS6 flowdivert.ims GWF_1",
     "END SOLUTIONGROUP 1"
   ]
 }

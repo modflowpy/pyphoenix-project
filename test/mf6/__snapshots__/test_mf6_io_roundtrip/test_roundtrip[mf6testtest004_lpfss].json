@@ -16,8 +16,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 test004_lpfss.ims test004_lpfss",
     " MXITER 1",
+    " IMS6 test004_lpfss.ims test004_lpfss",
     "END SOLUTIONGROUP 1"
   ],
   "test004_lpfss.dis": [

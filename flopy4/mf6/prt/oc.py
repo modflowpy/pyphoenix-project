@@ -7,13 +7,17 @@ import attrs
 from flopy4.mf6.item import Item
 from flopy4.mf6.legacy import Legacy, oc_period_data
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import array, double, file, integer, keyword, list_, string, union
+from flopy4.mf6.spec import Header, array, double, file, integer, keyword, list_, string, union
 
 
 @attrs.define(kw_only=True, slots=False)
 class Oc(Package):
     dfn_name: ClassVar[str] = "prt-oc"
     ftype: ClassVar[str] = "OC6"
+
+    headers: ClassVar[dict[str, Header]] = {
+        "period": Header("integer", index=True),
+    }
 
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
         "saverecord": Legacy("stress_period_data", oc_period_data),
@@ -143,6 +147,7 @@ class Oc(Package):
     tracktimes: Optional[list[Tracktimes]] = list_(
         default=None,
         block="tracktimes",
+        tagged=False,
         shape=("ntracktimes",),
     )
     _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = list_(

@@ -11,6 +11,7 @@ from flopy4.mf6.item import Item
 from flopy4.mf6.legacy import Legacy
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import (
+    Header,
     array,
     cellid_,
     child,
@@ -33,6 +34,10 @@ class Sfr(Package):
     ftype: ClassVar[str] = "SFR6"
 
     multi_package: ClassVar[bool] = True
+
+    headers: ClassVar[dict[str, Header]] = {
+        "period": Header("integer", index=True),
+    }
 
     observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
         "depth": (("index",), ("string",)),
@@ -317,24 +322,29 @@ class Sfr(Package):
     packagedata: Optional[list[Packagedata]] = list_(
         default=None,
         block="packagedata",
+        tagged=False,
         shape=("nreaches",),
     )
     crosssections: Optional[list[Crosssections]] = list_(
         default=None,
         block="crosssections",
+        tagged=False,
     )
     connectiondata: Optional[list[Connectiondata]] = list_(
         default=None,
         block="connectiondata",
+        tagged=False,
         shape=("nreaches",),
     )
     diversions: Optional[list[Diversions]] = list_(
         default=None,
         block="diversions",
+        tagged=False,
     )
     initialstages: Optional[list[Initialstages]] = list_(
         default=None,
         block="initialstages",
+        tagged=False,
         shape=("nreaches",),
     )
     _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
@@ -343,6 +353,7 @@ class Sfr(Package):
         repr=False,
         block="period",
         fill_forward=True,
+        tagged=False,
     )
 
 

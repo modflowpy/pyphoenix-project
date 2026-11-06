@@ -195,8 +195,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 mf6.ims6 mf6",
     " MXITER 1",
+    " IMS6 mf6.ims6 mf6",
     "END SOLUTIONGROUP 1"
   ]
 }

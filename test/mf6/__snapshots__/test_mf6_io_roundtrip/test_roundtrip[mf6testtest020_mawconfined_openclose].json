@@ -15,8 +15,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 test020_mawconfined.ims mawconf",
     " MXITER 1",
+    " IMS6 test020_mawconfined.ims mawconf",
     "END SOLUTIONGROUP 1"
   ],
   "test020_mawconfined.dis": [

@@ -16,8 +16,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 pbc.ims pbc",
     " MXITER 1",
+    " IMS6 pbc.ims pbc",
     "END SOLUTIONGROUP 1"
   ],
   "pbc.chd": [

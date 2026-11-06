@@ -1241,7 +1241,7 @@ def test_tagged_file_list_is_repeatable_field(tmp_path, all_dfns, monkeypatch):
     assert "converter=attrs.converters.optional(to_list(Path))," in text
 
 
-def test_tagged_record_list_roundtrip(tmp_path):
+def test_tagged_record_list_roundtrip(tmp_path, monkeypatch):
     """A tagged list of (non-file) records is a repeatable list[RecordClass]
     field: generated, loaded one element per line, and written back one line
     per element. No real DFN has one yet, so a synthetic one."""
@@ -1290,7 +1290,7 @@ def test_tagged_record_list_roundtrip(tmp_path):
     assert [line for line in lines if line.startswith("SCALE")] == ["SCALE 2.0", "SCALE 3.0"]
 
 
-def test_union_list_outside_period_roundtrip(tmp_path):
+def test_union_list_outside_period_roundtrip(tmp_path, monkeypatch):
     """A list of unions gets the same arm classes and keyword dispatch in
     any block, not just the period block. No real DFN has one outside the
     period block yet, so a synthetic one."""

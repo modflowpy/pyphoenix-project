@@ -186,6 +186,8 @@ class ComponentSpec:
     # Dims counting item columns that aren't fields, name -> DFN expression
     # Observation types the component's OBS file takes, name -> id forms
     observations: dict[str, tuple[tuple[str, ...], ...]] = dc_field(default_factory=dict)
+    # The repeating blocks' headers, block name -> Header(...) source
+    headers: dict[str, str] = dc_field(default_factory=dict)
     has_griddata: bool = False
     has_readarray_period: bool = False
     # A model subpackage's __all__: the model and its packages
@@ -490,6 +492,13 @@ def _expand_record_field(f: Record, block_name: str) -> tuple[list[FieldSpec], l
         )
 
     return specs, gen_fields
+
+
+def _untagged(f: FieldV3) -> dict[str, bool]:
+    """A component field's ``tagged`` metadata: said only when it's untagged,
+    as the block's other rows belong to it. (A record's columns are the other
+    way round: see `Record`.)"""
+    return {} if getattr(f, "tagged", True) else {"tagged": False}
 
 
 def _ml_field(
@@ -1704,21 +1713,34 @@ def build_component_spec(
             _readarray_period_fields.append(f)
             continue
 
-        # STO-family (chf/gwf/olf-sto): a bare scalar directly in the period
-        # block ("storage", valid=["steady-state","transient"]) -- not a List,
-        # but still needs the same per-period, fill-forward dict[int, ...]
-        # treatment as any other period field (the whole point of a period
-        # block is that its contents can differ/repeat across BEGIN PERIOD
-        # blocks). One column, since there's nothing else in the block.
+        # STO-family (chf/gwf/olf-sto): one string per period, directly in
+        # the period block (the DFN's stress_period_data, valid steady-state
+        # or transient), as a value per period, filled forward.
         if block_name in _fill_forward_blocks and filters.is_scalar(f):
-            item_classes.append(
-                ItemClassSpec(
-                    class_name="StressPeriodData",
-                    keyword="",
-                    schema=[filters.attr_column(f.name, "str", "string", {}, optional=False)],
+            valid = tuple(getattr(f, "valid", None) or ())
+            words = ", ".join(repr(v) for v in valid)
+            period_specs.append(
+                FieldSpec(
+                    dfn_name=f.name,
+                    py_name="stress_period_data",
+                    type_annotation=(
+                        f"Optional[dict[int, Literal[{words}]]]"
+                        if words
+                        else "Optional[dict[int, str]]"
+                    ),
+                    spec_call=_ml_field(
+                        "string",
+                        metadata={
+                            "block": block_name,
+                            "fill_forward": True,
+                            "valid": valid,
+                            **_untagged(f),
+                        },
+                    ),
+                    generatable=True,
                 )
             )
-            _period_item = "StressPeriodData"
+            generatable_field_objects.append((block_name, f))
             continue
 
         # maxbound: emitted as a computed property (see computed_field_specs
@@ -1740,8 +1762,7 @@ def build_component_spec(
             _repeating_block_meta: dict[str, Any] = {"block": block_name}
             if getattr(f, "shape", None):
                 _repeating_block_meta["shape"] = tuple(f.shape)
-            if getattr(f, "tagged", True):
-                _repeating_block_meta["tagged"] = True
+            _repeating_block_meta |= _untagged(f)
             data_specs.append(
                 FieldSpec(
                     dfn_name=f.name,
@@ -1803,6 +1824,7 @@ def build_component_spec(
             )
             generatable_field_objects.append((block_name, f))
         elif filters.can_expand_record(f):
+            # a record spread over its members' own attributes
             specs, gen_fields = _expand_record_field(f, block_name)
             target.extend(specs)
             generatable_field_objects.extend((block_name, gf) for gf in gen_fields)
@@ -1832,7 +1854,7 @@ def build_component_spec(
         block_item_classes.extend(_specs)
         if _union is not None:
             item_unions.append(_union)
-        _meta: dict = {"block": bp.block_name}
+        _meta: dict = {"block": bp.block_name, **_untagged(_list_field)}
         _header = component.blocks[bp.block_name].header
         if _header is not None and isinstance(_header.field, Record):
             # The block repeats under a record header: a list of block
@@ -1906,6 +1928,8 @@ def build_component_spec(
     # block gets, in a dict keyed by period.
     if _period_item is not None:
         _spd_meta: dict[str, Any] = {"block": _ff_block, "fill_forward": True}
+        if _ff_list is not None:
+            _spd_meta |= _untagged(_ff_list)
         # The DIMENSIONS field bounding each period's rows, unless it's
         # computed (maxbound): HFB's "<=maxhfb". _ff_list computed above.
         if (
@@ -1933,6 +1957,7 @@ def build_component_spec(
     # period array separately, keyed by the 0-based periods it's given in
     # (see flopy4.mf6.period_arrays).
     if _readarray_period_fields:
+        assert _ff_block is not None  # they're its fields
         # a grid package's period can be cleared, None (see period_arrays)
         _grid = any(f.name == "readarraygrid" for _, f in all_fields)
         for _ra_f in _readarray_period_fields:
@@ -1971,6 +1996,7 @@ def build_component_spec(
     # period, then by the auxiliary names (the fk), each array like a READARRAY
     # period field's.
     for _lf, _arr, _fk in _dynamically_named_period_fields:
+        assert _ff_block is not None  # they're its fields
         _na_meta: dict = {"block": _ff_block}
         if shape := getattr(_arr, "shape", None):
             _na_meta["shape"] = tuple(shape)
@@ -2042,12 +2068,18 @@ def build_component_spec(
     )
     legacy_kwargs = _legacy_kwargs(component)
     if legacy_kwargs:
-        if _period_item is None:
-            raise ValueError(f"{component.name}: legacy period keywords, but no period list")
+        # a period list, or STO's word per period
+        if _period_item is None and not any(
+            fs.py_name == "stress_period_data" for fs in period_specs
+        ):
+            raise ValueError(f"{component.name}: legacy period keywords, but no period data")
         extra_imports.extend(
             f"from flopy4.mf6.legacy import {convert or 'Legacy'}"
             for convert in {None, *(c for _, c in _LEGACY_PERIOD_KWARGS[component.name])}
         )
+    _headers = filters.headers(component)
+    if _headers:
+        _spec_functions.add("Header")
     imports = _generated_imports(
         generatable_field_objects,
         base_class=base,
@@ -2070,7 +2102,8 @@ def build_component_spec(
             fs.spec_call.startswith("child(") and "Union[" in fs.type_annotation
             for fs in field_specs
         ),
-        has_literal=any(u.words for u in item_unions),
+        has_literal=any(u.words for u in item_unions)
+        or any("Literal[" in fs.type_annotation for fs in field_specs),
         extra_imports=[
             *extra_imports,
             *(["from flopy4.mf6.block import Block"] if block_classes else []),
@@ -2115,6 +2148,7 @@ def build_component_spec(
         computed_fields=computed_field_specs,
         derived_dims=_derived_dims,
         shared_dims=shared_dims,
+        headers=_headers,
         observations={
             name: tuple(_obs_forms(f)) for name, f in sorted((component.observations or {}).items())
         },

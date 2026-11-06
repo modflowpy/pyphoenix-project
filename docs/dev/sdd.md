@@ -168,9 +168,11 @@ The sparse input format used by MODFLOW 6 is in tension with an object model whe
 
 The conversion layer (`flopy4.mf6.converter`) transforms between the product's `xarray`/`attrs`-based object model and plain Python data structures suitable for serialization. This layer is format-agnostic and handles structural transformations common across formats.
 
+The generated classes are the only schema this layer reads. Codegen compiles the DFNs into each class's fields and their metadata, and no DFN is read at load or write: `flopy4.mf6.spec` finds a class's blocks (`file_blocks`) and how a block's rows find their fields (`block_keys`) from those fields. A test holds freshly generated classes to the DFNs they came from (`test/mf6/test_mf6_routing.py`), so what the converter needs from a DFN but a class doesn't carry is a codegen fix.
+
 **Unstructuring (write time)**: `converter.egress.unstructure` converts components to a form suitable for serialization, handling transformations like:
 
-- Grouping fields into blocks according to their `block` metadata from DFNs
+- Grouping fields into blocks according to their `block` metadata
 - Converting child components to binding tables for parent component name files
 - Slicing time-varying arrays by stress period, returned in a period-indexed `dict`
 - Converting `Path` objects to tuples (`<name>`, `FILEIN`/`FILEOUT`, `<path>`)

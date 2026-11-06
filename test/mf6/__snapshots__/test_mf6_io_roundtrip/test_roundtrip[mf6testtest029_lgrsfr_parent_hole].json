@@ -15,8 +15,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 sfr_hole.ims sfr_hole",
     " MXITER 1",
+    " IMS6 sfr_hole.ims sfr_hole",
     "END SOLUTIONGROUP 1"
   ],
   "sfr_hole.chd": [

@@ -296,8 +296,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 TM9_global.ims PARENT CHILD",
     " MXITER 1",
+    " IMS6 TM9_global.ims PARENT CHILD",
     "END SOLUTIONGROUP 1"
   ],
   "parent-child.gwfexg": [

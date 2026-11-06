@@ -45,6 +45,7 @@ class Tdis(TdisMethods, DimsProviderMethods, Package):
     perioddata: Optional[list[Perioddata]] = list_(
         default=((1.0, 1, 1.0),),
         block="perioddata",
+        tagged=False,
         shape=("nper",),
     )  # type: ignore[assignment]
 

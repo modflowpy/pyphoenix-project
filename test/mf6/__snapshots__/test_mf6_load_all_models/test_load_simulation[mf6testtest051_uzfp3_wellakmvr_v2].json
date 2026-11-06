@@ -1114,22 +1114,6 @@
   },
   "simulation/uzfp3_lakmvr/sto": {
     "__type__": "Sto",
-    "_stress_period_data": {
-      "0": {
-        "__table__": "StressPeriodData",
-        "n": 1,
-        "stress_period_data": [
-          "STEADY-STATE"
-        ]
-      },
-      "1": {
-        "__table__": "StressPeriodData",
-        "n": 1,
-        "stress_period_data": [
-          "TRANSIENT"
-        ]
-      }
-    },
     "dims": {
       "ncelldim": 3,
       "ncol": 10,
@@ -1147,6 +1131,10 @@
     "ss": "float64[300] 19827a00e2b4e010",
     "ss_confined_only": false,
     "storagecoefficient": false,
+    "stress_period_data": {
+      "0": "steady-state",
+      "1": "transient"
+    },
     "sy": "float64[300] 65156b101a71ecd0"
   }
 }

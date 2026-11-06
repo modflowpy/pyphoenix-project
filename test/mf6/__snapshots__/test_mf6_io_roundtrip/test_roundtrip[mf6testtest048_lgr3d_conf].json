@@ -99,8 +99,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 simulation.ims parent child",
     " MXITER 1",
+    " IMS6 simulation.ims parent child",
     "END SOLUTIONGROUP 1"
   ],
   "parent.chd": [

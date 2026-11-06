@@ -12,6 +12,7 @@ from flopy4.mf6.item import Item
 from flopy4.mf6.legacy import Legacy
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import (
+    Header,
     array,
     cellid_,
     child,
@@ -34,6 +35,10 @@ class Lak(Package):
     ftype: ClassVar[str] = "LAK6"
 
     multi_package: ClassVar[bool] = True
+
+    headers: ClassVar[dict[str, Header]] = {
+        "period": Header("integer", index=True),
+    }
 
     observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
         "conductance": (("index", "index"), ("index", "string"), ("string",)),
@@ -337,21 +342,25 @@ class Lak(Package):
     packagedata: Optional[list[Packagedata]] = list_(
         default=None,
         block="packagedata",
+        tagged=False,
         shape=("nlakes",),
     )
     connectiondata: Optional[list[Connectiondata]] = list_(
         default=None,
         block="connectiondata",
+        tagged=False,
         write_if_empty=True,
     )
     tables: Optional[list[Tables]] = list_(
         default=None,
         block="tables",
+        tagged=False,
         shape=("ntables",),
     )
     outlets: Optional[list[Outlets]] = list_(
         default=None,
         block="outlets",
+        tagged=False,
         shape=("noutlets",),
     )
     _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = list_(
@@ -360,6 +369,7 @@ class Lak(Package):
         repr=False,
         block="period",
         fill_forward=True,
+        tagged=False,
     )
 
     nlakeconn = DerivedDim("sum(packagedata.nlakeconn)")

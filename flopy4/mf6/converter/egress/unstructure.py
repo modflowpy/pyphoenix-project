@@ -1,6 +1,5 @@
-from collections.abc import Iterable, Mapping
-from datetime import datetime
-from functools import cache, partial
+from collections.abc import Mapping
+from functools import cached_property, partial
 from pathlib import Path
 from typing import Any
 
@@ -10,25 +9,26 @@ import xarray as xr
 from modflow_devtools.dfns import dim_value
 
 from flopy4._imports import isinstance_of
-from flopy4.attrs_xarray import child_field_candidates
 from flopy4.mf6._types import TimeArraySeriesRef
 from flopy4.mf6.block import block_list_type
 from flopy4.mf6.component import Component, WorkspaceComponent
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.converter.binding import write_row
+from flopy4.mf6.converter.ingress.structure import _init_key, _per_header
 from flopy4.mf6.dims_provider_methods import DimsProviderMethods
-from flopy4.mf6.item import (
-    Item,
-    conditional_fields,
-    dim_lookup,
-    item_list_type,
-    sized_by,
-)
+from flopy4.mf6.item import Item, conditional_fields, dim_lookup, item_list_type, sized_by
 from flopy4.mf6.item_table import ItemTable, Rows
 from flopy4.mf6.package import Package
 from flopy4.mf6.period_arrays import is_cleared, is_grid_package
 from flopy4.mf6.record import Record, record_type
-from flopy4.mf6.spec import FileDirection, block_sort_key, blocks_dict, to_field_type
+from flopy4.mf6.spec import (
+    FileDirection,
+    binding_fields,
+    block_keys,
+    field_key,
+    file_blocks,
+    is_tagged,
+)
 from flopy4.mf6.write_context import WriteContext
 from flopy4.spec import is_array
 
@@ -52,51 +52,6 @@ def _child_path(child: Component) -> Path:
     simulation workspace, or just the name if it's absolute."""
     path = child.filename
     return Path(path.name) if path.is_absolute() else path
-
-
-def _put_child_file_records(block: dict, field: attrs.Attribute, value: Any) -> None:
-    """File records naming children: NCF6 FILEIN <child's file>."""
-    children = value if isinstance(value, list) else [value]
-    rows = [_path_to_tuple(field, _child_path(c)) for c in children if c is not None]
-    if rows and isinstance(value, list):
-        block[field.name] = rows
-    elif rows:
-        block[rows[0][0].lower()] = rows[0]
-
-
-def _make_binding_blocks(value: Component) -> dict[str, dict[str, list[tuple[str, ...]]]]:
-    if not isinstance(value, WorkspaceComponent):
-        return {}
-
-    blocks = {}  # type: ignore
-
-    for f in attrs.fields(type(value)):  # type: ignore[arg-type]
-        # a child() field; a record option is a field like any other
-        if not f.metadata.get("child") or child_field_candidates(f) is None:
-            continue
-        child_name = f.name
-        if (child := getattr(value, child_name, None)) is None:
-            continue
-        block_name = f.metadata.get("block")
-        if block_name is None:
-            continue
-        if block_name not in blocks:
-            blocks[block_name] = {}
-        if f.metadata.get("_keyword"):
-            _put_child_file_records(blocks[block_name], f, child)
-            continue
-        columns = f.metadata["row"]
-        match child:
-            case Component():
-                blocks[block_name][child_name] = [write_row(child, columns)]
-            case Iterable():
-                rows = [write_row(c, columns) for c in child if c is not None]
-                if rows:
-                    blocks[block_name][child_name] = rows
-            case _:
-                raise ValueError(f"Unexpected child type: {type(child)}")
-
-    return blocks
 
 
 def _grid_dims(value: Package) -> tuple[int, tuple[int, ...]]:
@@ -246,198 +201,24 @@ def _normalize_kper(kper: Any) -> int | None:
         return None
 
 
-def _unstructure_package(value: Package) -> dict[str, Any]:
-    """Unstructure a package into a dict."""
-    cls = type(value)
-    blocks: dict[str, dict[str, Any]] = {}
-    write_if_empty_set: set[str] = set()
-    spd_period: dict[int, Rows] = {}
-    readarray_period: dict[int, dict[str, Any]] = {}
-    # per period, the (non-aux) array fields given, and those all DNODATA
-    stress_period: dict[int, set[str]] = {}
-    nodata_period: dict[int, set[str]] = {}
-    # resolved once, if an array's written
-    grid_dims = cache(lambda: _grid_dims(value))
-    ncelldim = _ncelldim(value)
-    grid = is_grid_package(cls)
-    fill_forward_block: str | None = None
-
-    for f in attrs.fields(cls):  # type: ignore[arg-type]
-        meta = f.metadata
-        block_name = meta.get("block")
-        if not block_name:
-            continue
-
-        if meta.get("write_if_empty"):
-            write_if_empty_set.add(block_name)
-            blocks.setdefault(block_name, {})
-
-        attr_name = f.alias if (f.alias and f.name.startswith("_")) else f.name
-        field_value = getattr(value, attr_name, None)
-        if field_value is None:
-            continue
-
-        dfn_type = to_field_type(f.type)
-
-        # fill-forward block
-        if meta.get("fill_forward"):
-            fill_forward_block = block_name
-            # dynamically named arrays (RCHA's aux): {kper: {name: array}}, each
-            # written under its name
-            if meta.get("fk"):
-                for kper, arrays in field_value.items():
-                    for name, arr in arrays.items():
-                        readarray_period.setdefault(kper, {})[name] = _period_dataarray(
-                            name, arr, meta, *grid_dims()
-                        )
-                continue
-            # arrays: {kper: array}
-            if item_list_type(f.type) is None:
-                for kper, arr in field_value.items():
-                    # a cleared grid period's array is None, filled below
-                    readarray_period.setdefault(kper, {})[f.name] = (
-                        None if arr is None else _period_dataarray(f.name, arr, meta, *grid_dims())
-                    )
-                    if grid and is_cleared(arr):
-                        nodata_period.setdefault(kper, set()).add(f.name)
-                    stress_period.setdefault(kper, set()).add(f.name)
-                continue
-            # list: dict[int, list[Item]]
-            if not isinstance(field_value, dict):
-                continue
-            list_kwargs = _list_kwargs(value, attr_name, f)
-            for kper, row_list in field_value.items():
-                kper_int = _normalize_kper(kper)
-                if kper_int is None:
-                    continue
-                rows = spd_period.setdefault(kper_int, Rows(ncelldim, **list_kwargs))
-                if isinstance(row_list, (list, ItemTable)):
-                    rows.append(row_list)
-            continue
-
-        # blocks repeating under a record header (OBS's CONTINUOUS), one per
-        # header: list[Block]
-        if (block_cls := block_list_type(f.type)) is not None:
-            _, list_name, _ = block_cls.parts()
-            for block in field_value:
-                key = " ".join([block_name, *map(str, block.header_tokens())])
-                blocks[key] = {list_name: _rows(getattr(block, list_name), ncelldim)}
-            continue
-
-        if isinstance(field_value, dict):
-            # arrays keyed by time (a TAS's), a layer each
-            array_key = f.name if meta.get("tagged") else ""
-            for tval, arr in field_value.items():
-                arr = arr if hasattr(arr, "shape") or isinstance(arr, str) else np.asarray(arr)
-                blocks[f"{block_name} {tval}"] = {array_key: _grid_shaped(arr, meta, *grid_dims())}
-            continue
-
-        # non-fill-forward block
-        if block_name not in blocks:
-            blocks[block_name] = {}
-
-        if dfn_type == "keyword":
-            if field_value:
-                blocks[block_name][f.name] = field_value
-
-        elif isinstance(field_value, list) and field_value and isinstance(field_value[0], Path):
-            # A list of file records (DFN tagged list): one line each.
-            blocks[block_name][f.name] = [_path_to_tuple(f, v) for v in field_value]
-
-        elif meta.get("direction") and isinstance(field_value, Path):
-            t = _path_to_tuple(f, field_value)
-            blocks[block_name][t[0].lower()] = t
-
-        elif meta.get("child") and meta.get("_keyword"):
-            _put_child_file_records(blocks[block_name], f, field_value)
-
-        elif (
-            isinstance(field_value, (list, ItemTable))
-            and field_value
-            and isinstance(field_value[0], Item)
-        ):
-            blocks[block_name][f.name] = _rows(
-                field_value, ncelldim, **_list_kwargs(value, attr_name, f)
-            )
-
-        elif isinstance(field_value, list) and field_value and isinstance(field_value[0], tuple):
-            blocks[block_name][f.name] = field_value
-
-        elif is_array(f) and meta.get("shape") and not isinstance(field_value, bool):
-            # a grid array; an inline one has no shape (AUXILIARY's names)
-            if meta.get("index"):
-                field_value = _to_file_index(field_value)
-            # a grid package's arrays are shaped like its grid; others' (NPF's
-            # K) stay as given, non-layered, which MF6 reads in one go
-            dims = grid_dims() if isinstance(value, DimsProviderMethods) else (1, ())
-            blocks[block_name][f.name] = _mark_netcdf(_grid_shaped(field_value, meta, *dims), meta)
-
-        elif isinstance(field_value, np.ndarray) and field_value.dtype.kind == "U":
-            # An inline string array (AUXILIARY's names): one line.
-            if field_value.size:
-                blocks[block_name][f.name] = (f.name.upper(), *map(str, field_value))
-
-        elif isinstance(field_value, Record):
-            blocks[block_name][f.name] = field_value.to_tokens()
-
-        elif (rec := record_type(f.type)) is not None:
-            raise _not_a_record(value, f.name, rec, field_value)
-
-        elif dfn_type in ("integer", "double", "double precision"):
-            blocks[block_name][f.name] = field_value
-
-        elif dfn_type == "string" and field_value:
-            blocks[block_name][f.name] = field_value
-
-    # `maxbound` is a computed property on some classes, not a real field
-    if isinstance(getattr(cls, "maxbound", None), property):
-        maxbound = value.maxbound  # type: ignore[attr-defined]
-        if maxbound:
-            blocks.setdefault("dimensions", {})["maxbound"] = maxbound
-
-    # sort filled blocks by label
-    if fill_forward_block is not None:
-        for kper in sorted(spd_period.keys()):
-            key = f"{fill_forward_block} {kper + 1}"
-            blocks[key] = {fill_forward_block: spd_period[kper]}
-
-        # One block per period any array is given in. A grid package's
-        # period whose stress arrays are all DNODATA clears every boundary:
-        # an empty block.
-        for kper in sorted(readarray_period.keys()):
-            key = f"{fill_forward_block} {kper + 1}"
-            if grid and stress_period.get(kper) and nodata_period.get(kper) == stress_period[kper]:
-                blocks[key] = {}
-                write_if_empty_set.add(key)
-            else:
-                arrays = readarray_period[kper]
-                like = next(a for a in arrays.values() if a is not None)
-                blocks[key] = {
-                    n: xr.full_like(like, FILL_DNODATA, dtype=np.float64) if a is None else a
-                    for n, a in arrays.items()
-                }
-
-    return {
-        name: block
-        for name, block in sorted(blocks.items(), key=block_sort_key)
-        if block or name in write_if_empty_set
-    }
-
-
-def annotate_arrays(data: dict[str, Any], context: WriteContext) -> dict[str, Any]:
+def annotate_arrays(
+    data: dict[str, Any], cls: type[Component], context: WriteContext
+) -> dict[str, Any]:
     """Copy each array's settings from `context.arrays` (see `ArrayKey`) onto
     the DataArray `data` holds for it, as attrs the writer reads: `iprn`,
     and `layer_iprn` for layers of a layered array whose IPRN differs from
     the whole array's; `path`, `format`, `hash` and `layered`, and
     `layer_path`, `layer_format` and `layer_hash` for layers given their
-    own (see `write_external_arrays` and `array_how`). A period block's
-    arrays are keyed by period."""
+    own (see `write_external_arrays` and `array_how`). A block whose
+    header is an index (a period's IPER, see `cls.headers`) has its
+    arrays keyed by it, 0-based."""
     if not context.arrays:
         return data
     out: dict[str, Any] = {}
     for block_name, block in data.items():
         name, _, header = block_name.partition(" ")
-        kper = int(header) - 1 if name == "period" and header.isdigit() else None
+        kind = cls.headers.get(name)
+        kper = int(header) - 1 if kind is not None and kind.index and header.isdigit() else None
         if not isinstance(block, dict):
             out[block_name] = block
             continue
@@ -481,74 +262,226 @@ def _not_a_record(component: Component, name: str, rec: type[Record], value: Any
 
 
 def unstructure_component(value: Component) -> dict[str, Any]:
-    # TODO unify _unstructure_package/_unstructure_component into one path
-    if isinstance(value, Package):
-        return _unstructure_package(value)
-    return _unstructure_component(value)
+    """A component as the writer takes it, ``{block: {field: value}}``
+    (see `_Unstructure`)."""
+    return _Unstructure(value).blocks()
 
 
-def _unstructure_component(value: Component) -> dict[str, Any]:
-    """Unstructure an internal-node component (Gwf, Simulation, etc.) with
-    attrs-typed child fields, including its child binding blocks."""
-    blockspec = blocks_dict(type(value))
-    blocks: dict[str, dict[str, Any]] = {}
-    fields_by_name = {f.name: f for f in attrs.fields(type(value))}  # type: ignore[arg-type]
+class _Unstructure:
+    """One component's blocks for the writer, the inverse of the loader's
+    `_Load`: its class's blocks, in file order (see `file_blocks`), each
+    field keyed by its name in the file (see `field_key`), from its
+    attribute or from a property computing it (a list package's MAXBOUND).
+    A repeating block is written once per header (see `occurrences`), and the rows
+    naming children (a model's packages, the simulation's models and
+    solutions) are made from them (see `bindings`). A block with nothing
+    to write is left out, unless codegen marked it `write_if_empty` or
+    it's a name file's."""
 
-    # create child component binding blocks
-    blocks.update(_make_binding_blocks(value))
+    def __init__(self, value: Component) -> None:
+        self.value = value
+        self.cls = type(value)
+        self._fields = attrs.fields_dict(self.cls)  # type: ignore[arg-type]
+        self.grid = is_grid_package(self.cls)
+        # blocks whose rows name children
+        self.binding_blocks = binding_fields(self.cls)
 
-    for block_name, block in blockspec.items():
-        if block_name not in blocks:
-            blocks[block_name] = {}
+    @cached_property
+    def ncelldim(self) -> int | None:
+        return _ncelldim(self.value) if isinstance(self.value, Package) else None
 
-        for field_name in block.keys():
-            # Skip child components already processed as bindings
-            field = fields_by_name.get(field_name)
-            if (
-                isinstance(value, WorkspaceComponent)
-                and field is not None
-                and field.metadata.get("child")
-                and child_field_candidates(field) is not None
-                and field.metadata.get("block") == block_name
+    @cached_property
+    def grid_dims(self) -> tuple[int, tuple[int, ...]]:
+        return _grid_dims(self.value)  # type: ignore[arg-type]
+
+    def blocks(self) -> dict[str, dict[str, Any]]:
+        out: dict[str, dict[str, Any]] = {}
+        keep: set[str] = set()
+        for name in file_blocks(self.cls):
+            if isinstance(self.value, WorkspaceComponent) or any(
+                f.metadata.get("write_if_empty")
+                for f in self._fields.values()
+                if f.metadata.get("block") == name
             ):
+                keep.add(name)
+            if name not in self.cls.headers:
+                out[name] = self.body(name)
+            else:
+                for header, (body, empty) in self.occurrences(name).items():
+                    out[f"{name} {header}"] = body
+                    if empty:
+                        keep.add(f"{name} {header}")
+        return {name: body for name, body in out.items() if body or name in keep}
+
+    def entries(self, name: str) -> "dict[str, attrs.Attribute | None]":
+        """The block `name`'s fields, in file order, by their keys for the
+        writer: a computed field first, with no attribute; a binding block's
+        children as one entry, its rows, keyed and placed where the first
+        of them is, likewise with no attribute."""
+        out: "dict[str, attrs.Attribute | None]" = dict.fromkeys(
+            block_keys(self.cls, name).computed
+        )
+        for a in file_blocks(self.cls)[name]:
+            if a.metadata.get("row"):
+                out[name] = None
+            else:
+                out[field_key(a)] = a
+        return out
+
+    def body(self, name: str) -> dict[str, Any]:
+        """A block that doesn't repeat, by field."""
+        values = {key: self.value_of(name, key, a) for key, a in self.entries(name).items()}
+        return {k: v for k, v in values.items() if v is not None}
+
+    def value_of(self, name: str, key: str, a: "attrs.Attribute | None") -> Any:
+        """The field's value as the writer takes it, or None to leave it
+        out. With no attribute, it's a binding block's rows or a computed
+        field; a MAXBOUND of 0 (no rows) isn't written."""
+        if a is None:
+            return self.bindings(name) if key == name else getattr(self.value, key) or None
+        value = getattr(self.value, _init_key(a), None)
+        return None if value is None else self.field(key, a, value)
+
+    def field(self, key: str, a: attrs.Attribute, value: Any) -> Any:
+        """The field `a`'s value as the writer takes it, by its type, or
+        None to leave it out."""
+        meta = a.metadata
+        if meta.get("child"):
+            # a child's file record: OBS6 FILEIN <the child's file>
+            if isinstance(value, list):
+                return [_path_to_tuple(a, _child_path(c)) for c in value if c is not None] or None
+            return _path_to_tuple(a, _child_path(value))
+        match meta.get("type"):
+            case "keyword":
+                return value or None
+            case "integer" | "double":
+                return value
+            case "string":
+                return value or None
+            case "file" if isinstance(value, list):
+                # a tagged list of file records: one line each
+                return [_path_to_tuple(a, v) for v in value] or None
+            case "file":
+                return _path_to_tuple(a, value)
+            case "record":
+                if not isinstance(value, Record):
+                    raise _not_a_record(self.value, a.name, record_type(a.type) or Record, value)
+                return value.to_tokens()
+            case "array" if meta.get("shape"):
+                # a grid array; a grid package's are shaped like its grid,
+                # others' (NPF's K) stay as given, non-layered, which MF6
+                # reads in one go
+                if meta.get("index"):
+                    value = _to_file_index(value)
+                dims = self.grid_dims if isinstance(self.value, DimsProviderMethods) else (1, ())
+                return _mark_netcdf(_grid_shaped(value, meta, *dims), meta)
+            case "array":
+                # inline (AUXILIARY's names): one line
+                return (key.upper(), *map(str, value)) if len(value) else None
+            case "list" if not value:
+                return None
+            case "list" if isinstance(value[0], tuple):
+                return value
+            case "list":
+                return _rows(value, self.ncelldim, **self.list_kwargs(a))
+        return None
+
+    def bindings(self, name: str) -> list[tuple[str, ...]] | None:
+        """The rows naming the children of the block `name` (``GWF6
+        <file> <name>``), in field order: the inverse of
+        `_resolve_bindings`."""
+        rows = []
+        for f, *_ in self.binding_blocks.get(name, ()):
+            child = getattr(self.value, f.name, None)
+            children = child if isinstance(child, list) else [child]
+            rows += [write_row(c, f.metadata["row"]) for c in children if c is not None]
+        return rows or None
+
+    def list_kwargs(self, a: attrs.Attribute) -> dict[str, Any]:
+        """A list field's `Rows` arguments, for writing it to a file."""
+        return _list_kwargs(self.value, _init_key(a), a)  # type: ignore[arg-type]
+
+    def occurrences(self, name: str) -> dict[str, tuple[dict[str, Any], bool]]:
+        """A repeating block's occurrences by header as written (a period's
+        1-based number), each its fields and whether it's written even if
+        empty (a grid package's period clearing every boundary). A field
+        holding one value, not one per header (the simulation's MXITER),
+        is the first occurrence's (``SOLUTIONGROUP 1``). A period's
+        cleared grid array (None) is written as DNODATA."""
+        header = self.cls.headers[name]
+        numbered = header.kind != "record"
+        found: dict[Any, dict[str, Any]] = {}
+        # per period, the (non-aux) arrays given, and those all DNODATA
+        given: dict[Any, set[str]] = {}
+        cleared: dict[Any, set[str]] = {}
+        for key, a in self.entries(name).items():
+            if a is None or not _per_header(a):
+                if (value := self.value_of(name, key, a)) is not None:
+                    found.setdefault(1, {})[key] = value
                 continue
-
-            raw_value = getattr(value, field_name, None)
-            if raw_value is None:
+            if (value := getattr(self.value, _init_key(a), None)) is None:
                 continue
-            # a private field's file name is its alias (Gwf's _list: LIST), a
-            # renamed keyword's is its name without the underscore (continue_)
-            key = field.alias if field is not None and field_name.startswith("_") else field_name
-            key = key.removesuffix("_")
-            if isinstance(raw_value, Record):
-                blocks[block_name][key] = raw_value.to_tokens()
+            meta = a.metadata
+            if (blocks := block_list_type(a.type)) is not None:
+                # OBS's CONTINUOUS FILEOUT <name>: list[Block]
+                _, list_name, _ = blocks.parts()
+                for b in value:
+                    header_tokens = " ".join(map(str, b.header_tokens()))
+                    found.setdefault(header_tokens, {})[key] = _rows(
+                        getattr(b, list_name), self.ncelldim
+                    )
+            elif meta.get("fk"):
+                # dynamically named arrays (RCHA's aux): {kper: {name: array}},
+                # each written under its name
+                for kper, arrays in value.items():
+                    for aux, arr in arrays.items():
+                        found.setdefault(kper, {})[aux] = _period_dataarray(
+                            aux, arr, meta, *self.grid_dims
+                        )
+            elif is_array(a) and meta.get("fill_forward"):
+                for kper, arr in value.items():
+                    found.setdefault(kper, {})[key] = (
+                        None if arr is None else _period_dataarray(key, arr, meta, *self.grid_dims)
+                    )
+                    if self.grid and is_cleared(arr):
+                        cleared.setdefault(kper, set()).add(key)
+                    given.setdefault(kper, set()).add(key)
+            elif is_array(a):
+                # TAS times: {time: array}, a layer each
+                tag = key if is_tagged(a) else ""
+                for time, arr in value.items():
+                    arr = arr if hasattr(arr, "shape") or isinstance(arr, str) else np.asarray(arr)
+                    found.setdefault(time, {})[tag] = _grid_shaped(arr, meta, *self.grid_dims)
+            elif meta.get("type") == "string":
+                # a word per period (STO's steady-state or transient), untagged,
+                # written uppercase as keywords are
+                for kper, word in value.items():
+                    found.setdefault(kper, {})[""] = word.upper()
+            else:
+                # a list per period: {kper: list[Item]}
+                list_kwargs = self.list_kwargs(a)
+                for kper, row_list in value.items():
+                    if (kper := _normalize_kper(kper)) is None:
+                        continue
+                    rows = found.setdefault(kper, {}).setdefault(
+                        key, Rows(self.ncelldim, **list_kwargs)
+                    )
+                    if isinstance(row_list, (list, ItemTable)):
+                        rows.append(row_list)
+
+        out: dict[str, tuple[dict[str, Any], bool]] = {}
+        for h in sorted(found) if numbered else found:
+            body = found[h]
+            label = h + 1 if header.index else h
+            if self.grid and given.get(h) and cleared.get(h) == given[h]:
+                # every stress array DNODATA clears every boundary: an empty block
+                out[str(label)] = ({}, True)
                 continue
-            if field is not None and (rec := record_type(field.type)) is not None:
-                raise _not_a_record(value, field_name, rec, raw_value)
-
-            # Dispatch on field value type
-            match field_value := raw_value:
-                case None:
-                    continue
-                case bool():
-                    if field_value:
-                        blocks[block_name][key] = field_value
-                case Path():
-                    assert field is not None  # field_name comes from blocks_dict(type(value))
-                    t = _path_to_tuple(field, field_value)
-                    blocks[block_name][t[0]] = t
-                case datetime():
-                    blocks[block_name][key] = field_value.isoformat()
-                case _:
-                    blocks[block_name][key] = field_value
-
-    blocks = dict(sorted(blocks.items(), key=block_sort_key))
-
-    # total temporary hack! manually set solutiongroup 1.
-    # TODO still need to support multiple..
-    if "solutiongroup" in blocks:
-        sg = blocks["solutiongroup"]
-        blocks["solutiongroup 1"] = sg
-        del blocks["solutiongroup"]
-
-    return {name: block for name, block in blocks.items()}
+            if any(v is None for v in body.values()):
+                like = next(v for v in body.values() if v is not None)
+                body = {
+                    k: xr.full_like(like, FILL_DNODATA, dtype=np.float64) if v is None else v
+                    for k, v in body.items()
+                }
+            out[str(label)] = (body, False)
+        return out

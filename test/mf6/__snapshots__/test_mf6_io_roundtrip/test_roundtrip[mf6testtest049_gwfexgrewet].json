@@ -19,8 +19,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 simulation.ims Model_01 Model_02 Model_03",
     " MXITER 1",
+    " IMS6 simulation.ims Model_01 Model_02 Model_03",
     "END SOLUTIONGROUP 1"
   ],
   "model.tdis": [

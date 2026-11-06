@@ -109,6 +109,7 @@ class Gwegwe(Exchange):
     exchangedata: Optional[list[Exchangedata]] = list_(
         default=None,
         block="exchangedata",
+        tagged=False,
         shape=("nexg",),
     )
 

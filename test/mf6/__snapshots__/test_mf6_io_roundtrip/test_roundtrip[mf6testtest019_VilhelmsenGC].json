@@ -15,8 +15,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 parent.ims PARENT",
     " MXITER 1",
+    " IMS6 parent.ims PARENT",
     "END SOLUTIONGROUP 1"
   ],
   "parent.dis": [

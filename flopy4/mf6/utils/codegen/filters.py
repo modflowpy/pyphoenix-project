@@ -129,6 +129,20 @@ def output_path(dfn_name: str, root: Path) -> Path:
 # Component/Block-level helpers
 
 
+def headers(component: Component) -> dict[str, str]:
+    """The component's repeating blocks' headers, by block name, each as
+    the ``Header`` codegen writes for it: its field's type, and for an
+    integer whether the DFN marks it an index (a period's IPER)."""
+    out = {}
+    for name, block in (component.blocks or {}).items():
+        if block.header is None:
+            continue
+        field = block.header.field
+        index = field.type == "integer" and bool(getattr(field, "index", False))
+        out[name] = f'Header("{field.type}"{", index=True" if index else ""})'
+    return out
+
+
 def fill_forward_blocks(component: Component) -> frozenset[str]:
     """Names of the component's repeating blocks whose header fills forward
     (a missing occurrence reuses the prior one's values) -- ``period``, per

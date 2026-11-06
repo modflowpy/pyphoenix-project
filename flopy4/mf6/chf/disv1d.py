@@ -118,11 +118,13 @@ class Disv1d(Disv1dMethods, DimsProviderMethods, Package):
     vertices: Optional[list[Vertices]] = list_(
         default=None,
         block="vertices",
+        tagged=False,
         shape=("nvert",),
     )
     cell1d: Optional[list[Cell1d]] = list_(
         default=None,
         block="cell1d",
+        tagged=False,
         shape=("nodes",),
     )
 

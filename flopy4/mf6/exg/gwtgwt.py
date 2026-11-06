@@ -109,6 +109,7 @@ class Gwtgwt(Exchange):
     exchangedata: Optional[list[Exchangedata]] = list_(
         default=None,
         block="exchangedata",
+        tagged=False,
         shape=("nexg",),
     )
 

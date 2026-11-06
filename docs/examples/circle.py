@@ -172,7 +172,7 @@ npf = flopy4.mf6.gwf.Npf(
 sto = flopy4.mf6.gwf.Sto(
     ss=1.0e-5,
     sy=0.15,
-    stress_period_data={0: [("STEADY-STATE",)]},
+    stress_period_data={0: "steady-state"},
     iconvert=0,
     dims=dims,
 )

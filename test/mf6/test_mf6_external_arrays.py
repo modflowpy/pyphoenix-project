@@ -260,6 +260,84 @@ def test_shared_outside_file_copied_once(tmp_path):
     assert (out / "rch_1.txt").read_text().split() == ["0.2"] * 4
 
 
+@pytest.fixture
+def scaled_rcha(tmp_path):
+    """RCHA periods 1 and 2 from one file, scaled by different FACTORs."""
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    (ws / "rch.txt").write_text("1.0 2.0 3.0 4.0\n")
+    (ws / "m.rcha").write_text(
+        textwrap.dedent("""\
+            BEGIN OPTIONS
+              READASARRAYS
+            END OPTIONS
+            BEGIN PERIOD 1
+             RECHARGE
+              OPEN/CLOSE rch.txt FACTOR 0.5
+            END PERIOD 1
+            BEGIN PERIOD 2
+             RECHARGE
+              OPEN/CLOSE rch.txt FACTOR 2.0 IPRN 1
+            END PERIOD 2
+        """)
+    )
+    rcha = Rcha.load(ws / "m.rcha", dims={"nlay": 1, "nodes": 4}, context=LoadContext(workspace=ws))
+    out = tmp_path / "out"
+    out.mkdir()
+    rcha.filename = str(out / "out.rcha")
+    return rcha
+
+
+def test_load_applies_factor(scaled_rcha):
+    """The values are scaled by the FACTOR, which isn't kept."""
+    assert np.ravel(scaled_rcha.recharge[0]).tolist() == [0.5, 1.0, 1.5, 2.0]
+    assert np.ravel(scaled_rcha.recharge[1]).tolist() == [2.0, 4.0, 6.0, 8.0]
+    io = scaled_rcha.write_context.arrays[("recharge", 1)]
+    assert io == ArrayIO(iprn=1, path=Path("rch.txt"), format="open/close", layered=False)
+    assert io.hash == array_hash([2.0, 4.0, 6.0, 8.0])
+
+
+def test_factored_shared_file_inlined(scaled_rcha):
+    """Periods scaling one file by different factors hold different
+    values, so can't share it: they're written inline."""
+    with pytest.warns(UserWarning, match="hold different values; writing them inline"):
+        scaled_rcha.write()
+    assert _lines(scaled_rcha.path, "OPEN/CLOSE") == []
+    assert not (scaled_rcha.path.parent / "rch.txt").exists()
+
+
+def test_factored_shared_file_apart(scaled_rcha):
+    """With an "open/close" `array_format`, they're each written to a file
+    of their own instead, and load back the same."""
+    with pytest.warns(UserWarning, match="writing .*period 1 to out_rcha_recharge_p1.txt"):
+        scaled_rcha.write(context=WriteContext(array_format="open/close"))
+    assert _lines(scaled_rcha.path, "OPEN/CLOSE") == [
+        "OPEN/CLOSE out_rcha_recharge_p1.txt",
+        "OPEN/CLOSE out_rcha_recharge_p2.txt IPRN 1",
+    ]
+    out = scaled_rcha.path.parent
+    assert not (out / "rch.txt").exists()
+    dims = {"nlay": 1, "nodes": 4}
+    again = Rcha.load(scaled_rcha.path, dims=dims, context=LoadContext(workspace=out))
+    for kper in (0, 1):
+        assert np.array_equal(again.recharge[kper], scaled_rcha.recharge[kper])
+
+
+def test_edited_array_apart(shared_rcha):
+    """Of arrays sharing a file, one edited since loaded goes to a file of
+    its own with an "open/close" `array_format`; the others keep it."""
+    shared_rcha.recharge[0][:] = 0.5
+    with pytest.warns(UserWarning, match="period 1 changed since loaded"):
+        shared_rcha.write(context=WriteContext(array_format="open/close"))
+    assert _lines(shared_rcha.path, "OPEN/CLOSE") == [
+        "OPEN/CLOSE out_rcha_recharge_p1.txt",
+        "OPEN/CLOSE rch.txt",
+    ]
+    out = shared_rcha.path.parent
+    assert (out / "out_rcha_recharge_p1.txt").read_text().split() == ["0.5"] * 4
+    assert (out / "rch.txt").read_text().split() == ["0.1"] * 4
+
+
 _HEADER = struct.Struct("<iidd16siii")
 
 

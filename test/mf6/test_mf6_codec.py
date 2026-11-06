@@ -390,18 +390,18 @@ def test_dumps_sto():
 
     sto = Sto(
         stress_period_data={
-            0: [("TRANSIENT",)],
-            1: [("STEADY-STATE",)],
-            2: [("TRANSIENT",)],
+            0: "transient",
+            1: "steady-state",
+            2: "transient",
         }
     )
 
     dumped = dumps(COMPONENT_CONVERTER.unstructure(sto))
     print("STO dump:")
     print(dumped)
-    assert "BEGIN PERIOD 1\n TRANSIENT" in dumped
-    assert "BEGIN PERIOD 2\n STEADY-STATE" in dumped
-    assert "BEGIN PERIOD 3\n TRANSIENT" in dumped
+    assert "BEGIN PERIOD 1\n  TRANSIENT" in dumped
+    assert "BEGIN PERIOD 2\n  STEADY-STATE" in dumped
+    assert "BEGIN PERIOD 3\n  TRANSIENT" in dumped
     assert dumped
 
     loaded = loads(dumped)
@@ -2806,8 +2806,8 @@ def test_oc_period_string_int_keys():
     pb_str = _period_blocks(oc_str)
 
     assert pb_int == pb_str
-    assert pb_int["period 1"]["period"] == [("SAVE", "BUDGET", "ALL")]
-    assert pb_int["period 2"]["period"] == [("SAVE", "BUDGET", "LAST")]
+    assert pb_int["period 1"]["stress_period_data"] == [("SAVE", "BUDGET", "ALL")]
+    assert pb_int["period 2"]["stress_period_data"] == [("SAVE", "BUDGET", "LAST")]
     # No fill-forward: period 3 was not specified so it produces no block.
     assert "period 3" not in pb_int
 
@@ -2825,7 +2825,10 @@ def test_oc_period_wildcard_fillforward():
 
     assert len(pb) == 4
     for i in range(1, 5):
-        assert pb[f"period {i}"]["period"] == [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "LAST")]
+        assert pb[f"period {i}"]["stress_period_data"] == [
+            ("SAVE", "HEAD", "ALL"),
+            ("SAVE", "BUDGET", "LAST"),
+        ]
 
 
 def test_oc_period_steps_syntax():
@@ -2841,11 +2844,11 @@ def test_oc_period_steps_syntax():
     )
     pb = _period_blocks(oc)
 
-    assert ("SAVE", "BUDGET", "STEPS", 1, 3, 5) in pb["period 1"]["period"]
-    assert ("PRINT", "BUDGET", "STEPS", 1) in pb["period 1"]["period"]
+    assert ("SAVE", "BUDGET", "STEPS", 1, 3, 5) in pb["period 1"]["stress_period_data"]
+    assert ("PRINT", "BUDGET", "STEPS", 1) in pb["period 1"]["stress_period_data"]
     # no fill-forward: period 2 doesn't re-emit SAVE BUDGET
-    assert not any(t[:2] == ("SAVE", "BUDGET") for t in pb["period 2"]["period"])
-    assert ("PRINT", "BUDGET", "LAST") in pb["period 2"]["period"]
+    assert not any(t[:2] == ("SAVE", "BUDGET") for t in pb["period 2"]["stress_period_data"])
+    assert ("PRINT", "BUDGET", "LAST") in pb["period 2"]["stress_period_data"]
 
 
 def test_oc_period_stop_sentinel():
@@ -2866,11 +2869,11 @@ def test_oc_period_stop_sentinel():
 
     assert len(pb) == 3
     for i in range(1, 4):
-        assert ("SAVE", "HEAD", "ALL") in pb[f"period {i}"]["period"]
+        assert ("SAVE", "HEAD", "ALL") in pb[f"period {i}"]["stress_period_data"]
 
-    assert ("SAVE", "BUDGET", "STEPS", 1) in pb["period 1"]["period"]
-    assert not any(t[:2] == ("SAVE", "BUDGET") for t in pb["period 2"]["period"])
-    assert not any(t[:2] == ("SAVE", "BUDGET") for t in pb["period 3"]["period"])
+    assert ("SAVE", "BUDGET", "STEPS", 1) in pb["period 1"]["stress_period_data"]
+    assert not any(t[:2] == ("SAVE", "BUDGET") for t in pb["period 2"]["stress_period_data"])
+    assert not any(t[:2] == ("SAVE", "BUDGET") for t in pb["period 3"]["stress_period_data"])
 
 
 def test_oc_period_mixed_keys_no_silent_drop():
@@ -2887,9 +2890,9 @@ def test_oc_period_mixed_keys_no_silent_drop():
     )
     pb = _period_blocks(oc)
 
-    assert ("SAVE", "HEAD", "FIRST") in pb["period 1"]["period"]
-    assert ("SAVE", "HEAD", "LAST") in pb["period 2"]["period"]
-    assert ("SAVE", "HEAD", "ALL") in pb["period 3"]["period"]
+    assert ("SAVE", "HEAD", "FIRST") in pb["period 1"]["stress_period_data"]
+    assert ("SAVE", "HEAD", "LAST") in pb["period 2"]["stress_period_data"]
+    assert ("SAVE", "HEAD", "ALL") in pb["period 3"]["stress_period_data"]
 
 
 def test_oc_dumps_steps_in_output():
@@ -2933,10 +2936,10 @@ def test_oc_period_frequency():
     )
     pb = _period_blocks(oc)
 
-    assert ("SAVE", "HEAD", "FREQUENCY", 2) in pb["period 1"]["period"]
-    assert ("SAVE", "HEAD", "FREQUENCY", 2) in pb["period 2"]["period"]
-    assert ("SAVE", "HEAD", "FREQUENCY", 2) in pb["period 3"]["period"]
-    assert ("SAVE", "BUDGET", "ALL") in pb["period 1"]["period"]
+    assert ("SAVE", "HEAD", "FREQUENCY", 2) in pb["period 1"]["stress_period_data"]
+    assert ("SAVE", "HEAD", "FREQUENCY", 2) in pb["period 2"]["stress_period_data"]
+    assert ("SAVE", "HEAD", "FREQUENCY", 2) in pb["period 3"]["stress_period_data"]
+    assert ("SAVE", "BUDGET", "ALL") in pb["period 1"]["stress_period_data"]
 
 
 # ---------------------------------------------------------------------------
@@ -2967,7 +2970,7 @@ def test_lak_period_lake_keywords():
     )
     pb = _lak_period_blocks(lak)
 
-    rows_p1 = pb["period 1"]["period"]
+    rows_p1 = pb["period 1"]["stress_period_data"]
     assert (1, "STATUS", "ACTIVE") in rows_p1  # emitted 1-based
     assert (2, "STATUS", "CONSTANT") in rows_p1
     assert (2, "STAGE", 5.0) in rows_p1
@@ -2991,7 +2994,7 @@ def test_lak_period_outlet_keywords():
     )
     pb = _lak_period_blocks(lak)
 
-    rows = pb["period 1"]["period"]
+    rows = pb["period 1"]["stress_period_data"]
     assert (1, "RATE", 100.0) in rows  # emitted 1-based
     assert (2, "RATE", 200.0) in rows
     assert (1, "INVERT", 4.5) in rows
@@ -4018,7 +4021,7 @@ def test_lkt_period_keywords():
         }
     )
     pb = _lkt_period_blocks(lkt)
-    rows = pb["period 1"]["period"]
+    rows = pb["period 1"]["stress_period_data"]
     assert (1, "STATUS", "ACTIVE") in rows  # emitted 1-based
     assert (2, "STATUS", "CONSTANT") in rows
     assert (1, "CONCENTRATION", 10.0) in rows
@@ -4134,7 +4137,7 @@ def test_lke_period_keywords():
         }
     )
     pb = _lke_period_blocks(lke)
-    rows = pb["period 1"]["period"]
+    rows = pb["period 1"]["stress_period_data"]
     assert (1, "STATUS", "ACTIVE") in rows  # emitted 1-based
     assert (2, "STATUS", "CONSTANT") in rows
     assert (1, "TEMPERATURE", 15.0) in rows
@@ -5223,6 +5226,47 @@ def test_computed_dimension_does_not_warn():
     with warnings.catch_warnings():
         warnings.simplefilter("error", UserWarning)
         structure_component(raw, Chd)
+
+
+@pytest.mark.parametrize("row", ["MAXBOUND two", "MAXBOUND"])
+def test_computed_dimension_bad_value(row):
+    """MF6 stops on a bad MAXBOUND, so a value that's never used still has
+    to be one it would read."""
+    from flopy4.mf6.converter.ingress.structure import structure_component
+
+    raw = loads(f"BEGIN DIMENSIONS\n  {row}\nEND DIMENSIONS\n")
+    with pytest.raises(ValueError, match=f"Chd: DIMENSIONS entry {row.upper()} needs an integer"):
+        structure_component(raw, Chd)
+
+
+@pytest.mark.parametrize(
+    "text, match",
+    [
+        (
+            "BEGIN OPTIONS\n  SAVE_FLOWS\nBEGIN DIMENSIONS\n  MAXBOUND 2\nEND DIMENSIONS\n",
+            "OPTIONS block, opened on line 1, has no END: found BEGIN DIMENSIONS",
+        ),
+        (
+            "\nBEGIN PERIOD 1\n  1 1 1 5.0\nBEGIN PERIOD 2\n  1 1 1 6.0\nEND PERIOD 2\n",
+            "PERIOD 1 block, opened on line 2, has no END: found BEGIN PERIOD 2",
+        ),
+        (
+            "BEGIN OPTIONS\n  SAVE_FLOWS\nEND DIMENSIONS\n",
+            "OPTIONS block, opened on line 1, has no END: found END DIMENSIONS",
+        ),
+    ],
+)
+def test_block_without_end(text, match):
+    """A block missing its END doesn't swallow the next one, as MF6 won't."""
+    with pytest.raises(ValueError, match=match):
+        loads(text)
+
+
+def test_block_end_without_index():
+    """END needn't repeat a block's index, or its case."""
+    assert loads("BEGIN period 1\n  1 2\nEND PERIOD\n") == loads(
+        "BEGIN period 1\n  1 2\nEND period 1\n"
+    )
 
 
 def test_options_open_close(tmp_path):

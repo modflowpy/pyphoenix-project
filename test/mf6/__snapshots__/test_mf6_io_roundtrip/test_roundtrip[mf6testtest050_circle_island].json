@@ -146,8 +146,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 ci.ims CI",
     " MXITER 1",
+    " IMS6 ci.ims CI",
     "END SOLUTIONGROUP 1"
   ],
   "rech.dat": [

@@ -53,6 +53,7 @@ class Gnc(Package):
     gncdata: Optional[list[Gncdata]] = list_(
         default=None,
         block="gncdata",
+        tagged=False,
         shape=("numgnc",),
     )
 

@@ -15,8 +15,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 test_fhb.ims test_fhb",
     " MXITER 1",
+    " IMS6 test_fhb.ims test_fhb",
     "END SOLUTIONGROUP 1"
   ],
   "test_fhb.dis": [

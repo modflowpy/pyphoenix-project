@@ -15,8 +15,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 welmvr.ims welmvr",
     " MXITER 1",
+    " IMS6 welmvr.ims welmvr",
     "END SOLUTIONGROUP 1"
   ],
   "wel.obs": [

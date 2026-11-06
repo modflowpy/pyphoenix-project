@@ -289,8 +289,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 ex3_parent.ims PARENT CHILD",
     " MXITER 1",
+    " IMS6 ex3_parent.ims PARENT CHILD",
     "END SOLUTIONGROUP 1"
   ],
   "simulation.exg": [

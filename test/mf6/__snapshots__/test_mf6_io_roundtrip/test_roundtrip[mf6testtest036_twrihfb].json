@@ -15,8 +15,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 twrihfb2015.ims twrihfb2015",
     " MXITER 1",
+    " IMS6 twrihfb2015.ims twrihfb2015",
     "END SOLUTIONGROUP 1"
   ],
   "twrihfb2015.dis": [

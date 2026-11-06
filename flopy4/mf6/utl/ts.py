@@ -76,6 +76,7 @@ class Ts(TsMethods, Package):
     timeseries: Optional[list[Timeseries]] = list_(
         default=None,
         block="timeseries",
+        tagged=False,
         write_if_empty=True,
     )
 

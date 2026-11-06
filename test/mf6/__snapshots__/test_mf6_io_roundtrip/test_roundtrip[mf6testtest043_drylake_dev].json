@@ -209,8 +209,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 drylake.ims ls",
     " MXITER 1",
+    " IMS6 drylake.ims ls",
     "END SOLUTIONGROUP 1"
   ]
 }

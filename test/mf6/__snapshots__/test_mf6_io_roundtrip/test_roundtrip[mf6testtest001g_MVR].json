@@ -213,8 +213,8 @@
     "END EXCHANGES",
     "",
     "BEGIN SOLUTIONGROUP 1",
-    " IMS6 flow15.ims flow15",
     " MXITER 1",
+    " IMS6 flow15.ims flow15",
     "END SOLUTIONGROUP 1"
   ]
 }

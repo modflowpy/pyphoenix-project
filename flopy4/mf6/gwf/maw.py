@@ -12,6 +12,7 @@ from flopy4.mf6.item import Item
 from flopy4.mf6.legacy import Legacy
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import (
+    Header,
     array,
     cellid_,
     child,
@@ -33,6 +34,10 @@ class Maw(Package):
     ftype: ClassVar[str] = "MAW6"
 
     multi_package: ClassVar[bool] = True
+
+    headers: ClassVar[dict[str, Header]] = {
+        "period": Header("integer", index=True),
+    }
 
     observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
         "conductance": (("index", "index"), ("index", "string"), ("string",)),
@@ -276,16 +281,19 @@ class Maw(Package):
     packagedata: Optional[list[Packagedata]] = list_(
         default=None,
         block="packagedata",
+        tagged=False,
         shape=("nmawwells",),
     )
     connectiondata: Optional[list[Connectiondata]] = list_(
         default=None,
         block="connectiondata",
+        tagged=False,
         write_if_empty=True,
     )
     angledata: Optional[list[Angledata]] = list_(
         default=None,
         block="angledata",
+        tagged=False,
     )
     _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
         alias="stress_period_data",
@@ -293,6 +301,7 @@ class Maw(Package):
         repr=False,
         block="period",
         fill_forward=True,
+        tagged=False,
     )
 
     ngwfnodes = DerivedDim("sum(packagedata.ngwfnodes)")

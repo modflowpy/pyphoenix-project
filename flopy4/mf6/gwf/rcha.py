@@ -7,7 +7,7 @@ from numpy.typing import NDArray
 
 from flopy4.mf6._types import FloatArrayLike, IntArrayLike, TimeArraySeriesRef, to_array
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import array, child, keyword, string
+from flopy4.mf6.spec import Header, array, child, keyword, string
 from flopy4.mf6.utl.obs import Obs
 from flopy4.mf6.utl.tas import Tas
 
@@ -18,6 +18,10 @@ class Rcha(Package):
     ftype: ClassVar[str] = "RCH6"
 
     multi_package: ClassVar[bool] = True
+
+    headers: ClassVar[dict[str, Header]] = {
+        "period": Header("integer", index=True),
+    }
 
     observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
         "rch": (("cellid",), ("string",)),

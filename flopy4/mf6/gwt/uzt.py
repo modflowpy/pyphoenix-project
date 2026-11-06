@@ -10,7 +10,18 @@ from flopy4.mf6._types import TimeSeriesRef, to_array
 from flopy4.mf6.item import Item
 from flopy4.mf6.legacy import Legacy
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import array, child, double, file, integer, keyword, list_, string, union
+from flopy4.mf6.spec import (
+    Header,
+    array,
+    child,
+    double,
+    file,
+    integer,
+    keyword,
+    list_,
+    string,
+    union,
+)
 from flopy4.mf6.utl.obs import Obs
 from flopy4.mf6.utl.ts import Ts
 
@@ -21,6 +32,10 @@ class Uzt(Package):
     ftype: ClassVar[str] = "UZT6"
 
     multi_package: ClassVar[bool] = True
+
+    headers: ClassVar[dict[str, Header]] = {
+        "period": Header("integer", index=True),
+    }
 
     observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
         "concentration": (("index",), ("string",)),
@@ -160,6 +175,7 @@ class Uzt(Package):
     packagedata: Optional[list[Packagedata]] = list_(
         default=None,
         block="packagedata",
+        tagged=False,
         write_if_empty=True,
     )
     _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
@@ -168,6 +184,7 @@ class Uzt(Package):
         repr=False,
         block="period",
         fill_forward=True,
+        tagged=False,
     )
 
 

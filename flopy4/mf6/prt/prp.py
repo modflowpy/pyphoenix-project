@@ -7,7 +7,7 @@ import attrs
 from flopy4.mf6.item import Item
 from flopy4.mf6.legacy import Legacy
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import array, cellid_, double, file, integer, keyword, list_, string
+from flopy4.mf6.spec import Header, array, cellid_, double, file, integer, keyword, list_, string
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -16,6 +16,10 @@ class Prp(Package):
     ftype: ClassVar[str] = "PRP6"
 
     multi_package: ClassVar[bool] = True
+
+    headers: ClassVar[dict[str, Header]] = {
+        "period": Header("integer", index=True),
+    }
 
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
         "perioddata": Legacy("stress_period_data"),
@@ -165,11 +169,13 @@ class Prp(Package):
     packagedata: Optional[list[Packagedata]] = list_(
         default=None,
         block="packagedata",
+        tagged=False,
         shape=("nreleasepts",),
     )
     releasetimes: Optional[list[Releasetimes]] = list_(
         default=None,
         block="releasetimes",
+        tagged=False,
         shape=("nreleasetimes",),
     )
     _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = list_(

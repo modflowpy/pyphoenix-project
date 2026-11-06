@@ -58,7 +58,9 @@ class ArrayIO:
         field, beside the component's file. A path outside the simulation
         directory isn't written to: the array is written beside its
         component's file instead, under the same name. Arrays sharing a
-        file must hold the same values, or they're written inline.
+        file must hold the same values, or they're written inline (to
+        files of their own, if the context's `array_format` is a file
+        format: see `WriteContext`).
     format : ArrayFormat, optional
         The control record to write the array with. Overrides the
         context's `array_format`. A ``(field, layer)`` entry's is for
@@ -74,7 +76,13 @@ class ArrayIO:
         inline. Set by loading; not compared by `==`.
 
     Loading sets each array's `format` and `layered` to the control
-    records it was read from, so writing it again writes them back.
+    records it was read from, so writing it again writes them back. An
+    INTERNAL or OPEN/CLOSE record's FACTOR isn't kept: the array holds the
+    values times it, and is written with no FACTOR. Arrays read from one
+    file with different factors (say, a recharge file scaled per period)
+    so hold different values, and can't share the file when written:
+    they're written inline, or each to a file of its own with an
+    `array_format` of "open/close".
     """
 
     iprn: Optional[int] = None
@@ -183,6 +191,10 @@ class WriteContext:
         field. Set here, it overrides lower-ranked contexts' formats, such
         as loaded ones, and, if "constant" or "internal", their paths; an
         `ArrayIO.path` of this context still writes its array to the file.
+        Arrays sent to a file by it that can't share the file their path
+        names, holding different values, each get a file of their own,
+        named as if they had no path, where they'd otherwise be written
+        inline.
         `use_netcdf` overrides it.
     list_format : ListFormat, optional
         How to write lists, unless a list's own `ListIO.format` in this

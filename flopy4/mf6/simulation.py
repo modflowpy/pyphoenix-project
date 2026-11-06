@@ -8,7 +8,7 @@ from flopy4.mf6.exchange import Exchange
 from flopy4.mf6.model import Model
 from flopy4.mf6.simulation_methods import SimulationMethods
 from flopy4.mf6.solution import Solution
-from flopy4.mf6.spec import child, integer, keyword, string
+from flopy4.mf6.spec import Header, child, integer, keyword, string
 from flopy4.mf6.tdis import Tdis
 from flopy4.mf6.utl.hpc import Hpc
 
@@ -16,6 +16,10 @@ from flopy4.mf6.utl.hpc import Hpc
 @attrs.define(kw_only=True, slots=False)
 class Simulation(SimulationMethods, WorkspaceComponent):
     dfn_name: ClassVar[str] = "sim-nam"
+
+    headers: ClassVar[dict[str, Header]] = {
+        "solutiongroup": Header("integer"),
+    }
 
     continue_: bool = keyword(
         default=False,

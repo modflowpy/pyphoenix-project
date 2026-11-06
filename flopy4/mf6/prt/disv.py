@@ -131,11 +131,13 @@ class Disv(DisvMethods, DimsProviderMethods, Package):
     vertices: Optional[list[Vertices]] = list_(
         default=None,
         block="vertices",
+        tagged=False,
         shape=("nvert",),
     )
     cell2d: Optional[list[Cell2d]] = list_(
         default=None,
         block="cell2d",
+        tagged=False,
         shape=("ncpl",),
     )
 

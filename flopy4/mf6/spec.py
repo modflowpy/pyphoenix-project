@@ -6,8 +6,18 @@ These include field decorators and introspection functions.
 import builtins
 import types
 from datetime import datetime
+from functools import cache
 from pathlib import Path
-from typing import Any, Literal, TypedDict, Union, Unpack, get_args, get_origin
+from typing import (
+    Any,
+    Literal,
+    NamedTuple,
+    TypedDict,
+    Union,
+    Unpack,
+    get_args,
+    get_origin,
+)
 
 import attrs
 import numpy as np
@@ -22,8 +32,10 @@ from flopy4.mf6._types import (
     to_ts_value,
     to_ts_values,
 )
-from flopy4.mf6.item import to_union_arm
+from flopy4.mf6.item import item_list_type, item_list_words, to_union_arm
+from flopy4.mf6.record import record_type
 from flopy4.spec import fields_dict as flopy_fields_dict
+from flopy4.spec import is_array
 
 FieldType = Literal["keyword", "integer", "double", "string", "list", "record"]
 
@@ -111,6 +123,8 @@ def _field(type_: str, kwargs: FieldKwargs, **attributes) -> Any:
     for key in ("block", "longname", "optional", "netcdf", "tagged", "when"):
         if kwargs.get(key):
             metadata[key] = kwargs[key]  # type: ignore[literal-required]
+    if kwargs.get("tagged") is False:
+        metadata["tagged"] = False
     metadata.update({k: v for k, v in attributes.items() if v not in (None, False, ())})
     on_setattr = kwargs.get("on_setattr")
     if kwargs.get("block") == "dimensions":
@@ -166,6 +180,21 @@ def _ts_converter(kwargs: FieldKwargs, converter) -> None:
         kwargs.setdefault("converter", converter)
 
 
+def _to_valid(valid: tuple[str, ...]):
+    """A converter spelling a string as the one of ``valid`` it matches
+    ignoring case (MF6 reads words so), and each of a per-period dict's."""
+    spelled = {v.lower(): v for v in valid}
+
+    def convert(value):
+        if isinstance(value, str):
+            return spelled.get(value.lower(), value)
+        if isinstance(value, dict):
+            return {k: convert(v) for k, v in value.items()}
+        return value
+
+    return convert
+
+
 def keyword(**kwargs: Unpack[FieldKwargs]) -> Any:
     """A keyword: a flag, present or not."""
     kwargs["tagged"] = True
@@ -180,6 +209,8 @@ def string(
     scope: str | None = None,
     rule: str | None = None,
     empty_is_none: bool = False,
+    fill_forward: bool = False,
+    valid: tuple[str, ...] = (),
     **kwargs: Unpack[FieldKwargs],
 ) -> Any:
     """A string. A time series one may name a time series instead. It can't
@@ -188,13 +219,28 @@ def string(
     only within the value of another column, its ``scope`` (MVR's
     ``pname`` within ``mname``). An fk may have a ``rule``, which picks the
     component it names in, or with a scope narrows its keys (MVR's
-    ``pname``, packages with ``mover`` on); see `flopy4.mf6.keys`."""
+    ``pname``, packages with ``mover`` on); see `flopy4.mf6.keys`.
+    A ``fill_forward`` one is given per period (STO's steady-state or
+    transient), a period without one keeping the last's. One of ``valid``
+    is kept as ``valid`` spells it, whatever its case."""
+    if valid:
+        _convert_first(kwargs, _to_valid(valid))
     if time_series:
         _ts_converter(kwargs, to_ts_value)
     if empty_is_none:
         _convert_first(kwargs, _empty_to_none)
     _validate(kwargs, _not_empty)
-    return _field("string", kwargs, time_series=time_series, pk=pk, fk=fk, scope=scope, rule=rule)
+    return _field(
+        "string",
+        kwargs,
+        time_series=time_series,
+        pk=pk,
+        fk=fk,
+        scope=scope,
+        rule=rule,
+        fill_forward=fill_forward,
+        valid=valid,
+    )
 
 
 def integer(
@@ -549,24 +595,22 @@ def fields_dict(cls) -> dict[str, Attribute]:
     return {k: v for k, v in fields.items() if "block" in v.metadata}
 
 
-def repeating_array_key_type(field_type) -> type | None:
-    """For ``Optional[dict[K, IntArrayLike | FloatArrayLike]]``, return
-    ``K`` -- the header type of a block that repeats (e.g. utl-tas's "time"
-    block), whose own array field is keyed by header value. Returns
-    ``None`` for anything else, including a plain array and an
-    ``Optional[dict[int, list[ItemClass]]]`` period Item-list (see
-    ``item.item_list_type``) -- structurally distinct shapes, detected from
-    the annotation itself rather than a metadata flag, the same way
-    ``item_list_type`` reads its own dict-wrapped shape. Period array
-    fields (RCHA's recharge) have this shape too, keyed by period; callers
-    tell them apart by their ``fill_forward`` metadata.
-    """
-    args = get_args(field_type)
-    inner = next((a for a in args if a is not type(None)), None)
-    if inner is None or get_origin(inner) is not dict:
-        return None
-    key, val = get_args(inner)
-    return key if val in (IntArrayLike, FloatArrayLike) else None
+@cache
+def binding_fields(cls) -> dict[str, list[tuple[Attribute, str, tuple[type, ...]]]]:
+    """The child fields named by a block's rows (a model's packages, the
+    simulation's models, exchanges and solutions), by block, in field
+    order, each with its kind and candidate classes (see
+    `child_field_candidates`). A file record's child (``NCF6 FILEIN
+    <file>``) loads with its record, so isn't one."""
+    from flopy4.attrs_xarray import child_field_candidates
+
+    out: dict[str, list] = {}
+    for f in attrs.fields(cls):
+        if not f.metadata.get("child") or "block" not in f.metadata or f.metadata.get("_keyword"):
+            continue
+        if (spec := child_field_candidates(f)) is not None:
+            out.setdefault(f.metadata["block"], []).append((f, *spec))
+    return out
 
 
 def to_field_type(t: type) -> FieldType:
@@ -633,3 +677,130 @@ def block_sort_key(item) -> int:
         return 4
     else:
         return 3
+
+
+class Header(NamedTuple):
+    """A repeating block's header kind, as codegen records it in a
+    component class's ``headers``: ``integer`` (a period's IPER,
+    SOLUTIONGROUP's number), ``double`` (a TAS time) or ``record`` (OBS's
+    ``FILEOUT <name>``), and whether an integer is an index, 1-based in the
+    file and 0-based in memory (IPER is, the DFN's ``index``)."""
+
+    kind: str
+    index: bool = False  # type: ignore[assignment]
+
+
+def computed_fields(cls) -> tuple[str, ...]:
+    """A class's fields that are written but not stored: a list package's
+    MAXBOUND, a property counting its rows, the only kind there is. It's the
+    first of its DIMENSIONS block."""
+    return ("maxbound",) if isinstance(getattr(cls, "maxbound", None), property) else ()
+
+
+@cache
+def file_blocks(cls) -> dict[str, list[Attribute]]:
+    """A class's blocks in file order, each with its fields in file order:
+    options and dimensions first, so a block can read by those before it. A
+    list package's DIMENSIONS block may hold only its computed MAXBOUND, so
+    has no fields."""
+    blocks: dict[str, list[Attribute]] = {}
+    for a in attrs.fields(cls):
+        if (block := a.metadata.get("block")) and a.init is not False:
+            blocks.setdefault(block, []).append(a)
+    if computed_fields(cls) and "dimensions" not in blocks:
+        names = list(blocks)
+        names.insert(1 if names[:1] == ["options"] else 0, "dimensions")
+        blocks = {name: blocks.get(name, []) for name in names}
+    return blocks
+
+
+@attrs.frozen
+class BlockKeys:
+    """How the rows of one of a class's blocks find their fields.
+
+    Attributes
+    ----------
+    tagged :
+        Fields by the keyword their rows begin with, in file order. Where a
+        keyword begins more than one field's rows (OC's ``HEAD``), the next
+        keyword tells them apart (see ``following_tags``).
+    dynamic :
+        Fields whose rows begin with a value of another field instead, by
+        that field's path: RCHA's ``aux``, by ``options.auxiliary``.
+    untagged :
+        The field the block's other rows belong to, if any.
+    computed :
+        Keywords of fields with no attribute (see ``computed_fields``).
+    """
+
+    tagged: dict[str, tuple[Attribute, ...]]
+    dynamic: dict[str, Attribute]
+    untagged: Attribute | None
+    computed: tuple[str, ...] = ()
+
+
+def is_tagged(f: Attribute) -> bool:
+    """Whether a component field's rows begin with a keyword. Its metadata
+    says only when they don't, unlike a record's columns, which say only
+    when they do."""
+    return f.metadata.get("tagged", True)
+
+
+def _record_words(record: type) -> tuple[str, ...]:
+    """The keywords a record or list item's row can begin with."""
+    keyword = vars(record).get("_keyword")
+    return (keyword.lower(), *vars(record).get("_aliases", ())) if keyword else ()
+
+
+def leading_tags(f: Attribute) -> tuple[str, ...]:
+    """The keywords a tagged field's rows can begin with: a file record's
+    keyword, a record's, each of a list's items' and words, else its own
+    name, as it is in the file (``list_`` is ``LIST``)."""
+    if keyword := f.metadata.get("_keyword"):
+        return (keyword,)
+    if (record := record_type(f.type)) is not None and (words := _record_words(record)):
+        return words
+    if (item := item_list_type(f.type)) is not None:
+        items = item if isinstance(item, tuple) else (item,)
+        words = tuple(w for c in items for w in _record_words(c))
+        return words + tuple(w.lower() for w in item_list_words(f.type))
+    return (field_key(f),)
+
+
+def following_tags(f: Attribute) -> list[str]:
+    """The keywords that can follow the one ``f``'s rows begin with: a file
+    record's direction, or a record's next keyword (OC's ``HEAD FILEOUT``
+    and ``HEAD PRINT_FORMAT``)."""
+    if f.metadata.get("_keyword"):
+        direction = f.metadata.get("direction")
+        return [f"file{direction}"] if direction else []
+    if (record := record_type(f.type)) is not None:
+        return [t.lower() for t in vars(record).get("_extra_tokens", ())[:1]]
+    return []
+
+
+def field_key(f: Attribute) -> str:
+    """A field's name in the file and to the writer: its attribute's, less
+    the underscores that keep it private or off a Python keyword."""
+    return f.name.strip("_")
+
+
+@cache
+def block_keys(cls, block: str) -> BlockKeys:
+    """How the rows of ``block`` find ``cls``'s fields. The rows naming
+    children aren't keyed: see `binding_fields`."""
+    tagged: dict[str, tuple[Attribute, ...]] = {}
+    dynamic: dict[str, Attribute] = {}
+    untagged = None
+    for f in file_blocks(cls).get(block, ()):
+        if f.metadata.get("row"):
+            continue
+        if not is_tagged(f):
+            untagged = f
+        elif f.metadata.get("fk") and is_array(f):
+            dynamic[f.metadata["fk"]] = f
+        else:
+            for tag in leading_tags(f):
+                tagged[tag] = (*tagged.get(tag, ()), f)
+    computed = computed_fields(cls) if block == "dimensions" else ()
+    return BlockKeys(tagged=tagged, dynamic=dynamic, untagged=untagged, computed=computed)

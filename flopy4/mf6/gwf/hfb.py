@@ -5,13 +5,17 @@ import attrs
 
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import cellid_, double, integer, keyword, list_
+from flopy4.mf6.spec import Header, cellid_, double, integer, keyword, list_
 
 
 @attrs.define(kw_only=True, slots=False)
 class Hfb(Package):
     dfn_name: ClassVar[str] = "gwf-hfb"
     ftype: ClassVar[str] = "HFB6"
+
+    headers: ClassVar[dict[str, Header]] = {
+        "period": Header("integer", index=True),
+    }
 
     @attrs.define
     class StressPeriodData(Item):
@@ -36,6 +40,7 @@ class Hfb(Package):
         repr=False,
         block="period",
         fill_forward=True,
+        tagged=False,
         shape=("<=maxhfb",),
     )
 
