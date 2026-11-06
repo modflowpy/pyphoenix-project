@@ -7,7 +7,7 @@
 #
 # Quickstart example:
 # * define a `Simulation` and attach packages using the `parent=` API
-# * inspect package data via `period_data` and `to_dataarray()`
+# * inspect package data via `stress_period_data` and `to_dataarray()`
 # * read binary head and budget output via `gwf.output`
 # * produce a filled-contour + quiver plot with matplotlib
 
@@ -82,7 +82,7 @@ gwf.npf = Npf(print_flows=True, save_flows=True, save_specific_discharge=True)
 # Constant-head boundary: pin two corner cells to create a diagonal head gradient.
 chd = Chd(
     parent=gwf,
-    period_data={0: [((0, 0, 0), 1.0), ((0, 9, 9), 0.0)]},
+    stress_period_data={0: [((0, 0, 0), 1.0), ((0, 9, 9), 0.0)]},
 )
 
 # Initial conditions: uniform starting head of 1.0 m across the grid.
@@ -92,7 +92,7 @@ gwf.ic = Ic(strt=1.0)
 gwf.oc = Oc(
     budget_file=f"{gwf.name}.bud",
     head_file=f"{gwf.name}.hds",
-    period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
+    stress_period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
 )
 
 # ### Write and run
@@ -103,15 +103,15 @@ sim.run(verbose=True)
 # ### Verify package data
 
 # List-based period data (CHD, OC) is accessible directly via
-# `period_data`, a `dict[kper, list[Item]]` of the rows given at
+# `stress_period_data`, a `dict[kper, list[Item]]` of the rows given at
 # construction. Griddata arrays (DIS) are accessible via `to_dataarray()`,
 # which reshapes the flat stored array to dims named for the grid's axes (layer, row, col).
 
-assert chd.period_data[0][0].head == 1.0
-assert chd.period_data[0][1].head == 0.0
+assert chd.stress_period_data[0][0].head == 1.0
+assert chd.stress_period_data[0][1].head == 0.0
 assert gwf.dis.to_dataarray("botm").isel(layer=0, row=0, col=0) == 0.0
-assert gwf.oc.period_data[0][0].rtype == "HEAD"
-assert gwf.oc.period_data[0][0].ocsetting == "ALL"
+assert gwf.oc.stress_period_data[0][0].rtype == "HEAD"
+assert gwf.oc.stress_period_data[0][0].ocsetting == "ALL"
 
 # ### Read results
 #

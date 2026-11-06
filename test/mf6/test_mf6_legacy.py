@@ -1,14 +1,12 @@
 """flopy3's period-data constructor keywords and attributes."""
 
-import inspect
 import warnings
 
 import attrs
-import flopy
 import pytest
 
 from flopy4.mf6.component import get_fnames
-from flopy4.mf6.gwf import Lak, Oc, Sto, Wel
+from flopy4.mf6.gwf import Lak, Oc, Sto
 from flopy4.mf6.gwf.ic import Ic
 from flopy4.mf6.legacy import oc_period_data, sto_period_data
 
@@ -25,10 +23,10 @@ def _renames():
 @pytest.mark.parametrize(("dfn_name", "old"), _renames())
 def test_rename(dfn_name, old):
     cls = get_fnames()[dfn_name]
-    with pytest.warns(DeprecationWarning, match=f"{old}=.*use period_data=") as record:
+    with pytest.warns(DeprecationWarning, match=f"{old}=.*use stress_period_data=") as record:
         legacy = cls(**{old: {}})
     assert len(record) == 1
-    assert legacy == cls(period_data={})
+    assert legacy == cls(stress_period_data={})
 
 
 def test_renames():
@@ -41,66 +39,25 @@ def test_renames():
     } <= set(_renames())
 
 
-def test_stress_period_data_matches_flopy3():
-    """The alias is on each class whose flopy3 class takes the keyword, and
-    on CHF's and OLF's stress packages, which flopy3 doesn't have yet."""
-
-    def flopy3_takes(cls):
-        ftype, _, name = cls.dfn_name.partition("-")
-        flopy3 = getattr(flopy.mf6, f"Modflow{ftype.capitalize()}{name}", None)
-        return flopy3 is not None and (
-            "stress_period_data" in inspect.signature(flopy3.__init__).parameters
-        )
-
-    classes = set(get_fnames().values())
-    unreleased = {f"{m}-{p}" for m in ("chf", "olf") for p in "cdb chd evp flw pcp zdg".split()}
-    assert {c.dfn_name for c in classes if flopy3_takes(c)} | unreleased == {
-        c.dfn_name for c in classes if "stress_period_data" in c.legacy_kwargs
-    }
-
-
-@pytest.mark.parametrize("cls", [Lak, Oc, Sto])
-def test_stress_period_data_not_where_flopy3_has_another_name(cls):
-    with pytest.raises(TypeError, match="stress_period_data"):
-        cls(stress_period_data={})
-
-
-def test_stress_period_data_reaches_period_data():
-    rows = {0: [((0, 0, 0), -1.0)]}
-    with pytest.warns(DeprecationWarning, match="use period_data="):
-        wel = Wel(stress_period_data=rows)
-    assert wel == Wel(period_data=rows)
-    assert wel.period_data[0][0].q == -1.0
-
-
-def test_stress_period_data_and_period_data_conflict():
-    with pytest.raises(TypeError, match="got both"):
-        Wel(stress_period_data={}, period_data={})
-
-
-@pytest.mark.parametrize(
-    ("cls", "old"),
-    [(Wel, "stress_period_data"), (Lak, "perioddata")],
-)
-def test_attribute_reads_and_assigns_period_data(cls, old):
-    pkg = cls(period_data={})
-    match = f"{old} is deprecated; use period_data"
+def test_attribute_reads_and_assigns_stress_period_data():
+    lak = Lak(stress_period_data={})
+    match = "perioddata is deprecated; use stress_period_data"
     with pytest.warns(DeprecationWarning, match=match) as record:
-        assert getattr(pkg, old) is pkg.period_data
+        assert lak.perioddata is lak.stress_period_data
     assert record[0].filename == __file__
 
     with pytest.warns(DeprecationWarning, match=match) as record:
-        setattr(pkg, old, {})
+        lak.perioddata = {}
     assert record[0].filename == __file__
-    assert pkg.period_data == {}
-    assert old not in vars(pkg)
+    assert lak.stress_period_data == {}
+    assert "perioddata" not in vars(lak)
 
 
-def test_attribute_assignment_is_coerced_like_period_data():
-    wel = Wel()
+def test_attribute_assignment_is_coerced_like_stress_period_data():
+    lak = Lak()
     with pytest.warns(DeprecationWarning):
-        wel.stress_period_data = {0: [((0, 0, 0), -1.0)]}
-    assert wel.period_data[0][0].q == -1.0
+        lak.perioddata = {0: [(0, "status", "active")]}
+    assert lak.stress_period_data[0][0].status == "active"
 
 
 @pytest.mark.parametrize(
@@ -114,9 +71,9 @@ def test_attribute_assignment_is_coerced_like_period_data():
 )
 def test_converted_attribute_raises(cls, old):
     pkg = cls()
-    with pytest.raises(AttributeError, match=f"{old} is gone.*period_data"):
+    with pytest.raises(AttributeError, match=f"{old} is gone.*stress_period_data"):
         getattr(pkg, old)
-    with pytest.raises(AttributeError, match=f"{old} is gone.*period_data"):
+    with pytest.raises(AttributeError, match=f"{old} is gone.*stress_period_data"):
         setattr(pkg, old, {})
     assert not hasattr(pkg, old)
 
@@ -151,7 +108,7 @@ def test_sto(kwargs, expected):
     with pytest.warns(DeprecationWarning) as record:
         sto = Sto(**kwargs)
     assert len(record) == 1
-    assert sto == Sto(period_data=expected)
+    assert sto == Sto(stress_period_data=expected)
 
 
 def test_sto_conflict():
@@ -189,7 +146,7 @@ def test_oc(kwargs, expected):
     with pytest.warns(DeprecationWarning) as record:
         oc = Oc(**kwargs)
     assert len(record) == 1
-    assert oc == Oc(period_data=expected)
+    assert oc == Oc(stress_period_data=expected)
 
 
 @pytest.mark.parametrize(
@@ -201,8 +158,8 @@ def test_oc(kwargs, expected):
     ],
 )
 def test_old_and_new(cls, kwargs):
-    with pytest.raises(TypeError, match="got both .* and period_data="):
-        cls(period_data={}, **kwargs)
+    with pytest.raises(TypeError, match="got both .* and stress_period_data="):
+        cls(stress_period_data={}, **kwargs)
 
 
 def test_no_legacy_kwargs():

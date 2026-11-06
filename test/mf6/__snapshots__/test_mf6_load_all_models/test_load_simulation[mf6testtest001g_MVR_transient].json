@@ -51,9 +51,9 @@
   },
   "simulation/flow15/MAW-FIRST": {
     "__type__": "Maw",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "ifno": "int64[2] 031ee8071545c35f",
         "mawsetting": {
           "__table__": "Rate",
@@ -117,9 +117,9 @@
   },
   "simulation/flow15/MAW-SECOND": {
     "__type__": "Maw",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "ifno": "int64[1] 05fe405753166f12",
         "mawsetting": {
           "__table__": "Rate",
@@ -181,9 +181,9 @@
   },
   "simulation/flow15/chd-1": {
     "__type__": "Chd",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[2, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -245,9 +245,9 @@
   },
   "simulation/flow15/mvr": {
     "__type__": "Mvr",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "id1": "int64[2] 031ee8071545c35f",
         "id2": "int64[2] e129f27c5103bc5c",
         "mname1": [
@@ -274,7 +274,7 @@
         "value": "float64[2] 4ec4d22771b67a41"
       },
       "1": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "id1": [],
         "id2": [],
         "mname1": [],
@@ -286,7 +286,7 @@
         "value": []
       },
       "2": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "id1": "int64[2] 031ee8071545c35f",
         "id2": "int64[2] e129f27c5103bc5c",
         "mname1": [
@@ -370,7 +370,7 @@
   },
   "simulation/flow15/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",

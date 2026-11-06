@@ -53,9 +53,9 @@
   },
   "simulation/GWF_1/MAW-NT_Well": {
     "__type__": "Maw",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "ifno": "int64[6] 09bbad0f697a2e15",
         "mawsetting": [
           {
@@ -108,7 +108,7 @@
         "n": 6
       },
       "1": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "ifno": "int64[1] 3da89ee273be1343",
         "mawsetting": {
           "__table__": "Rate",
@@ -124,7 +124,7 @@
         "n": 1
       },
       "2": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "ifno": "int64[2] 031ee8071545c35f",
         "mawsetting": {
           "__table__": "Rate",
@@ -484,7 +484,7 @@
   },
   "simulation/GWF_1/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",

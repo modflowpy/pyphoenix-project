@@ -48,9 +48,9 @@
   },
   "simulation/GWF_1/CHD_UL-LR": {
     "__type__": "Chd",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[4, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -63,7 +63,7 @@
         "n": 4
       },
       "1": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": [],
         "boundname": [],
         "cellid": [],
@@ -71,7 +71,7 @@
         "n": 0
       },
       "2": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[4, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -84,7 +84,7 @@
         "n": 4
       },
       "3": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": [],
         "boundname": [],
         "cellid": [],
@@ -110,9 +110,9 @@
   },
   "simulation/GWF_1/CHD_UR-LL": {
     "__type__": "Chd",
-    "_period_data": {
+    "_stress_period_data": {
       "1": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[4, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -125,7 +125,7 @@
         "n": 4
       },
       "2": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": [],
         "boundname": [],
         "cellid": [],
@@ -133,7 +133,7 @@
         "n": 0
       },
       "3": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[4, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -223,7 +223,7 @@
   },
   "simulation/GWF_1/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",

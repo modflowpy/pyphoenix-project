@@ -94,9 +94,9 @@
   },
   "simulation/lakeex2a/chd-1": {
     "__type__": "Chd",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[420, 0] da39a3ee5e6b4b0d",
         "boundname": "2520 chars a78a0caf1acc69ad",
         "cellid": "int64[420, 3] 84b252e9035246fd",
@@ -185,7 +185,7 @@
   },
   "simulation/lakeex2a/lak-1": {
     "__type__": "Lak",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Rainfall",
@@ -354,9 +354,9 @@
   },
   "simulation/lakeex2a/mvr": {
     "__type__": "Mvr",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "id1": "int64[4] af37caf866e937ca",
         "id2": "int64[4] 335aaba9938c8b01",
         "mname1": [
@@ -450,7 +450,7 @@
   },
   "simulation/lakeex2a/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",
@@ -525,7 +525,7 @@
   },
   "simulation/lakeex2a/sfr-1": {
     "__type__": "Sfr",
-    "_period_data": "4018 chars 00a5518152a916b7",
+    "_stress_period_data": "4024 chars 1fed8e19976fffbf",
     "boundnames": false,
     "connectiondata": {
       "__table__": "Connectiondata",

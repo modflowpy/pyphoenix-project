@@ -157,13 +157,13 @@ class TestChdComponent:
     """Test structure_array with Chd component (stress period data)."""
 
     def test_chd_with_dict_format(self):
-        """Test CHD with period_data dict format."""
+        """Test CHD with stress_period_data dict format."""
         chd = Chd(
-            period_data={0: [((0, 0, 0), 1.0), ((0, 9, 9), 0.0)]},
+            stress_period_data={0: [((0, 0, 0), 1.0), ((0, 9, 9), 0.0)]},
         )
 
-        assert hasattr(chd, "_period_data")
-        rec = chd._period_data[0]
+        assert hasattr(chd, "_stress_period_data")
+        rec = chd._stress_period_data[0]
         assert list(rec[0].cellid) == [0, 0, 0]
         assert float(rec[0].head) == 1.0
         assert list(rec[1].cellid) == [0, 9, 9]
@@ -172,34 +172,34 @@ class TestChdComponent:
     def test_chd_with_fill_forward(self):
         """Test CHD stores multiple periods separately (fill-forward is write-time only)."""
         chd = Chd(
-            period_data={
+            stress_period_data={
                 0: [((0, 0, 0), 1.0)],
                 5: [((0, 0, 0), 2.0)],
             },
         )
 
         # Both periods are stored; no in-memory fill-forward
-        assert set(chd._period_data.keys()) == {0, 5}
-        assert float(chd._period_data[0][0].head) == 1.0
-        assert float(chd._period_data[5][0].head) == 2.0
+        assert set(chd._stress_period_data.keys()) == {0, 5}
+        assert float(chd._stress_period_data[0][0].head) == 1.0
+        assert float(chd._stress_period_data[5][0].head) == 2.0
 
 
 class TestRchComponent:
     """Test structure_array with Rch component (recharge)."""
 
-    def test_rch_with_period_data(self):
-        """Test RCH period_data API (explicit cellid tuples)."""
+    def test_rch_with_stress_period_data(self):
+        """Test RCH stress_period_data API (explicit cellid tuples)."""
         rch = Rch(
-            period_data={
+            stress_period_data={
                 0: [((0, 0, 0), 0.004), ((0, 9, 9), 0.004)],
                 1: [((0, 0, 0), 0.002), ((0, 9, 9), 0.002)],
             },
         )
 
-        assert hasattr(rch, "_period_data")
-        assert set(rch._period_data.keys()) == {0, 1}
-        assert float(rch._period_data[0][0].recharge) == 0.004
-        assert float(rch._period_data[1][0].recharge) == 0.002
+        assert hasattr(rch, "_stress_period_data")
+        assert set(rch._stress_period_data.keys()) == {0, 1}
+        assert float(rch._stress_period_data[0][0].recharge) == 0.004
+        assert float(rch._stress_period_data[1][0].recharge) == 0.002
 
 
 class TestXarrayOutput:
@@ -226,18 +226,18 @@ class TestEdgeCases:
         assert ic.strt.shape == (100,)
 
     def test_mixed_dict_value_types(self):
-        """Test period_data with multiple periods and cellids."""
+        """Test stress_period_data with multiple periods and cellids."""
         chd = Chd(
-            period_data={
+            stress_period_data={
                 0: [((0, 0, 0), 1.0)],
                 5: [((0, 0, 0), 2.0), ((0, 9, 9), 0.5)],
             },
         )
 
-        assert set(chd._period_data.keys()) == {0, 5}
-        assert float(chd._period_data[0][0].head) == 1.0
-        assert float(chd._period_data[5][0].head) == 2.0
-        assert float(chd._period_data[5][1].head) == 0.5
+        assert set(chd._stress_period_data.keys()) == {0, 5}
+        assert float(chd._stress_period_data[0][0].head) == 1.0
+        assert float(chd._stress_period_data[5][0].head) == 2.0
+        assert float(chd._stress_period_data[5][1].head) == 0.5
 
 
 class TestDataFrameIntegration:
@@ -246,7 +246,7 @@ class TestDataFrameIntegration:
     def test_to_dataframe_chd_multi_period(self):
         """Test that to_dataframe() returns correct tidy DataFrame for multi-period CHD."""
         chd = Chd(
-            period_data={
+            stress_period_data={
                 0: [((0, 0, 0), 10.0), ((1, 9, 9), 5.0)],
                 1: [((0, 0, 0), 11.0), ((1, 9, 9), 6.0)],
             },
@@ -265,7 +265,7 @@ class TestDataFrameIntegration:
     def test_to_dataframe_chd_cellid_as_tuple(self):
         """Test that cellid column contains tuples (not expanded layer/row/col)."""
         chd = Chd(
-            period_data={0: [((0, 2, 3), 7.5)]},
+            stress_period_data={0: [((0, 2, 3), 7.5)]},
         )
 
         df = chd.to_dataframe()

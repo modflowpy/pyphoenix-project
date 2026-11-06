@@ -1225,7 +1225,7 @@ def structure_component(
                 if list_io is not None:
                     list_ios[(_list_key(period_field), kper)] = list_io
             if spd:
-                # Use the alias (period_data) as the init kwarg
+                # Use the alias (stress_period_data) as the init kwarg
                 init_key = period_field.alias if period_field.alias else period_field.name
                 kwargs[init_key] = spd
 

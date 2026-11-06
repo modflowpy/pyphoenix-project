@@ -66,7 +66,7 @@ wel = Wel(
     auxiliary=["conc"],
     boundnames=True,
     ts=[pumping],
-    period_data={
+    stress_period_data={
         0: [
             ((0, 0, 0), -1.0, (5.0,), "north"),
             ((0, 2, 3), "pumping", (0.0,), None),
@@ -78,15 +78,15 @@ wel = Wel(
     },
 )
 
-# Rows come back as `Wel.PeriodData` objects, which can also be built
+# Rows come back as `Wel.StressPeriodData` objects, which can also be built
 # by name.
 
-row = wel.period_data[0][0]
+row = wel.stress_period_data[0][0]
 print(row)
 assert row.q == -1.0 and row.aux == (5.0,) and row.boundname == "north"
-assert row == Wel.PeriodData(cellid=(0, 0, 0), q=-1.0, aux=(5.0,), boundname="north")
-assert str(wel.period_data[0][1].q) == "pumping"
-assert list(wel.period_data) == [0, 2]
+assert row == Wel.StressPeriodData(cellid=(0, 0, 0), q=-1.0, aux=(5.0,), boundname="north")
+assert str(wel.stress_period_data[0][1].q) == "pumping"
+assert list(wel.stress_period_data) == [0, 2]
 
 # ### The array view
 #
@@ -128,16 +128,16 @@ wel.from_xarray(edited)
 # `from_xarray()` writes a block only where a period changes, so period 1
 # now has its own block, and period 2's wells come back as one summed well.
 
-for kper, rows in wel.period_data.items():
+for kper, rows in wel.stress_period_data.items():
     print(kper, rows)
-assert list(wel.period_data) == [0, 1, 2]
-assert wel.period_data[1][0].q == -2.0
-assert len(wel.period_data[2]) == 1
+assert list(wel.stress_period_data) == [0, 1, 2]
+assert wel.stress_period_data[1][0].q == -2.0
+assert len(wel.stress_period_data[2]) == 1
 
 # Summing adds auxiliary values too, and keeps the last row's boundname.
 
-assert wel.period_data[2][0].aux == (3.0,)
-assert wel.period_data[2][0].boundname == "east-2"
+assert wel.stress_period_data[2][0].aux == (3.0,)
+assert wel.stress_period_data[2][0].boundname == "east-2"
 
 # To add a feature, set all of its variables at the cell. Setting only some
 # raises an error naming the missing one.
@@ -150,7 +150,7 @@ except ValueError as e:
     print(e)
 edited["conc"][0, 0, 2, 0] = 1.0
 wel.from_xarray(edited)
-assert len(wel.period_data[0]) == 3
+assert len(wel.stress_period_data[0]) == 3
 
 # ### Two features in one cell
 #
@@ -163,7 +163,7 @@ assert len(wel.period_data[0]) == 3
 
 wel = Wel(
     parent=gwf,
-    period_data={0: [((0, 1, 1), -2.0), ((0, 1, 1), -0.5)]},
+    stress_period_data={0: [((0, 1, 1), -2.0), ((0, 1, 1), -0.5)]},
 )
 try:
     wel.to_xarray()
@@ -179,9 +179,9 @@ assert sparse["q"].dims == ("entry",)
 assert list(sparse["q"].values) == [-2.0, -0.5]
 assert list(sparse["cellid_row"].values) == [1, 1]
 
-expected = wel.period_data
+expected = wel.stress_period_data
 wel.from_xarray(sparse)
-assert wel.period_data == expected
+assert wel.stress_period_data == expected
 # -
 
 # ### Several values in one column
@@ -192,7 +192,7 @@ assert wel.period_data == expected
 evt = Evt(
     parent=gwf,
     nseg=3,
-    period_data={
+    stress_period_data={
         0: [
             # cell, surface, rate, depth, pxdp, petm
             ((0, 0, 0), 1.0, 0.1, 2.0, (0.3, 0.6), (0.5, 0.2)),
@@ -200,7 +200,7 @@ evt = Evt(
         ]
     },
 )
-assert evt.period_data[0][0].pxdp == (0.3, 0.6)
+assert evt.stress_period_data[0][0].pxdp == (0.3, 0.6)
 
 # In the array view these get an extra `nseg-1` dim. A cell needs all of its
 # segment values.
@@ -213,9 +213,9 @@ pxdp.isel(kper=0, layer=0)
 # +
 np.testing.assert_array_equal(pxdp[0, :, 0, 0, 0], [0.3, 0.6])
 
-expected = evt.period_data
+expected = evt.stress_period_data
 evt.from_xarray(ds)
-assert evt.period_data == expected
+assert evt.stress_period_data == expected
 # -
 
 # ### Writing and running
@@ -226,8 +226,8 @@ assert evt.period_data == expected
 Ims(parent=sim, models=[gwf])
 gwf.npf = Npf()
 gwf.ic = Ic(strt=1.0)
-Chd(parent=gwf, period_data={0: [((0, 0, 3), 1.0)]})
-gwf.oc = Oc(head_file=f"{gwf.name}.hds", period_data={0: [("SAVE", "HEAD", "ALL")]})
+Chd(parent=gwf, stress_period_data={0: [((0, 0, 3), 1.0)]})
+gwf.oc = Oc(head_file=f"{gwf.name}.hds", stress_period_data={0: [("SAVE", "HEAD", "ALL")]})
 sim.write()
 sim.run()
 

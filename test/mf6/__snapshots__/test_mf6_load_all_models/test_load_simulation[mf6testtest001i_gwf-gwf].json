@@ -66,9 +66,9 @@
   },
   "simulation/flow-l1/chd-1": {
     "__type__": "Chd",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[2, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -156,7 +156,7 @@
   },
   "simulation/flow-l1/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",
@@ -280,7 +280,7 @@
   },
   "simulation/flow-l10/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",
@@ -404,7 +404,7 @@
   },
   "simulation/flow-l2/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",
@@ -528,7 +528,7 @@
   },
   "simulation/flow-l3/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",
@@ -652,7 +652,7 @@
   },
   "simulation/flow-l4/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",
@@ -776,7 +776,7 @@
   },
   "simulation/flow-l5/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",
@@ -900,7 +900,7 @@
   },
   "simulation/flow-l6/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",
@@ -1024,7 +1024,7 @@
   },
   "simulation/flow-l7/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",
@@ -1148,7 +1148,7 @@
   },
   "simulation/flow-l8/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",
@@ -1272,7 +1272,7 @@
   },
   "simulation/flow-l9/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",

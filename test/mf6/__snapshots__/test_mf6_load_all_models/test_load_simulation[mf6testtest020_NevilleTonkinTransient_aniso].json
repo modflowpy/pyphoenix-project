@@ -83,9 +83,9 @@
   },
   "simulation/mf6/MAW_1": {
     "__type__": "Maw",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "ifno": "int64[1] 05fe405753166f12",
         "mawsetting": {
           "__table__": "Rate",
@@ -209,7 +209,7 @@
   },
   "simulation/mf6/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",

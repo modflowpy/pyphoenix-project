@@ -753,7 +753,7 @@ def python_repr(v) -> str:
 
 def pascal_name(name: str) -> str:
     """snake_case, hyphenated, or a plain lowercase word -> PascalCase, e.g.
-    ``period_data`` -> ``PeriodData``, ``packagedata`` ->
+    ``stress_period_data`` -> ``StressPeriodData``, ``packagedata`` ->
     ``Packagedata``, ``ext-inflow`` (a real MF6 keyword, LKT/LKE)
     -> ``ExtInflow``. Only "_"/"-" split words -- the wire keyword itself
     (unlike the class name) keeps its original separator, since a hyphen is
@@ -1185,7 +1185,7 @@ def item_class(
 
     Called as::
 
-        {{ spec.period_schema | item_class("PeriodData", True) }}
+        {{ spec.period_schema | item_class("StressPeriodData", True) }}
         {{ block_schema | item_class("Packagedata") }}
         {{ arm_schema | item_class("Status", keyword="STATUS") }}
 

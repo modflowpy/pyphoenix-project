@@ -98,9 +98,9 @@
   },
   "simulation/test1ss_ic/SFR_1": {
     "__type__": "Sfr",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "ifno": "int64[145] a7e128fdbd870a91",
         "n": 145,
         "sfrsetting": "6468 chars aea9e0115b6e5036"
@@ -211,9 +211,9 @@
   },
   "simulation/test1ss_ic/ghb-1": {
     "__type__": "Ghb",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[2, 0] da39a3ee5e6b4b0d",
         "bhead": "float64[2] 5c05b40737dca5f1",
         "boundname": [
@@ -291,7 +291,7 @@
   },
   "simulation/test1ss_ic/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Save",

@@ -104,7 +104,7 @@ def test_gwf_chd01(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        period_data={
+        stress_period_data={
             0: [
                 ("SAVE", "HEAD", "LAST"),
                 ("SAVE", "BUDGET", "LAST"),
@@ -125,7 +125,7 @@ def test_gwf_chd01(function_tmpdir):
     chd = Chd(
         parent=gwf,
         print_flows=True,
-        period_data={0: [[(0, 0, 0), 1.0], [(0, 0, 99), 0.0]]},
+        stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 0, 99), 0.0]]},
         name="chd-1",
     )
 
@@ -242,7 +242,7 @@ def test_gwf_disv(function_tmpdir):
     chd = Chd(
         parent=gwf,
         print_flows=True,
-        period_data={0: [[(0, 0), 1.0], [(0, 8), 0.0]]},
+        stress_period_data={0: [[(0, 0), 1.0], [(0, 8), 0.0]]},
     )
 
     sim.write()
@@ -462,7 +462,7 @@ def test_gwf_disv_uzf(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        period_data={
+        stress_period_data={
             0: [
                 ("SAVE", "HEAD", "ALL"),
                 ("SAVE", "BUDGET", "ALL"),
@@ -486,7 +486,7 @@ def test_gwf_disv_uzf(function_tmpdir):
         storagecoefficient=False,
         ss=1.00000000e-05,
         sy=0.2,
-        period_data={0: [["TRANSIENT"]]},
+        stress_period_data={0: [["TRANSIENT"]]},
         iconvert=1,
     )
 
@@ -516,7 +516,7 @@ def test_gwf_disv_uzf(function_tmpdir):
     ghb = Ghb(
         parent=gwf,
         print_flows=True,
-        period_data={0: [[c, 14.0, 10000.0] for c in ghb_cells]},
+        stress_period_data={0: [[c, 14.0, 10000.0] for c in ghb_cells]},
         name="ghb-1",
     )
 
@@ -550,14 +550,14 @@ def test_model_in_subdirectory(function_tmpdir):
     Chd(
         parent=gwf,
         filename="gwf/m.chd",
-        period_data={0: [[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]]},
+        stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]]},
     )
     Oc(
         parent=gwf,
         filename="gwf/m.oc",
         budget_file="gwf/m.bud",
         head_file="gwf/m.hds",
-        period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
+        stress_period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
     )
 
     sim.write()
@@ -602,10 +602,10 @@ def test_quickstart(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.bud",
         head_file=f"{gwf_name}.hds",
-        period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
+        stress_period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
     )
     npf = Npf(parent=gwf, icelltype=0, k=1.0)
-    chd = Chd(parent=gwf, period_data={0: [[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]]})
+    chd = Chd(parent=gwf, stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]]})
 
     sim.write()
     sim.run()
@@ -649,7 +649,7 @@ def test_quickstart_grid(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.bud",
         head_file=f"{gwf_name}.hds",
-        period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
+        stress_period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
     )
     npf = Npf(parent=gwf, icelltype=0, k=1.0)
 
@@ -714,7 +714,7 @@ def test_quickstart_grid_explicit_maxbound(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.bud",
         head_file=f"{gwf_name}.hds",
-        period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
+        stress_period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
     )
     Npf(parent=gwf, icelltype=0, k=1.0)
 
@@ -780,7 +780,7 @@ def test_quickstart_netcdf(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.bud",
         head_file=f"{gwf_name}.hds",
-        period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
+        stress_period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
     )
     npf = Npf(parent=gwf, icelltype=0, k=1.0)
 
@@ -893,7 +893,7 @@ def test_quickstart_netcdf_mesh(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.bud",
         head_file=f"{gwf_name}.hds",
-        period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
+        stress_period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
     )
     npf = Npf(parent=gwf, icelltype=0, k=1.0)
 
@@ -997,10 +997,12 @@ def test_gwf_wel(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
+        stress_period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
     )
-    chd = Chd(parent=gwf, period_data={0: [[(0, 0, 0), 5.0], [(0, 0, 9), 5.0]]}, name="chd-1")
-    wel = Wel(parent=gwf, period_data={0: [[(0, 0, 4), -1.0]]}, name="wel-1")
+    chd = Chd(
+        parent=gwf, stress_period_data={0: [[(0, 0, 0), 5.0], [(0, 0, 9), 5.0]]}, name="chd-1"
+    )
+    wel = Wel(parent=gwf, stress_period_data={0: [[(0, 0, 4), -1.0]]}, name="wel-1")
 
     sim.write()
     sim.run()
@@ -1041,12 +1043,12 @@ def test_gwf_drn(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
+        stress_period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
     )
-    chd = Chd(parent=gwf, period_data={0: [[(0, 0, 0), 5.0]]}, name="chd-1")
+    chd = Chd(parent=gwf, stress_period_data={0: [[(0, 0, 0), 5.0]]}, name="chd-1")
     drn = Drn(
         parent=gwf,
-        period_data={0: [[(0, 0, 9), 4.0, 100.0]]},
+        stress_period_data={0: [[(0, 0, 9), 4.0, 100.0]]},
         name="drn-1",
     )
 
@@ -1089,12 +1091,12 @@ def test_gwf_riv(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
+        stress_period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
     )
-    chd = Chd(parent=gwf, period_data={0: [[(0, 0, 0), 3.0]]}, name="chd-1")
+    chd = Chd(parent=gwf, stress_period_data={0: [[(0, 0, 0), 3.0]]}, name="chd-1")
     riv = Riv(
         parent=gwf,
-        period_data={0: [[(0, 0, 9), 5.0, 100.0, 2.0]]},
+        stress_period_data={0: [[(0, 0, 9), 5.0, 100.0, 2.0]]},
         name="riv-1",
     )
 
@@ -1137,16 +1139,16 @@ def test_gwf_rch(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
+        stress_period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
     )
     chd = Chd(
         parent=gwf,
-        period_data={0: [[(0, 0, 0), 1.0], [(0, 0, 9), 1.0]]},
+        stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 0, 9), 1.0]]},
         name="chd-1",
     )
     rch = Rch(
         parent=gwf,
-        period_data={
+        stress_period_data={
             0: {
                 "cellid": [(0, 0, i) for i in range(10)],
                 "recharge": [1e-3] * 10,
@@ -1196,11 +1198,11 @@ def test_gwf_rcha(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
+        stress_period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
     )
     chd = Chd(
         parent=gwf,
-        period_data={0: [[(0, 0, 0), 1.0], [(0, 0, 9), 1.0]]},
+        stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 0, 9), 1.0]]},
         name="chd-1",
     )
     # RCHA uses READARRAY period arrays: shape (nper, ncpl)
@@ -1250,16 +1252,16 @@ def test_gwf_evt(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
+        stress_period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
     )
     chd = Chd(
         parent=gwf,
-        period_data={0: [[(0, 0, 0), 8.0], [(0, 0, 9), 8.0]]},
+        stress_period_data={0: [[(0, 0, 0), 8.0], [(0, 0, 9), 8.0]]},
         name="chd-1",
     )
     evt = Evt(
         parent=gwf,
-        period_data={
+        stress_period_data={
             0: {
                 "cellid": [(0, 0, i) for i in range(10)],
                 "surface": [10.0] * 10,
@@ -1311,11 +1313,11 @@ def test_gwf_evta(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
+        stress_period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
     )
     chd = Chd(
         parent=gwf,
-        period_data={0: [[(0, 0, 0), 8.0], [(0, 0, 9), 8.0]]},
+        stress_period_data={0: [[(0, 0, 0), 8.0], [(0, 0, 9), 8.0]]},
         name="chd-1",
     )
     # EVTA uses READARRAY period arrays: shape (nper, ncpl)
@@ -1375,13 +1377,13 @@ def test_gwf_mvr(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
+        stress_period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
     )
     # Auto-naming appends the 0-based index for list-typed children, so Chd/Wel/Drn
     # get auto-names chd0/wel0/drn0. Explicit name= would be mangled (e.g. "wel-1" -> "wel-10").
-    chd = Chd(parent=gwf, period_data={0: [[(0, 0, 0), 5.0], [(0, 0, 9), 5.0]]})
+    chd = Chd(parent=gwf, stress_period_data={0: [[(0, 0, 0), 5.0], [(0, 0, 9), 5.0]]})
     # mover=True writes MOVER keyword to OPTIONS block so MF6 allocates IMOVER
-    wel = Wel(parent=gwf, mover=True, period_data={0: [[(0, 0, 4), -1.0]]})
+    wel = Wel(parent=gwf, mover=True, stress_period_data={0: [[(0, 0, 4), -1.0]]})
     lak = Lak(
         parent=gwf,
         mover=True,
@@ -1398,7 +1400,7 @@ def test_gwf_mvr(function_tmpdir):
         maxpackages=2,
         maxmvr=1,
         packages={"pname": np.array(["wel-1", "lak-1"], dtype=object)},
-        period_data={
+        stress_period_data={
             0: {
                 "pname1": np.array(["wel-1"], dtype=object),
                 # 0-based Python-side index (the first boundary in wel0/
@@ -1486,11 +1488,11 @@ def test_gwt_basic(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
+        stress_period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
     )
     Chd(
         parent=gwf,
-        period_data={0: [[(0, 0, 0), 1.0], [(0, 0, ncol - 1), 0.0]]},
+        stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 0, ncol - 1), 0.0]]},
         name="chd-1",
     )
 
@@ -1505,8 +1507,8 @@ def test_gwt_basic(function_tmpdir):
     GwtAdv(parent=gwt, scheme="upstream")
     GwtMst(parent=gwt, porosity=0.3)
     GwtDsp(parent=gwt, xt3d_off=True, diffc=0.0, alh=0.1, alv=0.1, ath1=0.0)
-    GwtCnc(parent=gwt, period_data={0: [[(0, 0, 0), 1.0]]}, name="cnc-1")
-    GwtSrc(parent=gwt, period_data={0: [[(0, 0, 5), 1e-4]]}, name="src-1")
+    GwtCnc(parent=gwt, stress_period_data={0: [[(0, 0, 0), 1.0]]}, name="cnc-1")
+    GwtSrc(parent=gwt, stress_period_data={0: [[(0, 0, 5), 1e-4]]}, name="src-1")
 
     sim.write()
     sim.run()
@@ -1571,11 +1573,11 @@ def test_gwe_basic(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
+        stress_period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
     )
     Chd(
         parent=gwf,
-        period_data={0: [[(0, 0, 0), 1.0], [(0, 0, ncol - 1), 0.0]]},
+        stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 0, ncol - 1), 0.0]]},
         name="chd-1",
     )
 
@@ -1590,8 +1592,8 @@ def test_gwe_basic(function_tmpdir):
     GweAdv(parent=gwe, scheme="upstream")
     GweEst(parent=gwe, porosity=0.3, heat_capacity_solid=800.0, density_solid=2700.0)
     GweCnd(parent=gwe, ktw=0.58, kts=3.0)
-    GweCtp(parent=gwe, period_data={0: [[(0, 0, 0), 1.0]]}, name="ctp-1")
-    GweEsl(parent=gwe, period_data={0: [[(0, 0, 5), 1e-4]]}, name="esl-1")
+    GweCtp(parent=gwe, stress_period_data={0: [[(0, 0, 0), 1.0]]}, name="ctp-1")
+    GweEsl(parent=gwe, stress_period_data={0: [[(0, 0, 5), 1e-4]]}, name="esl-1")
 
     sim.write()
     sim.run()
@@ -1656,13 +1658,13 @@ def test_gwf_buy(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
+        stress_period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
     )
     # CHD with auxiliary "conc" so BUY can read concentration per stress record
     Chd(
         parent=gwf,
         auxiliary=["conc"],
-        period_data={0: [[(0, 0, 0), 1.0, 0.0], [(0, 0, ncol - 1), 0.0, 0.0]]},
+        stress_period_data={0: [[(0, 0, 0), 1.0, 0.0], [(0, 0, ncol - 1), 0.0, 0.0]]},
         name="chd-1",
     )
     Buy(
@@ -1679,7 +1681,7 @@ def test_gwf_buy(function_tmpdir):
     GwtSsm(parent=gwt)
     GwtAdv(parent=gwt, scheme="upstream")
     GwtMst(parent=gwt, porosity=0.3)
-    GwtCnc(parent=gwt, period_data={0: [[(0, 0, 0), 1.0]]}, name="cnc-1")
+    GwtCnc(parent=gwt, stress_period_data={0: [[(0, 0, 0), 1.0]]}, name="cnc-1")
 
     sim.write()
 
@@ -1746,13 +1748,13 @@ def test_gwf_vsc(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
+        stress_period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
     )
     # CHD with auxiliary "temperature" so VSC can read temp per stress record
     Chd(
         parent=gwf,
         auxiliary=["temperature"],
-        period_data={0: [[(0, 0, 0), 1.0, 20.0], [(0, 0, ncol - 1), 0.0, 20.0]]},
+        stress_period_data={0: [[(0, 0, 0), 1.0, 20.0], [(0, 0, ncol - 1), 0.0, 20.0]]},
         name="chd-1",
     )
     Vsc(
@@ -1773,7 +1775,7 @@ def test_gwf_vsc(function_tmpdir):
     GweAdv(parent=gwe, scheme="upstream")
     GweEst(parent=gwe, porosity=0.3, heat_capacity_solid=800.0, density_solid=2700.0)
     GweCnd(parent=gwe, ktw=0.58, kts=3.0)
-    GweCtp(parent=gwe, period_data={0: [[(0, 0, 0), 40.0]]}, name="ctp-1")
+    GweCtp(parent=gwe, stress_period_data={0: [[(0, 0, 0), 40.0]]}, name="ctp-1")
 
     sim.write()
 
@@ -1846,9 +1848,9 @@ def test_prt_basic(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
+        stress_period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
     )
-    Chd(parent=gwf, period_data={0: [[(0, 0, 0), 5.0], [(0, 0, 4), 3.0]]})
+    Chd(parent=gwf, stress_period_data={0: [[(0, 0, 0), 5.0], [(0, 0, 4), 3.0]]})
     gwf_sim.write()
     gwf_sim.run()
 
@@ -1888,7 +1890,7 @@ def test_prt_basic(function_tmpdir):
 
 
 def test_gwf_oc_period_variations(function_tmpdir):
-    """OC period_data: verify an explicit empty period and STEPS produce
+    """OC stress_period_data: verify an explicit empty period and STEPS produce
     correct CBC record counts.
 
     Uses a minimal 3-period, 1-layer, 3x3 model with:
@@ -1934,12 +1936,12 @@ def test_gwf_oc_period_variations(function_tmpdir):
     gwf = Gwf(parent=sim, save_flows=True, dis=dis, name=gwf_name)
     Ic(parent=gwf, strt=1.0)
     Npf(parent=gwf, k=1.0, icelltype=0)
-    Chd(parent=gwf, period_data={0: [[(0, 0, 0), 1.0], [(0, 0, 2), 0.0]]}, name="chd-1")
+    Chd(parent=gwf, stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 0, 2), 0.0]]}, name="chd-1")
     Oc(
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        period_data={
+        stress_period_data={
             0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "STEPS", 1)],
             1: [("SAVE", "HEAD", "ALL")],
         },
@@ -2016,13 +2018,13 @@ def test_gwt_ssm_sources(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
+        stress_period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
     )
     # CHD with auxiliary "conc": left inflow at concentration 1.0, right outflow 0.0
     chd = Chd(
         parent=gwf,
         auxiliary=["conc"],
-        period_data={0: [[(0, 0, 0), 1.0, 1.0], [(0, 0, ncol - 1), 0.0, 0.0]]},
+        stress_period_data={0: [[(0, 0, 0), 1.0, 1.0], [(0, 0, ncol - 1), 0.0, 0.0]]},
         name="chd-1",
     )
     # Auto-naming appends a zero-based counter to the name; use chd.name to get the
@@ -2136,13 +2138,13 @@ def test_gwf_lak_status(function_tmpdir):
         ss=0.0,
         sy=0.1,
         iconvert=1,
-        period_data={0: [["STEADY-STATE"]], 1: [["TRANSIENT"]]},
+        stress_period_data={0: [["STEADY-STATE"]], 1: [["TRANSIENT"]]},
     )
     oc = Oc(
         parent=gwf,
         head_file=f"{gwf_name}.hds",
         budget_file=f"{gwf_name}.cbc",
-        period_data={
+        stress_period_data={
             0: [
                 ("SAVE", "HEAD", "ALL"),
                 ("SAVE", "BUDGET", "ALL"),
@@ -2153,7 +2155,7 @@ def test_gwf_lak_status(function_tmpdir):
     )
     chd = Chd(
         parent=gwf,
-        period_data={0: [[(0, 0, 0), 100.0], [(0, nrow - 1, ncol - 1), 95.0]]},
+        stress_period_data={0: [[(0, 0, 0), 100.0], [(0, nrow - 1, ncol - 1), 95.0]]},
         name="chd-1",
     )
 
@@ -2189,7 +2191,7 @@ def test_gwf_lak_status(function_tmpdir):
             (0, i, (0, r, c), "vertical", 1.0, 0.0, 0.0, 0.0, 0.0)
             for i, (r, c) in enumerate(lake_connections)
         ],
-        period_data={
+        stress_period_data={
             0: [[0, "RAINFALL", 0.1]],
             1: [[0, "STATUS", "inactive"]],
             2: [[0, "STATUS", "active"]],
@@ -2321,11 +2323,11 @@ def test_gwt_lkt01(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
+        stress_period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
     )
     Chd(
         parent=gwf,
-        period_data={0: [[(0, 0, 0), -0.5], [(0, 0, ncol - 1), -0.5]]},
+        stress_period_data={0: [[(0, 0, 0), -0.5], [(0, 0, ncol - 1), -0.5]]},
         name="CHD-1",
     )
 
@@ -2351,7 +2353,7 @@ def test_gwt_lkt01(function_tmpdir):
         ],
         # lakeout None: no downstream lake (0 in the file)
         outlets=[(0, 0, None, "SPECIFIED", 999.0, 999.0, 999.0, 999.0)],
-        period_data={
+        stress_period_data={
             0: [
                 [0, "STATUS", "CONSTANT"],
                 [0, "STAGE", -0.4],
@@ -2398,7 +2400,7 @@ def test_gwt_lkt01(function_tmpdir):
         budget_file=f"{gwt_name}.lkt.bud",
         flow_package_name=lak.name,
         packagedata=[(0, 35.0, "mylake")],
-        period_data={
+        stress_period_data={
             0: [
                 [0, "STATUS", "CONSTANT"],
                 [0, "CONCENTRATION", 100.0],
@@ -2414,7 +2416,7 @@ def test_gwt_lkt01(function_tmpdir):
         parent=gwt,
         budget_file=f"{gwt_name}.cbc",
         concentration_file=f"{gwt_name}.ucn",
-        period_data={
+        stress_period_data={
             0: [
                 ("SAVE", "CONCENTRATION", "ALL"),
                 ("PRINT", "CONCENTRATION", "ALL"),
@@ -2529,11 +2531,11 @@ def test_gwt_lkt_flow_package_auxiliary_name(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
+        stress_period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
     )
     Chd(
         parent=gwf,
-        period_data={0: [[(0, 0, 0), -0.5], [(0, 0, ncol - 1), -0.5]]},
+        stress_period_data={0: [[(0, 0, 0), -0.5], [(0, 0, ncol - 1), -0.5]]},
         name="CHD-1",
     )
 
@@ -2561,7 +2563,7 @@ def test_gwt_lkt_flow_package_auxiliary_name(function_tmpdir):
             (0, 2, (0, 0, 2), "VERTICAL", FILL_DNODATA, 10.0, 10.0, connlen, connwidth),
         ],
         outlets=[(0, 0, None, "SPECIFIED", 999.0, 999.0, 999.0, 999.0)],
-        period_data={
+        stress_period_data={
             0: [
                 [0, "STATUS", "CONSTANT"],
                 [0, "STAGE", -0.4],
@@ -2606,7 +2608,7 @@ def test_gwt_lkt_flow_package_auxiliary_name(function_tmpdir):
         flow_package_name=lak.name,
         flow_package_auxiliary_name="CONCENTRATION",
         packagedata=[(0, 35.0, "mylake")],
-        period_data={
+        stress_period_data={
             0: [
                 [0, "STATUS", "CONSTANT"],
                 [0, "CONCENTRATION", 100.0],
@@ -2622,7 +2624,7 @@ def test_gwt_lkt_flow_package_auxiliary_name(function_tmpdir):
         parent=gwt,
         budget_file=f"{gwt_name}.cbc",
         concentration_file=f"{gwt_name}.ucn",
-        period_data={
+        stress_period_data={
             0: [
                 ("SAVE", "CONCENTRATION", "ALL"),
                 ("PRINT", "CONCENTRATION", "ALL"),
@@ -2737,11 +2739,11 @@ def test_gwe_lke_flow_package_auxiliary_name(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
+        stress_period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
     )
     Chd(
         parent=gwf,
-        period_data={0: [[(0, 0, 0), -0.5], [(0, 0, ncol - 1), -0.5]]},
+        stress_period_data={0: [[(0, 0, 0), -0.5], [(0, 0, ncol - 1), -0.5]]},
         name="CHD-1",
     )
 
@@ -2766,7 +2768,7 @@ def test_gwe_lke_flow_package_auxiliary_name(function_tmpdir):
             (0, 2, (0, 0, 2), "VERTICAL", FILL_DNODATA, 10.0, 10.0, connlen, connwidth),
         ],
         outlets=[(0, 0, None, "SPECIFIED", 999.0, 999.0, 999.0, 999.0)],
-        period_data={
+        stress_period_data={
             0: [
                 [0, "STATUS", "CONSTANT"],
                 [0, "STAGE", -0.4],
@@ -2812,7 +2814,7 @@ def test_gwe_lke_flow_package_auxiliary_name(function_tmpdir):
         flow_package_name=lak.name,
         flow_package_auxiliary_name="TEMPERATURE",
         packagedata=[(0, 5.0, 0.6, 0.1, "mylake")],
-        period_data={
+        stress_period_data={
             0: [
                 [0, "STATUS", "CONSTANT"],
                 [0, "TEMPERATURE", 20.0],
@@ -2828,7 +2830,7 @@ def test_gwe_lke_flow_package_auxiliary_name(function_tmpdir):
         parent=gwe,
         budget_file=f"{gwe_name}.cbc",
         temperature_file=f"{gwe_name}.utn",
-        period_data={
+        stress_period_data={
             0: [
                 ("SAVE", "TEMPERATURE", "ALL"),
                 ("PRINT", "TEMPERATURE", "ALL"),
@@ -2950,8 +2952,8 @@ def test_structured_grid_arrays_written_by_row(function_tmpdir):
     gwf = Gwf(parent=sim, name="gwf", dis=dis)
     Ic(parent=gwf, strt=10.0)
     Npf(parent=gwf, k=np.linspace(1.0, 2.0, 24), icelltype=0)
-    Chd(parent=gwf, period_data={0: [[(0, 0, 0), 10.0], [(1, 2, 3), 2.0]]})
-    Oc(parent=gwf, head_file="gwf.hds", period_data={0: [("SAVE", "HEAD", "LAST")]})
+    Chd(parent=gwf, stress_period_data={0: [[(0, 0, 0), 10.0], [(1, 2, 3), 2.0]]})
+    Oc(parent=gwf, head_file="gwf.hds", stress_period_data={0: [("SAVE", "HEAD", "LAST")]})
     sim.write()
 
     lines = (function_tmpdir / "gwf.dis").read_text().splitlines()
@@ -2979,7 +2981,7 @@ def test_tas_arrays_written_by_row(function_tmpdir):
     Dis(parent=gwf, nlay=nlay, nrow=nrow, ncol=ncol, top=10.0, botm=[5.0, 0.0, -5.0])
     Ic(parent=gwf, strt=10.0)
     Npf(parent=gwf, k=1.0)
-    Chd(parent=gwf, period_data={0: [[(nlay - 1, nrow - 1, ncol - 1), 4.0]]})
+    Chd(parent=gwf, stress_period_data={0: [[(nlay - 1, nrow - 1, ncol - 1), 4.0]]})
     tas = Tas(
         time_series_name=Tas.TimeSeriesName(time_series_name=("rcharray",)),
         interpolation_method=Tas.InterpolationMethod(interpolation_method="linear"),
@@ -3027,8 +3029,8 @@ def test_grid_arrays_with_unit_dim_written_by_row(function_tmpdir):
     gwf = Gwf(parent=sim, name="gwf", dis=dis)
     Ic(parent=gwf, strt=1.0)
     Npf(parent=gwf, k=1.0, icelltype=0)
-    Chd(parent=gwf, period_data={0: [[(0, 0, 0), 1.0]]})
-    Oc(parent=gwf, head_file="gwf.hds", period_data={0: [("SAVE", "HEAD", "LAST")]})
+    Chd(parent=gwf, stress_period_data={0: [[(0, 0, 0), 1.0]]})
+    Oc(parent=gwf, head_file="gwf.hds", stress_period_data={0: [("SAVE", "HEAD", "LAST")]})
     sim.write()
 
     lines = (function_tmpdir / "gwf.dis").read_text().splitlines()

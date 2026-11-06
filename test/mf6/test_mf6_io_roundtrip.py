@@ -268,7 +268,7 @@ def test_tvk_child_kept(tmp_path):
     )
     sim = Simulation.load(workspace / "mfsim.nam")
     tvk = sim["flow15"].npf.tvk
-    rows = tvk.period_data[0]
+    rows = tvk.stress_period_data[0]
     settings = [(type(r.tvksetting).__name__, r.cellid) for r in rows]
     assert settings == [("K", (0, 0, 2)), ("K33", (0, 0, 3))]
     assert (rows[0].tvksetting.k, rows[1].tvksetting.k33) == (5.0, 2.5)
@@ -280,7 +280,7 @@ def test_tvk_child_kept(tmp_path):
     assert "TVK6 FILEIN flow15.tvk" in (out / "flow15.npf").read_text()
     reloaded = Simulation.load(out / "mfsim.nam")
     diffs: list[str] = []
-    _diff(rows, reloaded["flow15"].npf.tvk.period_data[0], "tvk", diffs)
+    _diff(rows, reloaded["flow15"].npf.tvk.stress_period_data[0], "tvk", diffs)
     assert not diffs, "\n".join(diffs)
 
 
@@ -293,7 +293,7 @@ def test_tvs_child_kept(tmp_path):
         "BEGIN PERIOD 2\n  1 1 1 SS 2.0e-5\n  1 1 2 SY 0.1\nEND PERIOD\n"
     )
     sim = Simulation.load(workspace / "mfsim.nam")
-    rows = sim["GWF_1"].sto.tvs.period_data[1]
+    rows = sim["GWF_1"].sto.tvs.stress_period_data[1]
     settings = [(type(r.tvssetting).__name__, r.cellid) for r in rows]
     assert settings == [("Ss", (0, 0, 0)), ("Sy", (0, 0, 1))]
     assert (rows[0].tvssetting.ss, rows[1].tvssetting.sy) == (2.0e-5, 0.1)
@@ -305,7 +305,7 @@ def test_tvs_child_kept(tmp_path):
     assert "TVS6 FILEIN model.tvs" in (out / "model.sto").read_text()
     reloaded = Simulation.load(out / "mfsim.nam")
     diffs: list[str] = []
-    _diff(rows, reloaded["GWF_1"].sto.tvs.period_data[1], "tvs", diffs)
+    _diff(rows, reloaded["GWF_1"].sto.tvs.stress_period_data[1], "tvs", diffs)
     assert not diffs, "\n".join(diffs)
 
 
@@ -413,7 +413,7 @@ def test_gwt_transport_round_trips(tmp_path, pkg_cls):
         dims={"nper": 1},
         boundnames=True,
         packagedata=[(0, 1.0, "reach1")],
-        period_data={0: [[0, "STATUS", "CONSTANT"], [0, "CONCENTRATION", 5.0]]},
+        stress_period_data={0: [[0, "STATUS", "CONSTANT"], [0, "CONCENTRATION", 5.0]]},
         name=f"{pkg_cls.__name__.upper()}-1",
     )
 
@@ -454,7 +454,7 @@ def test_gwe_transport_round_trips(tmp_path, pkg_cls, row):
         dims={"nper": 1},
         boundnames=True,
         packagedata=[row],
-        period_data={0: [[0, "STATUS", "CONSTANT"], [0, "TEMPERATURE", 20.0]]},
+        stress_period_data={0: [[0, "STATUS", "CONSTANT"], [0, "TEMPERATURE", 20.0]]},
         name=f"{pkg_cls.__name__.upper()}-1",
     )
 
@@ -484,7 +484,7 @@ def test_quoted_multiword_boundname_and_obsname_round_trips(tmp_path):
     ghb = Ghb(
         parent=gwf,
         boundnames=True,
-        period_data={0: [[(0, 0, 0), 1.0, 10.0, "my bound"]]},
+        stress_period_data={0: [[(0, 0, 0), 1.0, 10.0, "my bound"]]},
         name="GHB-1",
     )
     Obs(
@@ -501,7 +501,7 @@ def test_quoted_multiword_boundname_and_obsname_round_trips(tmp_path):
     sim.write()
     reloaded = Simulation.load(tmp_path / "mfsim.nam")
     rghb = reloaded[gwf_name].ghb[0]
-    assert rghb.period_data[0][0].boundname == "my bound"
+    assert rghb.stress_period_data[0][0].boundname == "my bound"
     robs = rghb.obs.continuous[0].continuous[0]
     assert (robs.obsname, robs.id_) == ("my obs", "my bound")
 
@@ -526,7 +526,7 @@ def test_obs_id_naming_numeric_boundname_warns(tmp_path, boundname, warns):
     ghb = Ghb(
         parent=gwf,
         boundnames=True,
-        period_data={0: [[(0, 0, 0), 1.0, 10.0, boundname]]},
+        stress_period_data={0: [[(0, 0, 0), 1.0, 10.0, boundname]]},
         name="GHB-1",
     )
     Obs(
@@ -565,7 +565,7 @@ def _ghb_sim(tmp_path, rows, *, auxiliary=None, obs=()):
     ghb = Ghb(
         parent=gwf,
         boundnames=True,
-        period_data={0: [[(0, 0, j), 1.0, 10.0, *row] for j, row in enumerate(rows)]},
+        stress_period_data={0: [[(0, 0, j), 1.0, 10.0, *row] for j, row in enumerate(rows)]},
         name="GHB-1",
         **kwargs,
     )
@@ -597,16 +597,16 @@ def test_boundname_round_trips(tmp_path, boundname, aux):
     -> reload as written."""
     sim, ghb = _ghb_sim(tmp_path, [(aux, boundname), (aux, "b")], auxiliary=["x"] if aux else None)
     sim.write()
-    rows = _reloaded_ghb(tmp_path).period_data[0]
+    rows = _reloaded_ghb(tmp_path).stress_period_data[0]
     assert [(r.boundname, r.aux) for r in rows] == [(boundname, aux), ("b", aux)]
 
 
 def test_empty_boundname_is_none(tmp_path):
     """An empty boundname is no boundname, however the row gives it."""
     sim, ghb = _ghb_sim(tmp_path, [("",), ((), ""), ("b",)])
-    assert [r.boundname for r in ghb.period_data[0]] == [None, None, "b"]
+    assert [r.boundname for r in ghb.stress_period_data[0]] == [None, None, "b"]
     sim.write()
-    rows = _reloaded_ghb(tmp_path).period_data[0]
+    rows = _reloaded_ghb(tmp_path).stress_period_data[0]
     assert [r.boundname for r in rows] == [None, None, "b"]
 
 
@@ -628,7 +628,7 @@ def test_hand_written_boundnames_load(tmp_path):
     ghb_file.write_text(text[:start] + rows + text[text.index("END PERIOD") :])
 
     rghb = _reloaded_ghb(tmp_path)
-    rows_back = rghb.period_data[0]
+    rows_back = rghb.stress_period_data[0]
     assert [r.boundname for r in rows_back] == ["5", "1.50", "end", None, None]
     assert all(r.aux == (3.0,) for r in rows_back)
 
@@ -658,7 +658,7 @@ def test_unquoted_number_like_names_load_as_written(tmp_path, rows):
     assert "'" not in obs_file.read_text().split("BEGIN continuous")[-1]
 
     rghb = _reloaded_ghb(tmp_path)
-    rows_back = rghb.period_data[0]
+    rows_back = rghb.stress_period_data[0]
     second = rows.split()[-1]
     assert [r.boundname for r in rows_back] == ["1.50", second]
     assert [(r.bhead, r.cond) for r in rows_back] == [(1.0, 10.0), (1.0, 10.0)]

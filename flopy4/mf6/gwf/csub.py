@@ -6,7 +6,6 @@ import attrs
 
 from flopy4.mf6._types import FloatArrayLike, TimeSeriesRef
 from flopy4.mf6.item import Item
-from flopy4.mf6.legacy import Legacy
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, cellid_, child, double, file, integer, keyword, list_, string
 from flopy4.mf6.utl.obs import Obs
@@ -57,10 +56,6 @@ class Csub(Package):
         "wcomp-csub-cell": (("cellid",),),
     }
 
-    legacy_kwargs: ClassVar[dict[str, Legacy]] = {
-        "stress_period_data": Legacy("period_data"),
-    }
-
     @attrs.define
     class Packagedata(Item):
         icsubno: int = integer(index=True, pk=True)
@@ -79,7 +74,7 @@ class Csub(Package):
         )
 
     @attrs.define
-    class PeriodData(Item):
+    class StressPeriodData(Item):
         cellid: tuple[int, ...] = cellid_()
         sig0: Union[float, TimeSeriesRef] = double(time_series=True)
 
@@ -316,8 +311,8 @@ class Csub(Package):
         block="packagedata",
         shape=("ninterbeds",),
     )
-    _period_data: Optional[dict[int, list[PeriodData]]] = list_(
-        alias="period_data",
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
+        alias="stress_period_data",
         default=None,
         repr=False,
         block="period",
@@ -327,4 +322,4 @@ class Csub(Package):
 
 
 CsubPackagedata = Csub.Packagedata
-CsubPeriodData = Csub.PeriodData
+CsubStressPeriodData = Csub.StressPeriodData

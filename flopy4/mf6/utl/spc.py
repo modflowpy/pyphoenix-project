@@ -19,7 +19,7 @@ class Spc(Package):
     multi_package: ClassVar[bool] = True
 
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
-        "perioddata": Legacy("period_data"),
+        "perioddata": Legacy("stress_period_data"),
     }
 
     @attrs.define
@@ -33,7 +33,7 @@ class Spc(Package):
         temperature: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
-    class PeriodData(Item):
+    class StressPeriodData(Item):
         bndno: int = integer(index=True, pk=True, key="bound", rule="ssm_package")
         spcsetting: "Spc.Concentration | Spc.Temperature" = union()
 
@@ -51,8 +51,8 @@ class Spc(Package):
         block="dimensions",
         longname="maximum number of ssm entries",
     )
-    _period_data: Optional[dict[int, list[PeriodData]]] = list_(
-        alias="period_data",
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
+        alias="stress_period_data",
         default=None,
         repr=False,
         block="period",
@@ -64,4 +64,4 @@ class Spc(Package):
 
 SpcConcentration = Spc.Concentration
 SpcTemperature = Spc.Temperature
-SpcPeriodData = Spc.PeriodData
+SpcStressPeriodData = Spc.StressPeriodData

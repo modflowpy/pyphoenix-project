@@ -42,7 +42,7 @@ crosssections__fields: (crosssectionsdata | open_close_redirect _NL)*
 connectiondata__fields: (connectiondatadata | open_close_redirect _NL)*
 diversions__fields: (diversionsdata | open_close_redirect _NL)*
 initialstages__fields: (initialstagesdata | open_close_redirect _NL)*
-period__fields: (period_data | open_close_redirect _NL)*
+period__fields: (stress_period_data | open_close_redirect _NL)*
 storage__kw: "storage"i  [_remark] _NL
 ats_courant__val: "ats_courant"i double [_remark] _NL
 auxiliary__val: "auxiliary"i word+ [_remark] _NL
@@ -79,4 +79,4 @@ crosssectionsdata: record+
 connectiondatadata: record+
 diversionsdata: record+
 initialstagesdata: record+
-period_data: record+
+stress_period_data: record+

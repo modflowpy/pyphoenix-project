@@ -36,7 +36,7 @@ def _chd_rows(path: Path) -> list:
 def _chd(tmp_path: Path, **kwargs) -> Chd:
     chd = Chd(
         auxiliary=["c"],
-        period_data={
+        stress_period_data={
             0: [[(0, 0, 0), 10.0, 1.5], [(0, 0, 2), 2.0, 2.5]],
             2: [[(0, 0, 2), 3.0, 0.0]],
         },
@@ -53,30 +53,30 @@ def test_list_format_binary_writes_period_files(tmp_path):
     chd = _chd(tmp_path)
     chd.write(context=WriteContext(list_format="binary"))
     assert _lines(chd.path, "OPEN/CLOSE") == [
-        "OPEN/CLOSE m_chd_period_data_p1.bin (BINARY)",
-        "OPEN/CLOSE m_chd_period_data_p3.bin (BINARY)",
+        "OPEN/CLOSE m_chd_stress_period_data_p1.bin (BINARY)",
+        "OPEN/CLOSE m_chd_stress_period_data_p3.bin (BINARY)",
     ]
-    assert _chd_rows(tmp_path / "m_chd_period_data_p1.bin") == [
+    assert _chd_rows(tmp_path / "m_chd_stress_period_data_p1.bin") == [
         ((1, 1, 1), 10.0, 1.5),
         ((1, 1, 3), 2.0, 2.5),
     ]
     again = Chd.load(chd.path, dims=DIMS, context=LoadContext(workspace=tmp_path))
-    assert again.period_data == chd.period_data
+    assert again.stress_period_data == chd.stress_period_data
 
 
 def test_list_format_open_close_writes_text_files(tmp_path):
     chd = _chd(tmp_path)
     chd.write(context=WriteContext(list_format="open/close"))
     assert _lines(chd.path, "OPEN/CLOSE") == [
-        "OPEN/CLOSE m_chd_period_data_p1.txt",
-        "OPEN/CLOSE m_chd_period_data_p3.txt",
+        "OPEN/CLOSE m_chd_stress_period_data_p1.txt",
+        "OPEN/CLOSE m_chd_stress_period_data_p3.txt",
     ]
-    assert (tmp_path / "m_chd_period_data_p1.txt").read_text().splitlines() == [
+    assert (tmp_path / "m_chd_stress_period_data_p1.txt").read_text().splitlines() == [
         "1 1 1 10.0 1.5",
         "1 1 3 2.0 2.5",
     ]
     again = Chd.load(chd.path, dims=DIMS, context=LoadContext(workspace=tmp_path))
-    assert again.period_data == chd.period_data
+    assert again.stress_period_data == chd.stress_period_data
 
 
 def test_list_io_path_and_format(tmp_path):
@@ -87,16 +87,16 @@ def test_list_io_path_and_format(tmp_path):
         context=WriteContext(
             list_format="internal",
             lists={
-                ("period_data", 0): ListIO(path="p1.dat"),
-                ("period_data", 2): ListIO(format="binary"),
+                ("stress_period_data", 0): ListIO(path="p1.dat"),
+                ("stress_period_data", 2): ListIO(format="binary"),
             },
         )
     )
     assert _lines(chd.path, "OPEN/CLOSE") == [
         "OPEN/CLOSE p1.dat",
-        "OPEN/CLOSE m_chd_period_data_p3.bin (BINARY)",
+        "OPEN/CLOSE m_chd_stress_period_data_p3.bin (BINARY)",
     ]
-    chd.write(context=WriteContext(lists={"period_data": ListIO(format="open/close")}))
+    chd.write(context=WriteContext(lists={"stress_period_data": ListIO(format="open/close")}))
     assert len(_lines(chd.path, "OPEN/CLOSE")) == 2
 
 
@@ -106,7 +106,7 @@ def test_binary_threshold(tmp_path):
     chd = _chd(tmp_path)
     chd.write(context=WriteContext(list_format="binary", binary_threshold=28))
     assert _lines(chd.path, "OPEN/CLOSE") == [
-        "OPEN/CLOSE m_chd_period_data_p1.bin (BINARY)",
+        "OPEN/CLOSE m_chd_stress_period_data_p1.bin (BINARY)",
     ]
 
 
@@ -153,12 +153,12 @@ def test_load_records_list_files(loaded_chd):
     chd, _ = loaded_chd
     lists = chd.write_context.lists
     assert lists == {
-        ("period_data", 0): ListIO(path=Path("p1.txt"), format="open/close"),
-        ("period_data", 1): ListIO(path=Path("p2.bin"), format="binary"),
-        ("period_data", 2): ListIO(path=Path("shared.txt"), format="open/close"),
-        ("period_data", 3): ListIO(path=Path("shared.txt"), format="open/close"),
+        ("stress_period_data", 0): ListIO(path=Path("p1.txt"), format="open/close"),
+        ("stress_period_data", 1): ListIO(path=Path("p2.bin"), format="binary"),
+        ("stress_period_data", 2): ListIO(path=Path("shared.txt"), format="open/close"),
+        ("stress_period_data", 3): ListIO(path=Path("shared.txt"), format="open/close"),
     }
-    assert lists[("period_data", 1)].hash == list_hash([[1, 1, 2, 4.0, 0.5]])
+    assert lists[("stress_period_data", 1)].hash == list_hash([[1, 1, 2, 4.0, 0.5]])
 
 
 def test_write_keeps_list_files(loaded_chd):
@@ -173,7 +173,7 @@ def test_write_keeps_list_files(loaded_chd):
     assert (out / "p1.txt").read_text().splitlines() == ["1 1 1 10.0 1.5", "1 1 3 2.0 2.5"]
     assert _chd_rows(out / "p2.bin") == [((1, 1, 2), 4.0, 0.5)]
     again = Chd.load(chd.path, dims=DIMS, context=LoadContext(workspace=out))
-    assert again.period_data == chd.period_data
+    assert again.stress_period_data == chd.stress_period_data
 
 
 def test_internal_beats_loaded_list_files(loaded_chd):
@@ -194,7 +194,7 @@ def test_shared_list_file_kept_by_unchanged_period(loaded_chd):
     """Edit one period of a shared file and it's written inline, with a
     warning naming it; the unchanged period keeps the file."""
     chd, out = loaded_chd
-    chd.period_data[2] = [Chd.PeriodData(cellid=(0, 0, 1), head=6.0, aux=(0.0,))]
+    chd.stress_period_data[2] = [Chd.StressPeriodData(cellid=(0, 0, 1), head=6.0, aux=(0.0,))]
     with pytest.warns(UserWarning, match="period 3 changed since loaded"):
         chd.write()
     assert _lines(chd.path, "OPEN/CLOSE")[2:] == ["OPEN/CLOSE shared.txt"]
@@ -204,7 +204,7 @@ def test_shared_list_file_kept_by_unchanged_period(loaded_chd):
 
 def test_strict_raises_on_disagreeing_shared_list_file(loaded_chd):
     chd, out = loaded_chd
-    chd.period_data[2] = [Chd.PeriodData(cellid=(0, 0, 1), head=6.0, aux=(0.0,))]
+    chd.stress_period_data[2] = [Chd.StressPeriodData(cellid=(0, 0, 1), head=6.0, aux=(0.0,))]
     with pytest.raises(ExternalFileError, match="changed since loaded"):
         chd.write(context=WriteContext(strict=True))
     assert not (out / "shared.txt").exists()
@@ -215,17 +215,17 @@ def test_boundnames_written_as_text(tmp_path):
     writes such rows as text, and a list's own "binary" warns too."""
     chd = Chd(
         boundnames=True,
-        period_data={0: [[(0, 0, 0), 10.0, "east"]], 1: [[(0, 0, 0), 9.0]]},
+        stress_period_data={0: [[(0, 0, 0), 10.0, "east"]], 1: [[(0, 0, 0), 9.0]]},
     )
     chd.filename = str(tmp_path / "m.chd")
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         chd.write(context=WriteContext(list_format="binary"))
     assert _lines(chd.path, "OPEN/CLOSE") == [
-        "OPEN/CLOSE m_chd_period_data_p1.txt",
-        "OPEN/CLOSE m_chd_period_data_p2.txt",
+        "OPEN/CLOSE m_chd_stress_period_data_p1.txt",
+        "OPEN/CLOSE m_chd_stress_period_data_p2.txt",
     ]
-    context = WriteContext(lists={"period_data": ListIO(format="binary")})
+    context = WriteContext(lists={"stress_period_data": ListIO(format="binary")})
     with pytest.warns(UserWarning, match="period 1: MF6 can't read these rows from a binary"):
         chd.write(context=context)
     with pytest.raises(ExternalFileError, match="period 1: MF6 can't read"):
@@ -237,17 +237,19 @@ def test_time_series_names_written_as_text(tmp_path):
     file, makes the rows text."""
     rows = Rows(
         3,
-        field="period_data",
-        item_cls=Chd.PeriodData,
+        field="stress_period_data",
+        item_cls=Chd.StressPeriodData,
         layout=lambda: ({}, frozenset()),
     )
-    rows.append([Chd.PeriodData(cellid=(0, 0, 0), head="myts")])
+    rows.append([Chd.StressPeriodData(cellid=(0, 0, 0), head="myts")])
     data = {"period 1": {"period": rows}}
-    context = WriteContext.resolve(WriteContext(lists={"period_data": ListIO(format="binary")}))
+    context = WriteContext.resolve(
+        WriteContext(lists={"stress_period_data": ListIO(format="binary")})
+    )
     with pytest.warns(UserWarning, match="MF6 can't read these rows from a binary"):
         out = write_external_lists(data, tmp_path, Path("m.chd"), "chd", context)
     assert out["period 1"]["period"].open_close_binary is False
-    assert (tmp_path / "m_chd_period_data_p1.txt").read_text() == "1 1 1 myts\n"
+    assert (tmp_path / "m_chd_stress_period_data_p1.txt").read_text() == "1 1 1 myts\n"
 
 
 def test_list_format_binary_writes_other_blocks_as_text(tmp_path):
@@ -267,7 +269,7 @@ def test_list_format_binary_writes_other_blocks_as_text(tmp_path):
 def test_list_sharing_its_block_written_inline(tmp_path):
     """Only a list alone in its block can go to a file."""
     rows = Rows(field="rows")
-    rows.append([Wel.PeriodData(cellid=(0, 0, 0), q=1.0)])
+    rows.append([Wel.StressPeriodData(cellid=(0, 0, 0), q=1.0)])
     data = {"options": {"flag": True, "rows": rows}}
     context = WriteContext.resolve(WriteContext(lists={"rows": ListIO(path="r.txt")}))
     with pytest.warns(UserWarning, match="only a list alone in its block"):
@@ -299,16 +301,16 @@ def _sim(workspace: Path) -> Simulation:
     Chd(
         parent=gwf,
         auxiliary=["c"],
-        period_data={0: [[(0, 0, 0), 10.0, 1.0], [(1, 2, 3), 2.0, 2.0]]},
+        stress_period_data={0: [[(0, 0, 0), 10.0, 1.0], [(1, 2, 3), 2.0, 2.0]]},
     )
     Wel(
         parent=gwf,
-        period_data={
+        stress_period_data={
             0: [[(1, 1, 1), -0.1]],
             1: [[(1, 1, 1), -0.3], [(0, 1, 2), 0.05]],
         },
     )
-    Oc(parent=gwf, head_file="gwf.hds", period_data={0: [("SAVE", "HEAD", "ALL")]})
+    Oc(parent=gwf, head_file="gwf.hds", stress_period_data={0: [("SAVE", "HEAD", "ALL")]})
     return sim
 
 
@@ -324,9 +326,11 @@ def test_mf6_reads_list_files(function_tmpdir, list_format):
     sim = _sim(external)
     sim.write(context=WriteContext(list_format=list_format))
     suffix = ".bin (BINARY)" if list_format == "binary" else ".txt"
-    assert f"OPEN/CLOSE gwf_wel-1_wel_period_data_p2{suffix}" in _lines(
+    assert f"OPEN/CLOSE gwf_wel-1_wel_stress_period_data_p2{suffix}" in _lines(
         external / "gwf.wel-1.wel", "OPEN/CLOSE"
     )
-    assert _lines(external / "gwf.oc", "OPEN/CLOSE") == ["OPEN/CLOSE gwf_oc_period_data_p1.txt"]
+    assert _lines(external / "gwf.oc", "OPEN/CLOSE") == [
+        "OPEN/CLOSE gwf_oc_stress_period_data_p1.txt"
+    ]
     sim.run()
     assert (inline / "gwf.hds").read_bytes() == (external / "gwf.hds").read_bytes()

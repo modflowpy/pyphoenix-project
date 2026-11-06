@@ -54,9 +54,9 @@
   },
   "simulation/GWF_1/chd-1": {
     "__type__": "Chd",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[2, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null,
@@ -146,7 +146,7 @@
   },
   "simulation/GWF_1/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",
@@ -185,18 +185,18 @@
   },
   "simulation/GWF_1/sto": {
     "__type__": "Sto",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "n": 1,
-        "period_data": [
+        "stress_period_data": [
           "STEADY-STATE"
         ]
       },
       "1": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "n": 1,
-        "period_data": [
+        "stress_period_data": [
           "TRANSIENT"
         ]
       }
@@ -222,9 +222,9 @@
   },
   "simulation/GWF_1/uzf-1": {
     "__type__": "Uzf",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[8, 0] da39a3ee5e6b4b0d",
         "extdp": "float64[8] c8d7d0ef0eedfa82",
         "extwc": "float64[8] c8d7d0ef0eedfa82",
@@ -237,7 +237,7 @@
         "rootact": "float64[8] c8d7d0ef0eedfa82"
       },
       "1": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[8, 0] da39a3ee5e6b4b0d",
         "extdp": "float64[8] c8d7d0ef0eedfa82",
         "extwc": "float64[8] c8d7d0ef0eedfa82",
@@ -250,7 +250,7 @@
         "rootact": "float64[8] c8d7d0ef0eedfa82"
       },
       "2": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[8, 0] da39a3ee5e6b4b0d",
         "extdp": "float64[8] c8d7d0ef0eedfa82",
         "extwc": "float64[8] c8d7d0ef0eedfa82",
@@ -263,7 +263,7 @@
         "rootact": "float64[8] c8d7d0ef0eedfa82"
       },
       "3": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[8, 0] da39a3ee5e6b4b0d",
         "extdp": "float64[8] c8d7d0ef0eedfa82",
         "extwc": "float64[8] c8d7d0ef0eedfa82",
@@ -276,7 +276,7 @@
         "rootact": "float64[8] c8d7d0ef0eedfa82"
       },
       "4": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[8, 0] da39a3ee5e6b4b0d",
         "extdp": "float64[8] c8d7d0ef0eedfa82",
         "extwc": "float64[8] c8d7d0ef0eedfa82",

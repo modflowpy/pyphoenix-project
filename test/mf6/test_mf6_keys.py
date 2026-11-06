@@ -15,8 +15,8 @@ def _gwf(name):
     gwf = Gwf(name=name, dis=Dis(nlay=1, nrow=1, ncol=2))
     Ic(parent=gwf)
     Npf(parent=gwf)
-    Wel(parent=gwf, name="wel", mover=True, period_data={0: [((0, 0, 0), -1.0)]})
-    Drn(parent=gwf, name="drn", mover=True, period_data={0: [((0, 0, 1), 1.0, 1.0)]})
+    Wel(parent=gwf, name="wel", mover=True, stress_period_data={0: [((0, 0, 0), -1.0)]})
+    Drn(parent=gwf, name="drn", mover=True, stress_period_data={0: [((0, 0, 1), 1.0, 1.0)]})
     Lak(parent=gwf, name="lak", mover=True, nlakes=1, packagedata=[(0, 1.0, 1)])
     return gwf
 
@@ -26,7 +26,7 @@ def _mvr(packages, moves, **kwargs):
         maxpackages=len(packages),
         maxmvr=len(moves),
         packages=packages,
-        period_data={0: moves},
+        stress_period_data={0: moves},
         **kwargs,
     )
 
@@ -64,7 +64,7 @@ def test_model_mvr_keys():
         (
             [("wel",), ("drn",)],
             [("wel", 0, "riv", 0, "FACTOR", 1.0)],
-            "Mvr.period_data: period 0: pname2 'riv' isn't in packages",
+            "Mvr.stress_period_data: period 0: pname2 'riv' isn't in packages",
         ),
     ],
 )
@@ -128,7 +128,7 @@ def test_exchange_mvr_keys(tmp_path):
         (
             [("a", "wel"), ("b", "drn")],
             [("a", "wel", 0, "a", "drn", 0, "FACTOR", 1.0)],
-            "Mvr.period_data: period 0: pname2 'drn' (mname2 'a') isn't in packages",
+            "Mvr.stress_period_data: period 0: pname2 'drn' (mname2 'a') isn't in packages",
         ),
     ],
 )
@@ -149,7 +149,7 @@ def _lak(outlets=(), periods=()):
         noutlets=len(outlets),
         packagedata=[(0, 1.0, 1), (1, 1.0, 1)],
         outlets=[(*o, "SPECIFIED", 0.0, 0.0, 0.0, 0.0) for o in outlets] or None,
-        period_data={0: list(periods)} if periods else None,
+        stress_period_data={0: list(periods)} if periods else None,
     )
 
 
@@ -221,9 +221,9 @@ def test_chf_cross_section_keys(tmp_path):
 
     chf = Chf(name="m")
     Cxs(parent=chf, nsections=1, npoints=2, packagedata=[(0, 2)])
-    cdb = Cdb(parent=chf, period_data={0: [[(0,), 0, 1.0], [(1,), 1, 1.0]]})
+    cdb = Cdb(parent=chf, stress_period_data={0: [[(0,), 0, 1.0], [(1,), 1, 1.0]]})
     assert key_errors(cdb) == [
-        "Cdb.period_data: period 0: idcxs 1 isn't in packagedata of cxs 'cxs'"
+        "Cdb.stress_period_data: period 0: idcxs 1 isn't in packagedata of cxs 'cxs'"
     ]
 
 
@@ -240,7 +240,7 @@ def test_model_mvr_id_errors(move, error):
     gwf = _gwf("flow")
     mvr = _mvr([("wel",), ("lak",)], [(*move, "FACTOR", 1.0)])
     mvr.parent = gwf
-    assert key_errors(mvr) == [f"Mvr.period_data: period 0: {error}"]
+    assert key_errors(mvr) == [f"Mvr.stress_period_data: period 0: {error}"]
 
 
 def test_exchange_mvr_model_outside_exchange(tmp_path):
@@ -255,7 +255,7 @@ def test_exchange_mvr_model_outside_exchange(tmp_path):
     [
         (
             [("wel", 0, "lak", 0, "FACTOR", 1.0)],
-            ["Mvr.period_data: period 0: id1 0 is in wel 'wel', which hasn't mover on"],
+            ["Mvr.stress_period_data: period 0: id1 0 is in wel 'wel', which hasn't mover on"],
         ),
         ([], []),
     ],
@@ -279,7 +279,7 @@ def test_model_mvr_role_off():
     mvr.parent = gwf
     assert key_errors(mvr) == [
         "Mvr.packages: pname 'lak' hasn't mover on",
-        "Mvr.period_data: period 0: id2 0 is in lak 'lak', which hasn't mover on",
+        "Mvr.stress_period_data: period 0: id2 0 is in lak 'lak', which hasn't mover on",
     ]
 
 
@@ -288,7 +288,7 @@ def test_model_mvr_not_mover():
     from flopy4.mf6.gwf import Chd
 
     gwf = _gwf("flow")
-    Chd(parent=gwf, name="chd", period_data={0: [((0, 0, 1), 1.0)]})
+    Chd(parent=gwf, name="chd", stress_period_data={0: [((0, 0, 1), 1.0)]})
     mvr = _mvr([("wel",), ("chd",)], [])
     mvr.parent = gwf
     assert key_errors(mvr) == ["Mvr.packages: pname 'chd' isn't a mover"]
@@ -316,7 +316,7 @@ def _transport(tmp_path, pname="wel", bndno=0, exchange=True):
 
     gwf = _gwf("flow")
     gwt = Gwt(name="trans", dis=GwtDis(nlay=1, nrow=1, ncol=2))
-    spc = Spc(maxbound=1, period_data={0: [(bndno, Spc.Concentration(1.0))]})
+    spc = Spc(maxbound=1, stress_period_data={0: [(bndno, Spc.Concentration(1.0))]})
     ssm = Ssm(parent=gwt, fileinput=[(pname, spc)])
     exchanges = [Gwfgwt(exgmnamea=gwf, exgmnameb=gwt)] if exchange else []
     _sim(tmp_path, gwf, gwt, exchanges=exchanges)
@@ -346,7 +346,7 @@ def test_ssm_pname_without_exchange(tmp_path):
 def test_spc_bndno_past_bounds(tmp_path):
     _, spc = _transport(tmp_path, bndno=1)
     assert key_errors(spc) == [
-        "Spc.period_data: period 0: bndno 1 isn't below the maxbound of wel 'wel' (1)"
+        "Spc.stress_period_data: period 0: bndno 1 isn't below the maxbound of wel 'wel' (1)"
     ]
 
 
@@ -403,7 +403,7 @@ def _sfr_diversions(periods=()):
         packagedata=[(0, (0, 0, 0), *reach, 1), (1, (0, 0, 1), *reach, 0)],
         connectiondata=[(0, (-2,)), (1, (1,))],
         diversions=[(0, 0, 1, "UPTO")],
-        period_data={0: [(r, Sfr.Diversion(d, 1.0)) for r, d in periods]} or None,
+        stress_period_data={0: [(r, Sfr.Diversion(d, 1.0)) for r, d in periods]} or None,
     )
 
 
@@ -420,7 +420,7 @@ def test_sfr_period_diversion_keys():
     ],
 )
 def test_sfr_period_diversion_errors(periods, error):
-    assert key_errors(_sfr_diversions(periods)) == [f"Sfr.period_data: period 0: {error}"]
+    assert key_errors(_sfr_diversions(periods)) == [f"Sfr.stress_period_data: period 0: {error}"]
 
 
 def test_ssm_package_in_both_lists(tmp_path):
@@ -433,7 +433,7 @@ def test_spc_on_advanced_package(tmp_path):
     """SPC on an advanced package numbers its bounds: LAK's connections."""
     _, spc = _transport(tmp_path, pname="lak", bndno=1)
     assert key_errors(spc) == [
-        "Spc.period_data: period 0: bndno 1 isn't below the nlakeconn of lak 'lak' (1)"
+        "Spc.stress_period_data: period 0: bndno 1 isn't below the nlakeconn of lak 'lak' (1)"
     ]
 
 

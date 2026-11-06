@@ -51,9 +51,9 @@
   },
   "simulation/GWF_1/CHD_LEFT": {
     "__type__": "Chd",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[40, 0] da39a3ee5e6b4b0d",
         "boundname": "480 chars 09c21ce678c9edd6",
         "cellid": "int64[40, 3] f0a363c352cc617a",
@@ -129,9 +129,9 @@
   },
   "simulation/GWF_1/CHD_RIGHT": {
     "__type__": "Chd",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[40, 0] da39a3ee5e6b4b0d",
         "boundname": "240 chars 65361fa17dffc6e6",
         "cellid": "int64[40, 3] e91c6b3d1e011af8",
@@ -216,7 +216,7 @@
   },
   "simulation/GWF_1/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",
@@ -255,18 +255,18 @@
   },
   "simulation/GWF_1/sto": {
     "__type__": "Sto",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "n": 1,
-        "period_data": [
+        "stress_period_data": [
           "steady-state"
         ]
       },
       "1": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "n": 1,
-        "period_data": [
+        "stress_period_data": [
           "transient"
         ]
       }
@@ -292,9 +292,9 @@
   },
   "simulation/GWF_1/wel-1": {
     "__type__": "Wel",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[1, 0] da39a3ee5e6b4b0d",
         "boundname": [
           "well_4"
@@ -310,7 +310,7 @@
         }
       },
       "1": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[3, 0] da39a3ee5e6b4b0d",
         "boundname": [
           "well_2",
@@ -330,7 +330,7 @@
         }
       },
       "2": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[4, 0] da39a3ee5e6b4b0d",
         "boundname": [
           "well_1",
@@ -352,7 +352,7 @@
         }
       },
       "3": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[5, 0] da39a3ee5e6b4b0d",
         "boundname": [
           "well_1",
@@ -376,7 +376,7 @@
         }
       },
       "5": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[6, 0] da39a3ee5e6b4b0d",
         "boundname": [
           "well_1",
@@ -413,7 +413,7 @@
         ]
       },
       "6": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[7, 0] da39a3ee5e6b4b0d",
         "boundname": [
           "well_1",
@@ -455,7 +455,7 @@
         ]
       },
       "8": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[6, 0] da39a3ee5e6b4b0d",
         "boundname": [
           "well_1",
@@ -492,7 +492,7 @@
         ]
       },
       "9": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[5, 0] da39a3ee5e6b4b0d",
         "boundname": [
           "well_2",

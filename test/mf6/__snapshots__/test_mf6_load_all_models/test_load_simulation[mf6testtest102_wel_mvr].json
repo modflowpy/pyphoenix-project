@@ -96,9 +96,9 @@
   },
   "simulation/welmvr/CHD-FROM-IBOUND": {
     "__type__": "Chd",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[1, 0] da39a3ee5e6b4b0d",
         "boundname": [
           null
@@ -159,7 +159,7 @@
   },
   "simulation/welmvr/maw-1": {
     "__type__": "Maw",
-    "_period_data": {
+    "_stress_period_data": {
       "0": []
     },
     "boundnames": false,
@@ -220,9 +220,9 @@
   },
   "simulation/welmvr/mvr": {
     "__type__": "Mvr",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "id1": "int64[1] b0aa4b549f325cca",
         "id2": "int64[1] ef4862c8fb031cd5",
         "mname1": [
@@ -305,7 +305,7 @@
   },
   "simulation/welmvr/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",
@@ -354,9 +354,9 @@
   },
   "simulation/welmvr/wel-1": {
     "__type__": "Wel",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[4, 0] da39a3ee5e6b4b0d",
         "boundname": [
           "W1",

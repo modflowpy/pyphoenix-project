@@ -112,7 +112,7 @@ def _grid_period_has_explicit_clear(stress_periods: list[dict[int, Any]], kper: 
 
 class PeriodRows(dict):
     """A fill-forward list field's ``{kper: rows}`` (CHD's
-    period_data). Rows assigned to a period are coerced as at
+    stress_period_data). Rows assigned to a period are coerced as at
     construction (see `Package._coerce_item_list`)."""
 
     def __init__(self, package: "Package", name: str, periods: dict) -> None:
@@ -216,7 +216,7 @@ class Package(Component, ABC):
         `_set_dim_from_rows`). A computed `maxbound` isn't set here.
 
         Reads/writes the field's real attribute name (f.name) always --
-        aliases (e.g. _period_data's "period_data") only name
+        aliases (e.g. _stress_period_data's "stress_period_data") only name
         the __init__ parameter; the instance attribute (and __dict__ key
         object.__setattr__ writes to) is still the real name.
         """
@@ -933,7 +933,7 @@ class Package(Component, ABC):
 
     def to_dataframe(self) -> pd.DataFrame:
         """Return stress period data as a tidy DataFrame. Zero cost if not called."""
-        _spd = self.__dict__.get("_period_data")
+        _spd = self.__dict__.get("_stress_period_data")
         if not _spd:
             return pd.DataFrame()
         union = isinstance(item_list_type(self._period_item_field().type), tuple)
@@ -952,7 +952,7 @@ class Package(Component, ABC):
         return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
     def from_dataframe(self, df: pd.DataFrame) -> None:
-        """Set period_data from a tidy DataFrame.
+        """Set stress_period_data from a tidy DataFrame.
 
         The DataFrame must have a ``kper`` column and data columns matching
         the period Item class's own fields (as produced by ``to_dataframe()``),
@@ -984,13 +984,13 @@ class Package(Component, ABC):
         raise ValueError(f"{type(self).__name__} has no period Item-list field")
 
     @property
-    def period_data(self):  # type: ignore[override]
+    def stress_period_data(self):  # type: ignore[override]
         """Stress period data as ``dict[int, list[Item]]`` keyed by 0-based kper."""
-        return self.__dict__.get("_period_data")
+        return self.__dict__.get("_stress_period_data")
 
-    @period_data.setter  # type: ignore[attr-defined, no-redef]
-    def period_data(self, value) -> None:  # type: ignore[override]
-        setattr(self, "_period_data", value)
+    @stress_period_data.setter  # type: ignore[attr-defined, no-redef]
+    def stress_period_data(self, value) -> None:  # type: ignore[override]
+        setattr(self, "_stress_period_data", value)
 
     def _period_array_fields(self) -> list:
         """Period array fields (not list ones): READARRAY packages' q, recharge, aux, ..."""
@@ -1182,7 +1182,7 @@ class Package(Component, ABC):
         return super().to_xarray()  # type: ignore[return-value]
 
     def from_xarray(self, ds: xr.Dataset) -> None:
-        """Set period_data from ``to_xarray()``'s dense or sparse
+        """Set stress_period_data from ``to_xarray()``'s dense or sparse
         form (see ``flopy4.mf6.period_lists``)."""
         spd = period_lists.period_list_field(type(self))
         if spd is None:

@@ -17,8 +17,8 @@ class Oc(Package):
     ftype: ClassVar[str] = "OC6"
 
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
-        "saverecord": Legacy("period_data", oc_period_data),
-        "printrecord": Legacy("period_data", oc_period_data),
+        "saverecord": Legacy("stress_period_data", oc_period_data),
+        "printrecord": Legacy("stress_period_data", oc_period_data),
     }
 
     @attrs.define
@@ -57,7 +57,7 @@ class Oc(Package):
         rtype: str = string()
         ocsetting: "Literal['ALL', 'FIRST', 'LAST'] | Oc.Frequency | Oc.Steps" = union()
 
-    _PeriodDataItem = Save | Print
+    _StressPeriodDataItem = Save | Print
 
     budget_file: Optional[Path] = file(
         default=None,
@@ -96,8 +96,8 @@ class Oc(Package):
         converter=Qoutflowprint.convert,
         block="options",
     )
-    _period_data: Optional[dict[int, list[_PeriodDataItem]]] = list_(
-        alias="period_data",
+    _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = list_(
+        alias="stress_period_data",
         default=None,
         repr=False,
         block="period",

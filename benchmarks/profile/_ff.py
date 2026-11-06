@@ -237,7 +237,7 @@ def build_flopy4(ws: Path, wel: str = "list") -> SimpleNamespace:
         wels = [
             gwf.Wel(
                 filename=f"{NAME}.{name}.wel",
-                period_data={p: list(cells.items()) for p, cells in data.items()},
+                stress_period_data={p: list(cells.items()) for p, cells in data.items()},
                 print_input=True,
                 print_flows=True,
                 save_flows=True,
@@ -272,7 +272,7 @@ def build_flopy4(ws: Path, wel: str = "list") -> SimpleNamespace:
         oc=gwf.Oc(
             budget_file=Path(f"{NAME}.cbc"),
             head_file=Path(f"{NAME}.hds"),
-            period_data={
+            stress_period_data={
                 0: [
                     ("SAVE", "HEAD", "ALL"),
                     ("SAVE", "BUDGET", "STEPS", 1),

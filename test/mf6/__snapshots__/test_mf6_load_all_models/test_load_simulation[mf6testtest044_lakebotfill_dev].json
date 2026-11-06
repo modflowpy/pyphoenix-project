@@ -116,7 +116,7 @@
   },
   "simulation/lbf/lak-1": {
     "__type__": "Lak",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Rainfall",
@@ -313,7 +313,7 @@
   },
   "simulation/lbf/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",

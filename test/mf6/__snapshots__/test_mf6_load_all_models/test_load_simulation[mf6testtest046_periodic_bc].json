@@ -98,9 +98,9 @@
   },
   "simulation/pbc/chd-1": {
     "__type__": "Chd",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[100, 0] da39a3ee5e6b4b0d",
         "boundname": "600 chars e0fe10b4d6d4dd10",
         "cellid": "int64[100, 3] 7bec12cb7fbe198c",
@@ -186,7 +186,7 @@
   },
   "simulation/pbc/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",

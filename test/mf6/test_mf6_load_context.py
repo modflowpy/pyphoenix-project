@@ -30,14 +30,14 @@ def test_resolve_without_workspace_raises():
 
 def test_ncelldim_from_dims():
     context = LoadContext(dims={"nlay": 1, "ncpl": 4, "nodes": 4})
-    assert context.ncelldim(Chd.PeriodData) == 2
+    assert context.ncelldim(Chd.StressPeriodData) == 2
 
 
 def test_ncelldim_unknown_solved_from_row():
     """Without a grid, a row's cellid width is the one its length makes
     room for (see item._layout)."""
-    assert LoadContext().ncelldim(Chd.PeriodData) is None
-    assert Chd.PeriodData.from_tokens([1, 2, 3, 1.0]).cellid == (0, 1, 2)
+    assert LoadContext().ncelldim(Chd.StressPeriodData) is None
+    assert Chd.StressPeriodData.from_tokens([1, 2, 3, 1.0]).cellid == (0, 1, 2)
 
 
 def test_ncelldim_per_column_under_exchange():

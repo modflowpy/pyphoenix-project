@@ -79,9 +79,9 @@
   },
   "simulation/mf6/SFR_1": {
     "__type__": "Sfr",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "ifno": "int64[43] 943aaef14a256960",
         "n": 43,
         "sfrsetting": [
@@ -524,7 +524,7 @@
   },
   "simulation/mf6/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Save",

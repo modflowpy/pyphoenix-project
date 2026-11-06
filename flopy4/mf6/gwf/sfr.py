@@ -65,7 +65,7 @@ class Sfr(Package):
     }
 
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
-        "perioddata": Legacy("period_data"),
+        "perioddata": Legacy("stress_period_data"),
     }
 
     @attrs.define
@@ -180,7 +180,7 @@ class Sfr(Package):
         auxval: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
-    class PeriodData(Item):
+    class StressPeriodData(Item):
         ifno: int = integer(index=True, fk="packagedata.ifno")
         sfrsetting: "Sfr.Status | Sfr.Bedk | Sfr.Manning | Sfr.Stage | Sfr.Inflow | Sfr.Rainfall | Sfr.Evaporation | Sfr.Runoff | Sfr.Diversion | Sfr.UpstreamFraction | Sfr.CrossSection | Sfr.Auxiliary" = union()  # noqa: E501
 
@@ -337,8 +337,8 @@ class Sfr(Package):
         block="initialstages",
         shape=("nreaches",),
     )
-    _period_data: Optional[dict[int, list[PeriodData]]] = list_(
-        alias="period_data",
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
+        alias="stress_period_data",
         default=None,
         repr=False,
         block="period",
@@ -363,4 +363,4 @@ SfrDiversion = Sfr.Diversion
 SfrUpstreamFraction = Sfr.UpstreamFraction
 SfrCrossSection = Sfr.CrossSection
 SfrAuxiliary = Sfr.Auxiliary
-SfrPeriodData = Sfr.PeriodData
+SfrStressPeriodData = Sfr.StressPeriodData

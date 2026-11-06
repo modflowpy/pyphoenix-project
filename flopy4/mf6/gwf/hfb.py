@@ -4,7 +4,6 @@ from typing import ClassVar, Optional
 import attrs
 
 from flopy4.mf6.item import Item
-from flopy4.mf6.legacy import Legacy
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import cellid_, double, integer, keyword, list_
 
@@ -14,12 +13,8 @@ class Hfb(Package):
     dfn_name: ClassVar[str] = "gwf-hfb"
     ftype: ClassVar[str] = "HFB6"
 
-    legacy_kwargs: ClassVar[dict[str, Legacy]] = {
-        "stress_period_data": Legacy("period_data"),
-    }
-
     @attrs.define
-    class PeriodData(Item):
+    class StressPeriodData(Item):
         cellid1: tuple[int, ...] = cellid_()
         cellid2: tuple[int, ...] = cellid_()
         hydchr: float = double()
@@ -35,8 +30,8 @@ class Hfb(Package):
         block="dimensions",
         longname="maximum number of barriers",
     )
-    _period_data: Optional[dict[int, list[PeriodData]]] = list_(
-        alias="period_data",
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
+        alias="stress_period_data",
         default=None,
         repr=False,
         block="period",
@@ -45,4 +40,4 @@ class Hfb(Package):
     )
 
 
-HfbPeriodData = Hfb.PeriodData
+HfbStressPeriodData = Hfb.StressPeriodData

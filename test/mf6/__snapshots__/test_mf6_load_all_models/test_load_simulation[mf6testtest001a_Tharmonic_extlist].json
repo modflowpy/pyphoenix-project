@@ -47,9 +47,9 @@
   },
   "simulation/flow15/chd-1": {
     "__type__": "Chd",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[2, 1] dfa6a54f8be705d1",
         "boundname": [
           null,
@@ -142,7 +142,7 @@
   },
   "simulation/flow15/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",

@@ -37,7 +37,7 @@ class Uze(Package):
     }
 
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
-        "uzeperioddata": Legacy("period_data"),
+        "uzeperioddata": Legacy("stress_period_data"),
     }
 
     @attrs.define
@@ -78,7 +78,7 @@ class Uze(Package):
         auxval: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
-    class PeriodData(Item):
+    class StressPeriodData(Item):
         uzfno: int = integer(index=True, fk="packagedata.uzfno")
         uzesetting: "Uze.Status | Uze.Temperature | Uze.Infiltration | Uze.Uzet | Uze.Auxiliary" = (
             union()
@@ -165,8 +165,8 @@ class Uze(Package):
         block="packagedata",
         write_if_empty=True,
     )
-    _period_data: Optional[dict[int, list[PeriodData]]] = list_(
-        alias="period_data",
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
+        alias="stress_period_data",
         default=None,
         repr=False,
         block="period",
@@ -180,4 +180,4 @@ UzeTemperature = Uze.Temperature
 UzeInfiltration = Uze.Infiltration
 UzeUzet = Uze.Uzet
 UzeAuxiliary = Uze.Auxiliary
-UzePeriodData = Uze.PeriodData
+UzeStressPeriodData = Uze.StressPeriodData

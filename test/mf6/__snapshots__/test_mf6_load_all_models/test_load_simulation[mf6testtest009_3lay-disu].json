@@ -48,9 +48,9 @@
   },
   "simulation/GWF_1/chd-1": {
     "__type__": "Chd",
-    "_period_data": {
+    "_stress_period_data": {
       "0": {
-        "__table__": "PeriodData",
+        "__table__": "StressPeriodData",
         "aux": "float64[48, 0] da39a3ee5e6b4b0d",
         "boundname": "288 chars eeed6a4a7f08cb7b",
         "cellid": "int64[48, 1] 5f725679ad97a89c",
@@ -153,7 +153,7 @@
   },
   "simulation/GWF_1/oc": {
     "__type__": "Oc",
-    "_period_data": {
+    "_stress_period_data": {
       "0": [
         {
           "__type__": "Print",

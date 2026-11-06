@@ -17,13 +17,13 @@ class Sto(Package):
     ftype: ClassVar[str] = "STO6"
 
     legacy_kwargs: ClassVar[dict[str, Legacy]] = {
-        "steady_state": Legacy("period_data", sto_period_data),
-        "transient": Legacy("period_data", sto_period_data),
+        "steady_state": Legacy("stress_period_data", sto_period_data),
+        "transient": Legacy("stress_period_data", sto_period_data),
     }
 
     @attrs.define
-    class PeriodData(Item):
-        period_data: str = string()
+    class StressPeriodData(Item):
+        stress_period_data: str = string()
 
     save_flows: bool = keyword(
         default=False,
@@ -80,8 +80,8 @@ class Sto(Package):
         netcdf=True,
         longname="specific yield",
     )  # type: ignore[assignment]
-    _period_data: Optional[dict[int, list[PeriodData]]] = list_(
-        alias="period_data",
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
+        alias="stress_period_data",
         default=None,
         repr=False,
         block="period",
@@ -89,4 +89,4 @@ class Sto(Package):
     )
 
 
-StoPeriodData = Sto.PeriodData
+StoStressPeriodData = Sto.StressPeriodData
