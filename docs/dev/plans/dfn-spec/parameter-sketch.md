@@ -155,10 +155,10 @@ OBS does this, so a general construct isn't justified.
 
 **The hardest part of OBS needs no parameter.** The boundname arm is declared on the target, so
 `when = "boundnames"` there resolves in the target's own options, using what `when` already does.
-None of the 217 boundname arms has it. It would express the third MF6 overrun
+None of the boundname arms has it (217 at the top level, 211 fields once the seven lose theirs and LAK's and MAW's in ID2 are counted). It would express the third MF6 overrun
 (`obs-boundname-overrun-fix.md`). **Seven components have the arm and no `BOUNDNAMES` option:**
-`gwf-chdg`, `gwf-drng`, `gwf-evta`, `gwf-ghbg`, `gwf-rcha`, `gwf-rivg` and `gwf-welg`. That looks
-like a DFN error. I haven't tried those in MF6.
+`gwf-chdg`, `gwf-drng`, `gwf-evta`, `gwf-ghbg`, `gwf-rcha`, `gwf-rivg` and `gwf-welg`. That's a DFN
+error: on all seven, MF6 writes no-data on release and overruns on a bounds-checked build.
 
 ### No parameter needed
 
@@ -267,11 +267,14 @@ missed 22 broken OBS copies that MF6 rejects, and `Obs.target` is what lets it c
 real test, since it runs on real simulations. If `Spc.target`, `Mvr.model1` and `Obs.target` can't
 be written from this one resolver, the construct isn't what it claims to be.
 
-## To decide
+## Decisions
 
-1. **The rule on `target`.** `no_advanced_transport` keeps a rule for an edge case. Dropping it is
-   simpler, but would reject a bad `bndno` in a file MF6 ignores. I've kept it, since it's what MF6
-   does.
-2. **`when` on a parameter.** `MODELNAMES` is the only use. It could be left as prose, and `when`
-   not widened at all. I've kept it because it fixes a real two-way check with one line.
-3. **The 217 boundname arms.** This is independent of parameters, and could go in first.
+- **`when` can test a parameter.** Decided 2026-11-05: it's a small step, and states MF6's two-way
+  `MODELNAMES` check in one line.
+- **The boundname fix goes first,** ahead of parameters. Tested, and written up in devtools'
+  `obs-boundname-when-fix.md`. It confirmed all seven grid packages hit the same MF6 bug, so their
+  arms are wrong, and should go.
+
+Still open: **the rule on `target`.** `no_advanced_transport` keeps a rule for an edge case. Dropping
+it is simpler, but would reject a bad `bndno` in a file MF6 ignores. I've kept it, since it's what MF6
+does.

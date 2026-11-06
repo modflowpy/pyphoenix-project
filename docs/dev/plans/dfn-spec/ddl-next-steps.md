@@ -51,8 +51,9 @@ Nothing has been filed.
 
 - [ ] **MF6:** `gnc-numgnc-check-fix.md`, `obs-boundname-overrun-fix.md` and the earlier
   `spc-maxbound-check-fix.md`, in the MF6 checkout. All have tested fixes, and need CI
-- [ ] **DFN migration:** `maw-dfn-fixes.md` in the devtools checkout, for `angledata`, and the
-  `icon` key when `CONNECTION_STATUS` returns
+- [ ] **DFN, before parameters:** `dfn-fixes-from-slice.md` in the devtools checkout lists them in
+  order. First `obs-boundname-when-fix.md`, then `maw-dfn-fixes.md`, OC's `format` and DISU's
+  `IDOMAIN`. These are fixes to make, not only to report
 - [ ] **DFN:** whether LAK's `iconn` key should stay scoped to the lake. MF6 counts across the
   package, so the key is stricter than MF6, and arguably more right. MAW's `icon` is the same
 - [ ] **flopy4:** `oc-format-load-bug.md`, which is the one model that doesn't load
@@ -63,9 +64,9 @@ Nothing has been filed.
 
 Done: [parameter-sketch.md](parameter-sketch.md). Moved up from after the SQL work on 2026-11-05,
 since it's what bears on development now. Keep it, though it comes out about the same size as what
-it replaces, and what it buys is coverage. Three decisions are open there.
+it replaces, and what it buys is coverage. `when` can test a parameter. One decision is open there.
 
-- [ ] Settle those, and put `[params]` in the schema and migration on a devtools branch
+- [ ] Put `[params]` in the schema and migration on a devtools branch, after the DFN fixes in step 2
 
 ### 4. Binding navigation, and one conversion
 
