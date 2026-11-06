@@ -28,35 +28,33 @@ On develop at `916c2f8b`:
 ## On the branch
 
 - **One loader** (`converter/ingress/structure.py`, `_Load`): the basic
-  grammar's token rows, with block structure from the DFNs stored with the
-  classes. `structure_component` reads the DFN's blocks in order, options
-  and dimensions first. `_occurrences` groups blocks by name and header;
+  grammar's token rows, with block structure from the classes.
+  `structure_component` reads a class's blocks in order (`spec.file_blocks`),
+  options and dimensions first. `_occurrences` groups blocks by name and header;
   `_groups` puts each row with the records after it. One array reader
   (`_read_array`) for griddata, G/A period and TAS time arrays, its length
-  from the DFN shape. `FACTOR` is applied on load and not kept.
+  from the field's shape. `FACTOR` is applied on load and not kept.
   - **Base class** (`ComponentLoad`): a repeating block's values by header,
     fill-forward and clearing, list rows into `Item`s, child bindings, and
     the instance's `WriteContext`. It has one subclass on this branch, and
     stays split for the typed loader's.
 - **One egress path** (`egress/unstructure.py`, `_Unstructure`), the
-  inverse of `_Load`. It walks the DFN's blocks in order and writes each
-  field by its DFN type, for every component. `maxbound` comes from the
+  inverse of `_Load`. It walks a class's blocks in order and writes each
+  field by its type, for every component. `maxbound` comes from the
   class's property; a field holding one value is the first occurrence's
   (no `solutiongroup 1` hack); the rows naming children come from
   `bindings`. Written files changed only in field order, now the DFN's.
-- **Stored DFNs.** Sync writes the DFNs it generated from to
-  `flopy4/mf6/dfns` as TOML (`_store_dfns`, dropped in #455, restored).
-  `spec.dfn(cls)` loads one lazily; `spec.block_keys(cls, block)` gives a
-  block's row keys, dynamic keys and untagged field; `spec.attr_names(cls)`,
-  from codegen, maps DFN fields to class attributes, so there's one naming
-  rule. A first attempt emitted a `BlockSpec` per class; it restated the
-  DFN in its own vocabulary and was dropped.
+- **Routing from the classes.** `spec.file_blocks(cls)` gives a class's
+  blocks in file order; `spec.block_keys(cls, block)` gives a block's row keys,
+  dynamic keys, untagged field and computed keys, all as attrs fields. A first
+  attempt emitted a `BlockSpec` per class; it restated the DFN in its own
+  vocabulary and was dropped. Reading the fields themselves avoids that.
 - **What the classes carry**, from codegen: `dfn_name`; `headers`, each
   repeating block's `Header(kind, index)` (period blocks
   `Header("integer", index=True)`, solution groups `Header("integer")`,
   TAS `Header("double")`, OBS `Header("record")`); and each field's
-  `block`, `fill_forward` and type metadata. No code names the `period` or
-  `time` block.
+  `block`, `fill_forward`, type metadata, and `tagged=False` if untagged. No
+  code names the `period` or `time` block.
 - **One child-binding predicate**, `spec.binding_fields`; one header parse;
   `_resolve_bindings` with one ftype comparison per
   field and one context carried through a block.
@@ -68,11 +66,26 @@ On develop at `916c2f8b`:
   (`flopy4.mf6.legacy.sto_period_data`). `string(valid=...)` keeps a value
   as the DFN spells it, whatever its case.
 
-Not done: taking the value kind from the DFN on ingress, and having one
-runtime source of truth instead of the classes plus the stored DFNs joined
-by `attr_names`. While both loaders stay, the annotation helpers
-(`item_list_type`, `block_list_type`, `_per_header`, ...) can't go, so
-these would only add a second dispatch. Revisit with deleting a loader.
+## Classes as the one runtime schema
+
+Decided 2026-11-05, from the review written up in
+[factoring.md](../dfn-spec/factoring.md), and done on #544, rebased onto `5b2d3bc5` (#546).
+The loop stayed and the stored DFNs went: the loader's simplification never depended on them, and they
+left two runtime schemas joined by `attr_names`, which reran codegen's spec at load. This reverses the
+earlier note here that one source of truth had to wait for deleting a loader. That assumed the source
+would be the DFN, which would have added a second dispatch; with the classes as the source, the
+annotation helpers simply stay. The typed loader already reads only the classes, so this fits it too.
+
+1. [x] **Codegen emits what the classes lacked:** `tagged=False` on untagged component fields. No DFN
+   changes. Regenerating changed 115 generated lines, all that keyword.
+2. [x] **Routing reads attributes,** in `_Load` and `_Unstructure`.
+   `test/mf6/test_mf6_routing.py` generates classes from the DFNs at hand and holds their routing to
+   those DFNs, replacing the runtime read as the guarantee that codegen is faithful.
+3. [x] **The runtime DFN path is gone:** `flopy4/mf6/dfns`, sync's `_store_dfns`, `spec.dfn` and
+   `_StoredDfns`, `attr_names`, `make._headers` and the private devtools imports.
+
+`unstructure_component`'s keys are now each field's name in the file (`sfac`), not the DFN's name for
+it (`sfacrecord`). The writer doesn't read them for those fields.
 
 ## The typed loader
 
@@ -87,8 +100,7 @@ ported there too. `typed.lark`, the generated grammars, `loads_typed` and
 Decided 2026-11-05: keep it, just in case. Nothing typed is deleted from
 develop, `typed-loader` and `typed-loader-parked` stay, and rebuilding it
 (steps 9-12 of [converter-rebase.md](converter-rebase.md)) isn't scheduled.
-It wouldn't make conversion simpler overall: egress still needs the DFNs or an
-equivalent, the grammars are generated from the same DFNs, and binary lists,
+It wouldn't make conversion simpler overall: the grammars are generated from the same DFNs, and binary lists,
 binding rows, `ListIO` and fill-forward still need code after the parse. Its
 runtime ingress is ~720 code lines to basic's ~450, before generation
 ([loader-comparison.md](loader-comparison.md), October numbers).
@@ -175,12 +187,13 @@ The rules both directions follow, from a scan of the modflow6 DFNs at
 
 ## Size and speed
 
-Against develop at `be07090a`, hand-written Python under `flopy4` is about
-+200 lines (+1,449, -1,243): `structure.py` -145, `unstructure.py` -64,
-`spec.py` +270, the rest +145. The 129 stored DFNs add 33,406 lines of TOML.
-The case for the branch is its structure, not its size.
+Against `5b2d3bc5`, with the stored DFNs gone: `structure.py` -143 lines,
+`unstructure.py` -67, `spec.py` +171, `make.py` +34, `_sync.py` unchanged, so
+about -5 across those files. Removing the stored DFNs took out 33,406 lines of
+TOML. The case for the branch is still its structure more than its size.
 
-Before the rebase, load and write hadn't regressed beyond noise and peak
+The numbers below are from when the branch read stored DFNs, and haven't been
+rerun without them. Before the rebase, load and write hadn't regressed beyond noise and peak
 memory was within ±5% (baseline in
 [discussion #55](https://github.com/modflowpy/pyphoenix-project/discussions/55#discussioncomment-18978194),
 harness in `benchmarks/`). Cold start went from 0.21 s to 0.26 s: the
@@ -191,29 +204,21 @@ memory, and stricter on errors.
 
 ## devtools follow-ups
 
-- A public single-component loader, to replace `_load_dfn`'s use of the
-  private `_inject_names` (`Dfns.load` takes a directory and checks relations
-  across it, so can't load one DFN). Written up in
-  `single-component-loader-plan.md` in the devtools checkout.
 - Extend `Block._check_field_order` to untagged fields of any type (at
-  most one per block, and last), so the converter can rely on it.
+  most one per block, and last), which `test_mf6_routing.py` now relies on.
 - Make `_leading_tags`/`_is_dynamic_key` public (a `Field.tags` property).
-  flopy4 wraps them in `spec.py` until then.
+  Only `test_mf6_routing.py` uses them now, so this is lower priority.
+
+A public single-component loader (`single-component-loader-plan.md` in the devtools checkout) is no
+longer needed by flopy4.
 
 ## Later
 
 Each its own change.
 
-- **Deleting a loader.** Not now (see "The typed loader"). Deleting basic
-  takes the stored DFNs with it, once egress reads the classes' fields. At stake: typed is ~360 code lines,
+- **Deleting a loader.** Not now (see "The typed loader"). At stake: typed is ~360 code lines,
   ~1,300 with grammar generation and templates, plus 6,581 lines of
   generated grammars; basic is ~450.
-- **Attribute names at sync time**, next, once the devtools loader is in.
-  `spec.attr_names` builds codegen's spec of each class on first load, most
-  of the cold-start gap. Sync could store the names, as it stores the DFNs.
-  It's the only thing in `spec.py` that needs the whole set, so `dfn()` could
-  call `_load_dfn` directly, and `_StoredDfns`, `DfnHeader`, `_read_header`
-  and `make._headers` should go with it.
 - **An aux variable named like a field:** the typed grammar parses an aux
   named RECHARGE as the field. No corpus file does it.
 - **A TAS time's array isn't recorded in `ArrayIO`**, so its read options
@@ -229,7 +234,7 @@ Each its own change.
   `test016_Keating_dev` and 1.7× on `test045_lake4ss_dev`. Worth looking
   into before deleting the basic loader.
 - **The writer's `field_type`** (`simplification-survey.md` #5): egress
-  knows each field's DFN type, so could pass it along.
+  knows each field's type, so could pass it along.
 
 The pre-refactor round-trip survey (load → write → reload over 239 corpus
 models) found ten issues, all fixed on develop first: ISO datetimes, float

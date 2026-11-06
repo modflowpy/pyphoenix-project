@@ -10,6 +10,7 @@ applies the rule to specific flopy4 issues.
 | Doc | What it is |
 |---|---|
 | this one | concepts, hypotheses, plan |
+| [factoring.md](factoring.md) | the design rule: where a constraint or format fact belongs, and what stays out of the DFN |
 | [option-classification.md](option-classification.md) | every DFN option labelled layout, logical or output |
 | [constraint-audit.md](constraint-audit.md) | the kinds of constraint a valid simulation must satisfy, and where each is enforced |
 | [dfn-gaps.md](dfn-gaps.md) | what those two studies found missing from the DFNs and the memory catalog, for MF6 and devtools developers |
@@ -453,7 +454,8 @@ mostly the first kind, so it's cheap.
 
 ## Design consequences
 
-Where the hypotheses lead, for the spec and flopy4:
+Where the hypotheses lead, for the spec and flopy4. [factoring.md](factoring.md) has the rule for
+placing a constraint and when the spec should stop growing:
 
 | Question | Answer |
 |---|---|

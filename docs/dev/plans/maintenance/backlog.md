@@ -6,6 +6,12 @@ archive: [`followups-after-row-layout.md`](../archive/followups-after-row-layout
 [`open-followups.md`](../archive/open-followups.md) and
 [`dead-code-audit.md`](../archive/dead-code-audit.md).
 
+## Structural changes that remove constraints
+
+Three, in [`factoring.md`](../dfn-spec/factoring.md#three-structural-changes): variant flags
+(`readasarrays`, `readarraygrid`) become class constants; options like `boundnames` and `MODELNAMES`
+are derived from what they describe; and each fact gets one encoding (`valid` and `Literal`).
+
 ## Merge `Item` into `Record`
 
 `class Item(Record)` (`flopy4/mf6/item.py`) still overrides the row codec.

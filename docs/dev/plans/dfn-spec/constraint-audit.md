@@ -287,7 +287,9 @@ time-series coverage, which fails only during integration at `ad`
 
 ## Carried into the DDL slice
 
-These are folded into the plan in [overview.md](overview.md#step-3-the-ddl-slice):
+Where each kind should finally live is in [factoring.md](factoring.md), which narrows items 3 and 4
+below for what gets authored in the DFN. These are folded into the plan in
+[overview.md](overview.md#step-3-the-ddl-slice):
 
 1. **Dimensions as first-class values.** K3 is mostly `count(rows) = dim`
    or `≤ dim`. `MAXBOUND` is a CHECK bound on a table's row count; a

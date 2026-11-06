@@ -21,7 +21,8 @@ check them, but SQL is too verbose to be the spec.** That's a judgement, and ste
   case mistake in a foreign key was reported at once.
 - **It strains on** arrays (64 million rows on Biscayne), geometry and run-time state.
 
-So the working proposal: the DFN stays the source, with relational meaning. The DDL is
+So the working proposal ([factoring.md](factoring.md) has the rule for what stays out of the DFN):
+the DFN stays the source, with relational meaning. The DDL is
 generated from it where possible, with a short registry of named rules for what stays a view.
 SQL is the checking target and test harness, and not what people maintain.
 

@@ -54,7 +54,7 @@ testing) sit one level up. For what's scheduled, and in what order, see
 
 | Doc | What |
 |---|---|
-| [io/converter-simplification.md](io/converter-simplification.md) | one DFN-driven structure/unstructure path, typed loader moved off to `typed-loader` (unmerged `simplify-converter` branch) |
+| [io/converter-simplification.md](io/converter-simplification.md) | one schema-driven structure/unstructure path, with the classes as the only runtime schema, typed loader moved off to `typed-loader` (unmerged `simplify-converter` branch) |
 | [io/converter-rebase.md](io/converter-rebase.md) | rebasing `simplify-converter` onto develop, with the typed loader kept current on a stacked `typed-loader` branch |
 | [io/loader-comparison.md](io/loader-comparison.md) | the basic and typed loaders measured against each other |
 
@@ -76,6 +76,7 @@ terms the others use.
 | Doc | What |
 |---|---|
 | [dfn-spec/overview.md](dfn-spec/overview.md) | concepts, hypotheses, evidence, next steps |
+| [dfn-spec/factoring.md](dfn-spec/factoring.md) | the design rule: what goes in the DFN, the classes, the codec and named checks; three structural changes |
 | [dfn-spec/option-classification.md](dfn-spec/option-classification.md) | every DFN option labelled layout, logical or output |
 | [dfn-spec/constraint-audit.md](dfn-spec/constraint-audit.md) | kinds of input constraint, where each is enforced, and what could express it |
 | [dfn-spec/dfn-gaps.md](dfn-spec/dfn-gaps.md) | rules MF6 enforces that the DFNs don't state, and memory catalog gaps; for MF6 and devtools developers |
