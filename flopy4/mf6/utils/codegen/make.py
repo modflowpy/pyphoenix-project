@@ -41,6 +41,7 @@ from modflow_devtools.dfns.schema import (
 )
 
 from . import filters
+from .dfn_fixes import fix_component
 from .filters import ColumnSpec, FieldV3, ItemColumn, _dq, item_class, pascal_name, python_repr
 
 # Pre-computed context dataclasses
@@ -2253,7 +2254,9 @@ def make_modules(
     for name, component in dfns.items():
         if name in skip:
             continue
-        spec = build_component_spec(component, root=outdir, developmode=developmode, dfns=dfns)
+        spec = build_component_spec(
+            fix_component(component), root=outdir, developmode=developmode, dfns=dfns
+        )
         if existing_only:
             if not spec.outpath.exists():
                 if verbose:

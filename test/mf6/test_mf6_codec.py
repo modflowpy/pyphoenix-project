@@ -976,7 +976,7 @@ def test_series_attributes_from_values():
         ("gwf.Npf", "xt3doptions", True, ("Xt3doptions", ())),
         ("gwf.Npf", "xt3doptions", {"rhs": True}, ("Xt3doptions", (True,))),
         ("gwf.Oc", "headprint", "COLUMNS 10 WIDTH 12 DIGITS 6 GENERAL", ("Headprint", None)),
-        ("gwt.Oc", "concentrationprint", ("GENERAL", 10, 12, 6), ("Concentrationprint", None)),
+        ("gwt.Oc", "concentrationprint", (10, 12, 6, "GENERAL"), ("Concentrationprint", None)),
         (
             "gwe.Oc",
             "temperatureprint",
@@ -1001,7 +1001,7 @@ def test_record_fields_from_values(cls_path, name, value, record):
     cls = getattr(importlib.import_module(f"flopy4.mf6.{module}"), cls_name)
     rec_name, args = record
     if args is None:  # a print format, one nested Format
-        args = (cls.Format("GENERAL", columns=10, width=12, digits=6),)
+        args = (cls.Format(columns=10, width=12, digits=6, format_="GENERAL"),)
     expected = getattr(cls, rec_name)(*args)
     component = cls(**{name: value})
     assert getattr(component, name) == expected
@@ -1399,6 +1399,51 @@ END PERIOD
     assert "HEAD FILEOUT m.hds" in out
     assert "HEAD PRINT_FORMAT COLUMNS 10 WIDTH 11 DIGITS 4 GENERAL" in out
     assert "STEPS 1 5 10\n" in out
+
+
+def test_oc_print_format_without_format_word():
+    """MF6 doesn't need the format word, though the DFN says it does. Left
+    out, it stays out when written, rather than being written as None."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Oc
+
+    text = """BEGIN OPTIONS
+  HEAD PRINT_FORMAT COLUMNS 10 WIDTH 11 DIGITS 4
+END OPTIONS
+"""
+    oc = structure_component(loads(text), Oc)
+    assert oc.headprint.formatrecord == Oc.Format(columns=10, width=11, digits=4)
+    assert oc.headprint.formatrecord.format_ is None
+    assert " HEAD PRINT_FORMAT COLUMNS 10 WIDTH 11 DIGITS 4\n" in dumps(unstructure_component(oc))
+
+
+@pytest.mark.parametrize(
+    "dfn_name, word",
+    [
+        ("gwf-oc", "HEAD"),
+        ("gwt-oc", "CONCENTRATION"),
+        ("gwe-oc", "TEMPERATURE"),
+        ("chf-oc", "QOUTFLOW"),
+        ("olf-oc", "QOUTFLOW"),
+        ("gwt-ist", "CIM"),
+    ],
+)
+@pytest.mark.parametrize("format_", ["", " GENERAL"])
+def test_typed_print_format_word_optional(dfn_name, word, format_):
+    """Every component with a print format parses it with or without the
+    format word, and a word that's there is still the format."""
+    from flopy4.mf6.codec.reader import loads_typed
+
+    text = (
+        f"BEGIN OPTIONS\n  {word} PRINT_FORMAT COLUMNS 10 WIDTH 11 DIGITS 4{format_}\nEND OPTIONS\n"
+    )
+    records = loads_typed(text, dfn_name)["options"]
+    assert len(records) == 1
+    expected = {"columns": 10, "width": 11, "digits": 4}
+    if format_:
+        expected["format"] = format_.strip()
+    assert next(iter(records.values())) == {"formatrecord": expected}
 
 
 def test_ims_rclose_and_unknown_block():
@@ -3473,7 +3518,7 @@ def test_headprint_from_tokens_no_prefix():
 
 
 def test_headprint_from_tokens_format_only():
-    """A single untagged token populates the required positional field."""
+    """A single untagged token populates the positional field."""
     from flopy4.mf6.gwf.oc import Oc
 
     hp = Oc.Headprint.from_tokens("exponential")
@@ -3535,10 +3580,10 @@ def test_rclose_from_tokens_with_option():
 
 def test_from_tokens_missing_required_raises():
     """attrs raises TypeError when a required field has no value."""
-    from flopy4.mf6.gwf.oc import Oc
+    from flopy4.mf6.gwf import Npf
 
     with pytest.raises(TypeError):
-        Oc.Headprint.from_tokens("")
+        Npf.Rewet.from_tokens("")
 
 
 # ---------------------------------------------------------------------------

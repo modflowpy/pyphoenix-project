@@ -16,6 +16,7 @@ from modflow_devtools.dfns.schema import (
 
 from flopy4.mf6.codec.reader.grammar import filters
 from flopy4.mf6.codec.reader.grammar.names import rule_name, to_rule_name
+from flopy4.mf6.utils.codegen.dfn_fixes import fix_component
 
 
 def _get_env():
@@ -128,7 +129,7 @@ def make_grammar(component: Component, outdir: PathLike):
     env = _get_env()
     template = env.get_template("component.lark.jinja")
     target_path = outdir / f"{component.name}.lark"
-    blocks, fields = _to_context(component.blocks or {})
+    blocks, fields = _to_context(fix_component(component).blocks or {})
     text = template.render(name=component.name, blocks=blocks, fields=fields)
     # one trailing newline, however the template's last rule ends
     target_path.write_text(text.rstrip("\n") + "\n")
