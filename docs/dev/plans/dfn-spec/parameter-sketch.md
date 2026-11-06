@@ -233,7 +233,7 @@ with model references, and `_ssm_package` and `_binding_package` find the row.
 
 ## The check
 
-`check.py` in this session's scratchpad wrote these declarations out and walked every file field in
+[data/parameter-sketch/check.py](data/parameter-sketch/check.py) writes these declarations out and walks every file field in
 the dev3 DFNs. It's a check on the sketch against the DFNs' structure, and doesn't resolve anything
 in a real simulation.
 
@@ -275,6 +275,15 @@ be written from this one resolver, the construct isn't what it claims to be.
   `obs-boundname-when-fix.md`. It confirmed all seven grid packages hit the same MF6 bug, so their
   arms are wrong, and should go.
 
-Still open: **the rule on `target`.** `no_advanced_transport` keeps a rule for an edge case. Dropping
-it is simpler, but would reject a bad `bndno` in a file MF6 ignores. I've kept it, since it's what MF6
-does.
+- **`no_advanced_transport` stays,** decided 2026-11-06. It keeps a rule for an edge case, because
+  dropping it would reject a bad `bndno` in a file MF6 ignores.
+
+## To do when this goes in
+
+- Add `[params]`, `fk.param` and CellID's named `model` to the schema and migration, with the validator
+  described under "The check".
+- Have `keys.py` report a target that doesn't play the role an `fk` names. It skips those today, and
+  SPC on RCHA or EVTA needs the error.
+- Have `modelnames` set by writers, so users don't set it.
+- Update `dfnspec.md`: replace `exchange_models` and `ssm_package` in the Rules table, and add
+  `no_advanced_transport`.

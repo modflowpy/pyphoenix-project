@@ -53,10 +53,17 @@ Nothing has been filed.
 - [ ] **MF6:** `gnc-numgnc-check-fix.md`, `obs-boundname-overrun-fix.md` and the earlier
   `spc-maxbound-check-fix.md`, in the MF6 checkout. All have tested fixes, and need CI
 - [ ] **DFN, before parameters:** `dfn-fixes-from-slice.md` in the devtools checkout lists them in
-  order. First `obs-boundname-when-fix.md`, then `maw-dfn-fixes.md`, OC's `format` and DISU's
-  `IDOMAIN`. These are fixes to make, not only to report
-- [ ] **DFN:** whether LAK's `iconn` key should stay scoped to the lake. MF6 counts across the
-  package, so the key is stricter than MF6, and arguably more right. MAW's `icon` is the same
+  order. These are fixes to make, not only to report:
+  - [ ] `obs-boundname-when-fix.md`, with `.diff`: apply, add its tests, update `dfnspec.md`, regenerate
+    snapshots and let CI run them, then regenerate flopy4 against it
+  - [ ] `maw-dfn-fixes.md`: `angledata`'s `when`, and its test. Its `icon` key stays parked until MF6
+    brings `CONNECTION_STATUS` back
+  - [ ] OC's `format`: run `columns`, `width` and `digits` through `mf6` first, then fix it in MF6's DFNs
+    or a migration table
+  - [ ] DISU's `IDOMAIN` description, in MF6's DFN
+- [ ] **DFN:** LAK's `iconn` and MAW's `icon` keys stay scoped to the feature, decided 2026-11-06,
+  though MF6 counts across the package. Say in `dfnspec.md` that this is deliberately stricter
+- [ ] **MF6:** consider reporting that it doesn't check `iconn` against the lake. Not written up
 - [ ] **flopy4:** `oc-format-load-bug.md`, which is the one model that doesn't load
 - [ ] **flopy4:** `keys.py` doesn't check OBS ids at all, and stayed silent on 22 broken copies
   that MF6 rejects. This belongs with binding navigation (step 4)
@@ -65,9 +72,9 @@ Nothing has been filed.
 
 Done: [parameter-sketch.md](parameter-sketch.md). Moved up from after the SQL work on 2026-11-05,
 since it's what bears on development now. Keep it, though it comes out about the same size as what
-it replaces, and what it buys is coverage. `when` can test a parameter. One decision is open there.
+it replaces, and what it buys is coverage. Its decisions are settled.
 
-- [ ] Put `[params]` in the schema and migration on a devtools branch, after the DFN fixes in step 2
+- [ ] Do "To do when this goes in" there on a devtools branch, after the DFN fixes in step 2
 
 ### 4. Binding navigation, and one conversion
 
@@ -140,7 +147,11 @@ columns, so this can start from that.
 
 [Step 7 of the overview](overview.md#plan) said to post after steps 3 and 4 there, which are now
 both done. There's a draft for discussion, `discussion-relational-results.md` in the main
-checkout, which predates the sketch and doesn't cover its results. The slice's branch needs pushing before the post can link to it.
+checkout, which predates the sketch and doesn't cover its results.
+
+- [ ] Add the sketch's results to the draft
+- [ ] Push the slice's branch, if the post links to it
+- [ ] Word its "Next" section for whatever's been filed by then
 
 ## Not doing, unless something changes
 
