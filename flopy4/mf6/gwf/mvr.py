@@ -108,6 +108,7 @@ class Mvr(Package):
     packages: Optional[list[Packages]] = list_(
         default=None,
         block="packages",
+        tagged=False,
         shape=("maxpackages",),
     )
     _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
@@ -116,6 +117,7 @@ class Mvr(Package):
         repr=False,
         block="period",
         fill_forward=True,
+        tagged=False,
     )
 
 

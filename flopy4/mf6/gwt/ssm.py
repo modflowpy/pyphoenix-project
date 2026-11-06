@@ -49,11 +49,13 @@ class Ssm(Package):
     sources: Optional[list[Sources]] = list_(
         default=None,
         block="sources",
+        tagged=False,
         write_if_empty=True,
     )
     fileinput: Optional[list[Fileinput]] = list_(
         default=None,
         block="fileinput",
+        tagged=False,
     )
 
 

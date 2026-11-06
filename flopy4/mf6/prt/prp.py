@@ -169,11 +169,13 @@ class Prp(Package):
     packagedata: Optional[list[Packagedata]] = list_(
         default=None,
         block="packagedata",
+        tagged=False,
         shape=("nreleasepts",),
     )
     releasetimes: Optional[list[Releasetimes]] = list_(
         default=None,
         block="releasetimes",
+        tagged=False,
         shape=("nreleasetimes",),
     )
     _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = list_(

@@ -2114,9 +2114,9 @@ def test_dumps_tas_inner_classes():
 
     unstructured = COMPONENT_CONVERTER.unstructure(tas)
     assert "attributes" in unstructured
-    assert unstructured["attributes"]["time_series_namerecord"] == ("NAME", "my_ts")
-    assert unstructured["attributes"]["interpolation_methodrecord"] == ("METHOD", "linear")
-    assert unstructured["attributes"]["sfacrecord"] == ("SFAC", 1.5)
+    assert unstructured["attributes"]["time_series_name"] == ("NAME", "my_ts")
+    assert unstructured["attributes"]["interpolation_method"] == ("METHOD", "linear")
+    assert unstructured["attributes"]["sfac"] == ("SFAC", 1.5)
 
     dumped = dumps(unstructured)
     assert "BEGIN ATTRIBUTES" in dumped
@@ -2135,8 +2135,8 @@ def test_dumps_tas_inner_classes_multi_value():
     )
 
     unstructured = COMPONENT_CONVERTER.unstructure(tas)
-    assert unstructured["attributes"]["time_series_namerecord"] == ("NAME", "ts-2", "ts-3")
-    assert unstructured["attributes"]["sfacrecord"] == ("SFAC", 1.5, 2.0)
+    assert unstructured["attributes"]["time_series_name"] == ("NAME", "ts-2", "ts-3")
+    assert unstructured["attributes"]["sfac"] == ("SFAC", 1.5, 2.0)
 
     dumped = dumps(unstructured)
     assert "NAME ts-2 ts-3" in dumped

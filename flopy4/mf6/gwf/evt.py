@@ -117,6 +117,7 @@ class Evt(Package):
         repr=False,
         block="period",
         fill_forward=True,
+        tagged=False,
     )
 
     @property

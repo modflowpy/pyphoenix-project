@@ -322,24 +322,29 @@ class Sfr(Package):
     packagedata: Optional[list[Packagedata]] = list_(
         default=None,
         block="packagedata",
+        tagged=False,
         shape=("nreaches",),
     )
     crosssections: Optional[list[Crosssections]] = list_(
         default=None,
         block="crosssections",
+        tagged=False,
     )
     connectiondata: Optional[list[Connectiondata]] = list_(
         default=None,
         block="connectiondata",
+        tagged=False,
         shape=("nreaches",),
     )
     diversions: Optional[list[Diversions]] = list_(
         default=None,
         block="diversions",
+        tagged=False,
     )
     initialstages: Optional[list[Initialstages]] = list_(
         default=None,
         block="initialstages",
+        tagged=False,
         shape=("nreaches",),
     )
     _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
@@ -348,6 +353,7 @@ class Sfr(Package):
         repr=False,
         block="period",
         fill_forward=True,
+        tagged=False,
     )
 
 

@@ -41,10 +41,9 @@ from flopy4.mf6.period_arrays import is_grid_package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import (
     BlockKeys,
-    attr_names,
     binding_fields,
     block_keys,
-    dfn,
+    file_blocks,
     following_tags,
     to_field_type,
 )
@@ -446,7 +445,7 @@ class _Grid:
         return cls({"nodes": nodes, "ncpl": ncpl, **dims}, nlay or 1, ncpl)
 
     def size(self, f: Any) -> int:
-        """How many values the array field `f` holds: its DFN shape (one
+        """How many values the array field `f` holds: its shape (one
         dimension, e.g. DIS's `delr` is ``(ncol,)``, `botm` ``(nodes,)``)
         resolved against the dims, else every node. An unknown field's
         array is a layer's (a G/A package's)."""
@@ -735,22 +734,22 @@ def _header(cls: "type[Component]", block: str, words: list[str]) -> Any:
     return tuple(words)
 
 
-def _occurrences(raw: dict, cls: type) -> dict[str, dict[Any, list]]:
-    """The file's blocks by DFN block name, each as ``{None: rows}``, or for
-    a repeating block ``{header: rows}`` (see `_header`) in file order. MF6
-    ignores a block it doesn't read (an old IMS file's XMD), so one that
-    isn't in the DFN warns and is skipped; so, silently, is a repeating
+def _occurrences(raw: dict, cls: "type[Component]") -> dict[str, dict[Any, list]]:
+    """The file's blocks by name, each as ``{None: rows}``, or for a
+    repeating block ``{header: rows}`` (see `_header`) in file order. MF6
+    ignores a block it doesn't read (an old IMS file's XMD), so one the
+    class doesn't have warns and is skipped; so, silently, is a repeating
     one whose header doesn't parse."""
-    blocks = dfn(cls).blocks or {}
+    blocks = file_blocks(cls)
     found: dict[str, dict[Any, list]] = {}
     for raw_name, rows in raw.items():
         name, *tokens = raw_name.lower().split()
-        if (block := blocks.get(name)) is None:
+        if name not in blocks:
             if rows:
                 warnings.warn(f"{cls.__name__}: ignoring unknown block {raw_name.upper()}")
             continue
         header = None
-        if block.header is not None:
+        if name in cls.headers:
             try:
                 header = _header(cls, name, raw_name.split()[1:])
             except ValueError:
@@ -924,37 +923,28 @@ class ComponentLoad:
 
 class _Load(ComponentLoad):
     """The basic loader's read of one component's file, a block at a time
-    in DFN order (see `ComponentLoad`)."""
+    in file-schema order (see `ComponentLoad`)."""
 
     def __init__(self, cls: type, context: LoadContext) -> None:
         super().__init__(cls, context)
         self._fields = attrs.fields_dict(cls)
-        self._names = attr_names(cls)
-
-    def attribute(self, block: str, f: Any) -> "attrs.Attribute | None":
-        """The class's field holding the DFN field `f` of `block`, if it
-        has one: not a computed one (a list package's MAXBOUND) or one
-        codegen leaves out."""
-        a = self._fields.get(self._names.get((block, f.name), ""))
-        return a if a is not None and a.init is not False else None
 
     def value_at(self, path: str) -> Any:
-        """The value read so far for the DFN field at `path` (``block.field``)."""
-        block, name = path.split(".", 1)
-        a = self._fields.get(self._names.get((block, name), ""))
+        """The value read so far for the field at `path` (``block.field``)."""
+        a = self._fields.get(path.split(".", 1)[1])
         return None if a is None else self.kwargs.get(_init_key(a))
 
-    def read(self, name: str, block: Any, found: dict[Any, list]) -> None:
-        """Read the occurrences of the DFN block `block` into the
-        arguments (see `ComponentLoad.read_blocks`)."""
-        fields = [a for f in block.fields.values() if (a := self.attribute(name, f)) is not None]
-        header = block.header
+    def read(self, name: str, found: dict[Any, list]) -> None:
+        """Read the occurrences of the block `name` into the arguments
+        (see `ComponentLoad.read_blocks`)."""
+        fields = file_blocks(self.cls)[name]
+        header = cast("type[Component]", self.cls).headers.get(name)
         self.read_blocks(
             name,
             fields,
             found,
-            numbered=header is not None and header.field.type in ("integer", "double"),
-            fill_forward=header is not None and bool(header.fill_forward),
+            numbered=header is not None and header.kind in ("integer", "double"),
+            fill_forward=any(f.metadata.get("fill_forward") for f in fields),
         )
 
     def body(self, name: str, rows: list, header: Any) -> dict:
@@ -966,13 +956,14 @@ class _Load(ComponentLoad):
         unknown word warns, and its records are skipped."""
         keys = block_keys(self.cls, name)
         binds = name in self.binding_blocks
-        untagged = self.attribute(name, keys.untagged) if keys.untagged else None
-        if not keys.tagged and not keys.dynamic and not binds:
+        untagged = keys.untagged
+        keyed = keys.tagged or keys.dynamic or keys.computed
+        if not keyed and not binds:
             value = None if untagged is None else self.untagged(untagged, rows, header)
             return {} if value is None else {untagged: value}
         written = rows
         rows = _resolve_open_close_rows(rows, self.context)
-        if not keys.tagged and not keys.dynamic:
+        if not keyed:
             self.bindings.setdefault(name, []).extend(rows)
             return {}
 
@@ -980,19 +971,17 @@ class _Load(ComponentLoad):
         lists: dict[attrs.Attribute, list] = {}
         rest: list = []
         for head, *records in _groups(parts(rows)):
+            if _leading_word(head).lower() in keys.computed:
+                self.check_computed(name, head)
+                continue
             if (found := self.field_of(keys, head)) is None:
-                if binds or keys.untagged is not None:
+                if binds or untagged is not None:
                     rest += _rows_of([head, *records])
                 elif not _is_record(head):
                     self.unknown(name, head)
                 continue
-            f, aux_name = found
-            if (a := self.attribute(name, f)) is None:
-                if isinstance(getattr(self.cls, f.name, None), property):
-                    self.check_computed(name, head)
-                else:
-                    self.unknown(name, head)
-            elif _is_grid_array(a):
+            a, aux_name = found
+            if _is_grid_array(a):
                 self.array(a, aux_name, [head, *records], header, values)
             elif item_list_type(a.type) is not None:
                 lists.setdefault(a, []).append(head)
@@ -1014,7 +1003,7 @@ class _Load(ComponentLoad):
         return values
 
     def field_of(self, keys: BlockKeys, row: Any) -> "tuple[Any, str | None] | None":
-        """The DFN field whose row `row` is, by its first word, with the
+        """The field whose row `row` is, by its first word, with the
         name a dynamic key gives (an auxiliary variable's); None for a row
         of numbers, or a word no field's. A dynamic key wins: an auxiliary
         name that matches a field's (Q) is the aux array, as in MF6. Where
@@ -1055,9 +1044,9 @@ class _Load(ComponentLoad):
         )
 
     def check_computed(self, name: str, row: list) -> None:
-        """Check the row of a computed field (a list package's MAXBOUND,
-        the only kind there is). Its value is derived, not read, but MF6
-        stops on a bad one, so don't load what it wouldn't run."""
+        """Check the row of a computed field (see `computed_fields`). Its
+        value is derived, not read, but MF6 stops on a bad one, so don't load
+        what it wouldn't run."""
         try:
             from_text(row[1], int)
         except (IndexError, ValueError):
@@ -1170,8 +1159,8 @@ def structure_component(
 ) -> Any:
     """Reconstruct a component instance from a raw parsed MF6 input dict.
 
-    The file's blocks are read in the order of ``cls``'s DFN, whose
-    options and dimensions blocks come first (see `_Load`). Each row goes
+    The file's blocks are read in the order of ``cls``'s fields, options
+    and dimensions first (see `file_blocks`). Each row goes
     to the field of its block whose key it begins with, else to the
     block's untagged field; a repeating block's values are kept by header
     (see `_occurrences`). The rows naming children are resolved last (see
@@ -1206,8 +1195,8 @@ def structure_component(
     context = context or LoadContext()
     load = _Load(cls, context)
     found = _occurrences(raw, cls)
-    for block_name, block in (dfn(cls).blocks or {}).items():
+    for block_name in file_blocks(cls):
         if block_name in found:
-            load.read(block_name, block, found[block_name])
+            load.read(block_name, found[block_name])
 
     return load.finish(name)

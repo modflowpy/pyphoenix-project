@@ -27,6 +27,7 @@ class Hpc(Package):
     partitions: Optional[list[Partitions]] = list_(
         default=None,
         block="partitions",
+        tagged=False,
     )
 
 

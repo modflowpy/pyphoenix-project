@@ -53,6 +53,7 @@ class Obs(Package):
     continuous: Optional[list[ContinuousBlock]] = list_(
         default=None,
         block="continuous",
+        tagged=False,
     )
 
 

@@ -342,21 +342,25 @@ class Lak(Package):
     packagedata: Optional[list[Packagedata]] = list_(
         default=None,
         block="packagedata",
+        tagged=False,
         shape=("nlakes",),
     )
     connectiondata: Optional[list[Connectiondata]] = list_(
         default=None,
         block="connectiondata",
+        tagged=False,
         write_if_empty=True,
     )
     tables: Optional[list[Tables]] = list_(
         default=None,
         block="tables",
+        tagged=False,
         shape=("ntables",),
     )
     outlets: Optional[list[Outlets]] = list_(
         default=None,
         block="outlets",
+        tagged=False,
         shape=("noutlets",),
     )
     _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = list_(
@@ -365,6 +369,7 @@ class Lak(Package):
         repr=False,
         block="period",
         fill_forward=True,
+        tagged=False,
     )
 
     nlakeconn = DerivedDim("sum(packagedata.nlakeconn)")

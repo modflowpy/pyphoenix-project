@@ -34,6 +34,7 @@ class Sfrtab(Package):
     table: Optional[list[Table]] = list_(
         default=None,
         block="table",
+        tagged=False,
         shape=("nrow",),
     )
 

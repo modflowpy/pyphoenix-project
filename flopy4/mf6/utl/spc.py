@@ -61,6 +61,7 @@ class Spc(Package):
         repr=False,
         block="period",
         fill_forward=True,
+        tagged=False,
         shape=("<=maxbound",),
         dim_required=True,
     )

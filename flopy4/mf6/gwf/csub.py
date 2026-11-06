@@ -324,6 +324,7 @@ class Csub(Package):
     packagedata: Optional[list[Packagedata]] = list_(
         default=None,
         block="packagedata",
+        tagged=False,
         shape=("ninterbeds",),
     )
     _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
@@ -332,6 +333,7 @@ class Csub(Package):
         repr=False,
         block="period",
         fill_forward=True,
+        tagged=False,
         shape=("<=maxsig0",),
     )
 

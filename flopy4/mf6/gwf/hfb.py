@@ -40,6 +40,7 @@ class Hfb(Package):
         repr=False,
         block="period",
         fill_forward=True,
+        tagged=False,
         shape=("<=maxhfb",),
     )
 

@@ -147,6 +147,7 @@ class Oc(Package):
     tracktimes: Optional[list[Tracktimes]] = list_(
         default=None,
         block="tracktimes",
+        tagged=False,
         shape=("ntracktimes",),
     )
     _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = list_(

@@ -1282,7 +1282,6 @@ def test_tagged_record_list_roundtrip(tmp_path, monkeypatch):
     assert 'class Scale(Item):\n        _keyword: ClassVar[str] = "scale"' in text
 
     cls = _load_class_from_spec(spec, "gwf_tlst", "Tlst")
-    _store_dfn(monkeypatch, dfn)
     pkg = structure_component(
         loads("BEGIN OPTIONS\n  SCALE 2.0\n  PRINT_INPUT\n  SCALE 3.0\nEND OPTIONS\n"), cls
     )
@@ -1336,7 +1335,6 @@ def test_union_list_outside_period_roundtrip(tmp_path, monkeypatch):
     assert "settings: Optional[list[_SettingsItem]]" in spec.outpath.read_text()
 
     cls = _load_class_from_spec(spec, "gwf_ulst", "Ulst")
-    _store_dfn(monkeypatch, dfn)
     pkg = structure_component(
         loads("BEGIN OPTIONS\n  RATE 2.0\n  PRINT_INPUT\n  STAGE 3.0\nEND OPTIONS\n"), cls
     )
@@ -1410,15 +1408,6 @@ def test_griddata_list_and_layered_values():
     np.testing.assert_array_equal(npf.k, [1.0, 1.0, 1.0, 2.0, 2.0, 2.0])
     npf = Npf(k=np.ones((2, 3)), dims={"nlay": 2, "nodes": 6})
     assert npf.k.shape == (6,)
-
-
-def _store_dfn(monkeypatch, dfn) -> None:
-    """Store a synthetic DFN beside the classes', as sync stores theirs:
-    the converter reads block structure from it (see `spec.dfn`)."""
-    from flopy4.mf6 import spec
-
-    stored = {**spec._dfns(), dfn.name: dfn}
-    monkeypatch.setattr(spec, "_dfns", lambda: stored)
 
 
 def _load_class_from_spec(spec, mod_name: str, expected_class: str):

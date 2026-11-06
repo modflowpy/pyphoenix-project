@@ -1,4 +1,3 @@
-import ast
 import os
 import re
 import shutil
@@ -102,11 +101,10 @@ def test_sync_local_all_packages(dfn_path, tmp_path):
 
 
 def test_sync_local_existing_only(dfn_path, tmp_path):
-    """Without all_packages, an empty outdir gets no classes, only the
-    contract, the grammars and the DFNs."""
+    """Without all_packages, an empty outdir gets only the contract."""
     result = sync(dfn_path, mf6_version="6.9.0", outdir=tmp_path)
     assert result.files == ()
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["_contract.py", "codec", "dfns"]
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["_contract.py", "codec"]
 
 
 def test_sync_local_unknown_version_warns(dfn_path, tmp_path):
@@ -326,10 +324,6 @@ def test_missing_mixin_field_warns(dfn_path, outdir, monkeypatch):
     assert any("Dis.crs" in gap for gap in find_problems(outdir).gaps)
 
 
-def _code(files: dict[str, str]) -> dict[str, str]:
-    return {name: ast.dump(ast.parse(text)) for name, text in files.items()}
-
-
 def _grammars(outdir: Path) -> dict[str, str]:
     return {p.name: p.read_text() for p in (outdir / _sync._GRAMMARS).glob("*.lark")}
 
@@ -395,62 +389,13 @@ def test_read_only(dfn_path, tmp_path):
         outdir.chmod(0o755)
 
 
-def _components(path: Path) -> dict:
-    from modflow_devtools.dfns import LocalDfnRegistry
-
-    return LocalDfnRegistry(path=path).spec(schema_version="2.0.0.dev3").components
-
-
-def test_dfns_stored(dfn_path, outdir):
-    """Sync stores the source's DFNs as TOML, replacing ones it no longer has."""
+def test_old_stored_dfns_removed(dfn_path, outdir):
+    """Sync removes the DFNs earlier syncs stored for the typed reader."""
     stored = outdir / "dfns"
-    assert {f.name for f in stored.iterdir()} == {
-        f"{f.stem}.toml" for f in dfn_path.glob("*.dfn") if f.stem not in ("common", "flopy")
-    }
-    (stored / "gwf-zzz.toml").write_text("")
-    (stored / "gwf-chd.dfn").write_text("")
+    stored.mkdir(exist_ok=True)
+    (stored / "gwf-chd.toml").write_text("")
     sync(dfn_path, mf6_version="6.9.0", outdir=outdir)
-    assert not (stored / "gwf-zzz.toml").exists()
-    assert not (stored / "gwf-chd.dfn").exists()
-
-
-def test_stored_dfns_lossless(dfn_path, outdir):
-    """The stored TOML loads to the same spec as the source DFNs."""
-    source = _components(dfn_path)
-    stored = _components(outdir / "dfns")
-    assert source.keys() == stored.keys()
-    assert [k for k in source if source[k] != stored[k]] == []
-
-
-def test_resync_from_stored_dfns(outdir, tmp_path):
-    """Syncing from the stored TOML reproduces the classes, and copies it."""
-    before = _snapshot(outdir)
-    toml = Path(shutil.copytree(outdir / "dfns", tmp_path / "toml"))
-    sync(toml, mf6_version="6.9.0", outdir=outdir)
-    after = _snapshot(outdir)
-    # the copy isn't in a git checkout, so the contract's commit may differ
-    del after["_contract.py"], before["_contract.py"]
-    assert after == before
-    for f in toml.iterdir():
-        assert (outdir / "dfns" / f.name).read_bytes() == f.read_bytes()
-
-
-def test_installed_dfns_match_classes(tmp_path):
-    """The DFNs stored in the package are the ones its classes came from:
-    regenerating from them changes no class or grammar."""
-    installed = Path(flopy4.mf6.__file__).parent
-    outdir = Path(
-        shutil.copytree(installed, tmp_path / "mf6", ignore=shutil.ignore_patterns("__pycache__"))
-    )
-    toml = Path(shutil.copytree(installed / "dfns", tmp_path / "toml"))
-    before = _snapshot(outdir)
-    grammars = _grammars(outdir)
-    sync(toml, mf6_version="6.9.0", outdir=outdir)
-    after = _snapshot(outdir)
-    del after["_contract.py"], before["_contract.py"]
-    # by their code: sync formats its output only where ruff is installed
-    assert _code(after) == _code(before)
-    assert _grammars(outdir) == grammars
+    assert not stored.exists()
 
 
 def test_resync_from_toml(dfn_path, outdir, tmp_path):

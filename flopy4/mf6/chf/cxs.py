@@ -44,11 +44,13 @@ class Cxs(Package):
     packagedata: Optional[list[Packagedata]] = list_(
         default=None,
         block="packagedata",
+        tagged=False,
         shape=("nsections",),
     )
     crosssectiondata: Optional[list[Crosssectiondata]] = list_(
         default=None,
         block="crosssectiondata",
+        tagged=False,
         shape=("npoints",),
     )
 

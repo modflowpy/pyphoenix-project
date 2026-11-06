@@ -50,6 +50,7 @@ class Buy(Package):
     packagedata: Optional[list[Packagedata]] = list_(
         default=None,
         block="packagedata",
+        tagged=False,
         shape=("nrhospecies",),
     )
 

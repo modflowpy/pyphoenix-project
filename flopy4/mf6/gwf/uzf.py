@@ -226,6 +226,7 @@ class Uzf(Package):
     packagedata: Optional[list[Packagedata]] = list_(
         default=None,
         block="packagedata",
+        tagged=False,
         shape=("nuzfcells",),
     )
     _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
@@ -234,6 +235,7 @@ class Uzf(Package):
         repr=False,
         block="period",
         fill_forward=True,
+        tagged=False,
     )
 
 

@@ -198,9 +198,6 @@ class ComponentSpec:
     key_sets: dict[str, str | tuple[str, ...]] = dc_field(default_factory=dict)
     # role -> the keyword option switching it on, if any
     key_set_when: dict[str, str] = dc_field(default_factory=dict)
-    # The class attribute holding each DFN field, by (block, field name): see
-    # attr_names
-    attr_names: dict[tuple[str, str], str] = dc_field(default_factory=dict)
 
 
 # Column-schema-dict builders
@@ -495,6 +492,13 @@ def _expand_record_field(f: Record, block_name: str) -> tuple[list[FieldSpec], l
         )
 
     return specs, gen_fields
+
+
+def _untagged(f: FieldV3) -> dict[str, bool]:
+    """A component field's ``tagged`` metadata: said only when it's untagged,
+    as the block's other rows belong to it. (A record's columns are the other
+    way round: see `Record`.)"""
+    return {} if getattr(f, "tagged", True) else {"tagged": False}
 
 
 def _ml_field(
@@ -1131,14 +1135,6 @@ def _is_child_of(child: Component, parent: Component) -> bool:
     return admits(child.parent, parent)
 
 
-def _headers(dfns: Mapping[str, Component]) -> Mapping[str, Any]:
-    """The DFNs for reading only a link target's top-level keys (type,
-    subtype, parent, ftype, multi). A mapping that loads each DFN when
-    first asked for (`flopy4.mf6.spec`'s) has them as ``headers``, so
-    resolving a link doesn't load every component it might target."""
-    return getattr(dfns, "headers", dfns)
-
-
 def resolve_link(
     component: Component,
     path: str,
@@ -1160,7 +1156,7 @@ def resolve_link(
             raise ValueError(f"{component.name}.{path}: resolving {sel!r} needs the DFNs")
         found += [
             n
-            for n, c in _headers(dfns).items()
+            for n, c in dfns.items()
             if sel in (c.type, getattr(c, "subtype", None)) and _is_child_of(c, component)
         ]
     if not found:
@@ -1177,7 +1173,7 @@ def _has_class(target: str, link: File, dfns: Mapping[str, Component] | None) ->
     """Whether flopy4 has a class for a link's target: a hand-written base
     for a family picked per row, otherwise a generated module."""
     if link.component_ftype is not None:
-        c = _headers(dfns)[target] if dfns is not None else None
+        c = dfns[target] if dfns is not None else None
         return c is not None and bool({c.type, getattr(c, "subtype", None)} & set(_CHILD_BASES))
     return _has_module(target)
 
@@ -1297,7 +1293,7 @@ def _child_field_spec(
         if not filters.is_list_field(f):
             raise ValueError(f"{component.name}.{f.name}: component_ftype outside a list")
         assert dfns is not None  # resolve_link needed them
-        bases = {_child_base(_headers(dfns)[t]) for t in targets}
+        bases = {_child_base(dfns[t]) for t in targets}
         if len(bases) != 1:
             raise NotImplementedError(f"{component.name}.{f.name}: children of {sorted(bases)}")
         module, base = bases.pop().split(":")
@@ -1500,7 +1496,6 @@ def _model_package_specs(
     once (``multi``) is a list. Packages without a generated class are left
     out until they have one. The discretization comes first. Each field's
     binding rows have the packages block's columns, ``row``."""
-    headers = _headers(dfns)
     slots: dict[str, list[str]] = {}
     for t in targets:
         if not _has_module(t):
@@ -1509,7 +1504,7 @@ def _model_package_specs(
         # types reads an OBS6 file (PRT has none yet)
         if t == "utl-obs" and not component.observations:
             continue
-        ftype = headers[t].ftype
+        ftype = dfns[t].ftype
         if ftype is None:
             raise ValueError(f"{component.name}: package {t} has no ftype")
         name = _SLOTS.get(ftype, ftype.lower().removesuffix("6"))
@@ -1519,13 +1514,13 @@ def _model_package_specs(
         slots = {**{g: slots.pop(g) for g in grid_names}, **slots}
     specs, imports = [], []
     for name, members in slots.items():
-        if len({bool(headers[t].multi) for t in members}) > 1:
+        if len({bool(dfns[t].multi) for t in members}) > 1:
             raise ValueError(f"{component.name}.{name}: {members} disagree on multi")
         classes = [filters.class_name(t) for t in members]
         imports += [f"from {_component_module(t)} import {c}" for t, c in zip(members, classes)]
         cls = classes[0] if len(classes) == 1 else f"Union[{', '.join(classes)}]"
         args = f'block="{block_name}", row={filters.tuple_repr(row)}'
-        if headers[members[0]].multi:
+        if dfns[members[0]].multi:
             annotation, call = f"list[{cls}]", f"child({args}, default=attrs.Factory(list))"
         else:
             annotation, call = f"Optional[{cls}]", f"child({args})"
@@ -1662,8 +1657,6 @@ def build_component_spec(
     _readarray_period_fields: list[FieldV3] = []  # READARRAY period fields (CHDG, DRNG …)
     _dynamically_named_period_fields: list[tuple] = []  # (list, array, fk): RCHA's aux
     _repeating_array_fields: list[FieldV3] = []  # repeating block's own array field
-    # (block, DFN field) -> the attribute holding it; see attr_names
-    _attr_names: dict[tuple[str, str], str] = {}
 
     # Lists' file columns naming components, by list (LAK's tables).
     _column_links = {
@@ -1698,7 +1691,6 @@ def build_component_spec(
                     component, f, block_name, link, targets, dfns
                 )
                 specs = [spec]
-                _attr_names[(block_name, f.name)] = spec.py_name
             (prefix_specs if block_name in ("options", "dimensions") else data_specs).extend(specs)
             extra_imports.extend(child_imports)
             continue
@@ -1713,7 +1705,6 @@ def build_component_spec(
 
         if block_name in _fill_forward_blocks and filters.is_list_field(f):
             _period_item = _add_list_items(f, "StressPeriodData")
-            _attr_names[(block_name, f.name)] = "_stress_period_data"
             continue
 
         # G-variant packages (CHDG, DRNG, WELG, RCHA …) declare period arrays
@@ -1739,19 +1730,22 @@ def build_component_spec(
                     ),
                     spec_call=_ml_field(
                         "string",
-                        metadata={"block": block_name, "fill_forward": True, "valid": valid},
+                        metadata={
+                            "block": block_name,
+                            "fill_forward": True,
+                            "valid": valid,
+                            **_untagged(f),
+                        },
                     ),
                     generatable=True,
                 )
             )
             generatable_field_objects.append((block_name, f))
-            _attr_names[(block_name, f.name)] = period_specs[-1].py_name
             continue
 
         # maxbound: emitted as a computed property (see computed_field_specs
         # below), not a stored field -- skip normal field-building entirely.
         if block_name == "dimensions" and f.name == "maxbound" and _maxbound_is_computed:
-            _attr_names[(block_name, f.name)] = "maxbound"
             continue
 
         # Array field whose own block repeats (e.g. utl-tas's "time" block,
@@ -1768,8 +1762,7 @@ def build_component_spec(
             _repeating_block_meta: dict[str, Any] = {"block": block_name}
             if getattr(f, "shape", None):
                 _repeating_block_meta["shape"] = tuple(f.shape)
-            if getattr(f, "tagged", True):
-                _repeating_block_meta["tagged"] = True
+            _repeating_block_meta |= _untagged(f)
             data_specs.append(
                 FieldSpec(
                     dfn_name=f.name,
@@ -1782,7 +1775,6 @@ def build_component_spec(
                 )
             )
             generatable_field_objects.append((block_name, f))
-            _attr_names[(block_name, f.name)] = data_specs[-1].py_name
             continue
 
         if block_name in ("options", "dimensions"):
@@ -1808,7 +1800,6 @@ def build_component_spec(
                 )
             )
             generatable_field_objects.append((block_name, f))
-            _attr_names[(block_name, f.name)] = target[-1].py_name
             continue
 
         if filters.can_generate_record_class(f):
@@ -1832,19 +1823,16 @@ def build_component_spec(
                 )
             )
             generatable_field_objects.append((block_name, f))
-            _attr_names[(block_name, f.name)] = clean_name
         elif filters.can_expand_record(f):
             # a record spread over its members' own attributes
             specs, gen_fields = _expand_record_field(f, block_name)
             target.extend(specs)
             generatable_field_objects.extend((block_name, gf) for gf in gen_fields)
-            _attr_names |= {(block_name, s.dfn_name): s.py_name for s in specs if s.generatable}
         else:
             spec = _build_field_spec(f, block_name, _linked_dims)
             target.append(spec)
             if spec.generatable:
                 generatable_field_objects.append((block_name, f))
-                _attr_names[(block_name, f.name)] = spec.py_name
 
     # Rendered before the other blocks' element classes.
     block_item_classes: list[ItemClassSpec] = []
@@ -1866,8 +1854,7 @@ def build_component_spec(
         block_item_classes.extend(_specs)
         if _union is not None:
             item_unions.append(_union)
-        _attr_names[(bp.block_name, _list_field.name)] = bp.block_name
-        _meta: dict = {"block": bp.block_name}
+        _meta: dict = {"block": bp.block_name, **_untagged(_list_field)}
         _header = component.blocks[bp.block_name].header
         if _header is not None and isinstance(_header.field, Record):
             # The block repeats under a record header: a list of block
@@ -1941,6 +1928,8 @@ def build_component_spec(
     # block gets, in a dict keyed by period.
     if _period_item is not None:
         _spd_meta: dict[str, Any] = {"block": _ff_block, "fill_forward": True}
+        if _ff_list is not None:
+            _spd_meta |= _untagged(_ff_list)
         # The DIMENSIONS field bounding each period's rows, unless it's
         # computed (maxbound): HFB's "<=maxhfb". _ff_list computed above.
         if (
@@ -1993,7 +1982,6 @@ def build_component_spec(
                 extra_imports.append("from flopy4.mf6._types import TimeArraySeriesRef")
             if _grid:
                 _ra_base += " | None"
-            _attr_names[(_ff_block, _ra_f.name)] = filters.safe_name(_ra_f.name)
             period_specs.append(
                 FieldSpec(
                     dfn_name=_ra_f.name,
@@ -2022,7 +2010,6 @@ def build_component_spec(
             _na_meta["time_series"] = True
             _na_base += " | TimeArraySeriesRef"
             extra_imports.append("from flopy4.mf6._types import TimeArraySeriesRef")
-        _attr_names[(_ff_block, _lf.name)] = filters.safe_name(_lf.name)
         period_specs.append(
             FieldSpec(
                 dfn_name=_lf.name,
@@ -2082,7 +2069,9 @@ def build_component_spec(
     legacy_kwargs = _legacy_kwargs(component)
     if legacy_kwargs:
         # a period list, or STO's word per period
-        if not {"_stress_period_data", "stress_period_data"} & set(_attr_names.values()):
+        if _period_item is None and not any(
+            fs.py_name == "stress_period_data" for fs in period_specs
+        ):
             raise ValueError(f"{component.name}: legacy period keywords, but no period data")
         extra_imports.extend(
             f"from flopy4.mf6.legacy import {convert or 'Legacy'}"
@@ -2171,20 +2160,7 @@ def build_component_spec(
         key_set_when={
             role: ks.when for role, ks in sorted((component.keys or {}).items()) if ks.when
         },
-        attr_names={k: v for k, v in _attr_names.items() if v in _seen_py_names or v == "maxbound"},
     )
-
-
-def attr_names(
-    component: Component, dfns: Mapping[str, Component] | None = None
-) -> dict[tuple[str, str], str]:
-    """The class attribute holding each of ``component``'s DFN fields, by
-    (block, field name): the name codegen gives it. A record spread over
-    its members' attributes maps its members, not itself; a period block's
-    list maps to ``_stress_period_data``. A model name file's package list
-    has no one attribute (each package type gets its own), so it isn't
-    mapped."""
-    return build_component_spec(component, root=Path("."), dfns=dfns).attr_names
 
 
 # Template environment

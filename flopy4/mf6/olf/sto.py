@@ -39,4 +39,5 @@ class Sto(Package):
         block="period",
         fill_forward=True,
         valid=("steady-state", "transient"),
+        tagged=False,
     )

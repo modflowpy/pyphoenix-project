@@ -54,4 +54,5 @@ class Tas(Package):
         default=None,
         block="time",
         shape=("ncpl",),
+        tagged=False,
     )

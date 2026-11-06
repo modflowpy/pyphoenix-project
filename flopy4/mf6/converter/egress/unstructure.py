@@ -21,7 +21,14 @@ from flopy4.mf6.item_table import ItemTable, Rows
 from flopy4.mf6.package import Package
 from flopy4.mf6.period_arrays import is_cleared, is_grid_package
 from flopy4.mf6.record import Record, record_type
-from flopy4.mf6.spec import FileDirection, attr_names, binding_fields, block_keys, dfn
+from flopy4.mf6.spec import (
+    FileDirection,
+    binding_fields,
+    block_keys,
+    field_key,
+    file_blocks,
+    is_tagged,
+)
 from flopy4.mf6.write_context import WriteContext
 from flopy4.spec import is_array
 
@@ -262,10 +269,10 @@ def unstructure_component(value: Component) -> dict[str, Any]:
 
 class _Unstructure:
     """One component's blocks for the writer, the inverse of the loader's
-    `_Load`: its DFN's blocks, in order, each field keyed by its DFN name
-    and taken from the class's attribute holding it (see `attr_names`), or
-    from a property computing it (a list package's MAXBOUND). A repeating
-    block is written once per header (see `occurrences`), and the rows
+    `_Load`: its class's blocks, in file order (see `file_blocks`), each
+    field keyed by its name in the file (see `field_key`), from its
+    attribute or from a property computing it (a list package's MAXBOUND).
+    A repeating block is written once per header (see `occurrences`), and the rows
     naming children (a model's packages, the simulation's models and
     solutions) are made from them (see `bindings`). A block with nothing
     to write is left out, unless codegen marked it `write_if_empty` or
@@ -275,7 +282,6 @@ class _Unstructure:
         self.value = value
         self.cls = type(value)
         self._fields = attrs.fields_dict(self.cls)  # type: ignore[arg-type]
-        self._names = attr_names(self.cls)
         self.grid = is_grid_package(self.cls)
         # blocks whose rows name children
         self.binding_blocks = binding_fields(self.cls)
@@ -291,63 +297,61 @@ class _Unstructure:
     def blocks(self) -> dict[str, dict[str, Any]]:
         out: dict[str, dict[str, Any]] = {}
         keep: set[str] = set()
-        for name, block in (dfn(self.cls).blocks or {}).items():
+        for name in file_blocks(self.cls):
             if isinstance(self.value, WorkspaceComponent) or any(
                 f.metadata.get("write_if_empty")
                 for f in self._fields.values()
                 if f.metadata.get("block") == name
             ):
                 keep.add(name)
-            if block.header is None:
-                out[name] = self.body(name, block)
+            if name not in self.cls.headers:
+                out[name] = self.body(name)
             else:
-                for header, (body, empty) in self.occurrences(name, block).items():
+                for header, (body, empty) in self.occurrences(name).items():
                     out[f"{name} {header}"] = body
                     if empty:
                         keep.add(f"{name} {header}")
         return {name: body for name, body in out.items() if body or name in keep}
 
-    def attribute(self, block: str, f: Any) -> "attrs.Attribute | None":
-        """The class's field holding the DFN field `f` of `block`, if any."""
-        return self._fields.get(self._names.get((block, f.name), ""))
+    def entries(self, name: str) -> "dict[str, attrs.Attribute | None]":
+        """The block `name`'s fields, in file order, by their keys for the
+        writer: a computed field first, with no attribute; a binding block's
+        children as one entry, its rows, keyed and placed where the first
+        of them is, likewise with no attribute."""
+        out: "dict[str, attrs.Attribute | None]" = dict.fromkeys(
+            block_keys(self.cls, name).computed
+        )
+        for a in file_blocks(self.cls)[name]:
+            if a.metadata.get("row"):
+                out[name] = None
+            else:
+                out[field_key(a)] = a
+        return out
 
-    def get(self, block: str, f: Any) -> "tuple[attrs.Attribute | None, Any]":
-        """The DFN field `f`'s attribute and value: a private field's by
-        its alias (``stress_period_data``), a computed one's (a list
-        package's MAXBOUND) by its property, with no attribute."""
-        if (a := self.attribute(block, f)) is not None:
-            return a, getattr(self.value, _init_key(a), None)
-        if isinstance(getattr(self.cls, f.name, None), property):
-            # a MAXBOUND of 0 (no rows) isn't written
-            return None, getattr(self.value, f.name) or None
-        return None, None
-
-    def body(self, name: str, block: Any) -> dict[str, Any]:
-        """A block that doesn't repeat, by DFN field."""
-        values = {f.name: self.value_of(name, f) for f in block.fields.values()}
+    def body(self, name: str) -> dict[str, Any]:
+        """A block that doesn't repeat, by field."""
+        values = {key: self.value_of(name, key, a) for key, a in self.entries(name).items()}
         return {k: v for k, v in values.items() if v is not None}
 
-    def value_of(self, name: str, f: Any) -> Any:
-        """The DFN field `f` of the block `name` as the writer takes it,
-        or None to leave it out: a binding block's untagged field is its
-        rows naming children."""
-        if name in self.binding_blocks and f is block_keys(self.cls, name).untagged:
-            return self.bindings(name)
-        a, value = self.get(name, f)
-        return None if value is None else self.field(f, a, value)
+    def value_of(self, name: str, key: str, a: "attrs.Attribute | None") -> Any:
+        """The field's value as the writer takes it, or None to leave it
+        out. With no attribute, it's a binding block's rows or a computed
+        field; a MAXBOUND of 0 (no rows) isn't written."""
+        if a is None:
+            return self.bindings(name) if key == name else getattr(self.value, key) or None
+        value = getattr(self.value, _init_key(a), None)
+        return None if value is None else self.field(key, a, value)
 
-    def field(self, f: Any, a: "attrs.Attribute | None", value: Any) -> Any:
-        """The DFN field `f`'s value as the writer takes it, by the type
-        of the attribute `a` holding it (or of `f`, for a computed one), or
+    def field(self, key: str, a: attrs.Attribute, value: Any) -> Any:
+        """The field `a`'s value as the writer takes it, by its type, or
         None to leave it out."""
-        meta = a.metadata if a is not None else {}
+        meta = a.metadata
         if meta.get("child"):
             # a child's file record: OBS6 FILEIN <the child's file>
-            assert a is not None
             if isinstance(value, list):
                 return [_path_to_tuple(a, _child_path(c)) for c in value if c is not None] or None
             return _path_to_tuple(a, _child_path(value))
-        match meta.get("type", f.type):
+        match meta.get("type"):
             case "keyword":
                 return value or None
             case "integer" | "double":
@@ -355,16 +359,13 @@ class _Unstructure:
             case "string":
                 return value or None
             case "file" if isinstance(value, list):
-                # a DFN tagged list of file records: one line each
-                assert a is not None
+                # a tagged list of file records: one line each
                 return [_path_to_tuple(a, v) for v in value] or None
             case "file":
-                assert a is not None
                 return _path_to_tuple(a, value)
             case "record":
                 if not isinstance(value, Record):
-                    rec = record_type(a.type) if a is not None else None
-                    raise _not_a_record(self.value, a.name if a else f.name, rec or Record, value)
+                    raise _not_a_record(self.value, a.name, record_type(a.type) or Record, value)
                 return value.to_tokens()
             case "array" if meta.get("shape"):
                 # a grid array; a grid package's are shaped like its grid,
@@ -376,13 +377,12 @@ class _Unstructure:
                 return _mark_netcdf(_grid_shaped(value, meta, *dims), meta)
             case "array":
                 # inline (AUXILIARY's names): one line
-                return (f.name.upper(), *map(str, value)) if len(value) else None
+                return (key.upper(), *map(str, value)) if len(value) else None
             case "list" if not value:
                 return None
             case "list" if isinstance(value[0], tuple):
                 return value
             case "list":
-                assert a is not None
                 return _rows(value, self.ncelldim, **self.list_kwargs(a))
         return None
 
@@ -401,7 +401,7 @@ class _Unstructure:
         """A list field's `Rows` arguments, for writing it to a file."""
         return _list_kwargs(self.value, _init_key(a), a)  # type: ignore[arg-type]
 
-    def occurrences(self, name: str, block: Any) -> dict[str, tuple[dict[str, Any], bool]]:
+    def occurrences(self, name: str) -> dict[str, tuple[dict[str, Any], bool]]:
         """A repeating block's occurrences by header as written (a period's
         1-based number), each its fields and whether it's written even if
         empty (a grid package's period clearing every boundary). A field
@@ -414,13 +414,12 @@ class _Unstructure:
         # per period, the (non-aux) arrays given, and those all DNODATA
         given: dict[Any, set[str]] = {}
         cleared: dict[Any, set[str]] = {}
-        for f in block.fields.values():
-            a, value = self.get(name, f)
+        for key, a in self.entries(name).items():
             if a is None or not _per_header(a):
-                if (value := self.value_of(name, f)) is not None:
-                    found.setdefault(1, {})[f.name] = value
+                if (value := self.value_of(name, key, a)) is not None:
+                    found.setdefault(1, {})[key] = value
                 continue
-            if value is None:
+            if (value := getattr(self.value, _init_key(a), None)) is None:
                 continue
             meta = a.metadata
             if (blocks := block_list_type(a.type)) is not None:
@@ -428,7 +427,7 @@ class _Unstructure:
                 _, list_name, _ = blocks.parts()
                 for b in value:
                     header_tokens = " ".join(map(str, b.header_tokens()))
-                    found.setdefault(header_tokens, {})[f.name] = _rows(
+                    found.setdefault(header_tokens, {})[key] = _rows(
                         getattr(b, list_name), self.ncelldim
                     )
             elif meta.get("fk"):
@@ -441,20 +440,18 @@ class _Unstructure:
                         )
             elif is_array(a) and meta.get("fill_forward"):
                 for kper, arr in value.items():
-                    found.setdefault(kper, {})[f.name] = (
-                        None
-                        if arr is None
-                        else _period_dataarray(f.name, arr, meta, *self.grid_dims)
+                    found.setdefault(kper, {})[key] = (
+                        None if arr is None else _period_dataarray(key, arr, meta, *self.grid_dims)
                     )
                     if self.grid and is_cleared(arr):
-                        cleared.setdefault(kper, set()).add(f.name)
-                    given.setdefault(kper, set()).add(f.name)
+                        cleared.setdefault(kper, set()).add(key)
+                    given.setdefault(kper, set()).add(key)
             elif is_array(a):
                 # TAS times: {time: array}, a layer each
-                key = f.name if f.tagged else ""
+                tag = key if is_tagged(a) else ""
                 for time, arr in value.items():
                     arr = arr if hasattr(arr, "shape") or isinstance(arr, str) else np.asarray(arr)
-                    found.setdefault(time, {})[key] = _grid_shaped(arr, meta, *self.grid_dims)
+                    found.setdefault(time, {})[tag] = _grid_shaped(arr, meta, *self.grid_dims)
             elif meta.get("type") == "string":
                 # a word per period (STO's steady-state or transient), untagged,
                 # written uppercase as keywords are
@@ -467,7 +464,7 @@ class _Unstructure:
                     if (kper := _normalize_kper(kper)) is None:
                         continue
                     rows = found.setdefault(kper, {}).setdefault(
-                        f.name, Rows(self.ncelldim, **list_kwargs)
+                        key, Rows(self.ncelldim, **list_kwargs)
                     )
                     if isinstance(row_list, (list, ItemTable)):
                         rows.append(row_list)

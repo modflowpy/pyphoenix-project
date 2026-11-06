@@ -281,16 +281,19 @@ class Maw(Package):
     packagedata: Optional[list[Packagedata]] = list_(
         default=None,
         block="packagedata",
+        tagged=False,
         shape=("nmawwells",),
     )
     connectiondata: Optional[list[Connectiondata]] = list_(
         default=None,
         block="connectiondata",
+        tagged=False,
         write_if_empty=True,
     )
     angledata: Optional[list[Angledata]] = list_(
         default=None,
         block="angledata",
+        tagged=False,
     )
     _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
         alias="stress_period_data",
@@ -298,6 +301,7 @@ class Maw(Package):
         repr=False,
         block="period",
         fill_forward=True,
+        tagged=False,
     )
 
     ngwfnodes = DerivedDim("sum(packagedata.ngwfnodes)")

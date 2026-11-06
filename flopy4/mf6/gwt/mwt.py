@@ -169,6 +169,7 @@ class Mwt(Package):
     packagedata: Optional[list[Packagedata]] = list_(
         default=None,
         block="packagedata",
+        tagged=False,
         write_if_empty=True,
     )
     _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
@@ -177,6 +178,7 @@ class Mwt(Package):
         repr=False,
         block="period",
         fill_forward=True,
+        tagged=False,
     )
 
 
