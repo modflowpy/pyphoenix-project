@@ -1074,3 +1074,60 @@ def test_transform_record_header():
     keys = ["continuous FILEOUT Heads.csv", "continuous FILEOUT flows.bsv BINARY"]
     assert list(loads_typed(text, "utl-obs")) == keys
     assert [k.lower() for k in loads(text)] == [k.lower() for k in keys]
+
+
+TRAILING = "\n         1         0    NRCHOP,IRCHBD\n         1              INRECH\n"
+
+
+@pytest.mark.parametrize("end", ["END PERIOD", "END PERIOD 1", "end  period  1", "END PERIOD 1  "])
+def test_text_after_the_last_block_keeps_the_blocks(end):
+    """mf5to6 can leave MODFLOW-2005 lines after the last block, which MF6 ignores.
+    Trimming them mustn't take a block whose END has a period number with them."""
+    from flopy4.mf6.codec.reader import loads_typed
+
+    text = (
+        "BEGIN OPTIONS\nEND OPTIONS\n"
+        "BEGIN DIMENSIONS\n  MAXBOUND 1\nEND DIMENSIONS\n"
+        f"BEGIN PERIOD 1\n  1 1 1 -1.0\n{end}\n"
+    )
+    clean = loads_typed(text, "gwf-wel")
+    assert "period 1" in clean
+    assert list(loads_typed(text + TRAILING, "gwf-wel")) == list(clean)
+
+
+@pytest.mark.parametrize("component", [None, "gwf-wel"])
+@pytest.mark.parametrize("mapped", [False, True])
+def test_trimmed_text_warns_with_the_file_and_lines(tmp_path, monkeypatch, component, mapped):
+    from flopy4.mf6.codec import reader
+
+    if mapped:
+        monkeypatch.setattr(reader, "_MAP_SIZE", 1)
+    text = (
+        "BEGIN OPTIONS\nEND OPTIONS\n"
+        "BEGIN DIMENSIONS\n  MAXBOUND 1\nEND DIMENSIONS\n"
+        "BEGIN PERIOD 1\n  1 1 1 -1.0\nEND PERIOD 1\n"
+    )
+    path = tmp_path / "x.wel"
+    path.write_text(text + TRAILING)
+    with open(path) as f, pytest.warns(UserWarning) as caught:
+        reader.load(f, component=component)
+    assert [str(w.message) for w in caught] == [
+        f"{path}: ignoring text after the last block (lines 10-11)"
+    ]
+
+
+@pytest.mark.parametrize("component", [None, "gwf-wel"])
+def test_trim_stays_quiet_unless_it_dropped_text_from_a_file_that_parses(component, recwarn):
+    from lark.exceptions import LarkError
+
+    from flopy4.mf6.codec.reader import loads
+
+    block = "BEGIN PERIOD 1\n  1 1 1 -1.0\nEND PERIOD 1\n"
+    loads(block, component=component)
+    # the retry fails too, so this is an error rather than ignored text
+    with pytest.raises(LarkError):
+        loads(
+            f"{block}stray words\nBEGIN PERIOD 2\n  1 1 1 -1.0\nEND PERIOD 2\n{TRAILING}",
+            component=component,
+        )
+    assert not recwarn.list

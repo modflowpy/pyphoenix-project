@@ -151,7 +151,13 @@
     "BEGIN OPTIONS",
     " READASARRAYS",
     " FIXED_CELL",
-    "END OPTIONS"
+    "END OPTIONS",
+    "",
+    "BEGIN PERIOD 1",
+    " RECHARGE",
+    " CONSTANT 3e-08",
+    "",
+    "END PERIOD 1"
   ],
   "twri.tdis": [
     "BEGIN OPTIONS",
