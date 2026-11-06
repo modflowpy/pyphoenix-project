@@ -349,15 +349,6 @@
   },
   "simulation/test034_nwtp2/sto": {
     "__type__": "Sto",
-    "_stress_period_data": {
-      "3": {
-        "__table__": "StressPeriodData",
-        "n": 1,
-        "stress_period_data": [
-          "steady-state"
-        ]
-      }
-    },
     "dims": {
       "ncelldim": 3,
       "ncol": 40,
@@ -375,6 +366,9 @@
     "ss": "float64[22400] 3f0dd39315bebd22",
     "ss_confined_only": false,
     "storagecoefficient": false,
+    "stress_period_data": {
+      "3": "steady-state"
+    },
     "sy": "float64[22400] 276974ce10de853f"
   }
 }

@@ -1010,22 +1010,6 @@
   },
   "simulation/GWF_1/sto": {
     "__type__": "Sto",
-    "_stress_period_data": {
-      "0": {
-        "__table__": "StressPeriodData",
-        "n": 1,
-        "stress_period_data": [
-          "STEADY-STATE"
-        ]
-      },
-      "1": {
-        "__table__": "StressPeriodData",
-        "n": 1,
-        "stress_period_data": [
-          "TRANSIENT"
-        ]
-      }
-    },
     "dims": {
       "ncelldim": 3,
       "ncol": 10,
@@ -1043,6 +1027,10 @@
     "ss": "float64[450] b1a3de0b97dd99ab",
     "ss_confined_only": false,
     "storagecoefficient": false,
+    "stress_period_data": {
+      "0": "steady-state",
+      "1": "transient"
+    },
     "sy": "float64[450] 450f72f145d4702a"
   },
   "simulation/ims-1": {

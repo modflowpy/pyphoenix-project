@@ -469,15 +469,6 @@
   },
   "simulation/holly/sto": {
     "__type__": "Sto",
-    "_stress_period_data": {
-      "0": {
-        "__table__": "StressPeriodData",
-        "n": 1,
-        "stress_period_data": [
-          "TRANSIENT"
-        ]
-      }
-    },
     "dims": {
       "ncelldim": 3,
       "ncol": 1,
@@ -495,6 +486,9 @@
     "ss": "float64[14] 5c0168621a045c60",
     "ss_confined_only": false,
     "storagecoefficient": false,
+    "stress_period_data": {
+      "0": "transient"
+    },
     "sy": "float64[14] 5c0168621a045c60"
   },
   "simulation/ims-1": {
