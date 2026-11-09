@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793629171445,
+  "lastUpdate": 1794236562648,
   "repoUrl": "https://github.com/modflowpy/pyphoenix-project",
   "entries": {
     "flopy4 benchmarks": [
@@ -372,6 +372,106 @@ window.BENCHMARK_DATA = {
             "value": 0.9394271170000081,
             "unit": "s",
             "extra": "AMD EPYC 9V45 96-Core Processor, Linux, Python 3.11.16"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "wpbonelli",
+            "username": "wpbonelli",
+            "email": "wbonelli@ucar.edu"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "83728fdcbcc6ceed33c60050142dce6b79fbf52a",
+          "message": "dune it (#547)\n\nepigraph",
+          "timestamp": "2026-11-06T01:45:01Z",
+          "url": "https://github.com/modflowpy/pyphoenix-project/commit/83728fdcbcc6ceed33c60050142dce6b79fbf52a"
+        },
+        "date": 1794236560103,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "load (standard): flopy4",
+            "value": 0.40752574299999367,
+            "unit": "s",
+            "extra": "AMD EPYC 7763 64-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load (standard): flopy4 / flopy3",
+            "value": 0.26110791573653136,
+            "unit": "ratio",
+            "extra": "AMD EPYC 7763 64-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load (large): flopy4",
+            "value": 8.132867771999997,
+            "unit": "s",
+            "extra": "AMD EPYC 7763 64-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load (large): flopy4 / flopy3",
+            "value": 0.24634513198726982,
+            "unit": "ratio",
+            "extra": "AMD EPYC 7763 64-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load-materialize (standard): flopy4",
+            "value": 0.5078861470000078,
+            "unit": "s",
+            "extra": "AMD EPYC 7763 64-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load-materialize (standard): flopy4 / flopy3",
+            "value": 0.21656958478001573,
+            "unit": "ratio",
+            "extra": "AMD EPYC 7763 64-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load-materialize (large): flopy4",
+            "value": 10.866563444999997,
+            "unit": "s",
+            "extra": "AMD EPYC 7763 64-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load-materialize (large): flopy4 / flopy3",
+            "value": 0.30124184809801147,
+            "unit": "ratio",
+            "extra": "AMD EPYC 7763 64-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "write (standard): flopy4",
+            "value": 1.273596973999986,
+            "unit": "s",
+            "extra": "AMD EPYC 7763 64-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "write (standard): flopy4 / flopy3",
+            "value": 0.3671015335843344,
+            "unit": "ratio",
+            "extra": "AMD EPYC 7763 64-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "write (large): flopy4",
+            "value": 19.578283177000003,
+            "unit": "s",
+            "extra": "AMD EPYC 7763 64-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "write (large): flopy4 / flopy3",
+            "value": 0.5119584039335262,
+            "unit": "ratio",
+            "extra": "AMD EPYC 7763 64-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "cold start: flopy4",
+            "value": 1.4637448080000013,
+            "unit": "s",
+            "extra": "AMD EPYC 7763 64-Core Processor, Linux, Python 3.11.16"
           }
         ]
       }
