@@ -629,3 +629,25 @@ def test_latest_pins_tag(dfn_path, outdir, monkeypatch, fake_install):
     assert result.source == "MODFLOW-ORG/modflow6@6.8.1"
     assert result.version == "6.8.1"
     assert fake_install[0]["version"] == "6.8.1"
+
+
+class _FakeRegistry:
+    def __init__(self, cache_path: Path):
+        self.cache_path = cache_path
+
+    def sync(self):
+        if self.cache_path.exists() and any(self.cache_path.iterdir()):
+            return
+        self.cache_path.mkdir(parents=True, exist_ok=True)
+        (self.cache_path / "new.dfn").write_text("fresh")
+
+
+@pytest.mark.parametrize("force", [False, True])
+def test_populate_remote_cache_force_refetches(tmp_path, force):
+    """A forced populate replaces a stale cache; an unforced one keeps it."""
+    cache = tmp_path / "develop"
+    cache.mkdir()
+    (cache / "old.dfn").write_text("stale")
+    _sync._populate_remote_cache(_FakeRegistry(cache), "MODFLOW-ORG/modflow6@develop", force=force)
+    names = sorted(p.name for p in cache.iterdir())
+    assert names == (["new.dfn"] if force else ["old.dfn"])
