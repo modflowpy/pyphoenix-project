@@ -30,6 +30,31 @@ SQL is the checking target and test harness, and not what people maintain.
 the rules do on models they haven't seen. The rules were corrected after seeing failures, so
 "no false alarms" is in-sample.
 
+## Picking this up
+
+- **The slice, and how to run it:** [ddl-export.md's "Picking this up"](ddl-export.md#picking-this-up).
+- **Open PRs and their worktrees** (all under `/Users/wbonelli/dev/`). Push only to the fork
+  (`origin`, wpbonelli), and only when told:
+
+  | PR | Branch | Worktree |
+  |---|---|---|
+  | MF6 #3135 | `fix-disu-idomain-doc` | `modflow6-disu-idomain` |
+  | MF6 #3136 | `fix-2d-idomain-doc` | `modflow6-2d-idomain` |
+  | MF6 #3137 | `fix-obs-conn-check` | `modflow6-obs-conn-check` |
+  | MF6 #3139 | `fix-apt-obs-budterm-idx` | `modflow6-apt-obs-idx` |
+  | devtools #416 | `obs-conn-doc` | `modflow-devtools-obs-conn-doc` |
+  | flopy4 #550 | `regen-obs-boundname` | `pyphoenix-project-obs-regen` |
+  | flopy4 #551 | `sync-force-refetch` | `pyphoenix-project-sync-force` |
+
+- **MF6 tests:** use the pixi environment in `modflow6-obs-conn-check`:
+  `.pixi/envs/default/bin/{python,ruff,fprettify}`. Run the touched test files from `autotest/`,
+  not the whole suite. New tests use `TestFramework`, like `test_gwf_obs_conn.py`. `conftest`
+  needs `bin/mf5to6`, and in `modflow6-apt-obs-idx` that's a git-ignored symlink to the
+  obs-conn worktree's.
+- **MF6 PRs:** suggest the description and let the user open the PR. Don't edit PR descriptions
+  on GitHub. Release notes go in `doc/ReleaseNotes/items/*.toml`, written for users.
+- **When review comments come in:** fix on the branch, commit locally, and ask before pushing.
+
 ## Steps
 
 In order. 1 and 2 are small, don't depend on anything, and are mostly done. 3 and 4 are what development needs
@@ -48,7 +73,7 @@ Fixed in #545, with a warning when the trim drops text
 
 ### 2. Report what we found to its owners
 
-Mostly done by 2026-11-11. The write-ups for merged fixes are archived: the MF6 ones in the MF6
+Everything is filed as of 2026-11-11, and what's open waits on review. The write-ups for merged fixes are archived: the MF6 ones in the MF6
 checkout's `archive/`, the DFN ones in the devtools checkout's `archive/`.
 
 - [x] **MF6:** GNC `numgnc` (#3122), SPC `maxbound` (#3117) and the boundname overrun (#3127), merged
@@ -66,17 +91,16 @@ checkout's `archive/`, the DFN ones in the devtools checkout's `archive/`.
 - [ ] **flopy4:** `generate-classes` read a June cache of MF6 `develop`'s DFNs instead of refetching:
   #551, open
 - [ ] **MF6:** `olf-dis2d.dfn` and `olf-disv2d.dfn` describe IDOMAIN -1 as "vertical pass through",
-  which can't apply to a 2D grid. MF6 treats -1 as 0 there. Branch `fix-2d-idomain-doc`
-  (`3a4b5a35e7`) is on the fork, and the PR is still to open
-- [ ] **MF6:** check LAK's and MAW's observation connection numbers against the feature. Branch
-  `fix-obs-conn-check` (`f6b9afcf43`) is on the fork, and the PR is still to open. It changes
-  `test_gwt_lkt02` and `lkt03`, which relied on the bug. Models outside `autotest/` weren't checked
+  which can't apply to a 2D grid. MF6 treats -1 as 0 there: MF6 #3136, open
+- [ ] **MF6:** check LAK's and MAW's observation connection numbers against the feature: MF6 #3137,
+  open. It changes `test_gwt_lkt02` and `lkt03`, which relied on the bug. Its test,
+  `test_gwf_obs_conn.py`, uses the `TestFramework`. Models outside `autotest/` weren't checked
 - [ ] **DFN:** drop `dfnspec.md`'s note that those keys are stricter than MF6: devtools #416, to merge
-  after the MF6 fix
+  after MF6 #3137
 - [ ] **MF6:** `rp_obs_budterm` (`tsp-apt.f90`) used `idx` uninitialised when a feature has no
-  budget rows, and the APT observation checks let an ID of 0 through, so `concentration 0` ran and
-  read out of bounds. Branch `fix-apt-obs-budterm-idx` (`0527ab4ac6`) is on the fork, and the PR is
-  still to open
+  rows in the observed budget term, and the APT observation checks let an ID of 0 through, so
+  `concentration 0` ran and read out of bounds: MF6 #3139, open. FLOW-JA-FACE with a 0 already
+  errored, and only its message changes. Test: `test_gwt_apt_obs_id.py`
 - [x] **flopy4:** the OC load bug (#549, [archive](../archive/oc-format-load-bug.md))
 - [ ] **flopy4:** `keys.py` doesn't check OBS ids at all, and stayed silent on 22 broken copies
   that MF6 rejects. This belongs with binding navigation (step 4)
