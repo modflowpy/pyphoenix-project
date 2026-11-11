@@ -32,39 +32,41 @@ the rules do on models they haven't seen. The rules were corrected after seeing 
 
 ## Steps
 
-In order. 1 and 2 are small and don't depend on anything. 3 and 4 are what development needs
+In order. 1 and 2 are small, don't depend on anything, and are mostly done. 3 and 4 are what development needs
 next. 5 and 6 tell us whether to trust the slice, and 7 tests the DDL proposal.
 
 ### 1. Fix the loader bug (flopy4)
 
-`trailing-text-load-fix.md` in the main checkout has the one-line regex change and a test. It's
-silent data loss, so it goes first.
+Fixed in #545, with a warning when the trim drops text
+([archive/trailing-text-load-fix.md](../archive/trailing-text-load-fix.md)).
 
-- [ ] Apply the fix and the test
+- [x] Apply the fix and the test
 - [ ] Rerun `test021_twri` through the slice, since its recharge has been missing from the
   export
-- [ ] Decide on a warning when the trim removes text, and on text between blocks. Both are
-  separate from this fix
+- [x] Warn when the trim removes text
+- [ ] Decide on text between blocks. It now raises, where MF6 skips it
 
 ### 2. Report what we found to its owners
 
-Nothing has been filed.
+Mostly done by 2026-11-11. The write-ups for merged fixes are archived: the MF6 ones in the MF6
+checkout's `archive/`, the DFN ones in the devtools checkout's `archive/`.
 
-- [ ] **MF6:** `gnc-numgnc-check-fix.md`, `obs-boundname-overrun-fix.md` and the earlier
-  `spc-maxbound-check-fix.md`, in the MF6 checkout. All have tested fixes, and need CI
-- [ ] **DFN, before parameters:** `dfn-fixes-from-slice.md` in the devtools checkout lists them in
-  order. These are fixes to make, not only to report:
-  - [ ] `obs-boundname-when-fix.md`, with `.diff`: apply, add its tests, update `dfnspec.md`, regenerate
-    snapshots and let CI run them, then regenerate flopy4 against it
-  - [ ] `maw-dfn-fixes.md`: `angledata`'s `when`, and its test. Its `icon` key stays parked until MF6
-    brings `CONNECTION_STATUS` back
-  - [ ] OC's `format`: run `columns`, `width` and `digits` through `mf6` first, then fix it in MF6's DFNs
-    or a migration table
-  - [ ] DISU's `IDOMAIN` description, in MF6's DFN
-- [ ] **DFN:** LAK's `iconn` and MAW's `icon` keys stay scoped to the feature, decided 2026-11-06,
-  though MF6 counts across the package. Say in `dfnspec.md` that this is deliberately stricter
-- [ ] **MF6:** consider reporting that it doesn't check `iconn` against the lake. Not written up
-- [ ] **flopy4:** `oc-format-load-bug.md`, which is the one model that doesn't load
+- [x] **MF6:** GNC `numgnc` (#3122), SPC `maxbound` (#3117) and the boundname overrun (#3127), merged
+  2026-11-10. #3127 also covers CSUB and UZF, and fixes the file name in LAK and UZF errors
+- [x] **DFN, before parameters:**
+  - [x] Boundname needs `BOUNDNAMES` (devtools #410), with the `dfnspec.md` paragraph on `when` for
+    observations
+  - [x] `angledata`'s `when` (devtools #409). MAW's `connection_status` `icon` key stays parked until MF6
+    brings `CONNECTION_STATUS` back (`archive/maw-dfn-fixes.md`, part 3)
+  - [x] OC's and IST's print format (MF6 #3129, devtools #414, flopy4 #549)
+  - [ ] DISU's `IDOMAIN` description, in MF6's `gwf-disu.dfn`: say "1", not "1 or greater"
+- [ ] **flopy4:** regenerate against devtools #410. On `develop`, `gwf/chdg.py` still offers a
+  `string` form, and so do the other six grid packages
+- [x] **DFN:** LAK's `iconn` and MAW's `icon` keys are deliberately stricter than MF6, now said in
+  `dfnspec.md`
+- [ ] **MF6:** consider reporting that it doesn't check `iconn` against the lake. Not written up, and
+  the spec now documents the difference
+- [x] **flopy4:** the OC load bug (#549, [archive](../archive/oc-format-load-bug.md))
 - [ ] **flopy4:** `keys.py` doesn't check OBS ids at all, and stayed silent on 22 broken copies
   that MF6 rejects. This belongs with binding navigation (step 4)
 

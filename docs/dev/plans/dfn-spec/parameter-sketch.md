@@ -271,8 +271,8 @@ be written from this one resolver, the construct isn't what it claims to be.
 
 - **`when` can test a parameter.** Decided 2026-11-05: it's a small step, and states MF6's two-way
   `MODELNAMES` check in one line.
-- **The boundname fix goes first,** ahead of parameters. Tested, and written up in devtools'
-  `obs-boundname-when-fix.md`. It confirmed all seven grid packages hit the same MF6 bug, so their
+- **The boundname fix goes first,** ahead of parameters. Done in devtools #410, and in MF6 #3127. It
+  confirmed all seven grid packages hit the same MF6 bug, so their
   arms are wrong, and should go.
 
 - **`no_advanced_transport` stays,** decided 2026-11-06. It keeps a rule for an edge case, because
