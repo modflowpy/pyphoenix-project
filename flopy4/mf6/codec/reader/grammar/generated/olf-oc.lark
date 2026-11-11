@@ -44,7 +44,7 @@ saverecord__rec__elem: "save"i saverecord__rtype__val ocsetting__union [_remark]
 saverecord__rtype__val: word
 printrecord__rec__elem: "print"i printrecord__rtype__val ocsetting__union [_remark] _NL
 printrecord__rtype__val: word
-formatrecord__rec: [formatrecord__columns__val] [formatrecord__width__val] [formatrecord__digits__val] formatrecord__format__val
+formatrecord__rec: formatrecord__columns__val formatrecord__width__val formatrecord__digits__val [formatrecord__format__val]
 formatrecord__columns__val: "columns"i integer
 formatrecord__width__val: "width"i integer
 formatrecord__digits__val: "digits"i integer

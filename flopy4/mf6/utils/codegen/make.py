@@ -763,6 +763,9 @@ def _build_record_class_specs(
     is a required tagged scalar (IMS ``INNER_RCLOSE <value> ...``), its tag
     is the trigger token: it becomes ``_keyword`` and the child an untagged
     data field, so the record is found by its leading token like any other.
+    Not if a later child is tagged too (OC's ``COLUMNS <columns> WIDTH
+    <width> DIGITS <digits> [<format>]``): the trigger's value is written
+    after the tagged fields, so it would land after ``DIGITS <digits>``.
     Otherwise there is no trigger token (``_keyword = ""``) and all children
     become data fields.
 
@@ -791,7 +794,11 @@ def _build_record_class_specs(
         kw = first.name
         aliases = first.aliases
         data_children = children[1:]
-    elif getattr(first, "tagged", False) and not first.optional:
+    elif (
+        getattr(first, "tagged", False)
+        and not first.optional
+        and not any(getattr(c, "tagged", False) for c in children[1:])
+    ):
         kw = first.name
         aliases = getattr(first, "aliases", None) or []
         data_children = children

@@ -28,10 +28,10 @@ class Oc(Package):
     @attrs.define
     class Format(Record):
         _keyword: ClassVar[str] = ""
-        format_: str = string()
-        columns: Optional[int] = integer(default=None, tagged=True, optional=True)
-        width: Optional[int] = integer(default=None, tagged=True, optional=True)
-        digits: Optional[int] = integer(default=None, tagged=True, optional=True)
+        columns: int = integer(tagged=True)
+        width: int = integer(tagged=True)
+        digits: int = integer(tagged=True)
+        format_: Optional[str] = string(default=None, optional=True)
 
     @attrs.define
     class Concentrationprint(Record):
