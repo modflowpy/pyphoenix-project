@@ -60,6 +60,7 @@ notes used to live. Live plans are in the [index](../README.md).
 | [load-context-plan.md](load-context-plan.md) | load context | done (#418) |
 | [model-relpath-plan.md](model-relpath-plan.md) | model directories | implemented on a branch; see #421 |
 | [load-corpus-gaps.md](load-corpus-gaps.md) | `Simulation.load()` gaps on the test corpus | done |
+| [oc-format-load-bug.md](oc-format-load-bug.md) | `test060_gms_ets` failing to load an OC print format with no format word | fixed by correcting the DFNs (MODFLOW-ORG/modflow6#3129), in #549; #548 closed |
 | [load-branch-todo.md](load-branch-todo.md) | TODO list from the `load` branch | historical |
 | [typed-grammar-issues.md](typed-grammar-issues.md) | generated typed grammars falling back to the basic parser (`load` branch) | historical |
 | [typed-grammar-remarks.md](typed-grammar-remarks.md), [typed-grammar-trailing-remarks.md](typed-grammar-trailing-remarks.md) | whether the typed grammar keeps trailing remarks, and its speed | answered: keep remarks |
