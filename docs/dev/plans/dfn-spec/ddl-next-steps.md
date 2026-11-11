@@ -65,15 +65,18 @@ checkout's `archive/`, the DFN ones in the devtools checkout's `archive/`.
   `pixi.lock` moves devtools to `8b11d69`
 - [ ] **flopy4:** `generate-classes` read a June cache of MF6 `develop`'s DFNs instead of refetching:
   #551, open
-- [ ] **MF6, maybe:** `olf-disv2d.dfn` describes IDOMAIN -1 as "vertical pass through", which can't
-  apply to a 2D grid. Not checked further
+- [ ] **MF6:** `olf-dis2d.dfn` and `olf-disv2d.dfn` describe IDOMAIN -1 as "vertical pass through",
+  which can't apply to a 2D grid. MF6 treats -1 as 0 there. Branch `fix-2d-idomain-doc`
+  (`3a4b5a35e7`) is on the fork, and the PR is still to open
 - [ ] **MF6:** check LAK's and MAW's observation connection numbers against the feature. Branch
   `fix-obs-conn-check` (`f6b9afcf43`) is on the fork, and the PR is still to open. It changes
   `test_gwt_lkt02` and `lkt03`, which relied on the bug. Models outside `autotest/` weren't checked
 - [ ] **DFN:** drop `dfnspec.md`'s note that those keys are stricter than MF6: devtools #416, to merge
   after the MF6 fix
-- [ ] **MF6, maybe:** `rp_obs_budterm` (`tsp-apt.f90`) uses `idx` uninitialised when a feature has no
-  budget rows
+- [ ] **MF6:** `rp_obs_budterm` (`tsp-apt.f90`) used `idx` uninitialised when a feature has no
+  budget rows, and the APT observation checks let an ID of 0 through, so `concentration 0` ran and
+  read out of bounds. Branch `fix-apt-obs-budterm-idx` (`0527ab4ac6`) is on the fork, and the PR is
+  still to open
 - [x] **flopy4:** the OC load bug (#549, [archive](../archive/oc-format-load-bug.md))
 - [ ] **flopy4:** `keys.py` doesn't check OBS ids at all, and stayed silent on 22 broken copies
   that MF6 rejects. This belongs with binding navigation (step 4)
