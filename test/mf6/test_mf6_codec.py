@@ -5276,6 +5276,25 @@ def test_obs_ids_by_obstype(tmp_path, parent, dims, row, ids):
     assert (obs_row.id_, obs_row.id2) == ids
 
 
+@pytest.mark.parametrize("parent", ["Chdg", "Drng", "Evta", "Ghbg", "Rcha", "Rivg", "Welg"])
+def test_obs_boundname_rejected_by_grid_package(tmp_path, parent):
+    """A grid package has no boundnames, so its OBS ids are cellids only,
+    as in MF6: a boundname is an error, not a guess."""
+    from flopy4.mf6 import gwf
+    from flopy4.mf6.codec.reader import loads
+    from flopy4.mf6.converter.ingress.structure import structure_component
+
+    cls = getattr(gwf, parent)
+    obstype = next(iter(cls.observations))
+    (tmp_path / "p.obs").write_text(
+        f"BEGIN CONTINUOUS FILEOUT p.csv\n  o1 {obstype} well-a\nEND CONTINUOUS\n"
+    )
+    raw = loads("BEGIN OPTIONS\n  OBS6 FILEIN p.obs\nEND OPTIONS\n")
+    context = LoadContext(workspace=tmp_path, dims=_DISV)
+    with pytest.raises(ValueError, match="'well-a' is a boundname"):
+        structure_component(raw, cls, context=context)
+
+
 def test_block_end_keeps_only_an_index():
     assert writer.filters.block_begin("continuous FILEOUT Heads.csv") == (
         "CONTINUOUS FILEOUT Heads.csv"

@@ -24,9 +24,9 @@ class Welg(Package):
     }
 
     observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
-        "to-mvr": (("cellid",), ("string",)),
-        "wel": (("cellid",), ("string",)),
-        "wel-reduction": (("cellid",), ("string",)),
+        "to-mvr": (("cellid",),),
+        "wel": (("cellid",),),
+        "wel-reduction": (("cellid",),),
     }
 
     key_sets: ClassVar[dict[str, str]] = {

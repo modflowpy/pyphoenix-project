@@ -23,8 +23,8 @@ class Ghbg(Package):
     }
 
     observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
-        "ghb": (("cellid",), ("string",)),
-        "to-mvr": (("cellid",), ("string",)),
+        "ghb": (("cellid",),),
+        "to-mvr": (("cellid",),),
     }
 
     key_sets: ClassVar[dict[str, str]] = {
