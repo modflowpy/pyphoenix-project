@@ -23,8 +23,8 @@ class Drng(Package):
     }
 
     observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
-        "drn": (("cellid",), ("string",)),
-        "to-mvr": (("cellid",), ("string",)),
+        "drn": (("cellid",),),
+        "to-mvr": (("cellid",),),
     }
 
     key_sets: ClassVar[dict[str, str]] = {

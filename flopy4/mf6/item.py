@@ -352,9 +352,21 @@ def _read_unions(
         for form in forms or (None,):
             if (solved := solve(0, 0, form)) is not None:
                 return {f.name: v for f, v in zip(fields, solved[1]) if v is not None}
-    if forms:  # ids its observation type doesn't take: guess
-        return _read_unions(fields, full, ncelldim, prefer)
     names = ", ".join(f.name for f in fields)
+    if forms:  # ids its observation type doesn't take: guess, but not a boundname
+        guess = _read_unions(fields, full, ncelldim, prefer)
+        for i, f in enumerate(fields):
+            v = guess.get(f.name)
+            if (
+                isinstance(v, str)
+                and not _token_fits(v, float)
+                and not any(len(form) > i and form[i] == "string" for form in forms)
+            ):
+                raise ValueError(
+                    f"can't read {names} from {full}: {v!r} is a boundname, "
+                    f"but this observation type takes only {list(forms)}"
+                )
+        return guess
     raise ValueError(f"can't read {names} from {full}")
 
 

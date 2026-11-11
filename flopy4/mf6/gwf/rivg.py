@@ -23,8 +23,8 @@ class Rivg(Package):
     }
 
     observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
-        "riv": (("cellid",), ("string",)),
-        "to-mvr": (("cellid",), ("string",)),
+        "riv": (("cellid",),),
+        "to-mvr": (("cellid",),),
     }
 
     key_sets: ClassVar[dict[str, str]] = {

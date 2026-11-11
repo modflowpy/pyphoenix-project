@@ -23,7 +23,7 @@ class Chdg(Package):
     }
 
     observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
-        "chd": (("cellid",), ("string",)),
+        "chd": (("cellid",),),
     }
 
     key_sets: ClassVar[dict[str, str]] = {

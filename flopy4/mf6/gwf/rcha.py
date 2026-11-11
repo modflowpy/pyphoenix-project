@@ -24,7 +24,7 @@ class Rcha(Package):
     }
 
     observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
-        "rch": (("cellid",), ("string",)),
+        "rch": (("cellid",),),
     }
 
     readasarrays: bool = keyword(

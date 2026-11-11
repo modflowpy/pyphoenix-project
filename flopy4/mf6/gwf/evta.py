@@ -24,7 +24,7 @@ class Evta(Package):
     }
 
     observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
-        "evt": (("cellid",), ("string",)),
+        "evt": (("cellid",),),
     }
 
     readasarrays: bool = keyword(
