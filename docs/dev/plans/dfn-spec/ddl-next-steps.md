@@ -59,9 +59,14 @@ checkout's `archive/`, the DFN ones in the devtools checkout's `archive/`.
   - [x] `angledata`'s `when` (devtools #409). MAW's `connection_status` `icon` key stays parked until MF6
     brings `CONNECTION_STATUS` back (`archive/maw-dfn-fixes.md`, part 3)
   - [x] OC's and IST's print format (MF6 #3129, devtools #414, flopy4 #549)
-  - [ ] DISU's `IDOMAIN` description, in MF6's `gwf-disu.dfn`: say "1", not "1 or greater"
-- [ ] **flopy4:** regenerate against devtools #410. On `develop`, `gwf/chdg.py` still offers a
-  `string` form, and so do the other six grid packages
+  - [ ] DISU's `IDOMAIN` description in `gwf-`, `gwt-` and `gwe-disu.dfn`: committed locally as
+    `10d988d16c` on MF6 branch `fix-disu-idomain-doc` (worktree `modflow6-disu-idomain`). Not pushed
+- [ ] **flopy4:** regenerate against devtools #410. Committed locally as `9283fbca` on
+  `regen-obs-boundname` (worktree `pyphoenix-project-obs-regen`), not pushed. The seven grid
+  packages lose their `string` form, `item.py`'s fallback guess now rejects a boundname where no
+  form takes one, and `pixi.lock` moves devtools to `8b11d69`. Targeted tests pass; CI runs the rest
+- [ ] **MF6, maybe:** `olf-disv2d.dfn` describes IDOMAIN -1 as "vertical pass through", which can't
+  apply to a 2D grid. Not checked further
 - [x] **DFN:** LAK's `iconn` and MAW's `icon` keys are deliberately stricter than MF6, now said in
   `dfnspec.md`
 - [ ] **MF6:** consider reporting that it doesn't check `iconn` against the lake. Not written up, and
