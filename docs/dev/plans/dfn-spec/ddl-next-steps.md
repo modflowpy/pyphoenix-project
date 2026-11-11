@@ -65,8 +65,9 @@ Fixed in #545, with a warning when the trim drops text
 ([archive/trailing-text-load-fix.md](../archive/trailing-text-load-fix.md)).
 
 - [x] Apply the fix and the test
-- [ ] Rerun `test021_twri` through the slice, since its recharge has been missing from the
-  export
+- [x] Rerun `test021_twri` through the slice, since its recharge has been missing from the
+  export. Done 2026-11-11: the recharge is there (225 values of `3e-08`), no rule fires, and it
+  matches MF6's budget once the 15 CHD cells are left out. See the slice README
 - [x] Warn when the trim removes text
 - [ ] Decide on text between blocks. It now raises, where MF6 skips it
 
@@ -109,19 +110,29 @@ checkout's `archive/`, the DFN ones in the devtools checkout's `archive/`.
 
 Done: [parameter-sketch.md](parameter-sketch.md). Moved up from after the SQL work on 2026-11-05,
 since it's what bears on development now. Keep it, though it comes out about the same size as what
-it replaces, and what it buys is coverage. Its decisions are settled.
+it replaces, and what it buys is coverage.
 
-- [ ] Do "To do when this goes in" there on a devtools branch. Step 2's devtools DFN fixes have all
-  merged (#409, #410, #414, #416), so this can start. Branch from upstream `develop` after
-  fetching it, with the user's go-ahead
+- [x] Do "To do when this goes in" there on a devtools branch. Done on `binding-params`
+  (`/Users/wbonelli/dev/modflow-devtools-binding-params`), with one change from the sketch:
+  parameters are passed at the call site. A component's `params` is a signature (`type`, optional
+  `rule`), and the `file` field that binds it passes `args`, each naming one binding-row column or
+  one of the binder's own parameters. The sketch's `from` is gone, and so are `obstype`'s `fk` and
+  the reserved `observations` key. The owner is implicit, so `utl-obs` declares nothing.
+  [binding-navigation.md](binding-navigation.md#where-this-starts) has the details
+- [ ] Push and open the PR, with the user's OK. `95f1d4c8` is on the fork; `216c8d75` and
+  `896a2050` (spec wording: unset is null, an argument's `fk` rule applies) are local
 
 ### 4. Binding navigation, and one conversion
 
-Steps 5 and 6 of the overview. This is the real test of the sketch: if `Spc.target`,
-`Mvr.model1` and `Obs.target` don't all come from one resolver, the construct isn't what it
-claims to be. Two notes from the export:
+Planned in [binding-navigation.md](binding-navigation.md). The flopy4 side waits for devtools'
+`binding-params` to merge.
 
-- `keys.py` can check OBS ids once `Obs.target` exists.
+Steps 5 and 6 of the overview. This is the real test of the construct: if `Spc.target` and
+`Mvr.model1` don't both come from one resolver, it isn't what it claims to be. `Obs.target` is
+now just the owner. Two notes from the export:
+
+- `keys.py` can check OBS ids against the owner's `[observations]`; whether that's enough is an
+  open question in the plan.
 - RCHA is much more common than the plan thought, at 92 packages in 87 models, and
   `v_rch_rate` has now run on real data, so RCHA ↔ RCH has a test bed. Its static part stops at
   `FIXED_CELL`: without it, MF6 moves recharge to the highest active cell at run time.
