@@ -118,7 +118,8 @@ there, not a decision.
 | parameter | parameter | inherited attribute | a column carried onto the child's row |
 | argument | argument | equation | a foreign key on the binding row |
 | reference | name | reference attribute | foreign key |
-| context | scope | the attributes in reach | the joinable tables |
+| scope | scope | the attributes in reach | the joinable tables |
+| scoped key | qualified name (`mname1::pname1`) | a reference attribute, looked up in another node | composite key |
 | rule | built-in predicate | condition | a view |
 
 ## Reading
