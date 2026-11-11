@@ -65,8 +65,10 @@ Read with this, the cases in the spec are:
   attributes as null.
 - **Case 7** (SSM to SPC): an inherited attribute whose equation is a reference attribute of the
   parent's row, `fileinput.pname.decl`.
-- **Case 8** (`flow_model`): not inherited, since no production on the path from the root to SSM
-  knows it. It's a collection attribute.
+- **Case 8** (`flow_model`): not inherited, as the spec has it now, so treated as a collection
+  attribute. But the production at the top of the path, `mfsim.nam` binding the transport model,
+  does know it, from its own exchanges list. So it could be an inherited attribute whose equation
+  reads the parent's data. See [flow-model-param.md](flow-model-param.md).
 
 ## Why explicit equations
 

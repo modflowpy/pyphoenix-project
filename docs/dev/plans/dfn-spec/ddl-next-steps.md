@@ -125,7 +125,8 @@ it replaces, and what it buys is coverage.
 ### 4. Binding navigation, and one conversion
 
 Planned in [binding-navigation.md](binding-navigation.md). The flopy4 side waits for devtools'
-`binding-params` to merge.
+`binding-params` to merge. A devtools follow-up, making `flow_model` a parameter, is planned in
+[flow-model-param.md](flow-model-param.md).
 
 Steps 5 and 6 of the overview. This is the real test of the construct: if `Spc.target` and
 `Mvr.model1` don't both come from one resolver, it isn't what it claims to be. `Obs.target` is

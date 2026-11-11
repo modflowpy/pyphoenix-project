@@ -16,7 +16,9 @@ Step 3 put binding parameters in the DFN schema, on devtools' `binding-params` b
 - The binder isn't a parameter. It's the file's owner, as `self` is, so `utl-obs` declares none.
 - An unpassed parameter is unset: GNC and MVR under a model get no models.
 - `flow_model` stays a rule. No binding edge reaches a transport model from its flow model, so
-  that one lookup runs backward, from the model to the exchanges that name it.
+  that one lookup runs backward, from the model to the exchanges that name it. A follow-up could
+  make it a parameter, passed by `mfsim.nam`, which has the pairing: see
+  [flow-model-param.md](flow-model-param.md).
 
 | Binder's `file` field | Passes | To |
 |---|---|---|
