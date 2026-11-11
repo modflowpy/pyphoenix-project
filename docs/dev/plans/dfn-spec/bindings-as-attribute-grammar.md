@@ -51,15 +51,15 @@ is one of the above:
 | an `fk`, cellid or key-set reference | a reference attribute |
 | key sets (`keys`), dimensions (`dims`) | synthesized attributes, read by references |
 | a rule's subset (`mover_enabled`) | a predicate over attributes, a condition |
-| `flow_model` | a collection attribute: exchanges contribute to their transport model |
+| `flow_model` | a rule today; could be an inherited attribute read from another row of the parent ([flow-model-param.md](flow-model-param.md)) |
 | the spec's validator | a well-definedness check: every inherited attribute has an equation in every production |
 
 Read with this, the cases in the spec are:
 
-- **Cases 1 to 3** (a file alone; the row names the child; the row says more): the child has no
+- **Cases 1 to 3** (a file alone; a sibling names the child; a sibling says more): the child has no
   inherited attributes. Its references resolve against its ancestors, which in attribute grammar
   terms are just reference attributes pointing up.
-- **Case 4** (exchanges): inherited attributes, defined from the binding row's columns.
+- **Case 4** (exchanges): inherited attributes, defined from the binding's siblings.
 - **Case 5** (an exchange's GNC and MVR): copy rules.
 - **Case 6** (GNC and MVR under a model): the same nonterminal in a production that defines its
   attributes as null.
@@ -93,12 +93,12 @@ there, not a decision.
 
 - **The resolver is a demand-driven evaluator.** `param(component, name)` evaluates an inherited
   attribute from its equation, `args`, as JastAdd does. Its three cases are the equation kinds: a
-  copy rule (the parent's parameter), a reference attribute (a row column's `fk`), or null.
+  copy rule (the parent's parameter), a reference attribute (a sibling's `fk`), or null.
 - **Don't cache, at first.** Attribute grammar systems cache attributes, and then need incremental
   evaluation when the tree changes. flopy4's tree is mutable, and the chains here are at most two
   links long, so caching would cost more than it saves.
-- **Loading is L-attributed, except for `flow_model`.** A parent's binding row is read before its
-  child's file, so every parameter is available when the child loads, which is why
+- **Loading is L-attributed, except for `flow_model`.** A binding and its siblings are read before
+  the child's file, so every parameter is available when the child loads, which is why
   `LoadContext.models` works at all. `flow_model` isn't: it depends on `sim-nam`'s exchanges, which
   an MF6 loader reads after models. So a load-time check of SSM's `pname` needs a second pass, or
   must wait until the simulation is built. Check how flopy4 orders this today.
@@ -108,21 +108,69 @@ there, not a decision.
   provider: a synthesized attribute, evaluated on demand. Key sets will be the same.
 - **The SSM row question** ([binding-navigation.md](binding-navigation.md#the-ssm-row)) is about
   where case 7's equation reads its row from. In attribute grammar terms, the equation belongs to
-  the production, so the child needs a link to the production, meaning its binding row. Name-file
-  rows have that already, spread onto the child. That argues for the back-reference option.
+  the production, so the child needs a link to the production, meaning its binding's
+  record. Name-file rows have that already, spread onto the child. That argues for the back-reference option.
 
-## Terms, across the three vocabularies
+## "Binding" in programming languages
 
-| Spec | Function call | Attribute grammar | Relational |
-|---|---|---|---|
-| binding | call site | production | a row with a file column |
-| parent | `self` | parent node | the component whose table holds the binding row |
-| parameter | parameter | inherited attribute | a column carried onto the child's row |
-| argument | argument | equation | a foreign key on the binding row |
-| reference | name | reference attribute | foreign key |
-| scope | scope | the attributes in reach | the joinable tables |
-| scoped key | qualified name (`mname1::pname1`) | a reference attribute, looked up in another node | composite key |
-| rule | built-in predicate | condition | a view |
+In programming language design, a binding associates a name with an entity: a value, a location, a
+declaration. A **binding occurrence** of a name introduces the association (`let x = ...`, a
+parameter list, `def f`), and an **applied occurrence** uses it. Scope is where a binding is in
+effect, and an environment is the set of bindings in effect at a point.
+
+The spec's terms line up with this:
+
+- A binding is a binding occurrence, and a reference an applied one. That's the spec's "a binding
+  introduces what it names; a reference looks it up".
+- The spec's scope is the same notion: the bindings a reference can see.
+
+Two differences:
+
+- **What carries the name.** In PL terms the whole `GWF6 model.nam gwf_1` row is the binding,
+  roughly `let gwf_1 = load("model.nam")`. The spec gives the term to the `file` field, and the name
+  is a sibling (`pk`). That fits MODFLOW 6, where the file is what creates the child and some
+  bindings have no name (`OBS6 FILEIN chd.obs`), but a PL reader would point at the row.
+- **Parameter binding.** At a call, PL binds formal parameters to actual arguments. In the spec's
+  function-call analogy that's `args`, and the spec's binding is the call site. So "binding
+  parameters" means "binding formals to actuals" to a PL reader, which is what `args` does, and the
+  PR title reads correctly either way.
+
+### Module instantiation
+
+Hardware description languages are a closer match than function calls. In Verilog, a module
+*instantiates* submodules, the instantiations build the design hierarchy, and each one can set the
+child's `parameter`s (VHDL: `generic`s):
+
+```verilog
+exchange #(.model1(gwf_1), .model2(gwf_2)) x1 (...);
+```
+
+| DFN | Verilog |
+|---|---|
+| binding | instantiation |
+| parent | the module holding the instantiation |
+| `params` | the child's `parameter` declarations |
+| `args` | the parameter overrides at the instantiation |
+| an unset parameter | a parameter left at its default |
+| scoped key (`mname1::pname1`) | a hierarchical name (`top.x1.sig`) |
+
+One difference: a Verilog parameter is a constant, fixed when the design is elaborated, while a
+DFN parameter is usually a reference to another instance. Verilog's ports, which connect signals
+between instances, are the closer match for that, but they're wired at the instantiation, both
+ways, rather than passed down.
+
+## Terms, across the vocabularies
+
+| Spec | Function call | Attribute grammar | Relational | Verilog |
+|---|---|---|---|---|
+| binding | call site | production | a row with a file column | instantiation |
+| parent | `self` | parent node | the component whose table holds the binding's record | the containing module |
+| parameter | parameter | inherited attribute | a column carried onto the child's row | `parameter` |
+| argument | argument | equation | a foreign key among the binding's siblings | parameter override |
+| reference | name | reference attribute | foreign key | a signal or instance name |
+| scope | scope | the attributes in reach | the joinable tables | the names visible in a module |
+| scoped key | qualified name (`mname1::pname1`) | a reference attribute, looked up in another node | composite key | hierarchical name |
+| rule | built-in predicate | condition | a view | none |
 
 ## Reading
 
