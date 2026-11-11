@@ -339,6 +339,7 @@ KNOWN_PASSING = frozenset(
         "mf6/test/test056_mt3dms_usgs_gwtex_dev",
         "mf6/test/test057_transientchd",
         "mf6/test/test059_mvlake_lak_ss",
+        "mf6/test/test060_gms_ets",
         "mf6/test/test061_csub_holly",
         "mf6/test/test061_csub_jacob",
         "mf6/test/test100_ss_ic",

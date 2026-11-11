@@ -287,7 +287,7 @@ class Record:
         fields, in declaration order. E.g. for ``Oc.Headprint``, these are
         all equivalent: ``"HEAD PRINT_FORMAT COLUMNS 10 WIDTH 12 DIGITS 6
         exponential"``, ``"COLUMNS 10 WIDTH 12 DIGITS 6 exponential"``,
-        ``"exponential"``.
+        ``"10 12 6 exponential"``.
         """
         if isinstance(tokens, str):
             tokens = tokens.split()

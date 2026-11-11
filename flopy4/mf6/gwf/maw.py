@@ -105,17 +105,6 @@ class Maw(Package):
         status: str = string()
 
     @attrs.define
-    class ConnectionStatus(Item):
-        _keyword: ClassVar[str] = "connection_status"
-        icon: int = integer(index=True)
-        connstatus: str = string()
-
-    @attrs.define
-    class Bottom(Item):
-        _keyword: ClassVar[str] = "bottom"
-        bottom: float = double()
-
-    @attrs.define
     class FlowingWell(Item):
         _keyword: ClassVar[str] = "flowing_well"
         fwelev: float = double()
@@ -158,7 +147,7 @@ class Maw(Package):
     @attrs.define
     class StressPeriodData(Item):
         ifno: int = integer(index=True, fk="packagedata.ifno")
-        mawsetting: "Maw.Status | Maw.ConnectionStatus | Maw.Bottom | Maw.FlowingWell | Maw.Rate | Maw.WellHead | Maw.HeadLimit | Maw.Shutoff | Maw.RateScaling | Maw.Auxiliary" = union()  # noqa: E501
+        mawsetting: "Maw.Status | Maw.FlowingWell | Maw.Rate | Maw.WellHead | Maw.HeadLimit | Maw.Shutoff | Maw.RateScaling | Maw.Auxiliary" = union()  # noqa: E501
 
     auxiliary: Optional[NDArray[np.str_]] = array(
         default=None,
@@ -311,8 +300,6 @@ MawPackagedata = Maw.Packagedata
 MawConnectiondata = Maw.Connectiondata
 MawAngledata = Maw.Angledata
 MawStatus = Maw.Status
-MawConnectionStatus = Maw.ConnectionStatus
-MawBottom = Maw.Bottom
 MawFlowingWell = Maw.FlowingWell
 MawRate = Maw.Rate
 MawWellHead = Maw.WellHead

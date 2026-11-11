@@ -976,7 +976,7 @@ def test_series_attributes_from_values():
         ("gwf.Npf", "xt3doptions", True, ("Xt3doptions", ())),
         ("gwf.Npf", "xt3doptions", {"rhs": True}, ("Xt3doptions", (True,))),
         ("gwf.Oc", "headprint", "COLUMNS 10 WIDTH 12 DIGITS 6 GENERAL", ("Headprint", None)),
-        ("gwt.Oc", "concentrationprint", ("GENERAL", 10, 12, 6), ("Concentrationprint", None)),
+        ("gwt.Oc", "concentrationprint", (10, 12, 6, "GENERAL"), ("Concentrationprint", None)),
         (
             "gwe.Oc",
             "temperatureprint",
@@ -1001,7 +1001,7 @@ def test_record_fields_from_values(cls_path, name, value, record):
     cls = getattr(importlib.import_module(f"flopy4.mf6.{module}"), cls_name)
     rec_name, args = record
     if args is None:  # a print format, one nested Format
-        args = (cls.Format("GENERAL", columns=10, width=12, digits=6),)
+        args = (cls.Format(columns=10, width=12, digits=6, format_="GENERAL"),)
     expected = getattr(cls, rec_name)(*args)
     component = cls(**{name: value})
     assert getattr(component, name) == expected
@@ -1399,6 +1399,75 @@ END PERIOD
     assert "HEAD FILEOUT m.hds" in out
     assert "HEAD PRINT_FORMAT COLUMNS 10 WIDTH 11 DIGITS 4 GENERAL" in out
     assert "STEPS 1 5 10\n" in out
+
+
+def test_oc_print_format_without_format_word():
+    """The format word is optional. Left out, it stays out when written,
+    rather than being written as None."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Oc
+
+    text = """BEGIN OPTIONS
+  HEAD PRINT_FORMAT COLUMNS 10 WIDTH 11 DIGITS 4
+END OPTIONS
+"""
+    oc = structure_component(loads(text), Oc)
+    assert oc.headprint.formatrecord == Oc.Format(columns=10, width=11, digits=4)
+    assert oc.headprint.formatrecord.format_ is None
+    assert " HEAD PRINT_FORMAT COLUMNS 10 WIDTH 11 DIGITS 4\n" in dumps(unstructure_component(oc))
+
+
+_PRINT_FORMATS = [
+    ("gwf-oc", "HEAD"),
+    ("gwt-oc", "CONCENTRATION"),
+    ("gwe-oc", "TEMPERATURE"),
+    ("chf-oc", "QOUTFLOW"),
+    ("olf-oc", "QOUTFLOW"),
+    ("gwt-ist", "CIM"),
+]
+
+
+@pytest.mark.parametrize("dfn_name, word", _PRINT_FORMATS)
+@pytest.mark.parametrize("format_", ["", " GENERAL"])
+def test_typed_print_format_word_optional(dfn_name, word, format_):
+    """Every component with a print format parses it with or without the
+    format word, and a word that's there is still the format."""
+    from flopy4.mf6.codec.reader import loads_typed
+
+    text = (
+        f"BEGIN OPTIONS\n  {word} PRINT_FORMAT COLUMNS 10 WIDTH 11 DIGITS 4{format_}\nEND OPTIONS\n"
+    )
+    records = loads_typed(text, dfn_name)["options"]
+    assert len(records) == 1
+    expected = {"columns": 10, "width": 11, "digits": 4}
+    if format_:
+        expected["format"] = format_.strip()
+    assert next(iter(records.values())) == {"formatrecord": expected}
+
+
+@pytest.mark.parametrize("dfn_name, word", _PRINT_FORMATS)
+@pytest.mark.parametrize(
+    "record",
+    [
+        "COLUMNS 10",
+        "COLUMNS 10 WIDTH 11",
+        "COLUMNS 10 WIDTH 11 FIXED",
+        "COLUMNS 10 DIGITS 4",
+        "GENERAL",
+    ],
+)
+def test_typed_print_format_partial_rejected(dfn_name, word, record):
+    """COLUMNS, WIDTH and DIGITS are all required, in that order. MF6 used
+    to ignore a format that stopped early, and rejects it since
+    MODFLOW-ORG/modflow6#3129."""
+    from lark.exceptions import UnexpectedInput
+
+    from flopy4.mf6.codec.reader import loads_typed
+
+    text = f"BEGIN OPTIONS\n  {word} PRINT_FORMAT {record}\nEND OPTIONS\n"
+    with pytest.raises(UnexpectedInput):
+        loads_typed(text, dfn_name)
 
 
 def test_ims_rclose_and_unknown_block():
@@ -3472,38 +3541,52 @@ def test_headprint_from_tokens_no_prefix():
     assert hp.formatrecord.digits == 6
 
 
-def test_headprint_from_tokens_format_only():
-    """A single untagged token populates the required positional field."""
+def test_headprint_from_tokens_no_format():
+    """The format word is optional."""
     from flopy4.mf6.gwf.oc import Oc
 
-    hp = Oc.Headprint.from_tokens("exponential")
-    assert hp.formatrecord.format_ == "exponential"
-    assert hp.formatrecord.columns is None
-    assert hp.formatrecord.width is None
-    assert hp.formatrecord.digits is None
+    hp = Oc.Headprint.from_tokens("COLUMNS 10 WIDTH 12 DIGITS 6")
+    assert hp.formatrecord == Oc.Format(columns=10, width=12, digits=6)
+    assert hp.formatrecord.format_ is None
+
+
+@pytest.mark.parametrize(
+    "tokens",
+    [
+        "exponential",
+        "COLUMNS 10 exponential",
+        "COLUMNS 10 WIDTH 12",
+        "WIDTH 15 DIGITS 4 fixed",
+        "COLUMNS 10 DIGITS 6",
+    ],
+)
+def test_headprint_from_tokens_partial_raises(tokens):
+    """COLUMNS, WIDTH and DIGITS are all required."""
+    from flopy4.mf6.gwf.oc import Oc
+
+    with pytest.raises((TypeError, ValueError)):
+        Oc.Headprint.from_tokens(tokens)
 
 
 def test_headprint_from_tokens_list():
     """Token list form works the same as the string form."""
     from flopy4.mf6.gwf.oc import Oc
 
-    hp = Oc.Headprint.from_tokens(["COLUMNS", "10", "exponential"])
-    assert hp.formatrecord.format_ == "exponential"
-    assert hp.formatrecord.columns == 10
-    assert hp.formatrecord.width is None
-    assert hp.formatrecord.digits is None
+    hp = Oc.Headprint.from_tokens(["COLUMNS", "10", "WIDTH", "12", "DIGITS", "6", "exponential"])
+    assert hp == Oc.Headprint.from_tokens("COLUMNS 10 WIDTH 12 DIGITS 6 exponential")
 
 
 def test_headprint_from_tokens_tagged_types():
     """Tagged integer fields are coerced from string tokens to int."""
     from flopy4.mf6.gwf.oc import Oc
 
-    hp = Oc.Headprint.from_tokens("WIDTH 15 DIGITS 4 fixed")
+    hp = Oc.Headprint.from_tokens("COLUMNS 2 WIDTH 15 DIGITS 4 fixed")
+    assert isinstance(hp.formatrecord.columns, int)
+    assert hp.formatrecord.columns == 2
     assert isinstance(hp.formatrecord.width, int)
     assert hp.formatrecord.width == 15
     assert isinstance(hp.formatrecord.digits, int)
     assert hp.formatrecord.digits == 4
-    assert hp.formatrecord.columns is None
 
 
 def test_rclose_from_tokens_with_keyword():
