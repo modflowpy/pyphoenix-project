@@ -42,7 +42,6 @@ the rules do on models they haven't seen. The rules were corrected after seeing 
   | MF6 #3136 | `fix-2d-idomain-doc` | `modflow6-2d-idomain` |
   | MF6 #3137 | `fix-obs-conn-check` | `modflow6-obs-conn-check` |
   | MF6 #3139 | `fix-apt-obs-budterm-idx` | `modflow6-apt-obs-idx` |
-  | devtools #416 | `obs-conn-doc` | `modflow-devtools-obs-conn-doc` |
   | flopy4 #550 | `regen-obs-boundname` | `pyphoenix-project-obs-regen` |
   | flopy4 #551 | `sync-force-refetch` | `pyphoenix-project-sync-force` |
 
@@ -95,8 +94,9 @@ checkout's `archive/`, the DFN ones in the devtools checkout's `archive/`.
 - [ ] **MF6:** check LAK's and MAW's observation connection numbers against the feature: MF6 #3137,
   open. It changes `test_gwt_lkt02` and `lkt03`, which relied on the bug. Its test,
   `test_gwf_obs_conn.py`, uses the `TestFramework`. Models outside `autotest/` weren't checked
-- [ ] **DFN:** drop `dfnspec.md`'s note that those keys are stricter than MF6: devtools #416, to merge
-  after MF6 #3137
+- [x] **DFN:** drop `dfnspec.md`'s note that those keys are stricter than MF6: devtools #416, merged
+  2026-11-11 (`5fa68641`), ahead of MF6 #3137. Until #3137 merges, `dfnspec.md` describes the
+  check MF6 will make, not the one it makes now
 - [ ] **MF6:** `rp_obs_budterm` (`tsp-apt.f90`) used `idx` uninitialised when a feature has no
   rows in the observed budget term, and the APT observation checks let an ID of 0 through, so
   `concentration 0` ran and read out of bounds: MF6 #3139, open. FLOW-JA-FACE with a 0 already
@@ -111,7 +111,9 @@ Done: [parameter-sketch.md](parameter-sketch.md). Moved up from after the SQL wo
 since it's what bears on development now. Keep it, though it comes out about the same size as what
 it replaces, and what it buys is coverage. Its decisions are settled.
 
-- [ ] Do "To do when this goes in" there on a devtools branch, after the DFN fixes in step 2
+- [ ] Do "To do when this goes in" there on a devtools branch. Step 2's devtools DFN fixes have all
+  merged (#409, #410, #414, #416), so this can start. Branch from upstream `develop` after
+  fetching it, with the user's go-ahead
 
 ### 4. Binding navigation, and one conversion
 
