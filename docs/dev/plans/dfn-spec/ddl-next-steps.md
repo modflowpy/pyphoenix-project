@@ -59,18 +59,21 @@ checkout's `archive/`, the DFN ones in the devtools checkout's `archive/`.
   - [x] `angledata`'s `when` (devtools #409). MAW's `connection_status` `icon` key stays parked until MF6
     brings `CONNECTION_STATUS` back (`archive/maw-dfn-fixes.md`, part 3)
   - [x] OC's and IST's print format (MF6 #3129, devtools #414, flopy4 #549)
-  - [ ] DISU's `IDOMAIN` description in `gwf-`, `gwt-` and `gwe-disu.dfn`: committed locally as
-    `10d988d16c` on MF6 branch `fix-disu-idomain-doc` (worktree `modflow6-disu-idomain`). Not pushed
-- [ ] **flopy4:** regenerate against devtools #410. Committed locally as `9283fbca` on
-  `regen-obs-boundname` (worktree `pyphoenix-project-obs-regen`), not pushed. The seven grid
-  packages lose their `string` form, `item.py`'s fallback guess now rejects a boundname where no
-  form takes one, and `pixi.lock` moves devtools to `8b11d69`. Targeted tests pass; CI runs the rest
+  - [ ] DISU's `IDOMAIN` description in `gwf-`, `gwt-` and `gwe-disu.dfn`: MF6 #3135, open
+- [ ] **flopy4:** regenerate against devtools #410: #550, open. The seven grid packages lose their
+  `string` form, `item.py`'s fallback guess now rejects a boundname where no form takes one, and
+  `pixi.lock` moves devtools to `8b11d69`
+- [ ] **flopy4:** `generate-classes` read a June cache of MF6 `develop`'s DFNs instead of refetching:
+  #551, open
 - [ ] **MF6, maybe:** `olf-disv2d.dfn` describes IDOMAIN -1 as "vertical pass through", which can't
   apply to a 2D grid. Not checked further
-- [x] **DFN:** LAK's `iconn` and MAW's `icon` keys are deliberately stricter than MF6, now said in
-  `dfnspec.md`
-- [ ] **MF6:** consider reporting that it doesn't check `iconn` against the lake. Not written up, and
-  the spec now documents the difference
+- [ ] **MF6:** check LAK's and MAW's observation connection numbers against the feature. Branch
+  `fix-obs-conn-check` (`f6b9afcf43`) is on the fork, and the PR is still to open. It changes
+  `test_gwt_lkt02` and `lkt03`, which relied on the bug. Models outside `autotest/` weren't checked
+- [ ] **DFN:** drop `dfnspec.md`'s note that those keys are stricter than MF6: devtools #416, to merge
+  after the MF6 fix
+- [ ] **MF6, maybe:** `rp_obs_budterm` (`tsp-apt.f90`) uses `idx` uninitialised when a feature has no
+  budget rows
 - [x] **flopy4:** the OC load bug (#549, [archive](../archive/oc-format-load-bug.md))
 - [ ] **flopy4:** `keys.py` doesn't check OBS ids at all, and stayed silent on 22 broken copies
   that MF6 rejects. This belongs with binding navigation (step 4)
