@@ -124,8 +124,12 @@ def _populate_remote_cache(registry, release_id: str, force: bool = False) -> No
         Re-fetch even if the cache already exists. Should be True for
         branch refs (mutable) and False for pinned release tags.
     """
-    if not force and registry.cache_path.exists() and any(registry.cache_path.iterdir()):
-        return
+    if registry.cache_path.exists() and any(registry.cache_path.iterdir()):
+        if not force:
+            return
+        # The registry's sync skips a non-empty cache, so clear it: otherwise
+        # a branch ref keeps its first fetch, and files dropped upstream stay.
+        shutil.rmtree(registry.cache_path)
     try:
         registry.sync()
     except Exception:
