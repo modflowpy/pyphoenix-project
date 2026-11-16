@@ -57,7 +57,7 @@ Settle these before the branch merges, since flopy4 would be written against the
 - [ ] **The SSM row** (see open questions).
 - [ ] **The OBS checks** (see open questions).
 - [x] Update `ddl-next-steps.md`'s step 3 entry.
-- [ ] Push `216c8d75` and `896a2050` with the user's OK.
+- [x] Push `216c8d75` and `896a2050`: on the fork, in devtools #417 (draft).
 
 ## Open questions
 

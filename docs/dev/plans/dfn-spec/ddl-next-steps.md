@@ -38,14 +38,13 @@ the rules do on models they haven't seen. The rules were corrected after seeing 
 
   | PR | Branch | Worktree |
   |---|---|---|
-  | MF6 #3135 | `fix-disu-idomain-doc` | `modflow6-disu-idomain` |
-  | MF6 #3136 | `fix-2d-idomain-doc` | `modflow6-2d-idomain` |
-  | MF6 #3137 | `fix-obs-conn-check` | `modflow6-obs-conn-check` |
-  | MF6 #3139 | `fix-apt-obs-budterm-idx` | `modflow6-apt-obs-idx` |
-  | flopy4 #550 | `regen-obs-boundname` | `pyphoenix-project-obs-regen` |
-  | flopy4 #551 | `sync-force-refetch` | `pyphoenix-project-sync-force` |
+  | devtools #417 (draft) | `binding-params` | `modflow-devtools-binding-params` |
 
-- **MF6 tests:** use the pixi environment in `modflow6-obs-conn-check`:
+  Every step 2 PR had merged by 2026-11-13. Their worktrees (`modflow6-disu-idomain`,
+  `modflow6-2d-idomain`, `modflow6-obs-conn-check`, `modflow6-apt-obs-idx`,
+  `pyphoenix-project-obs-regen`, `pyphoenix-project-sync-force`) can go when the user says so.
+
+- **MF6 tests:** use the pixi environment in `modflow6-obs-conn-check`, while that worktree exists:
   `.pixi/envs/default/bin/{python,ruff,fprettify}`. Run the touched test files from `autotest/`,
   not the whole suite. New tests use `TestFramework`, like `test_gwf_obs_conn.py`. `conftest`
   needs `bin/mf5to6`, and in `modflow6-apt-obs-idx` that's a git-ignored symlink to the
@@ -73,7 +72,8 @@ Fixed in #545, with a warning when the trim drops text
 
 ### 2. Report what we found to its owners
 
-Everything is filed as of 2026-11-11, and what's open waits on review. The write-ups for merged fixes are archived: the MF6 ones in the MF6
+Done: everything filed had merged by 2026-11-13. The one item left, OBS ids in `keys.py`,
+belongs to step 4. The write-ups for merged fixes are archived: the MF6 ones in the MF6
 checkout's `archive/`, the DFN ones in the devtools checkout's `archive/`.
 
 - [x] **MF6:** GNC `numgnc` (#3122), SPC `maxbound` (#3117) and the boundname overrun (#3127), merged
@@ -84,23 +84,23 @@ checkout's `archive/`, the DFN ones in the devtools checkout's `archive/`.
   - [x] `angledata`'s `when` (devtools #409). MAW's `connection_status` `icon` key stays parked until MF6
     brings `CONNECTION_STATUS` back (`archive/maw-dfn-fixes.md`, part 3)
   - [x] OC's and IST's print format (MF6 #3129, devtools #414, flopy4 #549)
-  - [ ] DISU's `IDOMAIN` description in `gwf-`, `gwt-` and `gwe-disu.dfn`: MF6 #3135, open
-- [ ] **flopy4:** regenerate against devtools #410: #550, open. The seven grid packages lose their
+  - [x] DISU's `IDOMAIN` description in `gwf-`, `gwt-` and `gwe-disu.dfn`: MF6 #3135, merged
+    2026-11-12
+- [x] **flopy4:** regenerate against devtools #410: #550, merged 2026-11-11. The seven grid packages lose their
   `string` form, `item.py`'s fallback guess now rejects a boundname where no form takes one, and
   `pixi.lock` moves devtools to `8b11d69`
-- [ ] **flopy4:** `generate-classes` read a June cache of MF6 `develop`'s DFNs instead of refetching:
-  #551, open
-- [ ] **MF6:** `olf-dis2d.dfn` and `olf-disv2d.dfn` describe IDOMAIN -1 as "vertical pass through",
-  which can't apply to a 2D grid. MF6 treats -1 as 0 there: MF6 #3136, open
-- [ ] **MF6:** check LAK's and MAW's observation connection numbers against the feature: MF6 #3137,
-  open. It changes `test_gwt_lkt02` and `lkt03`, which relied on the bug. Its test,
+- [x] **flopy4:** `generate-classes` read a June cache of MF6 `develop`'s DFNs instead of refetching:
+  #551, merged 2026-11-11
+- [x] **MF6:** `olf-dis2d.dfn` and `olf-disv2d.dfn` describe IDOMAIN -1 as "vertical pass through",
+  which can't apply to a 2D grid. MF6 treats -1 as 0 there: MF6 #3136, merged 2026-11-13
+- [x] **MF6:** check LAK's and MAW's observation connection numbers against the feature: MF6 #3137,
+  merged 2026-11-12. It changes `test_gwt_lkt02` and `lkt03`, which relied on the bug. Its test,
   `test_gwf_obs_conn.py`, uses the `TestFramework`. Models outside `autotest/` weren't checked
 - [x] **DFN:** drop `dfnspec.md`'s note that those keys are stricter than MF6: devtools #416, merged
-  2026-11-11 (`5fa68641`), ahead of MF6 #3137. Until #3137 merges, `dfnspec.md` describes the
-  check MF6 will make, not the one it makes now
-- [ ] **MF6:** `rp_obs_budterm` (`tsp-apt.f90`) used `idx` uninitialised when a feature has no
+  2026-11-11 (`5fa68641`), ahead of MF6 #3137, which has merged since, so `dfnspec.md` and MF6 agree
+- [x] **MF6:** `rp_obs_budterm` (`tsp-apt.f90`) used `idx` uninitialised when a feature has no
   rows in the observed budget term, and the APT observation checks let an ID of 0 through, so
-  `concentration 0` ran and read out of bounds: MF6 #3139, open. FLOW-JA-FACE with a 0 already
+  `concentration 0` ran and read out of bounds: MF6 #3139, merged 2026-11-13. FLOW-JA-FACE with a 0 already
   errored, and only its message changes. Test: `test_gwt_apt_obs_id.py`
 - [x] **flopy4:** the OC load bug (#549, [archive](../archive/oc-format-load-bug.md))
 - [ ] **flopy4:** `keys.py` doesn't check OBS ids at all, and stayed silent on 22 broken copies
@@ -119,13 +119,13 @@ it replaces, and what it buys is coverage.
   one of the binder's own parameters. The sketch's `from` is gone, and so are `obstype`'s `fk` and
   the reserved `observations` key. The owner is implicit, so `utl-obs` declares nothing.
   [binding-navigation.md](binding-navigation.md#where-this-starts) has the details
-- [ ] Push and open the PR, with the user's OK. `95f1d4c8` is on the fork; `216c8d75` and
-  `896a2050` (spec wording: unset is null, an argument's `fk` rule applies) are local
+- [x] Push and open the PR: devtools #417, a draft, at `5f4a3c19` on the fork
+- [ ] Review of #417, and merge
 
 ### 4. Binding navigation, and one conversion
 
 Planned in [binding-navigation.md](binding-navigation.md). The flopy4 side waits for devtools'
-`binding-params` to merge. A devtools follow-up, making `flow_model` a parameter, is planned in
+`binding-params` (#417) to merge. A devtools follow-up, making `flow_model` a parameter, is planned in
 [flow-model-param.md](flow-model-param.md).
 
 Steps 5 and 6 of the overview. This is the real test of the construct: if `Spc.target` and
