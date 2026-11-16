@@ -40,15 +40,18 @@ the rules do on models they haven't seen. The rules were corrected after seeing 
   |---|---|---|
   | devtools #417 (draft) | `binding-params` | `modflow-devtools-binding-params` |
 
-  Every step 2 PR had merged by 2026-11-13. Their worktrees (`modflow6-disu-idomain`,
-  `modflow6-2d-idomain`, `modflow6-obs-conn-check`, `modflow6-apt-obs-idx`,
-  `pyphoenix-project-obs-regen`, `pyphoenix-project-sync-force`) can go when the user says so.
+  Every step 2 PR had merged by 2026-11-13, and their worktrees were removed on 2026-11-16. The
+  branches are still in the local repos.
 
-- **MF6 tests:** use the pixi environment in `modflow6-obs-conn-check`, while that worktree exists:
+- **After #417 merges:** start at step 4, [binding-navigation.md](binding-navigation.md). Its "Where
+  this starts" points at the `binding-params` worktree; use devtools' `develop` instead, and
+  remove that worktree when the user says so. Check first that #417 merged as `5f4a3c19` describes
+  (`gh pr view 417 -R MODFLOW-ORG/modflow-devtools`), since review may change the syntax.
+- **MF6 tests:** the pixi environment that was used lived in a removed worktree. In a new MF6
+  worktree, run `pixi install` (MF6 has a `pixi.toml`) and use
   `.pixi/envs/default/bin/{python,ruff,fprettify}`. Run the touched test files from `autotest/`,
   not the whole suite. New tests use `TestFramework`, like `test_gwf_obs_conn.py`. `conftest`
-  needs `bin/mf5to6`, and in `modflow6-apt-obs-idx` that's a git-ignored symlink to the
-  obs-conn worktree's.
+  needs `bin/mf5to6`.
 - **MF6 PRs:** suggest the description and let the user open the PR. Don't edit PR descriptions
   on GitHub. Release notes go in `doc/ReleaseNotes/items/*.toml`, written for users.
 - **When review comments come in:** fix on the branch, commit locally, and ask before pushing.
