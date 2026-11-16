@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794236562648,
+  "lastUpdate": 1794839508204,
   "repoUrl": "https://github.com/modflowpy/pyphoenix-project",
   "entries": {
     "flopy4 benchmarks": [
@@ -472,6 +472,106 @@ window.BENCHMARK_DATA = {
             "value": 1.4637448080000013,
             "unit": "s",
             "extra": "AMD EPYC 7763 64-Core Processor, Linux, Python 3.11.16"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "wpbonelli",
+            "username": "wpbonelli",
+            "email": "wbonelli@ucar.edu"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "33b0f67007ff864103837f21a37478fadaa88109",
+          "message": "regenerate mf6 module with boundname fix (#550)\n\nAccommodate MODFLOW-ORG/modflow-devtools#410. CHDG, DRNG, EVTA, GHBG, RCHA, RIVG and WELG have no BOUNDNAMES option, so an observation on them can't name a boundary. MF6 now rejects that too (MODFLOW-ORG/modflow6#3127)",
+          "timestamp": "2026-11-11T16:44:04Z",
+          "url": "https://github.com/modflowpy/pyphoenix-project/commit/33b0f67007ff864103837f21a37478fadaa88109"
+        },
+        "date": 1794839505882,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "load (standard): flopy4",
+            "value": 0.293002357000006,
+            "unit": "s",
+            "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load (standard): flopy4 / flopy3",
+            "value": 0.2786897125631448,
+            "unit": "ratio",
+            "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load (large): flopy4",
+            "value": 6.303940851999982,
+            "unit": "s",
+            "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load (large): flopy4 / flopy3",
+            "value": 0.2665756518220436,
+            "unit": "ratio",
+            "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load-materialize (standard): flopy4",
+            "value": 0.3652806879999986,
+            "unit": "s",
+            "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load-materialize (standard): flopy4 / flopy3",
+            "value": 0.22285881255193768,
+            "unit": "ratio",
+            "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load-materialize (large): flopy4",
+            "value": 8.415567640000006,
+            "unit": "s",
+            "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load-materialize (large): flopy4 / flopy3",
+            "value": 0.32899995330232046,
+            "unit": "ratio",
+            "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "write (standard): flopy4",
+            "value": 0.9523542249999934,
+            "unit": "s",
+            "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "write (standard): flopy4 / flopy3",
+            "value": 0.3713116658050174,
+            "unit": "ratio",
+            "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "write (large): flopy4",
+            "value": 15.475792393999996,
+            "unit": "s",
+            "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "write (large): flopy4 / flopy3",
+            "value": 0.5549508569029624,
+            "unit": "ratio",
+            "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "cold start: flopy4",
+            "value": 1.0286097739999889,
+            "unit": "s",
+            "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
           }
         ]
       }
