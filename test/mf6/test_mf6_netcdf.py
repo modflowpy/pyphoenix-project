@@ -402,10 +402,9 @@ def _welg_chdg_model():
 
 def test_from_model_aux_variable_per_name():
     """Each aux name gets its own variable and modflow_iaux, with and without
-    a layered mesh. Periods not given are filled."""
+    a layered mesh. A period with no block holds the values in effect."""
     import pytest
 
-    from flopy4.mf6.constants import FILL_DNODATA as NODATA
     from flopy4.mf6.netcdf import NetCDFFormat
 
     gwf = _welg_chdg_model()
@@ -415,13 +414,37 @@ def test_from_model_aux_variable_per_name():
         var = ds[f"wel-1_{name}"]
         assert var.attrs["modflow_iaux"] == n + 1
         assert var.values[0].ravel()[0] == n + 1.0
-        assert (var.values[1] == NODATA).all()
+        np.testing.assert_array_equal(var.values[1], var.values[0])
 
     with pytest.warns(UserWarning, match="past NPER"):
         ds = NetCDFModel.from_model(gwf, netcdf_format=NetCDFFormat.LAYERED_MESH).to_xarray()
     for n, name in enumerate(["a1", "a2"]):
         for k in range(2):
             assert ds[f"wel-1_{name}_l{k + 1}"].attrs["modflow_iaux"] == n + 1
+
+
+def test_from_model_long_name():
+    """long_name is the DFN longname, after the package name for a
+    multi-package type, then the auxiliary name for an aux variable, then
+    the layer for a layered mesh variable, as MF6 exports it."""
+    import pytest
+
+    from flopy4.mf6.netcdf import NetCDFFormat
+
+    gwf = _welg_chdg_model()
+    with pytest.warns(UserWarning, match="past NPER"):
+        ds = NetCDFModel.from_model(gwf).to_xarray()
+    assert ds["wel-1_q"].attrs["long_name"] == "wel-1 well rate"
+    assert ds["wel-1_a2"].attrs["long_name"] == "wel-1 well auxiliary variable iaux a2"
+    assert ds["dis_top"].attrs["long_name"] == "cell top elevation"
+
+    with pytest.warns(UserWarning, match="past NPER"):
+        ds = NetCDFModel.from_model(gwf, netcdf_format=NetCDFFormat.LAYERED_MESH).to_xarray()
+    assert (
+        ds["chd-1_head_l2"].attrs["long_name"]
+        == "chd-1 head value assigned to constant head layer 2"
+    )
+    assert ds["wel-1_a1_l1"].attrs["long_name"] == "wel-1 well auxiliary variable iaux a1 layer 1"
 
 
 def test_from_model_periods_past_nper_dropped():

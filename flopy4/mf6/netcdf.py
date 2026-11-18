@@ -2,7 +2,9 @@ import abc
 from os import PathLike
 from typing import TYPE_CHECKING, Any
 
+import attrs
 import numpy as np
+import pandas as pd
 import xarray as xr
 from pydantic import (
     BaseModel,
@@ -17,7 +19,7 @@ from flopy4.mf6.enums import NetCDFFormat
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import _DTYPE_MAP as _PKG_DTYPE_MAP
 from flopy4.mf6.package import Package, period_shape
-from flopy4.mf6.period_arrays import dense, split_tas
+from flopy4.mf6.period_state import aux_names, period_states
 from flopy4.mf6.spec import to_field_type
 from flopy4.version import __version__
 
@@ -69,6 +71,74 @@ def metadata(attribute, key: str):
         if key in meta:
             return meta[key]
     return None
+
+
+def _input_packages(model: Model):
+    """(package, name) for each package of a model and, after each, its
+    subpackages, named as MF6 names them in its input memory paths
+    (InputLoadType.f90): the parent's type, with its instance number by
+    name-file order if the model can have several, then the subpackage's
+    type and instance number, e.g. ``npf-tvk1`` or ``rch2-tas1``."""
+    seen: dict[str, int] = {}
+    for package in model._children.values():
+        if not isinstance(package, Package):
+            continue
+        yield package, package.name
+        ext = package._file_ext()
+        seen[ext] = seen.get(ext, 0) + 1
+        if not package._children:
+            continue
+        prefix = f"{ext}{seen[ext]}-" if multi_package(package.dfn_name) else f"{ext}-"
+        counts: dict[str, int] = {}
+        for sub in package._children.values():
+            if not isinstance(sub, Package):
+                continue
+            stype = sub.dfn_name.split("-", 1)[1]
+            counts[stype] = counts.get(stype, 0) + 1
+            yield sub, f"{prefix}{stype}{counts[stype]}"
+
+
+def _package_states(package: Package, nper: int, model: Model) -> "dict | None":
+    """The values a package's period arrays hold in each period (see
+    `flopy4.mf6.period_state`), or None if it has none."""
+    fields = [
+        f
+        for f in attrs.fields(type(package))
+        if f.metadata.get("netcdf")
+        and f.metadata.get("fill_forward")
+        and f.metadata.get("block") == "period"
+        and f.metadata.get("reader") != "readarray"
+    ]
+    if not fields:
+        return None
+    shapes: dict[str, Any] = {}
+    for f in fields:
+        shape = period_shape(package, f)  # type: ignore[arg-type]
+        if shape is None:
+            raise ValueError(f"{package.dfn_name}: {f.name}'s period shape isn't known")
+        shapes["aux" if f.metadata.get("fk") else f.name] = shape
+    dis = getattr(model, "dis", None)
+    idomain = getattr(dis, "idomain", None) if dis is not None else None
+    active = None if idomain is None else np.asarray(idomain).ravel() > 0
+    return period_states(package, nper, fields, shapes, active=active)
+
+
+def _tdis_start_text(model: Model, time: "Time") -> str | None:
+    """The simulation's TDIS START_DATE_TIME as given, if it's `time`'s start."""
+    tdis = getattr(getattr(model, "_parent", None), "tdis", None)
+    text = getattr(tdis, "start_date_time", None)
+    if not text or time.start_datetime is None:
+        return None
+    try:
+        same = pd.Timestamp(str(text)) == pd.Timestamp(time.start_datetime)
+    except ValueError:
+        return None
+    return str(text).strip() if same else None
+
+
+def _stack(periods: list, dtype: Any) -> np.ndarray:
+    """Stack per-period arrays."""
+    return np.stack([np.asarray(a, dtype=dtype) for a in periods])
 
 
 def _pkgclass(package_name: str) -> Package:
@@ -126,7 +196,7 @@ class _PackageSpec:
                 )
                 self.dims = normalized
                 self.metadata = {
-                    "longname": f.metadata.get("longname", f.name),
+                    "longname": f.metadata.get("longname"),
                     "block": f.metadata.get("block", ""),
                     "fill_forward": fill_forward,
                     "netcdf": True,
@@ -206,6 +276,7 @@ class NetCDFModel(BaseModel, NetCDFInput):
         self._context = __context
         self._grid = None
         self._time = None
+        self._start_text = None
 
     @classmethod
     def from_dict(cls, meta, context=None):
@@ -261,12 +332,13 @@ class NetCDFModel(BaseModel, NetCDFInput):
                     break
                 _p = getattr(_p, "_parent", None)
 
-        for package in model._children.values():
+        for package, package_name in _input_packages(model):
             packagetype = package.__class__.__name__.lower()
-            distype = packagetype if packagetype.startswith("dis") else distype
+            if package._parent is model and packagetype.startswith("dis"):
+                distype = packagetype
             p: dict[str, Any] = {
-                "package_name": package.name,
-                "package_type": f"{modeltype}-{packagetype}",
+                "package_name": package_name,
+                "package_type": package.dfn_name,
                 "params": [],
             }
 
@@ -283,6 +355,8 @@ class NetCDFModel(BaseModel, NetCDFInput):
             else:
                 _nodes = d.get("nodes", _nlay)
 
+            states = _package_states(package, _nper, model)
+
             for f in _attrs.fields(type(package)):
                 if not f.metadata.get("netcdf"):
                     continue
@@ -297,28 +371,18 @@ class NetCDFModel(BaseModel, NetCDFInput):
                     if "nodes" in shape_meta and arr.size < _nodes:
                         arr = np.full(_nodes, arr.ravel()[0], dtype=_dtype)
                     p["params"].append({"name": f.name, "data": arr})
-                elif f.metadata.get("fk"):
-                    # dynamically named arrays (RCHA's aux): one param per auxiliary name
-                    # time-array series references stay in the package file
-                    if not (periods := split_tas(getattr(package, f.name) or {})[0]):
+                elif f.metadata.get("fk") and states is not None:
+                    # dynamically named arrays (RCHA's aux): one param per
+                    # auxiliary name, holding its values in each period
+                    if not (names := aux_names(package)):
                         continue
-                    names = [str(n).lower() for n in package.auxiliary]  # type: ignore[attr-defined]
                     p["auxiliary"] = names
-                    by_name: dict[str, dict] = {}
-                    for kper, arrays in periods.items():
-                        for name, val in arrays.items():
-                            by_name.setdefault(name, {})[kper] = val
-                    for name, named_periods in by_name.items():
+                    for n, name in enumerate(names):
                         p["params"].append(
                             {
                                 "name": f.name,
-                                "attrs": {"modflow_iaux": names.index(str(name).lower()) + 1},
-                                "data": dense(
-                                    named_periods,
-                                    _nper,
-                                    fill_forward=False,
-                                    shape=period_shape(package, f),  # type: ignore[arg-type]
-                                ),
+                                "attrs": {"modflow_iaux": n + 1},
+                                "data": _stack(states[f"aux:{name}"], np.float64),
                             }
                         )
                 elif (
@@ -329,21 +393,13 @@ class NetCDFModel(BaseModel, NetCDFInput):
                         continue
                     _dtype = _PKG_DTYPE_MAP.get(to_field_type(f.type), np.float64)
                     p["params"].append({"name": f.name, "data": np.asarray(val, dtype=_dtype)})
-                else:
-                    # period arrays: {kper: array}, periods not given filled.
-                    # Time-array series references stay in the package file.
-                    # A grid package's cleared (None) periods are filled too;
-                    # with no array in any period, there's nothing to write.
-                    periods = split_tas(getattr(package, f.name) or {})[0]
-                    if all(a is None for a in periods.values()):
-                        continue
+                elif states is not None and f.name in states:
+                    # period arrays: the values held in each period; an
+                    # index array is integer, 1-based in the file
                     if f.metadata.get("index"):
-                        # 1-based in the file
-                        periods = {
-                            k: None if a is None else np.asarray(a) + 1 for k, a in periods.items()
-                        }
-                    shape = period_shape(package, f)  # type: ignore[arg-type]
-                    arr = dense(periods, _nper, fill_forward=False, shape=shape).astype(np.float64)
+                        arr = _stack(states[f.name], np.int32) + 1
+                    else:
+                        arr = _stack(states[f.name], np.float64)
                     p["params"].append({"name": f.name, "data": arr})
 
             if len(p["params"]) > 0:
@@ -381,6 +437,7 @@ class NetCDFModel(BaseModel, NetCDFInput):
         if grid is not None and time is not None:
             nc_model.grid = grid
             nc_model.time = time
+            nc_model._start_text = _tdis_start_text(model, time)
         return nc_model
 
     def to_xarray(self) -> xr.Dataset:
@@ -398,7 +455,12 @@ class NetCDFModel(BaseModel, NetCDFInput):
                 if meta["attrs"]["modflow_mesh"] is not None
                 else NetCDFFormat.STRUCTURED
             )
-            dss.append(self._grid.to_xarray(netcdf_format=_fmt, modeltime=self._time))
+            gds = self._grid.to_xarray(netcdf_format=_fmt, modeltime=self._time)
+            if self._start_text is not None:
+                # MF6 writes the TDIS start date and time as given
+                tunits = gds["time"].attrs["units"].split(" since ")[0]
+                gds["time"].attrs["units"] = f"{tunits} since {self._start_text}"
+            dss.append(gds)
             meta["attrs"]["Conventions"] = conventions
 
         for p in self.packages:
@@ -757,7 +819,11 @@ class NetCDFParam(BaseModel, NetCDFInput):
             if (mesh is None or "layer" not in meta["attrs"] or meta["attrs"]["layer"] is None)
             else f"{basename}_l{meta['attrs']['layer']}"
         )
-        varname = f"{package_name}_{param}" if multi_package(package_type) else f"{ptype}_{param}"
+        varname = (
+            f"{package_name}_{param}"
+            if multi_package(package_type) or package_type.startswith("utl-")
+            else f"{ptype}_{param}"
+        )
 
         if "data" in meta and meta["data"] is not None:
             data = meta["data"]
@@ -896,14 +962,21 @@ class NetCDFParam(BaseModel, NetCDFInput):
         if "encodings" not in _meta:
             _meta["encodings"] = {}
 
-        # add long_name to parameter attributes
-        _meta["attrs"]["long_name"] = metadata(spec.arrays[param], "longname")
-        if multi_package(context["package_type"]):
-            _meta["attrs"]["long_name"] = f"{context['package_name']} {_meta['attrs']['long_name']}"
-        if "layer" in _meta["attrs"]:
-            _meta["attrs"]["long_name"] = (
-                f"{_meta['attrs']['long_name']} layer {_meta['attrs']['layer']}"
-            )
+        # long_name as MF6 builds it: the DFN longname, after the package name
+        # for a multi-package type (the package and variable names without a
+        # longname), then an aux variable's auxiliary name, then the layer
+        long_name = metadata(spec.arrays[param], "longname")
+        if not long_name:
+            long_name = f"{context['package_name']} {param}"
+        elif multi_package(context["package_type"]):
+            long_name = f"{context['package_name']} {long_name}"
+        iaux = _meta["attrs"].get("modflow_iaux")
+        auxiliary = context.get("auxiliary")
+        if param in spec.named and iaux and auxiliary is not None:
+            long_name += f" {str(auxiliary[iaux - 1]).lower()}"
+        if _meta["attrs"].get("layer") is not None:
+            long_name += f" layer {_meta['attrs']['layer']}"
+        _meta["attrs"]["long_name"] = long_name
 
         def _structured_shape(dfn_shape):
             shape = ["time"] if "nper" in dfn_shape else []
@@ -937,9 +1010,11 @@ class NetCDFParam(BaseModel, NetCDFInput):
         # dtype
         _meta["dtype"] = spec.arrays[param].dtype
         if np.issubdtype(spec.arrays[param].dtype, np.floating):
-            _meta["encodings"]["_FillValue"] = (
-                FILL_DNODATA if metadata(spec.arrays[param], "fill_forward") else FILL_FLOAT64
-            )
+            period = metadata(spec.arrays[param], "fill_forward")
+            _meta["encodings"]["_FillValue"] = FILL_DNODATA if period else FILL_FLOAT64
+            if period:
+                # input in effect over the stress period (CF-1.13 7.3)
+                _meta["attrs"]["cell_methods"] = "time: mean"
         elif np.issubdtype(spec.arrays[param].dtype, np.integer):
             # MF6 defines DNODATA (3e30) for reals but has no parallel integer
             # no-data constant; FILL_INT64 (NF90_FILL_INT) is the correct choice.
@@ -949,7 +1024,7 @@ class NetCDFParam(BaseModel, NetCDFInput):
         ptype = context["package_type"].split("-")[1].strip()
         _meta["attrs"]["modflow_input"] = (
             f"{modelname}/{context['package_name']}/{param}"
-            if multi_package(context["package_type"])
+            if multi_package(context["package_type"]) or context["package_type"].startswith("utl-")
             else f"{modelname}/{ptype}/{param}"
         )
 

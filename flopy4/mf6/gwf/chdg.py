@@ -86,6 +86,7 @@ class Chdg(Package):
         layered=True,
         netcdf=True,
         fill_forward=True,
+        longname="head value assigned to constant head",
     )
     aux: Optional[dict[int, dict[str, FloatArrayLike]]] = array(
         default=None,
@@ -95,4 +96,5 @@ class Chdg(Package):
         netcdf=True,
         fill_forward=True,
         fk="options.auxiliary",
+        longname="constant head auxiliary variable iaux",
     )

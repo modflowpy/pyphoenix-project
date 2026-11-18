@@ -87,6 +87,7 @@ class Evta(Package):
         index=True,
         netcdf=True,
         fill_forward=True,
+        longname="layer number for evapotranspiration",
     )
     surface: Optional[dict[int, FloatArrayLike]] = array(
         default=None,
@@ -95,6 +96,7 @@ class Evta(Package):
         layered=False,
         netcdf=True,
         fill_forward=True,
+        longname="evapotranspiration surface",
     )
     rate: Optional[dict[int, FloatArrayLike | TimeArraySeriesRef]] = array(
         default=None,
@@ -103,6 +105,7 @@ class Evta(Package):
         layered=False,
         netcdf=True,
         fill_forward=True,
+        longname="evapotranspiration rate",
         time_series=True,
     )
     depth: Optional[dict[int, FloatArrayLike]] = array(
@@ -112,6 +115,7 @@ class Evta(Package):
         layered=False,
         netcdf=True,
         fill_forward=True,
+        longname="extinction depth",
     )
     aux: Optional[dict[int, dict[str, FloatArrayLike | TimeArraySeriesRef]]] = array(
         default=None,
@@ -121,5 +125,6 @@ class Evta(Package):
         netcdf=True,
         fill_forward=True,
         fk="options.auxiliary",
+        longname="evapotranspiration auxiliary variable iaux",
         time_series=True,
     )

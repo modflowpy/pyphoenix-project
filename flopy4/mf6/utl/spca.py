@@ -40,6 +40,7 @@ class Spca(Package):
         shape=("ncpl",),
         layered=False,
         fill_forward=True,
+        longname="concentration",
         time_series=True,
     )
     temperature: Optional[dict[int, FloatArrayLike | TimeArraySeriesRef]] = array(
@@ -48,5 +49,6 @@ class Spca(Package):
         shape=("ncpl",),
         layered=False,
         fill_forward=True,
+        longname="temperature",
         time_series=True,
     )
