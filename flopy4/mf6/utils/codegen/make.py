@@ -1979,6 +1979,8 @@ def build_component_spec(
             if getattr(_ra_f, "netcdf", False):
                 _ra_meta["netcdf"] = True
             _ra_meta["fill_forward"] = True
+            if longname := getattr(_ra_f, "longname", None):
+                _ra_meta["longname"] = longname.replace("\\_", "_")
             _ra_base = (
                 "IntArrayLike" if getattr(_ra_f, "dtype", "") == "integer" else "FloatArrayLike"
             )
@@ -2012,6 +2014,8 @@ def build_component_spec(
             _na_meta["netcdf"] = True
         _na_meta["fill_forward"] = True
         _na_meta["fk"] = _fk
+        if longname := getattr(_arr, "longname", None):
+            _na_meta["longname"] = longname.replace("\\_", "_")
         _na_base = "IntArrayLike" if getattr(_arr, "dtype", "") == "integer" else "FloatArrayLike"
         if getattr(_arr, "time_series", False) or getattr(_lf, "time_series", False):
             _na_meta["time_series"] = True

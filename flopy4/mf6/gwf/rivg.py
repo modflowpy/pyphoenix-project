@@ -96,6 +96,7 @@ class Rivg(Package):
         layered=True,
         netcdf=True,
         fill_forward=True,
+        longname="river stage",
     )
     cond: Optional[dict[int, FloatArrayLike | None]] = array(
         default=None,
@@ -104,6 +105,7 @@ class Rivg(Package):
         layered=True,
         netcdf=True,
         fill_forward=True,
+        longname="river conductance",
     )
     rbot: Optional[dict[int, FloatArrayLike | None]] = array(
         default=None,
@@ -112,6 +114,7 @@ class Rivg(Package):
         layered=True,
         netcdf=True,
         fill_forward=True,
+        longname="river bottom elevation",
     )
     aux: Optional[dict[int, dict[str, FloatArrayLike]]] = array(
         default=None,
@@ -121,4 +124,5 @@ class Rivg(Package):
         netcdf=True,
         fill_forward=True,
         fk="options.auxiliary",
+        longname="river auxiliary variable iaux",
     )

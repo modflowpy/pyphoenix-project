@@ -118,6 +118,7 @@ class Welg(Package):
         layered=True,
         netcdf=True,
         fill_forward=True,
+        longname="well rate",
     )
     aux: Optional[dict[int, dict[str, FloatArrayLike]]] = array(
         default=None,
@@ -127,4 +128,5 @@ class Welg(Package):
         netcdf=True,
         fill_forward=True,
         fk="options.auxiliary",
+        longname="well auxiliary variable iaux",
     )

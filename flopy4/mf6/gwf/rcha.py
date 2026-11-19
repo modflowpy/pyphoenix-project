@@ -87,6 +87,7 @@ class Rcha(Package):
         index=True,
         netcdf=True,
         fill_forward=True,
+        longname="layer number for recharge",
     )
     recharge: Optional[dict[int, FloatArrayLike | TimeArraySeriesRef]] = array(
         default=None,
@@ -95,6 +96,7 @@ class Rcha(Package):
         layered=False,
         netcdf=True,
         fill_forward=True,
+        longname="recharge rate",
         time_series=True,
     )
     aux: Optional[dict[int, dict[str, FloatArrayLike | TimeArraySeriesRef]]] = array(
@@ -105,5 +107,6 @@ class Rcha(Package):
         netcdf=True,
         fill_forward=True,
         fk="options.auxiliary",
+        longname="recharge auxiliary variable iaux",
         time_series=True,
     )

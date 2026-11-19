@@ -96,6 +96,7 @@ class Ghbg(Package):
         layered=True,
         netcdf=True,
         fill_forward=True,
+        longname="boundary head",
     )
     cond: Optional[dict[int, FloatArrayLike | None]] = array(
         default=None,
@@ -104,6 +105,7 @@ class Ghbg(Package):
         layered=True,
         netcdf=True,
         fill_forward=True,
+        longname="boundary conductance",
     )
     aux: Optional[dict[int, dict[str, FloatArrayLike]]] = array(
         default=None,
@@ -113,4 +115,5 @@ class Ghbg(Package):
         netcdf=True,
         fill_forward=True,
         fk="options.auxiliary",
+        longname="general-head boundary auxiliary variable iaux",
     )

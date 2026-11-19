@@ -102,6 +102,7 @@ class Drng(Package):
         layered=True,
         netcdf=True,
         fill_forward=True,
+        longname="drain elevation",
     )
     cond: Optional[dict[int, FloatArrayLike | None]] = array(
         default=None,
@@ -110,6 +111,7 @@ class Drng(Package):
         layered=True,
         netcdf=True,
         fill_forward=True,
+        longname="drain conductance",
     )
     aux: Optional[dict[int, dict[str, FloatArrayLike]]] = array(
         default=None,
@@ -119,4 +121,5 @@ class Drng(Package):
         netcdf=True,
         fill_forward=True,
         fk="options.auxiliary",
+        longname="drain auxiliary variable iaux",
     )

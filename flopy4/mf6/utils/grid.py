@@ -15,6 +15,28 @@ from flopy4.mf6.enums import NetCDFFormat
 from flopy4.mf6.utils.vertical import sel_z, z_coords
 
 
+def _time_coord(ds: "xr.Dataset", modeltime) -> "xr.Dataset":
+    """Add the time coordinate of period input, as MF6 writes it: each stress
+    period's start time, with the period's bounds (CF-1.13 7.1)."""
+    perlen = np.asarray(modeltime.perlen, dtype=float)
+    end = np.cumsum(perlen)
+    start = end - perlen
+    ds = ds.assign_coords({"time": ("time", start)})
+    ds = ds.assign({"time_bnds": (["time", "bnd"], np.column_stack([start, end]))})
+    _tu = modeltime.time_units
+    _tunits = _tu if _tu not in (None, "unknown") else "days"
+    start_datetime = str(modeltime.start_datetime).replace(" ", "T")
+    ds["time"].attrs["calendar"] = "standard"
+    ds["time"].attrs["units"] = f"{_tunits} since {start_datetime}"
+    ds["time"].attrs["axis"] = "T"
+    ds["time"].attrs["standard_name"] = "time"
+    ds["time"].attrs["long_name"] = "time"
+    ds["time"].attrs["bounds"] = "time_bnds"
+    ds["time"].encoding["_FillValue"] = None
+    ds["time_bnds"].encoding["_FillValue"] = None
+    return ds
+
+
 def _coord_units(lenuni: int, crs) -> str | None:
     """Return a CF-valid coordinate units string, or None to omit the attribute.
 
@@ -489,19 +511,8 @@ class StructuredGrid(LegacyStructuredGrid):
         topo = self._topology()
 
         # create dataset coordinate vars
-        # Use cumulative per-period time (one value per stress period)
-        var_d = {
-            "time": (["time"], np.cumsum(modeltime.perlen)),
-        }
-        ds = ds.assign(var_d)
-        ds["time"].attrs["calendar"] = "standard"
-        _tunits = modeltime.time_units if modeltime.time_units not in (None, "unknown") else "days"
-        ds["time"].attrs["units"] = f"{_tunits} since {modeltime.start_datetime}"
-        ds["time"].attrs["axis"] = "T"
-        ds["time"].attrs["standard_name"] = "time"
-        ds["time"].attrs["long_name"] = "time"
-        ds["time"].encoding["_FillValue"] = None
-        ds = ds.assign_coords({"layer": ("layer", np.arange(1, self.nlay + 1))})
+        ds = _time_coord(ds, modeltime)
+        ds = ds.assign_coords({"layer": ("layer", np.arange(1, self.nlay + 1, dtype=np.int32))})
         ds["layer"].attrs["long_name"] = "model layer"
         ds["layer"].attrs["units"] = "1"
         ds["layer"].attrs["positive"] = "down"
@@ -649,26 +660,17 @@ class StructuredGrid(LegacyStructuredGrid):
                 y_bnds.append(bnd)
 
         # create dataset coordinate vars
-        # Use cumulative per-period time (one value per stress period)
+        ds = _time_coord(ds, modeltime)
         var_d = {
-            "time": (["time"], np.cumsum(modeltime.perlen)),
             "y": (["y"], yc),
             "x": (["x"], xc),
-            "layer": (["layer"], np.arange(1, self.nlay + 1)),
+            "layer": (["layer"], np.arange(1, self.nlay + 1, dtype=np.int32)),
         }
         ds = ds.assign_coords(var_d)
 
         # create bound vars
         var_d = {"x_bnds": (["x", "bnd"], x_bnds), "y_bnds": (["y", "bnd"], y_bnds)}
         ds = ds.assign(var_d)
-
-        ds["time"].attrs["calendar"] = "standard"
-        _tunits = modeltime.time_units if modeltime.time_units not in (None, "unknown") else "days"
-        ds["time"].attrs["units"] = f"{_tunits} since {modeltime.start_datetime}"
-        ds["time"].attrs["axis"] = "T"
-        ds["time"].attrs["standard_name"] = "time"
-        ds["time"].attrs["long_name"] = "time"
-        ds["time"].encoding["_FillValue"] = None
         # Resolve the CRS (if any) once, up front, and attempt the
         # rotation wrap once -- both the x/y axis/standard_name decision
         # below and the projection variable's crs_wkt (further down) need
@@ -1155,20 +1157,8 @@ class VertexGrid(LegacyVertexGrid):
             ds.attrs["modflow_grid"] = "vertex"
 
             # create dataset coordinate vars
-            # Use cumulative per-period time (one value per stress period)
-            var_d = {
-                "time": (["time"], np.cumsum(modeltime.perlen)),
-            }
-            ds = ds.assign(var_d)
-            ds["time"].attrs["calendar"] = "standard"
-            _tu = modeltime.time_units
-            _tunits = _tu if _tu not in (None, "unknown") else "days"
-            ds["time"].attrs["units"] = f"{_tunits} since {modeltime.start_datetime}"
-            ds["time"].attrs["axis"] = "T"
-            ds["time"].attrs["standard_name"] = "time"
-            ds["time"].attrs["long_name"] = "time"
-            ds["time"].encoding["_FillValue"] = None
-            ds = ds.assign_coords({"layer": ("layer", np.arange(1, self.nlay + 1))})
+            ds = _time_coord(ds, modeltime)
+            ds = ds.assign_coords({"layer": ("layer", np.arange(1, self.nlay + 1, dtype=np.int32))})
             ds["layer"].attrs["long_name"] = "model layer"
             ds["layer"].attrs["units"] = "1"
             ds["layer"].attrs["positive"] = "down"
