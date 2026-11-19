@@ -7,6 +7,14 @@ def _maw_strt_takes_ts() -> bool:
     return bool(attrs.fields_dict(Maw.Packagedata)["strt"].metadata.get("time_series"))
 
 
+def print_format_word_optional() -> bool:
+    """Whether the synced classes take a print format without its format
+    word, as MF6 always has."""
+    from flopy4.mf6.gwf import Oc
+
+    return attrs.fields_dict(Oc.Format)["format_"].default is None
+
+
 # Models that MF6 runs but whose input some released DFNs don't describe,
 # with a check of the synced classes for what each model needs. Checked
 # against the classes, not the MF6 version, so a model runs again once a
@@ -15,6 +23,10 @@ SPEC_GAPS = {
     "mf6/test/test020_NevilleTonkinTransient_constantMAW": (
         _maw_strt_takes_ts,
         "MAW strt is a time series, which DFNs before MF6 #2748 don't declare",
+    ),
+    "mf6/test/test060_gms_ets": (
+        print_format_word_optional,
+        "OC gives a print format without its format word, which DFNs before MF6 #3129 require",
     ),
 }
 
