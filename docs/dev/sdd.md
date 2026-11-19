@@ -3,11 +3,11 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
-- [Conceptual model](#conceptual-model)
-- [Object model](#object-model)
-  - [Design](#design)
-  - [Conventions](#conventions)
+- [Concepts](#concepts)
+- [Design](#design)
+  - [Xarray conversion](#xarray-conversion)
+  - [Dimension management](#dimension-management)
+- [NetCDF](#netcdf)
 - [IO](#io)
   - [Input](#input)
     - [Unified IO](#unified-io)
@@ -43,10 +43,11 @@ Most components have only one possible parent (e.g., models are children of the 
 
 There are several special kinds of package, not necessarily mutually exclusive.
 
-- A **stress package** represents a forcing
-- A **basic package** contains only input variables applying statically to the entire simulation
-- An **advanced package** contains time-varying input variables
-- A **subpackage** is a package whose parent is another package
+- A **stress package** represents a forcing, and may vary by stress period. MF6 divides these into:
+  - **simple stress packages** (CHD, WEL, DRN, RIV, GHB, RCH and EVT), whose boundaries can change between periods
+  - **advanced packages** (MAW, SFR, LAK and UZF), whose features are defined once, with period blocks that change only what they name
+- A **utility** provides a capability rather than a hydrologic process, like OBS, TVK, TVS, ATS, NCF and HPC
+- A **subpackage** is a package whose parent is another package. This is flopy4's word, not MF6's. MF6's nearest is utility, but not every subpackage is a utility
 
 ```mermaid
 classDiagram
@@ -105,7 +106,7 @@ Parent/child relationships, array dimension registration/inheritance, and `xarra
 
 ### Xarray conversion
 
-The produce defines protocols for converting component instances to `xarray.Dataset` or `DataTree`.
+The product defines protocols for converting component instances to `xarray.Dataset` or `DataTree`.
 
 ### Dimension management
 
@@ -132,7 +133,7 @@ Resolution is lazy, but consistency checks are eager:
 - **Lazy**, when needed: an array's shape is resolved when something needs it (writing, `to_xarray()`). Arrays keep no shape of their own beyond their value's.
 - **Once, before writing**: a dimension that can't be resolved at all (e.g. a model with no grid package) can't be caught while the tree is being built, because its provider may not be attached yet. `Simulation.write()` runs `validate_dimension_resolution()` first. It checks that every array field holding a value can resolve its shape, and raises before writing anything if one can't. Writing a lone package or model skips this check, because scalar griddata writes as `CONSTANT` with no grid.
 
-Griddata is broadcast to its full shape only at construction, from the dimensions visible then: the package's own `dims`, or, for a grid package, its own. A package attached to a model afterwards keeps its values as given; e.g. a scalar stays a scalar and is written as `CONSTANT`. Broadcasting when a package is attached may come later as an optional mode.
+Griddata is broadcast to its full shape only at construction, from the dimensions visible then: the package's own `dims`, or, for a grid package, its own. A package attached to a model afterwards keeps its values as given; e.g. a scalar stays a scalar and is written as `CONSTANT`. The construction broadcast is to be removed, so a value stays as given however the package is built, and the full shape becomes a view ([#226](plans/dfn-spec/layout-logical-decisions.md#226-packages-without-grid-or-time)).
 
 ## NetCDF
 
