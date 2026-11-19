@@ -23,6 +23,16 @@ from flopy4.mf6.load_context import LoadContext
 from flopy4.mf6.utl.obs import Obs
 from flopy4.utils import fortran_float, number_or_text
 
+from .conftest import print_format_word_optional
+
+# DFNs before MF6 #3129 require a print format's format word and leave
+# COLUMNS, WIDTH and DIGITS optional, so classes synced from them can't
+# take these cases.
+new_print_format = pytest.mark.skipif(
+    not print_format_word_optional(),
+    reason="the synced classes require the print format word (DFNs before MF6 #3129)",
+)
+
 
 def _numbers(rows):
     """Rows (or one row) with number-like text as numbers, to compare
@@ -976,7 +986,13 @@ def test_series_attributes_from_values():
         ("gwf.Npf", "xt3doptions", True, ("Xt3doptions", ())),
         ("gwf.Npf", "xt3doptions", {"rhs": True}, ("Xt3doptions", (True,))),
         ("gwf.Oc", "headprint", "COLUMNS 10 WIDTH 12 DIGITS 6 GENERAL", ("Headprint", None)),
-        ("gwt.Oc", "concentrationprint", (10, 12, 6, "GENERAL"), ("Concentrationprint", None)),
+        pytest.param(
+            "gwt.Oc",
+            "concentrationprint",
+            (10, 12, 6, "GENERAL"),
+            ("Concentrationprint", None),
+            marks=new_print_format,
+        ),
         (
             "gwe.Oc",
             "temperatureprint",
@@ -1401,6 +1417,7 @@ END PERIOD
     assert "STEPS 1 5 10\n" in out
 
 
+@new_print_format
 def test_oc_print_format_without_format_word():
     """The format word is optional. Left out, it stays out when written,
     rather than being written as None."""
@@ -1429,7 +1446,7 @@ _PRINT_FORMATS = [
 
 
 @pytest.mark.parametrize("dfn_name, word", _PRINT_FORMATS)
-@pytest.mark.parametrize("format_", ["", " GENERAL"])
+@pytest.mark.parametrize("format_", [pytest.param("", marks=new_print_format), " GENERAL"])
 def test_typed_print_format_word_optional(dfn_name, word, format_):
     """Every component with a print format parses it with or without the
     format word, and a word that's there is still the format."""
@@ -1452,9 +1469,9 @@ def test_typed_print_format_word_optional(dfn_name, word, format_):
     [
         "COLUMNS 10",
         "COLUMNS 10 WIDTH 11",
-        "COLUMNS 10 WIDTH 11 FIXED",
+        pytest.param("COLUMNS 10 WIDTH 11 FIXED", marks=new_print_format),
         "COLUMNS 10 DIGITS 4",
-        "GENERAL",
+        pytest.param("GENERAL", marks=new_print_format),
     ],
 )
 def test_typed_print_format_partial_rejected(dfn_name, word, record):
@@ -3541,6 +3558,7 @@ def test_headprint_from_tokens_no_prefix():
     assert hp.formatrecord.digits == 6
 
 
+@new_print_format
 def test_headprint_from_tokens_no_format():
     """The format word is optional."""
     from flopy4.mf6.gwf.oc import Oc
@@ -3553,10 +3571,10 @@ def test_headprint_from_tokens_no_format():
 @pytest.mark.parametrize(
     "tokens",
     [
-        "exponential",
-        "COLUMNS 10 exponential",
+        pytest.param("exponential", marks=new_print_format),
+        pytest.param("COLUMNS 10 exponential", marks=new_print_format),
         "COLUMNS 10 WIDTH 12",
-        "WIDTH 15 DIGITS 4 fixed",
+        pytest.param("WIDTH 15 DIGITS 4 fixed", marks=new_print_format),
         "COLUMNS 10 DIGITS 6",
     ],
 )
