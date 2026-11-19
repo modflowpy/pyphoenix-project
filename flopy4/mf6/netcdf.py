@@ -18,8 +18,7 @@ from flopy4.mf6.constants import FILL_DNODATA, FILL_FLOAT64, FILL_INT64
 from flopy4.mf6.enums import NetCDFFormat
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import _DTYPE_MAP as _PKG_DTYPE_MAP
-from flopy4.mf6.package import Package, period_shape
-from flopy4.mf6.period_state import aux_names, period_states
+from flopy4.mf6.package import Package
 from flopy4.mf6.spec import to_field_type
 from flopy4.version import __version__
 
@@ -98,29 +97,18 @@ def _input_packages(model: Model):
             yield sub, f"{prefix}{stype}{counts[stype]}"
 
 
-def _package_states(package: Package, nper: int, model: Model) -> "dict | None":
-    """The values a package's period arrays hold in each period (see
-    `flopy4.mf6.period_state`), or None if it has none."""
-    fields = [
-        f
+def _package_states(package: Package, nper: int) -> "dict | None":
+    """The values a package's exported period arrays hold in each period
+    (see `Package.period_states`), or None if it has none."""
+    names = [
+        f.name
         for f in attrs.fields(type(package))
         if f.metadata.get("netcdf")
         and f.metadata.get("fill_forward")
         and f.metadata.get("block") == "period"
         and f.metadata.get("reader") != "readarray"
     ]
-    if not fields:
-        return None
-    shapes: dict[str, Any] = {}
-    for f in fields:
-        shape = period_shape(package, f)  # type: ignore[arg-type]
-        if shape is None:
-            raise ValueError(f"{package.dfn_name}: {f.name}'s period shape isn't known")
-        shapes["aux" if f.metadata.get("fk") else f.name] = shape
-    dis = getattr(model, "dis", None)
-    idomain = getattr(dis, "idomain", None) if dis is not None else None
-    active = None if idomain is None else np.asarray(idomain).ravel() > 0
-    return period_states(package, nper, fields, shapes, active=active)
+    return package.period_states(names, nper) if names else None
 
 
 def _tdis_start_text(model: Model, time: "Time") -> str | None:
@@ -134,11 +122,6 @@ def _tdis_start_text(model: Model, time: "Time") -> str | None:
     except ValueError:
         return None
     return str(text).strip() if same else None
-
-
-def _stack(periods: list, dtype: Any) -> np.ndarray:
-    """Stack per-period arrays."""
-    return np.stack([np.asarray(a, dtype=dtype) for a in periods])
 
 
 def _pkgclass(package_name: str) -> Package:
@@ -355,7 +338,7 @@ class NetCDFModel(BaseModel, NetCDFInput):
             else:
                 _nodes = d.get("nodes", _nlay)
 
-            states = _package_states(package, _nper, model)
+            states = _package_states(package, _nper)
 
             for f in _attrs.fields(type(package)):
                 if not f.metadata.get("netcdf"):
@@ -374,7 +357,9 @@ class NetCDFModel(BaseModel, NetCDFInput):
                 elif f.metadata.get("fk") and states is not None:
                     # dynamically named arrays (RCHA's aux): one param per
                     # auxiliary name, holding its values in each period
-                    if not (names := aux_names(package)):
+                    aux = getattr(package, "auxiliary", None)
+                    names = [] if aux is None else [str(n).lower() for n in np.atleast_1d(aux)]
+                    if not names:
                         continue
                     p["auxiliary"] = names
                     for n, name in enumerate(names):
@@ -382,7 +367,7 @@ class NetCDFModel(BaseModel, NetCDFInput):
                             {
                                 "name": f.name,
                                 "attrs": {"modflow_iaux": n + 1},
-                                "data": _stack(states[f"aux:{name}"], np.float64),
+                                "data": states[f"aux:{name}"].astype(np.float64),
                             }
                         )
                 elif (
@@ -397,9 +382,9 @@ class NetCDFModel(BaseModel, NetCDFInput):
                     # period arrays: the values held in each period; an
                     # index array is integer, 1-based in the file
                     if f.metadata.get("index"):
-                        arr = _stack(states[f.name], np.int32) + 1
+                        arr = states[f.name].astype(np.int32) + 1
                     else:
-                        arr = _stack(states[f.name], np.float64)
+                        arr = states[f.name].astype(np.float64)
                     p["params"].append({"name": f.name, "data": arr})
 
             if len(p["params"]) > 0:
