@@ -85,6 +85,15 @@ jobs:
           pixi run update-flopy
           pixi run flopy4 mf6 sync doc/mf6io/mf6ivar/dfn --mf6-version "$(cat version.txt)"
 
+      - name: Sync model registries
+        working-directory: modflow6
+        run: pixi run mf models sync
+
+      - name: Install other MODFLOW programs the tests compare with
+        uses: modflowpy/install-modflow-action@v1
+        with:
+          path: ${{ github.workspace }}/modflow6/bin/downloaded
+
       - name: Install extended MODFLOW 6 nightly build
         uses: modflowpy/install-modflow-action@v1
         with:
