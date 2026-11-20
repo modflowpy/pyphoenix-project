@@ -1,0 +1,121 @@
+name: MODFLOW 6 tests
+
+# Runs MODFLOW 6's own autotest comparisons that re-write a test simulation
+# with flopy4 (pytest --flopy4, cases marked flopy4), against a MODFLOW 6
+# checkout and build. MODFLOW 6's CI doesn't install flopy4, so these
+# comparisons run here.
+
+on:
+  push:
+    branches:
+      - develop
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+  pull_request:
+    # runs on a pull request with the mf6 label: when the label is added
+    # (labeled) and on each push while it is there (synchronize)
+    types: [opened, reopened, labeled, synchronize]
+    branches:
+      - develop
+  schedule:
+    - cron: '0 9 * * *'  # daily, 9 AM UTC
+  workflow_dispatch:
+    inputs:
+      mf6-repository:
+        description: MODFLOW 6 repository whose autotest to run
+        required: false
+      mf6-ref:
+        description: Branch, tag or commit of that repository
+        required: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # MODFLOW 6 autotest source, overridable with the dispatch inputs
+  MF6_REPOSITORY: ${{ inputs.mf6-repository || 'mjreno/modflow6' }}
+  MF6_REF: ${{ inputs.mf6-ref || 'flopy4_nc_test' }}
+
+jobs:
+  extended_win:
+    name: flopy4 comparisons (windows, extended nightly)
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'mf6')
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+
+      - name: Checkout flopy4
+        uses: actions/checkout@v4
+        with:
+          path: flopy4
+
+      - name: Checkout MODFLOW 6
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.MF6_REPOSITORY }}
+          ref: ${{ env.MF6_REF }}
+          path: modflow6
+
+      - name: Setup pixi
+        uses: prefix-dev/setup-pixi@v0.11.3
+        with:
+          pixi-version: v0.82.1
+          manifest-path: modflow6/pixi.toml
+
+      - name: Install MODFLOW 6 test dependencies
+        working-directory: modflow6
+        run: pixi run install
+
+      - name: Install flopy4
+        working-directory: modflow6
+        run: |
+          pixi run pip install --disable-pip-version-check -e ../flopy4
+          # the modflow-devtools commit flopy4's own environment is locked to
+          devtools=$(grep -o -m1 'modflow-devtools.git#[0-9a-f]\{40\}' ../flopy4/pixi.lock)
+          pixi run pip install --disable-pip-version-check --no-deps --force-reinstall \
+            "modflow-devtools @ git+https://github.com/MODFLOW-ORG/${devtools/\#/@}"
+
+      - name: Generate flopy and flopy4 classes from the MODFLOW 6 DFNs
+        working-directory: modflow6
+        run: |
+          pixi run update-flopy
+          pixi run flopy4 mf6 sync doc/mf6io/mf6ivar/dfn --mf6-version "$(cat version.txt)"
+
+      # test_examples.py and test_external_models.py load a model registry
+      # when collected, though -m flopy4 deselects their tests
+      - name: Sync model registry
+        working-directory: modflow6
+        run: pixi run mf models sync --source mf6/test
+
+      - name: Install other MODFLOW programs the tests compare with
+        uses: modflowpy/install-modflow-action@v1
+        with:
+          path: ${{ github.workspace }}/modflow6/bin/downloaded
+
+      - name: Install extended MODFLOW 6 nightly build
+        uses: modflowpy/install-modflow-action@v1
+        with:
+          repo: modflow6-nightly-build
+          ostag: win64ext
+          path: ${{ github.workspace }}/modflow6/bin
+
+      - name: Show versions
+        working-directory: modflow6
+        run: |
+          bin/mf6 -v
+          pixi run python -c "import flopy, flopy4, modflow_devtools; print(flopy.__version__, flopy4.__file__)"
+
+      - name: Run flopy4 comparisons
+        working-directory: modflow6/autotest
+        run: pixi run pytest -v -n auto --durations 0 --keep-failed .failed --netcdf --flopy4 -m flopy4
+
+      - name: Upload failed test output
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failed-mf6-flopy4-windows
+          path: modflow6/autotest/.failed
