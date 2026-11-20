@@ -85,9 +85,11 @@ jobs:
           pixi run update-flopy
           pixi run flopy4 mf6 sync doc/mf6io/mf6ivar/dfn --mf6-version "$(cat version.txt)"
 
-      - name: Sync model registries
+      # test_examples.py and test_external_models.py load a model registry
+      # when collected, though -m flopy4 deselects their tests
+      - name: Sync model registry
         working-directory: modflow6
-        run: pixi run mf models sync
+        run: pixi run mf models sync --source mf6/test
 
       - name: Install other MODFLOW programs the tests compare with
         uses: modflowpy/install-modflow-action@v1
