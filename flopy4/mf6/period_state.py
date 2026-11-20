@@ -1,14 +1,20 @@
-"""The values a package's period arrays hold in each stress period, as MF6
-holds them in its input context, for export (NetCDF). See
-``flopy4.mf6.period_arrays`` for how period arrays are given.
+"""The values period arrays hold in each stress period, as MF6 holds them in
+its input context. See ``flopy4.mf6.period_arrays`` for how period arrays
+are given.
 
-How a period block changes the values depends on how MF6 reads the package:
+This module knows nothing of packages: it takes period blocks, ``{kper:
+{tag: value}}``, and returns ``{tag: (nper, ...) array}``. A tag names one
+array (a stress field, or one auxiliary variable); the caller picks them.
+`Package.period_states` and the NetCDF export both go through here.
 
-- Layer arrays (RCHA, EVTA; READASARRAYS): an array given holds its values
+How a period block changes the values depends on how MF6 reads the package
+(`period_mode`):
+
+- ``"layer"`` (RCHA, EVTA; READASARRAYS): an array given holds its values
   until given again. An array given as a time-array series holds no values
-  (fill) while linked. The layer index array (IRCH, IEVT) holds 1 until
-  given.
-- Grid arrays (CHDG, WELG, ...; READARRAYGRID): the first array given in a
+  (fill) while linked. The layer index array (IRCH, IEVT) holds 0 (1 in the
+  file) until given.
+- ``"grid"`` (CHDG, WELG, ...; READARRAYGRID): the first array given in a
   block, stress or aux, sets the block's boundary cells, the active cells
   where it has a value. MF6 stores each array by position in that list of
   cells, so an array not given keeps its values by position, at the new
@@ -20,129 +26,120 @@ An array never given holds ``FILL_DNODATA``.
 """
 
 import warnings
-from typing import Any, Optional
+from collections.abc import Mapping
+from typing import Any, Literal, Optional
 
 import attrs
 import numpy as np
 
 from flopy4.mf6._types import TimeArraySeriesRef
 from flopy4.mf6.constants import FILL_DNODATA
+from flopy4.mf6.period_arrays import is_grid_package
+
+Mode = Literal["layer", "grid"]
 
 
-def aux_names(package: Any) -> list[str]:
-    """A package's auxiliary variable names, lowercase."""
-    aux = getattr(package, "auxiliary", None)
-    return [] if aux is None else [str(n).lower() for n in np.atleast_1d(aux)]
-
-
-def _mode(cls: type) -> str:
-    fields = attrs.fields_dict(cls)
-    if "readarraygrid" not in fields:
+def period_mode(cls: type) -> Mode:
+    """How MF6 reads a package class's period blocks."""
+    if not is_grid_package(cls):
         return "layer"
-    if "maxbound" not in fields:
+    if "maxbound" not in attrs.fields_dict(cls):
         raise NotImplementedError(f"{cls.__name__}: full-grid period arrays (no MAXBOUND)")
     return "grid"
 
 
+def _active(active: Optional[np.ndarray], size: int) -> np.ndarray:
+    if active is None:
+        return np.ones(size, dtype=bool)
+    act = np.ravel(active)
+    if act.size == 1:
+        return np.broadcast_to(act, size)
+    if act.size != size:
+        raise ValueError(f"idomain has {act.size} cells, period arrays {size}")
+    return act
+
+
 def _grid_states(
-    blocks: dict[int, dict[str, Any]],
-    tags: list[str],
+    blocks: Mapping[int, Mapping[str, Any]],
+    shapes: Mapping[str, tuple[int, ...]],
     nper: int,
-    shape: Any,
     active: Optional[np.ndarray],
-) -> dict[str, list[np.ndarray]]:
+) -> dict[str, np.ndarray]:
     """Grid arrays' values in each period, read as MF6's grid-array loader
     reads them (Mf6FileGridArray.f90): by position in the block's list of
     boundary cells."""
-    size = int(np.prod(shape(tags[0]))) if tags else 0
-    if active is None:
-        act = np.ones(size, dtype=bool)
-    else:
-        act = np.ravel(active)
-        if act.size == 1:
-            act = np.broadcast_to(act, size)
-        elif act.size != size:
-            raise ValueError(f"idomain has {act.size} cells, period arrays {size}")
+    out = {t: np.full((nper, *s), FILL_DNODATA) for t, s in shapes.items()}
+    if not shapes:
+        return out
+    size = int(np.prod(next(iter(shapes.values()))))
+    act = _active(active, size)
     cells = np.zeros(0, dtype=np.int64)  # boundary cells, by position
-    stored = {t: np.zeros(size) for t in tags}
+    stored = {t: np.zeros(size) for t in shapes}
     given: set[str] = set()
-    out: dict[str, list[np.ndarray]] = {t: [] for t in tags}
     for kper in range(nper):
         if (blk := blocks.get(kper)) is not None:
             first = True
             cells = np.zeros(0, dtype=np.int64)
-            # in the order written: stress arrays as declared, then aux
-            for tag, v in blk.items():
+            for tag, v in blk.items():  # in the order written
                 if v is None:
                     continue
                 if isinstance(v, TimeArraySeriesRef):
                     raise NotImplementedError(f"{tag}: time-array series grid arrays")
-                a = np.broadcast_to(np.asarray(v, dtype=float), shape(tag)).ravel()
+                a = np.broadcast_to(np.asarray(v, dtype=float), shapes[tag]).ravel()
                 if first:
                     cells = np.flatnonzero((a != FILL_DNODATA) & act)
                     first = False
                 stored[tag][: cells.size] = a[cells]
                 given.add(tag)
-        for tag in tags:
-            a = np.full(size, FILL_DNODATA)
-            if tag in given:
-                a[cells] = stored[tag][: cells.size]
-            out[tag].append(a.reshape(shape(tag)))
+        for tag in given:
+            out[tag][kper].reshape(-1)[cells] = stored[tag][: cells.size]
+    return out
+
+
+def _layer_states(
+    blocks: Mapping[int, Mapping[str, Any]],
+    shapes: Mapping[str, tuple[int, ...]],
+    nper: int,
+    index: Optional[str],
+) -> dict[str, np.ndarray]:
+    """Layer arrays' values in each period: each array holds what it was
+    last given."""
+    out = {
+        t: np.zeros((nper, *s), dtype=np.int64) if t == index else np.full((nper, *s), FILL_DNODATA)
+        for t, s in shapes.items()
+    }
+    held: dict[str, Any] = {}
+    for kper in range(nper):
+        for tag, v in (blocks.get(kper) or {}).items():
+            # a series-linked array holds no values
+            held[tag] = None if isinstance(v, TimeArraySeriesRef) else v
+        for tag, v in held.items():
+            out[tag][kper] = FILL_DNODATA if v is None else np.broadcast_to(v, shapes[tag])
     return out
 
 
 def period_states(
-    package: Any,
+    blocks: Mapping[int, Mapping[str, Any]],
+    mode: Mode,
     nper: int,
-    fields: list,
-    shapes: dict[str, tuple[int, ...]],
+    shapes: Mapping[str, tuple[int, ...]],
     active: Optional[np.ndarray] = None,
-) -> dict[str, list[np.ndarray]]:
-    """The values each period array holds in each period: ``{tag:
-    [array per period]}``, ``FILL_DNODATA`` where it holds no values. `fields`
-    are the package's period array fields; tags are their names, and an aux
-    field's are ``aux:<name>`` for each auxiliary name. `shapes` gives each
-    field's period shape; `active` (flat, by user node) marks active cells
-    for grid arrays."""
-    mode = _mode(type(package))
+    index: Optional[str] = None,
+) -> dict[str, np.ndarray]:
+    """The values each array holds in each period, ``{tag: (nper, ...)
+    array}``, ``FILL_DNODATA`` where it holds none.
 
-    blocks: dict[int, dict[str, Any]] = {}
-    tags: list[str] = []
-    index = None
-    for f in fields:
-        value = package.__dict__.get(f.name) or {}
-        if f.metadata.get("fk"):
-            names = aux_names(package)
-            tags += [f"aux:{n}" for n in names]
-            for kper, arrays in value.items():
-                for n, a in arrays.items():
-                    blocks.setdefault(kper, {})[f"aux:{str(n).lower()}"] = a
-        else:
-            tags.append(f.name)
-            if f.metadata.get("index"):
-                index = f.name
-            for kper, a in value.items():
-                blocks.setdefault(kper, {})[f.name] = a
-
+    ``blocks`` holds the period blocks as written, ``{kper: {tag: value}}``,
+    each block's tags in the order they're written (in a grid block, the
+    first array sets the boundary cells). ``shapes`` gives the shape of
+    every tag in one period, including tags no block gives. ``active``
+    (flat, by user node) marks the active cells, for grid arrays. ``index``
+    is the tag of a layer package's layer index array, if any.
+    """
     if past := sorted(k for k in blocks if k >= nper):
-        warnings.warn(f"periods {past} are past NPER ({nper}), dropped", stacklevel=3)
-
-    def shape(tag: str) -> tuple[int, ...]:
-        return shapes["aux" if tag.startswith("aux:") else tag]
-
+        warnings.warn(f"periods {past} are past NPER ({nper}), dropped", stacklevel=2)
+    if unknown := {t for b in blocks.values() for t in b} - set(shapes):
+        raise ValueError(f"no shape for {sorted(unknown)}")
     if mode == "grid":
-        return _grid_states(blocks, tags, nper, shape, active)
-
-    state: dict[str, Optional[np.ndarray]] = dict.fromkeys(tags)
-    if index is not None:
-        state[index] = np.zeros(shape(index), dtype=np.int64)
-    out: dict[str, list[np.ndarray]] = {t: [] for t in tags}
-    for kper in range(nper):
-        for tag, v in (blocks.get(kper) or {}).items():
-            # a series-linked array holds no values
-            linked = isinstance(v, TimeArraySeriesRef)
-            state[tag] = None if linked else np.broadcast_to(np.asarray(v), shape(tag))
-        for tag in tags:
-            a = state[tag]
-            out[tag].append(np.full(shape(tag), FILL_DNODATA) if a is None else a)
-    return out
+        return _grid_states(blocks, shapes, nper, active)
+    return _layer_states(blocks, shapes, nper, index)

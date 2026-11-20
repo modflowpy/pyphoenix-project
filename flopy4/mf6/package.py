@@ -43,6 +43,7 @@ from flopy4.mf6.period_arrays import (
     to_named_period_dict,
     to_period_dict,
 )
+from flopy4.mf6.period_state import period_mode, period_states
 from flopy4.mf6.spec import to_field_type
 from flopy4.mf6.write_context import WriteContext
 from flopy4.spec import is_array
@@ -1004,15 +1005,70 @@ class Package(Component, ABC):
         value = self.__dict__.get(f.name)
         return to_named_period_dict(value) if f.metadata.get("fk") else to_period_dict(value)
 
+    def _default_nper(self, fields: list) -> int:
+        # a package's periods are its period blocks, over all fields
+        given = {k for g in fields for k in (self._period_dict(g) or {})}
+        return self.resolve_dims("nper").get("nper") or max(given, default=-1) + 1
+
+    def _active_cells(self) -> Optional[np.ndarray]:
+        """The model's active cells, flat by user node, if it has a grid."""
+        dis = getattr(self._parent, "dis", None)
+        idomain = getattr(dis, "idomain", None)
+        return None if idomain is None else np.asarray(idomain).ravel() > 0
+
+    def period_states(
+        self, names: Optional[list[str]] = None, nper: Optional[int] = None
+    ) -> dict[str, np.ndarray]:
+        """The values the period array fields ``names`` (all with a shape, by
+        default) hold in each period, as MF6 holds them (see
+        `flopy4.mf6.period_state`): ``{tag: (nper, ...)}``, a field's tag its
+        name, and an aux field's ``aux:<name>`` for each auxiliary name.
+        ``nper`` defaults as in `period_array`. Raises if a field asked for,
+        or given, can't be sized."""
+        fields = self._period_array_fields()
+        selected = [
+            f for f in fields if (f.name in names if names is not None else f.metadata.get("shape"))
+        ]
+        if nper is None:
+            nper = self._default_nper(fields)
+        blocks: dict[int, dict[str, Any]] = {}
+        shapes: dict[str, tuple[int, ...]] = {}
+        index = None
+        for f in selected:
+            periods = self._period_dict(f) or {}
+            shape = period_shape(self, f) or _given_shape(f, periods)
+            if shape is None:
+                if names is not None or periods:
+                    raise ValueError(f"{self.dfn_name}: {f.name}'s period shape isn't known")
+                continue  # not asked for, not given, and no grid to size it
+            if f.metadata.get("fk"):
+                aux = getattr(self, "auxiliary", None)
+                for n in [] if aux is None else np.atleast_1d(aux):
+                    shapes[f"aux:{str(n).lower()}"] = shape
+                for kper, arrays in periods.items():
+                    for n, a in arrays.items():
+                        blocks.setdefault(kper, {})[f"aux:{str(n).lower()}"] = a
+            else:
+                shapes[f.name] = shape
+                if f.metadata.get("index"):
+                    index = f.name
+                for kper, a in periods.items():
+                    blocks.setdefault(kper, {})[f.name] = a
+        return period_states(
+            blocks, period_mode(type(self)), nper, shapes, self._active_cells(), index
+        )
+
     def period_array(
         self, name: str, nper: Optional[int] = None, fill_forward: bool = True
     ) -> "np.ndarray | dict[str, np.ndarray] | None":
         """A period array field as a dense ``(nper, ...)`` array.
 
         With ``fill_forward`` (the default), each period holds the values in
-        effect then. Without it, periods the field doesn't give are filled
-        with ``FILL_DNODATA`` (floats) or ``FILL_INT64`` (integers). Each
-        field fills forward on its own, in grid packages too.
+        effect then, as MF6 holds them (see `period_states`): in a grid
+        package, an array a block doesn't give is held at that block's
+        boundary cells, and an empty block clears every array. Without it,
+        periods the field doesn't give are filled with ``FILL_DNODATA``
+        (floats) or ``FILL_INT64`` (integers).
 
         Dynamically named arrays (aux) give ``{name: (nper, ...)}``. ``nper``
         defaults to the simulation's, else to one past the last period any of
@@ -1026,18 +1082,30 @@ class Package(Component, ABC):
         if not periods:
             return None
         if nper is None:
-            # a package's periods are its period blocks, over all fields
-            given = {k for g in fields for k in (self._period_dict(g) or {})}
-            nper = self.resolve_dims("nper").get("nper") or max(given) + 1
+            nper = self._default_nper(fields)
+        if fill_forward:
+            if refs := split_tas(periods)[1]:
+                raise ValueError(
+                    f"periods {sorted(refs)} come from a time-array series, "
+                    "which can't be made dense yet"
+                )
+            # a grid block's arrays share its boundary cells; layer arrays
+            # stand alone
+            grid = period_mode(type(self)) == "grid"
+            states = self.period_states(names=None if grid else [name], nper=nper)
+            if not f.metadata.get("fk"):
+                return states[name]
+            given = dict.fromkeys(str(n).lower() for arrays in periods.values() for n in arrays)
+            return {n: states[f"aux:{n}"] for n in given}
         shape = period_shape(self, f)
         if not f.metadata.get("fk"):
-            return dense(periods, nper, fill_forward, shape=shape)
+            return dense(periods, nper, fill_forward=False, shape=shape)
         names = list(dict.fromkeys(n for arrays in periods.values() for n in arrays))
         return {
             n: dense(
                 {k: arrays[n] for k, arrays in periods.items() if n in arrays},
                 nper,
-                fill_forward,
+                fill_forward=False,
                 shape=shape,
             )
             for n in names
@@ -1188,6 +1256,23 @@ class Package(Component, ABC):
         if spd is None:
             raise ValueError(f"{type(self).__name__} has no stress period data")
         setattr(self, spd.name, period_lists.from_dataset(self, ds))
+
+
+def _given_shape(f: attrs.Attribute, periods: dict) -> tuple[int, ...] | None:
+    """A period array's shape in one period from the arrays given, for a
+    package whose grid isn't known; None if none is given."""
+    values = (
+        [a for arrays in periods.values() for a in arrays.values()]
+        if f.metadata.get("fk")
+        else list(periods.values())
+    )
+    full = next((a for a in values if a is not None and np.ndim(a) > 0), None)
+    if full is None and any(isinstance(a, np.ndarray) for a in values):
+        raise ValueError(
+            f"{f.name}: no array gives the shape: give an array, attach the "
+            "package to a model, or pass its dims"
+        )
+    return None if full is None else tuple(np.shape(full))
 
 
 def period_shape(package: Package, f: attrs.Attribute) -> tuple[int, ...] | None:

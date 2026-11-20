@@ -9,7 +9,7 @@ from flopy4.mf6._types import TimeArraySeriesRef
 from flopy4.mf6.constants import FILL_DNODATA as NO
 from flopy4.mf6.gwf import Dis, Gwf, Rcha, Rivg, Welg
 from flopy4.mf6.netcdf import NetCDFModel
-from flopy4.mf6.period_state import period_states
+from flopy4.mf6.period_state import period_mode, period_states
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.utils.time import Time
 
@@ -158,4 +158,43 @@ def test_full_grid_arrays_not_supported():
         readarraygrid: bool = True
 
     with pytest.raises(NotImplementedError, match="full-grid"):
-        period_states(FullGrid(), NPER, [], {})
+        period_mode(FullGrid)
+
+
+def test_period_states_from_blocks():
+    """period_states works on period blocks alone, no package: an aux-only
+    grid block sets the boundary, and q is held there by position."""
+    blocks = {
+        0: {"q": np.array([-1.0, -2.0, NO, NO]), "aux:m": np.array([1.0, 2.0, NO, NO])},
+        1: {"aux:m": np.array([NO, 5.0, 6.0, NO])},
+    }
+    shapes = {"q": (4,), "aux:m": (4,)}
+    out = period_states(blocks, "grid", 3, shapes, active=np.array([1, 1, 1, 0]) > 0)
+    np.testing.assert_array_equal(
+        out["q"], [[-1.0, -2.0, NO, NO], [NO, -1.0, -2.0, NO], [NO, -1.0, -2.0, NO]]
+    )
+    np.testing.assert_array_equal(out["aux:m"][2], [NO, 5.0, 6.0, NO])
+
+
+def test_period_array_follows_grid_regime():
+    """Package.period_array goes through period_states, so it agrees with
+    the export: an empty block clears aux too, though no block gives it."""
+    gwf = _model()
+    welg = Welg(
+        parent=gwf,
+        auxiliary=["m"],
+        q={0: np.array([-1.0, -2.0, NO, NO]), 2: None},
+        aux={0: {"m": np.array([1.0, 2.0, NO, NO])}},
+    )
+    ds = NetCDFModel.from_model(gwf).to_xarray()
+    m = welg.period_array("aux")["m"]
+    np.testing.assert_array_equal(m, _periods(ds, "wel-1_m"))
+    np.testing.assert_array_equal(m[:, 0], [1.0, 1.0, NO, NO])
+
+
+def test_period_states_unknown_shape_raises():
+    """A field asked for that neither the grid nor its values can size is
+    an error, not a missing key."""
+    welg = Welg()
+    with pytest.raises(ValueError, match="period shape isn't known"):
+        welg.period_states(["q"], nper=1)
