@@ -190,3 +190,11 @@ def test_period_array_follows_grid_regime():
     m = welg.period_array("aux")["m"]
     np.testing.assert_array_equal(m, _periods(ds, "wel-1_m"))
     np.testing.assert_array_equal(m[:, 0], [1.0, 1.0, NO, NO])
+
+
+def test_period_states_unknown_shape_raises():
+    """A field asked for that neither the grid nor its values can size is
+    an error, not a missing key."""
+    welg = Welg()
+    with pytest.raises(ValueError, match="period shape isn't known"):
+        welg.period_states(["q"], nper=1)

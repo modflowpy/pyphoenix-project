@@ -1023,7 +1023,8 @@ class Package(Component, ABC):
         default) hold in each period, as MF6 holds them (see
         `flopy4.mf6.period_state`): ``{tag: (nper, ...)}``, a field's tag its
         name, and an aux field's ``aux:<name>`` for each auxiliary name.
-        ``nper`` defaults as in `period_array`."""
+        ``nper`` defaults as in `period_array`. Raises if a field asked for,
+        or given, can't be sized."""
         fields = self._period_array_fields()
         selected = [
             f for f in fields if (f.name in names if names is not None else f.metadata.get("shape"))
@@ -1037,7 +1038,9 @@ class Package(Component, ABC):
             periods = self._period_dict(f) or {}
             shape = period_shape(self, f) or _given_shape(f, periods)
             if shape is None:
-                continue  # not given, and no grid to size it
+                if names is not None or periods:
+                    raise ValueError(f"{self.dfn_name}: {f.name}'s period shape isn't known")
+                continue  # not asked for, not given, and no grid to size it
             if f.metadata.get("fk"):
                 aux = getattr(self, "auxiliary", None)
                 for n in [] if aux is None else np.atleast_1d(aux):
