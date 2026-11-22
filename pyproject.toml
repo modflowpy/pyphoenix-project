@@ -102,6 +102,8 @@ line-length = 100
 target-version = "py311"
 include = ["pyproject.toml", "flopy4/**/*.py", "test/**/*.py", "benchmarks/**/*.py", "docs/**/*.py"]
 extend-include = ["docs/**/*.ipynb"]
+# one-off research scripts, kept as written so the results stay reproducible
+extend-exclude = ["docs/dev/plans/dfn-spec/data", "docs/dev/plans/xarray/data"]
 
 [tool.ruff.lint]
 select = [
@@ -198,7 +200,9 @@ ignore_missing_imports = true
 warn_unreachable = true
 
 [tool.codespell]
-skip = "pixi.*,./docs/examples/quickstart/*,**/temp/*,./docs/examples/*.ipynb,./docs/_build/*"
+# docs/dev/plans/dfn-spec/data: research scripts (regex word stems) and MF6 messages quoted as found
+# docs/dev/plans/archive: plans kept as last written
+skip = "pixi.*,./docs/examples/quickstart/*,**/temp/*,./docs/examples/*.ipynb,./docs/_build/*,./docs/dev/plans/dfn-spec/data/*,./docs/dev/plans/archive/*"
 ignore-words-list = [
     "wel",
     "nam",

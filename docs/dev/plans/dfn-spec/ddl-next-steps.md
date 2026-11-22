@@ -1,0 +1,231 @@
+# After the DDL export: next steps
+
+Written 2026-11-05, when [ddl-export.md](ddl-export.md) finished. Results are in the slice's
+README (devtools' `ddl-slice` branch, local only).
+
+## Where this leaves us
+
+**A relational model is the right way to think about MF6's constraints, and a good way to
+check them, but SQL is too verbose to be the spec.** That's a judgement, and steps 5 and
+7 below are what could overturn it.
+
+- **The model holds.** Union records are sparse tables, SPC vs. SPCA is a key kind, and each
+  period regime in the slice is one view. The rules reject no valid model in 260 corpus models
+  and 49 built ones, and agree with MF6 on 128 of 131 changed or baseline copies.
+- **It finds things.** Three MF6 memory or input bugs, two flopy4 load bugs, an invalid corpus
+  model and DFN errors. `keys.py` never caught anything the rules missed.
+- **The text is large.** About 1,900 lines for roughly 30 of 145 components, keeping only
+  what the rules read. Much of the 62% declared share comes from copying a dimension into each
+  child row, which the DFN says in one line.
+- **Views can fail silently.** A bad join reports "clean", and did twice in stage 3. The same
+  case mistake in a foreign key was reported at once.
+- **It strains on** arrays (64 million rows on Biscayne), geometry and run-time state.
+
+So the working proposal ([factoring.md](factoring.md) has the rule for what stays out of the DFN):
+the DFN stays the source, with relational meaning. The DDL is
+generated from it where possible, with a short registry of named rules for what stays a view.
+SQL is the checking target and test harness, and not what people maintain.
+
+**What we don't know:** whether DFNs can generate propagated keys and period regimes, and how
+the rules do on models they haven't seen. The rules were corrected after seeing failures, so
+"no false alarms" is in-sample.
+
+## Picking this up
+
+- **The slice, and how to run it:** [ddl-export.md's "Picking this up"](ddl-export.md#picking-this-up).
+- **Open PRs and their worktrees** (all under `/Users/wbonelli/dev/`). Push only to the fork
+  (`origin`, wpbonelli), and only when told:
+
+  | PR | Branch | Worktree |
+  |---|---|---|
+  | devtools #417 (draft) | `binding-params` | `modflow-devtools-binding-params` |
+
+  Every step 2 PR had merged by 2026-11-13, and their worktrees were removed on 2026-11-16. The
+  branches are still in the local repos.
+
+- **After #417 merges:** start at step 4, [binding-navigation.md](binding-navigation.md). Its "Where
+  this starts" points at the `binding-params` worktree; use devtools' `develop` instead, and
+  remove that worktree when the user says so. Check first that #417 merged as `5f4a3c19` describes
+  (`gh pr view 417 -R MODFLOW-ORG/modflow-devtools`), since review may change the syntax.
+- **MF6 tests:** the pixi environment that was used lived in a removed worktree. In a new MF6
+  worktree, run `pixi install` (MF6 has a `pixi.toml`) and use
+  `.pixi/envs/default/bin/{python,ruff,fprettify}`. Run the touched test files from `autotest/`,
+  not the whole suite. New tests use `TestFramework`, like `test_gwf_obs_conn.py`. `conftest`
+  needs `bin/mf5to6`.
+- **MF6 PRs:** suggest the description and let the user open the PR. Don't edit PR descriptions
+  on GitHub. Release notes go in `doc/ReleaseNotes/items/*.toml`, written for users.
+- **When review comments come in:** fix on the branch, commit locally, and ask before pushing.
+
+## Steps
+
+In order. 1 and 2 are small, don't depend on anything, and are mostly done. 3 and 4 are what development needs
+next. 5 and 6 tell us whether to trust the slice, and 7 tests the DDL proposal.
+
+### 1. Fix the loader bug (flopy4)
+
+Fixed in #545, with a warning when the trim drops text
+([archive/trailing-text-load-fix.md](../archive/trailing-text-load-fix.md)).
+
+- [x] Apply the fix and the test
+- [x] Rerun `test021_twri` through the slice, since its recharge has been missing from the
+  export. Done 2026-11-11: the recharge is there (225 values of `3e-08`), no rule fires, and it
+  matches MF6's budget once the 15 CHD cells are left out. See the slice README
+- [x] Warn when the trim removes text
+- [ ] Decide on text between blocks. It now raises, where MF6 skips it
+
+### 2. Report what we found to its owners
+
+Done: everything filed had merged by 2026-11-13. The one item left, OBS ids in `keys.py`,
+belongs to step 4. The write-ups for merged fixes are archived: the MF6 ones in the MF6
+checkout's `archive/`, the DFN ones in the devtools checkout's `archive/`.
+
+- [x] **MF6:** GNC `numgnc` (#3122), SPC `maxbound` (#3117) and the boundname overrun (#3127), merged
+  2026-11-10. #3127 also covers CSUB and UZF, and fixes the file name in LAK and UZF errors
+- [x] **DFN, before parameters:**
+  - [x] Boundname needs `BOUNDNAMES` (devtools #410), with the `dfnspec.md` paragraph on `when` for
+    observations
+  - [x] `angledata`'s `when` (devtools #409). MAW's `connection_status` `icon` key stays parked until MF6
+    brings `CONNECTION_STATUS` back (`archive/maw-dfn-fixes.md`, part 3)
+  - [x] OC's and IST's print format (MF6 #3129, devtools #414, flopy4 #549)
+  - [x] DISU's `IDOMAIN` description in `gwf-`, `gwt-` and `gwe-disu.dfn`: MF6 #3135, merged
+    2026-11-12
+- [x] **flopy4:** regenerate against devtools #410: #550, merged 2026-11-11. The seven grid packages lose their
+  `string` form, `item.py`'s fallback guess now rejects a boundname where no form takes one, and
+  `pixi.lock` moves devtools to `8b11d69`
+- [x] **flopy4:** `generate-classes` read a June cache of MF6 `develop`'s DFNs instead of refetching:
+  #551, merged 2026-11-11
+- [x] **MF6:** `olf-dis2d.dfn` and `olf-disv2d.dfn` describe IDOMAIN -1 as "vertical pass through",
+  which can't apply to a 2D grid. MF6 treats -1 as 0 there: MF6 #3136, merged 2026-11-13
+- [x] **MF6:** check LAK's and MAW's observation connection numbers against the feature: MF6 #3137,
+  merged 2026-11-12. It changes `test_gwt_lkt02` and `lkt03`, which relied on the bug. Its test,
+  `test_gwf_obs_conn.py`, uses the `TestFramework`. Models outside `autotest/` weren't checked
+- [x] **DFN:** drop `dfnspec.md`'s note that those keys are stricter than MF6: devtools #416, merged
+  2026-11-11 (`5fa68641`), ahead of MF6 #3137, which has merged since, so `dfnspec.md` and MF6 agree
+- [x] **MF6:** `rp_obs_budterm` (`tsp-apt.f90`) used `idx` uninitialised when a feature has no
+  rows in the observed budget term, and the APT observation checks let an ID of 0 through, so
+  `concentration 0` ran and read out of bounds: MF6 #3139, merged 2026-11-13. FLOW-JA-FACE with a 0 already
+  errored, and only its message changes. Test: `test_gwt_apt_obs_id.py`
+- [x] **flopy4:** the OC load bug (#549, [archive](../archive/oc-format-load-bug.md))
+- [ ] **flopy4:** `keys.py` doesn't check OBS ids at all, and stayed silent on 22 broken copies
+  that MF6 rejects. This belongs with binding navigation (step 4)
+
+### 3. The parameter syntax sketch
+
+Done: [parameter-sketch.md](parameter-sketch.md). Moved up from after the SQL work on 2026-11-05,
+since it's what bears on development now. Keep it, though it comes out about the same size as what
+it replaces, and what it buys is coverage.
+
+- [x] Do "To do when this goes in" there on a devtools branch. Done on `binding-params`
+  (`/Users/wbonelli/dev/modflow-devtools-binding-params`), with one change from the sketch:
+  parameters are passed at the call site. A component's `params` is a signature (`type`, optional
+  `rule`), and the `file` field that binds it passes `args`, each naming one binding-row column or
+  one of the binder's own parameters. The sketch's `from` is gone, and so are `obstype`'s `fk` and
+  the reserved `observations` key. The owner is implicit, so `utl-obs` declares nothing.
+  [binding-navigation.md](binding-navigation.md#where-this-starts) has the details
+- [x] Push and open the PR: devtools #417, a draft, at `5f4a3c19` on the fork
+- [ ] Review of #417, and merge
+
+### 4. Binding navigation, and one conversion
+
+Planned in [binding-navigation.md](binding-navigation.md). The flopy4 side waits for devtools'
+`binding-params` (#417) to merge. A devtools follow-up, making `flow_model` a parameter, is planned in
+[flow-model-param.md](flow-model-param.md).
+
+Steps 5 and 6 of the overview. This is the real test of the construct: if `Spc.target` and
+`Mvr.model1` don't both come from one resolver, it isn't what it claims to be. `Obs.target` is
+now just the owner. Two notes from the export:
+
+- `keys.py` can check OBS ids against the owner's `[observations]`; whether that's enough is an
+  open question in the plan.
+- RCHA is much more common than the plan thought, at 92 packages in 87 models, and
+  `v_rch_rate` has now run on real data, so RCHA ↔ RCH has a test bed. Its static part stops at
+  `FIXED_CELL`: without it, MF6 moves recharge to the highest active cell at run time.
+
+### 5. Run the rules on models they haven't seen
+
+The missing number. Freeze `schema.sql`, `rules.sql` and the exporter at a commit, and don't
+touch them until the first run is sorted.
+
+- **Models:** `modflow6-examples` (7 built, 76 scripts), and MF6's autotests beyond the 23
+  modules already used (457 in all). Prefer those with components the slice models but the
+  corpus lacks. Others only count as far as their package rows.
+- **How:** `export/build_autotest_models.py` and `run.py`. Run `mf6` on each first, and only
+  valid models count.
+- **Report:** models run, and how many rule hits on valid models, sorted by the table in
+  `ddl-export.md`. Do that before fixing anything.
+
+**Fails if** more than 2% of valid models are wrongly rejected by a rule, or more than one rule
+is wrong. Stage 2 and 3's first runs found about four rules too strict, on about 300 models.
+
+**Predictions, written before looking:** a rule or two is too strict, most likely on OBS types
+the 6.7.0 catalog lacks, or on SPC. There are one or two exporter bugs in input forms not yet
+seen. No new sum type.
+
+### 6. Stop views failing silently
+
+Two silent failures in one stage is too many to leave to care. This is worth doing even if the
+slice is never used again, since it's a lesson for any checker built on it.
+
+- [ ] Make every model and package name column `COLLATE NOCASE`, so the whole class of case
+  mistake goes, rather than fixing joins one at a time
+- [ ] Test every `r_*` and `w_*` view on a real model's data, not only on the fixture. A view
+  with no broken copy that fires it gets reported. Today, each view's test uses the fixture, and
+  the broken real models fire only some of the views
+- [ ] Report a view that has rows to apply to, and whose join finds none
+
+**Done when** the report lists each view as fired on real data, or as untested, with a reason.
+
+### 7. Try generating one package's DDL from its DFN
+
+The test of the proposal. Extend `gen_catalog.py` to write the tables for two packages:
+**WEL**, as the plain case, and **MAW**, which has scoped keys, a union, `when` and propagated
+dimensions.
+
+- Generate the tables, keys, CHECKs and propagated columns.
+- Run `test_slice.py`'s rule tests for those packages against the generated DDL.
+- Count three things: constraints generated, constraints that needed a new DFN field, and
+  constraints that had to stay by hand.
+
+**Fails if** more than a quarter of those packages' declared constraints stay by hand, or the
+DFN needs a construct used only to serve generation. Then the DFN isn't enough, and the choice
+is between a richer spec language and giving up on generating.
+
+**Predictions, written before looking:** keys and ranges generate easily. Propagated columns are
+mechanical once a dimension's owner is known. Period regimes need a new field, since nothing in
+the DFN says "snapshot" or "delta". Row CHECKs like `strt >= bottom` have no home in the DFN.
+
+[parameter-sketch.md](parameter-sketch.md#why-this-isnt-name-again) says how parameters become
+columns, so this can start from that.
+
+### 8. Post
+
+[Step 7 of the overview](overview.md#plan) said to post after steps 3 and 4 there, which are now
+both done. There's a draft for discussion, `discussion-relational-results.md` in the main
+checkout, which predates the sketch and doesn't cover its results.
+
+- [ ] Add the sketch's results to the draft
+- [ ] Push the slice's branch, if the post links to it
+- [ ] Word its "Next" section for whatever's been filed by then
+
+## Not doing, unless something changes
+
+- **The rest of the slice.** 22 audited rules are unmodelled, mostly on components outside the
+  slice. Covering all 145 components by hand is the opposite of the proposal.
+- **The grid array regime.** It's H2b's last open case, and worth doing only if step 7 needs it:
+  the exporter records only a `package` row for CHDG and WELG.
+- **Array storage.** A row per value is wrong at Biscayne's size, but nothing needs a decision
+  until a connector does.
+- **A database connector.** See [ddl-export.md](ddl-export.md#where-this-could-lead). It needs
+  a lossless schema, which also depends on step 7.
+- **Merging the slice.** It stays research. If step 7 works, what's kept is the generator and the
+  harness, and not the hand-written DDL.
+
+## What would change the conclusion
+
+- **Toward SQL as the spec:** generating fails (step 7), and a richer DFN looks worse than the DDL
+  it would replace.
+- **Away from relational checks altogether:** the rules do badly on unseen models (step 5), and
+  fixing them means reading the Fortran for each one. That would show a hand-kept rule set can't
+  stay honest, whatever its language.
+- **Away from generating:** so few packages share a shape that the generator is mostly special
+  cases.

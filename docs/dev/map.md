@@ -33,10 +33,16 @@ All core and most peripheral functionality, and may involve:
 - Finalizing maintenance/release plans
 - Finalizing MF6 version support plan
 
-Release to wider test audience at USGS and Deltares via `pip install` from github URL. Begin beta versioning.
+Release to wider test audience at USGS and Deltares via `pip install` from github URL. This is the last beta; beta versioning begins before it.
+
+What's left to reach the MMP, and in what order, is in [mmp-plan.md](mmp-plan.md). All plans and design notes are listed in [plans/README.md](plans/README.md).
+
+### Release candidates
+
+Integrated into the existing repository on a `4.x` branch, cut once MMP feedback has settled the API. Released as `flopy==4.0.0rcN` via PyPI and conda-forge. See [`replacing-flopy-mf6.md`](plans/integration/replacing-flopy-mf6.md).
 
 ### GA
 
-Feature-parity with 3.x. Integrated into existing repository. Generally available via standard channels (PyPI, Conda).
+Feature-parity with 3.x. The last release candidate. Generally available via standard channels (PyPI, Conda).
 
 3.x enters maintenance-only mode for a limited time after which support will be dropped and all effort moved to 4.x.
