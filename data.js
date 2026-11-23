@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794839508204,
+  "lastUpdate": 1795453695060,
   "repoUrl": "https://github.com/modflowpy/pyphoenix-project",
   "entries": {
     "flopy4 benchmarks": [
@@ -570,6 +570,106 @@ window.BENCHMARK_DATA = {
           {
             "name": "cold start: flopy4",
             "value": 1.0286097739999889,
+            "unit": "s",
+            "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "wpbonelli",
+            "username": "wpbonelli",
+            "email": "wbonelli@ucar.edu"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "5bdb5bbf0d3b498e5fa89c7d6ab009259837025b",
+          "message": "make period_states independent of object model (#554)\n\ntweak the signature/logic so it doesn't depend on the object model",
+          "timestamp": "2026-11-20T15:01:33Z",
+          "url": "https://github.com/modflowpy/pyphoenix-project/commit/5bdb5bbf0d3b498e5fa89c7d6ab009259837025b"
+        },
+        "date": 1795453692193,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "load (standard): flopy4",
+            "value": 0.3716621819999659,
+            "unit": "s",
+            "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load (standard): flopy4 / flopy3",
+            "value": 0.26600884866802516,
+            "unit": "ratio",
+            "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load (large): flopy4",
+            "value": 7.839565265999909,
+            "unit": "s",
+            "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load (large): flopy4 / flopy3",
+            "value": 0.26653210605138355,
+            "unit": "ratio",
+            "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load-materialize (standard): flopy4",
+            "value": 0.4670797829999742,
+            "unit": "s",
+            "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load-materialize (standard): flopy4 / flopy3",
+            "value": 0.21758908344643435,
+            "unit": "ratio",
+            "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load-materialize (large): flopy4",
+            "value": 10.74408477899999,
+            "unit": "s",
+            "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "load-materialize (large): flopy4 / flopy3",
+            "value": 0.3278560500335102,
+            "unit": "ratio",
+            "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "write (standard): flopy4",
+            "value": 1.2144638380000288,
+            "unit": "s",
+            "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "write (standard): flopy4 / flopy3",
+            "value": 0.3579751606358633,
+            "unit": "ratio",
+            "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "write (large): flopy4",
+            "value": 19.762006272999997,
+            "unit": "s",
+            "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "write (large): flopy4 / flopy3",
+            "value": 0.5461655018561187,
+            "unit": "ratio",
+            "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
+          },
+          {
+            "name": "cold start: flopy4",
+            "value": 1.3026333750000276,
             "unit": "s",
             "extra": "AMD EPYC 9V74 80-Core Processor, Linux, Python 3.11.16"
           }
