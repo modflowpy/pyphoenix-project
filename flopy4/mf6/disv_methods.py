@@ -24,21 +24,24 @@ class _LegacyInputs(LegacyKwargs):
     `cell2ddata` (0-based) and convert them into `vertices` and `cell2d`,
     which are what `Disv` stores."""
 
-    def __call__(cls, *args: Any, **kwargs: Any) -> Any:
-        iv, xv, yv, cell2ddata = (kwargs.pop(k, None) for k in ("iv", "xv", "yv", "cell2ddata"))
-        if xv is not None or yv is not None or iv is not None:
-            if xv is None or yv is None:
-                raise ValueError("xv and yv are both required to build vertices from arrays")
-            if kwargs.get("vertices") is not None:
-                raise ValueError("give vertices, or iv/xv/yv, not both")
-            xv, yv = np.asarray(xv, dtype=float), np.asarray(yv, dtype=float)
-            iv = np.arange(len(xv)) if iv is None else np.asarray(iv)
-            kwargs["vertices"] = [(int(i), float(x), float(y)) for i, x, y in zip(iv, xv, yv)]
-        if cell2ddata is not None:
-            if kwargs.get("cell2d") is not None:
-                raise ValueError("give cell2d, or cell2ddata, not both")
-            kwargs["cell2d"] = list(cell2ddata)
-        return super().__call__(*args, **kwargs)
+    # hidden from type checkers (see `LegacyKwargs`)
+    if not TYPE_CHECKING:
+
+        def __call__(cls, *args: Any, **kwargs: Any) -> Any:
+            iv, xv, yv, cell2ddata = (kwargs.pop(k, None) for k in ("iv", "xv", "yv", "cell2ddata"))
+            if xv is not None or yv is not None or iv is not None:
+                if xv is None or yv is None:
+                    raise ValueError("xv and yv are both required to build vertices from arrays")
+                if kwargs.get("vertices") is not None:
+                    raise ValueError("give vertices, or iv/xv/yv, not both")
+                xv, yv = np.asarray(xv, dtype=float), np.asarray(yv, dtype=float)
+                iv = np.arange(len(xv)) if iv is None else np.asarray(iv)
+                kwargs["vertices"] = [(int(i), float(x), float(y)) for i, x, y in zip(iv, xv, yv)]
+            if cell2ddata is not None:
+                if kwargs.get("cell2d") is not None:
+                    raise ValueError("give cell2d, or cell2ddata, not both")
+                kwargs["cell2d"] = list(cell2ddata)
+            return super().__call__(*args, **kwargs)
 
 
 class DisvMethods(metaclass=_LegacyInputs):
