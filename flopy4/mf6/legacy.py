@@ -16,7 +16,7 @@ instead.
 import warnings
 from abc import ABCMeta
 from collections.abc import Callable, Mapping
-from typing import Any, NamedTuple
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 
 class Legacy(NamedTuple):
@@ -71,11 +71,15 @@ class LegacyKwargs(ABCMeta):
         for old, new in namespace.get("legacy_kwargs", {}).items():
             setattr(cls, old, _LegacyAttribute(old, new))
 
-    def __call__(cls, *args: Any, **kwargs: Any) -> Any:
-        legacy = getattr(cls, "legacy_kwargs", None)
-        if legacy and not kwargs.keys().isdisjoint(legacy):
-            kwargs = _translate(cls.__name__, legacy, kwargs)
-        return super().__call__(*args, **kwargs)
+    # hidden from type checkers, which would take its signature for the
+    # class's constructor
+    if not TYPE_CHECKING:
+
+        def __call__(cls, *args: Any, **kwargs: Any) -> Any:
+            legacy = getattr(cls, "legacy_kwargs", None)
+            if legacy and not kwargs.keys().isdisjoint(legacy):
+                kwargs = _translate(cls.__name__, legacy, kwargs)
+            return super().__call__(*args, **kwargs)
 
 
 def _translate(cls_name: str, legacy: Mapping[str, Legacy], kwargs: dict) -> dict:
